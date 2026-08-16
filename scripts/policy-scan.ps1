@@ -38,6 +38,7 @@ function Assert-NoPattern {
 
 $manifestFiles = @(
     (Join-Path $repoRoot "package.json"),
+    (Join-Path $repoRoot "package-lock.json"),
     (Join-Path $repoRoot "apps\web\package.json"),
     (Join-Path $repoRoot "pyproject.toml"),
     (Join-Path $repoRoot "requirements.lock")
@@ -45,8 +46,14 @@ $manifestFiles = @(
 
 Assert-NoPattern -Pattern '(?i)(["''=/@]|^)(openai|dart-fss|sec-edgar-downloader)(["''<>=@/]|$)' `
     -Message "A prohibited external/OpenAI dependency was found." -Files $manifestFiles
+Assert-NoPattern `
+    -Pattern '(?i)(@vercel/(analytics|speed-insights)|posthog-js|mixpanel-browser|@segment/analytics-next|@amplitude/analytics-browser|react-ga4|next-plausible|@sentry/nextjs)' `
+    -Message "A prohibited analytics or telemetry dependency was found." -Files $manifestFiles
 Assert-NoPattern -Pattern '(?i)https?://(?!127\.0\.0\.1|localhost|example\.invalid)[a-z0-9]' `
     -Message "A non-local URL was found in Phase 1 source."
+Assert-NoPattern `
+    -Pattern '(?i)(next/font/google|fonts\.(googleapis|gstatic)\.com|navigator\.sendBeacon|\bgtag\s*\(|\bdataLayer\b|@vercel/(analytics|speed-insights)|posthog-js|mixpanel-browser|@segment/analytics-next|@amplitude/analytics-browser|react-ga4|next-plausible|@sentry/nextjs)' `
+    -Message "A remote font, analytics, or telemetry integration was found."
 Assert-NoPattern -Pattern '(?i)(pytest\.mark\.skip|pytest\.skip|xfail|describe\.skip|it\.skip|test\.skip|test\.todo)' `
     -Message "A skipped, todo, or xfail test was found." `
     -Files ($sourceFiles | Where-Object { $_.FullName -match '[\\/](tests?|__tests__)[\\/]|\.test\.|\.spec\.' })

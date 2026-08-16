@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+from collections.abc import Mapping
 from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -11,7 +12,12 @@ from typing import cast
 from sqlalchemy import Engine, Table, select
 from sqlalchemy.orm import Session, sessionmaker
 
-from toss_dashboard_api.contracts.base import canonical_json_bytes, sha256_prefixed
+from toss_dashboard_api.contracts.base import (
+    NormalizedRecord,
+    canonical_json_bytes,
+    normalized_hash,
+    sha256_prefixed,
+)
 from toss_dashboard_api.repositories.fixture import FixtureRepository
 from toss_dashboard_api.storage.database import create_database_engine, session_factory
 from toss_dashboard_api.storage.models import (
@@ -91,10 +97,16 @@ class FixtureImporter:
             for issuer in fixtures.issuers:
                 existing_issuer = session.get(IssuerRow, issuer.issuer_id)
                 if existing_issuer is not None:
-                    self._assert_same_hash(
-                        issuer.issuer_id,
-                        existing_issuer.normalized_content_hash,
-                        issuer.normalized_content_hash,
+                    self._assert_existing_row(
+                        existing_issuer,
+                        issuer,
+                        {
+                            "issuer_id": issuer.issuer_id,
+                            "jurisdiction": issuer.jurisdiction.value,
+                            "corp_code": issuer.corp_code,
+                            "cik": issuer.cik,
+                            "normalized_content_hash": issuer.normalized_content_hash,
+                        },
                     )
                     unchanged += 1
                     continue
@@ -114,10 +126,18 @@ class FixtureImporter:
             for security in fixtures.securities:
                 existing_security = session.get(SecurityRow, security.security_id)
                 if existing_security is not None:
-                    self._assert_same_hash(
-                        security.security_id,
-                        existing_security.normalized_content_hash,
-                        security.normalized_content_hash,
+                    self._assert_existing_row(
+                        existing_security,
+                        security,
+                        {
+                            "security_id": security.security_id,
+                            "issuer_id": security.issuer_id,
+                            "market": security.market.value,
+                            "exchange": security.exchange,
+                            "ticker": security.ticker,
+                            "share_class": security.share_class.value,
+                            "normalized_content_hash": security.normalized_content_hash,
+                        },
                     )
                     unchanged += 1
                     continue
@@ -146,10 +166,18 @@ class FixtureImporter:
                         continue
                     existing_source = session.get(SourceRecordRow, source.source_record_id)
                     if existing_source is not None:
-                        self._assert_same_hash(
-                            source.source_record_id,
-                            existing_source.normalized_content_hash,
-                            source.normalized_content_hash,
+                        self._assert_existing_row(
+                            existing_source,
+                            source,
+                            {
+                                "source_record_id": source.source_record_id,
+                                "source_system": source.source_system.value,
+                                "source_type": source.source_type.value,
+                                "external_id": source.external_id,
+                                "supersedes_id": source.supersedes_id,
+                                "raw_content_hash": source.raw_content_hash,
+                                "normalized_content_hash": source.normalized_content_hash,
+                            },
                         )
                         unchanged += 1
                     else:
@@ -176,10 +204,16 @@ class FixtureImporter:
             for quality in fixtures.data_quality_statuses:
                 existing_quality = session.get(DataQualityStatusRow, quality.quality_status_id)
                 if existing_quality is not None:
-                    self._assert_same_hash(
-                        quality.quality_status_id,
-                        existing_quality.normalized_content_hash,
-                        quality.normalized_content_hash,
+                    self._assert_existing_row(
+                        existing_quality,
+                        quality,
+                        {
+                            "quality_status_id": quality.quality_status_id,
+                            "issuer_id": quality.issuer_id,
+                            "source_system": quality.source_system.value,
+                            "dataset": quality.dataset,
+                            "normalized_content_hash": quality.normalized_content_hash,
+                        },
                     )
                     unchanged += 1
                     continue
@@ -223,6 +257,40 @@ class FixtureImporter:
             raise ImportConflictError(
                 f"stable ID conflict for {record_id}; existing records are never overwritten"
             )
+
+    @classmethod
+    def _assert_existing_row(
+        cls,
+        row: object,
+        incoming: NormalizedRecord,
+        expected_columns: Mapping[str, object],
+    ) -> None:
+        record_id = next(
+            str(value)
+            for name, value in expected_columns.items()
+            if name.endswith("_id") and value is not None
+        )
+        stored_hash = getattr(row, "normalized_content_hash", None)
+        if not isinstance(stored_hash, str):
+            raise ImportConflictError(f"stored row corruption for {record_id}")
+        cls._assert_same_hash(record_id, stored_hash, incoming.normalized_content_hash)
+
+        payload_json = getattr(row, "payload_json", None)
+        if not isinstance(payload_json, str):
+            raise ImportConflictError(f"stored row corruption for {record_id}")
+        try:
+            stored = type(incoming).model_validate_json(payload_json)
+        except ValueError as exc:
+            raise ImportConflictError(f"stored row corruption for {record_id}") from exc
+        if (
+            stored.normalized_content_hash != stored_hash
+            or normalized_hash(stored) != stored_hash
+            or stored.model_dump_json() != payload_json
+            or payload_json != incoming.model_dump_json()
+        ):
+            raise ImportConflictError(f"stored row corruption for {record_id}")
+        if any(getattr(row, name, None) != expected for name, expected in expected_columns.items()):
+            raise ImportConflictError(f"stored row corruption for {record_id}")
 
 
 def import_fixtures(database_url: str, fixture_dir: Path) -> ImportResult:

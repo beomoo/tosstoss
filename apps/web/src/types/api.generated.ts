@@ -117,8 +117,11 @@ export interface components {
         AdjustmentStatus: "RAW";
         /** AnalysisPacket */
         AnalysisPacket: {
-            /** Contract Version */
-            contract_version: string;
+            /**
+             * Contract Version
+             * @constant
+             */
+            contract_version: "0.1.0";
             /** Evidence Ids */
             evidence_ids: string[];
             extensions: components["schemas"]["PacketExtensions"];
@@ -147,8 +150,11 @@ export interface components {
         };
         /** AnalysisPacketResponse */
         AnalysisPacketResponse: {
-            /** Contract Version */
-            contract_version: string;
+            /**
+             * Contract Version
+             * @constant
+             */
+            contract_version: "0.1.0";
             data: components["schemas"]["AnalysisPacket"];
             /**
              * Data Mode
@@ -172,8 +178,11 @@ export interface components {
         AvailabilityStatus: "AVAILABLE" | "DEGRADED" | "ERROR" | "UNAVAILABLE";
         /** CompanyOverview */
         CompanyOverview: {
-            /** Contract Version */
-            contract_version: string;
+            /**
+             * Contract Version
+             * @constant
+             */
+            contract_version: "0.1.0";
             /** Data Quality */
             data_quality?: components["schemas"]["DataQualityStatus"][];
             /** Evidence */
@@ -207,8 +216,11 @@ export interface components {
         };
         /** CompanyOverviewResponse */
         CompanyOverviewResponse: {
-            /** Contract Version */
-            contract_version: string;
+            /**
+             * Contract Version
+             * @constant
+             */
+            contract_version: "0.1.0";
             data: components["schemas"]["CompanyOverview"];
             /**
              * Data Mode
@@ -232,8 +244,11 @@ export interface components {
         Currency: "KRW" | "USD";
         /** DailyMarketFlow */
         DailyMarketFlow: {
-            /** Contract Version */
-            contract_version: string;
+            /**
+             * Contract Version
+             * @constant
+             */
+            contract_version: "0.1.0";
             currency: components["schemas"]["Currency"];
             finality_status: components["schemas"]["FinalityStatus"];
             freshness_status: components["schemas"]["FreshnessStatus"];
@@ -265,8 +280,11 @@ export interface components {
         };
         /** DataQualityResponse */
         DataQualityResponse: {
-            /** Contract Version */
-            contract_version: string;
+            /**
+             * Contract Version
+             * @constant
+             */
+            contract_version: "0.1.0";
             /** Count */
             count: number;
             /** Data */
@@ -286,8 +304,11 @@ export interface components {
         /** DataQualityStatus */
         DataQualityStatus: {
             availability_status: components["schemas"]["AvailabilityStatus"];
-            /** Contract Version */
-            contract_version: string;
+            /**
+             * Contract Version
+             * @constant
+             */
+            contract_version: "0.1.0";
             /** Dataset */
             dataset: string;
             /** Error Code */
@@ -333,14 +354,35 @@ export interface components {
             source_record_id: string | null;
             source_system: components["schemas"]["SourceSystem"];
         };
+        /** ErrorBody */
+        ErrorBody: {
+            /** Code */
+            code: string;
+            /** Message */
+            message: string;
+        };
+        /** ErrorEnvelope */
+        ErrorEnvelope: {
+            /**
+             * Contract Version
+             * @constant
+             */
+            contract_version: "0.1.0";
+            error: components["schemas"]["ErrorBody"];
+            /** Request Id */
+            request_id: string;
+        };
         /** Evidence */
         Evidence: {
             /** Claim */
             claim: string;
             /** Confidence */
             confidence: string;
-            /** Contract Version */
-            contract_version: string;
+            /**
+             * Contract Version
+             * @constant
+             */
+            contract_version: "0.1.0";
             direction: components["schemas"]["EvidenceDirection"];
             evidence_basis: components["schemas"]["EvidenceBasis"];
             /** Evidence Id */
@@ -381,8 +423,11 @@ export interface components {
         FilingChangeType: "ADDED" | "REMOVED" | "MODIFIED" | "MOVED" | "NUMBER_CHANGED" | "TONE_UP" | "TONE_DOWN" | "UNCERTAINTY_UP" | "UNCERTAINTY_DOWN" | "RISK_ADDED" | "RISK_REMOVED";
         /** FilingDocument */
         FilingDocument: {
-            /** Contract Version */
-            contract_version: string;
+            /**
+             * Contract Version
+             * @constant
+             */
+            contract_version: "0.1.0";
             /**
              * Filed At
              * Format: date-time
@@ -424,8 +469,11 @@ export interface components {
             change_types: components["schemas"]["FilingChangeType"][];
             /** Confidence */
             confidence: string;
-            /** Contract Version */
-            contract_version: string;
+            /**
+             * Contract Version
+             * @constant
+             */
+            contract_version: "0.1.0";
             /** Current Filing Id */
             current_filing_id: string;
             /** Current Sentence */
@@ -466,8 +514,11 @@ export interface components {
             /** Account Name Original */
             account_name_original: string;
             consolidation: components["schemas"]["Consolidation"];
-            /** Contract Version */
-            contract_version: string;
+            /**
+             * Contract Version
+             * @constant
+             */
+            contract_version: "0.1.0";
             currency: components["schemas"]["Currency"];
             finality_status: components["schemas"]["FinalityStatus"];
             /** Financial Fact Id */
@@ -509,8 +560,11 @@ export interface components {
         FreshnessStatus: "FRESH" | "STALE" | "EXPIRED" | "UNKNOWN";
         /** HealthResponse */
         HealthResponse: {
-            /** Contract Version */
-            contract_version: string;
+            /**
+             * Contract Version
+             * @constant
+             */
+            contract_version: "0.1.0";
             /**
              * Data Mode
              * @constant
@@ -532,15 +586,13 @@ export interface components {
          * @enum {string}
          */
         HoldingChangeClass: "NEW" | "AGGRESSIVE_ADD" | "ADD" | "HOLD" | "TRIM" | "AGGRESSIVE_REDUCE" | "EXIT" | "PERSISTENT_BUILD" | "PERSISTENT_DISTRIBUTION" | "SECTOR_ROTATION_IN" | "SECTOR_ROTATION_OUT";
-        /** HTTPValidationError */
-        HTTPValidationError: {
-            /** Detail */
-            detail?: components["schemas"]["ValidationError"][];
-        };
         /** InstitutionHolding */
         InstitutionHolding: {
-            /** Contract Version */
-            contract_version: string;
+            /**
+             * Contract Version
+             * @constant
+             */
+            contract_version: "0.1.0";
             /** Cusip Original */
             cusip_original: string;
             /** Filing Id */
@@ -586,8 +638,11 @@ export interface components {
             change_class: components["schemas"]["HoldingChangeClass"];
             /** Confidence */
             confidence: string;
-            /** Contract Version */
-            contract_version: string;
+            /**
+             * Contract Version
+             * @constant
+             */
+            contract_version: "0.1.0";
             /**
              * Current Period
              * Format: date
@@ -634,8 +689,11 @@ export interface components {
             active_status: boolean;
             /** Cik */
             cik: string;
-            /** Contract Version */
-            contract_version: string;
+            /**
+             * Contract Version
+             * @constant
+             */
+            contract_version: "0.1.0";
             /** Display Name */
             display_name: string;
             /** Legal Name */
@@ -661,8 +719,11 @@ export interface components {
         Issuer: {
             /** Cik */
             cik: string | null;
-            /** Contract Version */
-            contract_version: string;
+            /**
+             * Contract Version
+             * @constant
+             */
+            contract_version: "0.1.0";
             /** Corp Code */
             corp_code: string | null;
             /** Display Name */
@@ -706,8 +767,11 @@ export interface components {
         MissingReason: "NOT_PROVIDED" | "NOT_APPLICABLE" | "UNAVAILABLE" | "UNRESOLVED" | "PARSE_ERROR" | "WITHHELD";
         /** PacketExtensions */
         PacketExtensions: {
-            /** Contract Version */
-            contract_version: string;
+            /**
+             * Contract Version
+             * @constant
+             */
+            contract_version: "0.1.0";
             /** Extension Version */
             extension_version: string;
             /** Hypotheses */
@@ -729,8 +793,11 @@ export interface components {
         };
         /** PacketSourceManifestEntry */
         PacketSourceManifestEntry: {
-            /** Contract Version */
-            contract_version: string;
+            /**
+             * Contract Version
+             * @constant
+             */
+            contract_version: "0.1.0";
             /** Missing Reasons */
             missing_reasons?: {
                 [key: string]: components["schemas"]["MissingReason"];
@@ -755,8 +822,11 @@ export interface components {
             bar_start: string;
             /** Close */
             close: string;
-            /** Contract Version */
-            contract_version: string;
+            /**
+             * Contract Version
+             * @constant
+             */
+            contract_version: "0.1.0";
             currency: components["schemas"]["Currency"];
             /**
              * Exchange Trade Date
@@ -813,8 +883,11 @@ export interface components {
         SafetyStatus: {
             /** Allow Account Endpoints */
             allow_account_endpoints: boolean;
-            /** Contract Version */
-            contract_version: string;
+            /**
+             * Contract Version
+             * @constant
+             */
+            contract_version: "0.1.0";
             /** Dry Run */
             dry_run: boolean;
             /** Local Only */
@@ -840,8 +913,11 @@ export interface components {
         Scenario: "BEAR" | "BASE" | "BULL";
         /** SecuritiesResponse */
         SecuritiesResponse: {
-            /** Contract Version */
-            contract_version: string;
+            /**
+             * Contract Version
+             * @constant
+             */
+            contract_version: "0.1.0";
             /** Count */
             count: number;
             /** Data */
@@ -858,8 +934,11 @@ export interface components {
         };
         /** Security */
         Security: {
-            /** Contract Version */
-            contract_version: string;
+            /**
+             * Contract Version
+             * @constant
+             */
+            contract_version: "0.1.0";
             currency: components["schemas"]["Currency"];
             /** Cusip */
             cusip: string | null;
@@ -906,8 +985,11 @@ export interface components {
         StatementType: "INCOME_STATEMENT";
         /** SystemStatusResponse */
         SystemStatusResponse: {
-            /** Contract Version */
-            contract_version: string;
+            /**
+             * Contract Version
+             * @constant
+             */
+            contract_version: "0.1.0";
             /**
              * Data Mode
              * @constant
@@ -929,15 +1011,6 @@ export interface components {
             /** Version */
             version: string;
         };
-        /** ValidationError */
-        ValidationError: {
-            /** Location */
-            loc: (string | number)[];
-            /** Message */
-            msg: string;
-            /** Error Type */
-            type: string;
-        };
         /**
          * ValuationMethod
          * @enum {string}
@@ -951,8 +1024,11 @@ export interface components {
              */
             as_of: string;
             assumption_source: components["schemas"]["AssumptionSource"];
-            /** Contract Version */
-            contract_version: string;
+            /**
+             * Contract Version
+             * @constant
+             */
+            contract_version: "0.1.0";
             currency: components["schemas"]["Currency"];
             /** Forecast Eps */
             forecast_eps: string;
@@ -1018,13 +1094,58 @@ export interface operations {
                     "application/json": components["schemas"]["DataQualityResponse"];
                 };
             };
-            /** @description Validation Error */
+            /** @description Invalid host or request boundary */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Requested API resource or route was not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not allowed */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Request validation failed */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unhandled internal failure */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Required fixture data is unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
         };
@@ -1049,13 +1170,58 @@ export interface operations {
                     "application/json": components["schemas"]["CompanyOverviewResponse"];
                 };
             };
-            /** @description Validation Error */
+            /** @description Invalid host or request boundary */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Requested API resource or route was not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not allowed */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Request validation failed */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unhandled internal failure */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Required fixture data is unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
         };
@@ -1078,6 +1244,60 @@ export interface operations {
                     "application/json": components["schemas"]["AnalysisPacketResponse"];
                 };
             };
+            /** @description Invalid host or request boundary */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Requested API resource or route was not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not allowed */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Request validation failed */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unhandled internal failure */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Required fixture data is unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
         };
     };
     securities_api_v1_securities_get: {
@@ -1096,6 +1316,60 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SecuritiesResponse"];
+                };
+            };
+            /** @description Invalid host or request boundary */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Requested API resource or route was not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not allowed */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Request validation failed */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unhandled internal failure */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Required fixture data is unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
         };
@@ -1118,6 +1392,60 @@ export interface operations {
                     "application/json": components["schemas"]["SystemStatusResponse"];
                 };
             };
+            /** @description Invalid host or request boundary */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Requested API resource or route was not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not allowed */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Request validation failed */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unhandled internal failure */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Required fixture data is unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
         };
     };
     health_health_get: {
@@ -1136,6 +1464,60 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HealthResponse"];
+                };
+            };
+            /** @description Invalid host or request boundary */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Requested API resource or route was not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not allowed */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Request validation failed */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unhandled internal failure */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Required fixture data is unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
         };

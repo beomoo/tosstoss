@@ -4,7 +4,7 @@
 
 - 상태: `OPEN`
 - 영향: 실제 토큰, 호출 한도, 응답 필드, 데이터 갱신 시각은 구현 시점 공식 문서와 실응답으로 확인해야 한다.
-- 현재 대응: Phase 1에서는 커넥터 인터페이스와 fixture만 만든다.
+- 현재 대응: Phase 1에서는 fixture와 repository 경계만 만들며, 실제 connector와 connector scaffold는 후속 Phase 승인 전까지 만들지 않는다.
 
 ## KI-002 — 무료 미래 컨센서스 데이터의 안정적 출처 미확정
 

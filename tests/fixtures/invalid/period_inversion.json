@@ -1,0 +1,21 @@
+{
+  "contract_version": "0.1.0",
+  "missing_reasons": {},
+  "normalized_content_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "financial_fact_id": "fact_invalid_period",
+  "issuer_id": "issuer_kr_synthetic",
+  "report_type": "QUARTERLY",
+  "fiscal_period": "2026Q2",
+  "statement": "INCOME_STATEMENT",
+  "account_code": "Revenue",
+  "account_name_original": "Invalid Synthetic Revenue",
+  "value": "1",
+  "currency": "KRW",
+  "unit_scale": "1",
+  "consolidation": "CONSOLIDATED",
+  "period_start": "2026-07-01",
+  "period_end": "2026-06-30",
+  "source_record_id": "source_fixture_financial",
+  "finality_status": "FINAL",
+  "revision_status": "ORIGINAL"
+}

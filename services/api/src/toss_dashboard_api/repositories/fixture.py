@@ -60,6 +60,32 @@ class FixtureValidationError(ValueError):
     pass
 
 
+REQUIRED_FIXTURE_FILES = frozenset(
+    {
+        "analysis_packet.json",
+        "daily_market_flows.json",
+        "data_quality_statuses.json",
+        "evidence.json",
+        "filing_documents.json",
+        "filing_sentence_changes.json",
+        "financial_facts.json",
+        "institution_holding_changes.json",
+        "institution_holdings.json",
+        "institution_managers.json",
+        "issuers.json",
+        "price_bars.json",
+        "raw/financial_snapshot.fixture.json",
+        "raw/kr_filing_amended.fixture.json",
+        "raw/kr_filing_original.fixture.json",
+        "raw/market_snapshot.fixture.json",
+        "raw/us_holding.fixture.json",
+        "securities.json",
+        "source_records.json",
+        "valuation_scenarios.json",
+    }
+)
+
+
 def _load_json(path: Path) -> Any:
     try:
         return json.loads(path.read_text(encoding="utf-8"))
@@ -83,6 +109,15 @@ def _assert_unique(records: Sequence[BaseModel], field: str) -> None:
     values = [getattr(record, field) for record in records]
     if len(values) != len(set(values)):
         raise FixtureValidationError(f"duplicate {field}")
+
+
+def _assert_unique_key(records: Sequence[BaseModel], dataset: str, fields: tuple[str, ...]) -> None:
+    seen: set[tuple[object, ...]] = set()
+    for record in records:
+        key = tuple(getattr(record, field) for field in fields)
+        if key in seen:
+            raise FixtureValidationError(f"duplicate {dataset} natural key: {fields}")
+        seen.add(key)
 
 
 def _assert_no_cycles(records: Sequence[BaseModel], id_field: str, parent_field: str) -> None:
@@ -149,6 +184,13 @@ class FixtureRepository:
         self._validate_records()
 
     def _verify_manifest_files(self) -> None:
+        declared_files = set(self.manifest.files)
+        if declared_files != REQUIRED_FIXTURE_FILES:
+            missing = sorted(REQUIRED_FIXTURE_FILES - declared_files)
+            extra = sorted(declared_files - REQUIRED_FIXTURE_FILES)
+            raise FixtureValidationError(
+                f"manifest file set mismatch: missing={missing}, extra={extra}"
+            )
         for relative, expected in self.manifest.files.items():
             path = (self.fixture_dir / relative).resolve()
             if self.fixture_dir not in path.parents:
@@ -186,36 +228,176 @@ class FixtureRepository:
                     raise FixtureValidationError(
                         f"normalized hash mismatch: {getattr(record, id_field)}"
                     )
+        natural_keys: list[tuple[Sequence[BaseModel], str, tuple[str, ...]]] = [
+            (self.issuers, "Issuer", ("jurisdiction", "corp_code", "cik")),
+            (
+                self.securities,
+                "Security",
+                ("market", "exchange", "ticker", "share_class"),
+            ),
+            (
+                self.source_records,
+                "SourceRecord",
+                ("source_system", "source_type", "external_id"),
+            ),
+            (
+                self.price_bars,
+                "PriceBar",
+                ("security_id", "interval", "bar_start", "adjustment_status"),
+            ),
+            (
+                self.market_flows,
+                "DailyMarketFlow",
+                ("security_id", "trade_date", "participant"),
+            ),
+            (
+                self.financial_facts,
+                "FinancialFact",
+                (
+                    "issuer_id",
+                    "report_type",
+                    "fiscal_period",
+                    "statement",
+                    "account_code",
+                    "consolidation",
+                    "period_start",
+                    "period_end",
+                ),
+            ),
+            (self.institution_managers, "InstitutionManager", ("cik",)),
+            (
+                self.institution_holdings,
+                "InstitutionHolding",
+                (
+                    "filing_id",
+                    "manager_id",
+                    "security_id",
+                    "cusip_original",
+                    "title_of_class",
+                    "put_call",
+                ),
+            ),
+            (
+                self.institution_holding_changes,
+                "InstitutionHoldingChange",
+                ("manager_id", "security_id", "previous_period", "current_period"),
+            ),
+            (
+                self.filing_documents,
+                "FilingDocument",
+                ("issuer_id", "form_type", "period_end", "source_record_id"),
+            ),
+            (
+                self.filing_sentence_changes,
+                "FilingSentenceChange",
+                (
+                    "issuer_id",
+                    "previous_filing_id",
+                    "current_filing_id",
+                    "section_key",
+                    "previous_sentence",
+                    "current_sentence",
+                ),
+            ),
+            (
+                self.valuation_scenarios,
+                "ValuationScenario",
+                ("valuation_run_id", "scenario"),
+            ),
+            (
+                self.evidence,
+                "Evidence",
+                (
+                    "issuer_id",
+                    "evidence_basis",
+                    "claim",
+                    "observed_at",
+                    "source_record_id",
+                ),
+            ),
+            (
+                self.data_quality_statuses,
+                "DataQualityStatus",
+                ("issuer_id", "source_system", "dataset"),
+            ),
+        ]
+        for natural_records, dataset, fields in natural_keys:
+            _assert_unique_key(natural_records, dataset, fields)
         if normalized_hash(self.packet) != self.packet.normalized_content_hash:
             raise FixtureValidationError("normalized hash mismatch: analysis packet")
 
-        issuer_ids = {item.issuer_id for item in self.issuers}
-        security_ids = {item.security_id for item in self.securities}
-        source_ids = {item.source_record_id for item in self.source_records}
+        issuer_by_id = {item.issuer_id: item for item in self.issuers}
+        security_by_id = {item.security_id: item for item in self.securities}
+        source_by_id = {item.source_record_id: item for item in self.source_records}
+        issuer_ids = set(issuer_by_id)
+        security_ids = set(security_by_id)
+        source_ids = set(source_by_id)
         manager_ids = {item.manager_id for item in self.institution_managers}
-        filing_ids = {item.filing_id for item in self.filing_documents}
-        input_ids = {
-            *(item.price_bar_id for item in self.price_bars),
-            *(item.financial_fact_id for item in self.financial_facts),
-        }
+        filing_by_id = {item.filing_id: item for item in self.filing_documents}
+        filing_ids = set(filing_by_id)
         evidence_ids = {item.evidence_id for item in self.evidence}
 
         for security_item in self.securities:
             self._require(
                 security_item.issuer_id in issuer_ids, security_item.security_id, "issuer_id"
             )
+            self._require(
+                security_item.market.value
+                == issuer_by_id[security_item.issuer_id].jurisdiction.value,
+                security_item.security_id,
+                "market",
+            )
+        for source in self.source_records:
+            if source.supersedes_id:
+                self._require(
+                    source.supersedes_id in source_ids,
+                    source.source_record_id,
+                    "supersedes_id",
+                )
+                previous_source = source_by_id[source.supersedes_id]
+                self._require(
+                    previous_source.source_system == source.source_system
+                    and previous_source.source_type == source.source_type,
+                    source.source_record_id,
+                    "supersedes_id",
+                )
         for bar in self.price_bars:
             self._require(bar.security_id in security_ids, bar.price_bar_id, "security_id")
             self._require(bar.source_record_id in source_ids, bar.price_bar_id, "source_record_id")
+            self._require(
+                bar.currency == security_by_id[bar.security_id].currency,
+                bar.price_bar_id,
+                "currency",
+            )
+            self._require(
+                source_by_id[bar.source_record_id].source_type.value == "MARKET_DATA",
+                bar.price_bar_id,
+                "source_record_id",
+            )
         for flow in self.market_flows:
             self._require(flow.security_id in security_ids, flow.market_flow_id, "security_id")
             self._require(
                 flow.source_record_id in source_ids, flow.market_flow_id, "source_record_id"
             )
+            self._require(
+                flow.currency == security_by_id[flow.security_id].currency,
+                flow.market_flow_id,
+                "currency",
+            )
+            self._require(
+                source_by_id[flow.source_record_id].source_type.value == "MARKET_DATA",
+                flow.market_flow_id,
+                "source_record_id",
+            )
         for fact in self.financial_facts:
             self._require(fact.issuer_id in issuer_ids, fact.financial_fact_id, "issuer_id")
             self._require(
                 fact.source_record_id in source_ids, fact.financial_fact_id, "source_record_id"
+            )
+            self._require(
+                source_by_id[fact.source_record_id].source_type.value == "FINANCIAL",
+                fact.financial_fact_id,
+                "source_record_id",
             )
         for manager in self.institution_managers:
             self._require(
@@ -235,6 +417,11 @@ class FixtureRepository:
             self._require(
                 holding.source_record_id in source_ids, holding.holding_id, "source_record_id"
             )
+            self._require(
+                source_by_id[holding.source_record_id].source_type.value == "HOLDING",
+                holding.holding_id,
+                "source_record_id",
+            )
         for holding_change in self.institution_holding_changes:
             self._require(
                 holding_change.manager_id in manager_ids,
@@ -246,14 +433,70 @@ class FixtureRepository:
                 holding_change.holding_change_id,
                 "security_id",
             )
+            current_holding = next(
+                (
+                    holding
+                    for holding in self.institution_holdings
+                    if holding.manager_id == holding_change.manager_id
+                    and holding.security_id == holding_change.security_id
+                    and holding.report_period == holding_change.current_period
+                ),
+                None,
+            )
+            self._require(
+                current_holding is not None,
+                holding_change.holding_change_id,
+                "current_period",
+            )
+            self._require(
+                current_holding is not None
+                and current_holding.shares == holding_change.current_shares,
+                holding_change.holding_change_id,
+                "current_shares",
+            )
+            previous_holding = next(
+                (
+                    holding
+                    for holding in self.institution_holdings
+                    if holding.manager_id == holding_change.manager_id
+                    and holding.security_id == holding_change.security_id
+                    and holding.report_period == holding_change.previous_period
+                ),
+                None,
+            )
+            if previous_holding is not None:
+                self._require(
+                    previous_holding.shares == holding_change.previous_shares,
+                    holding_change.holding_change_id,
+                    "previous_shares",
+                )
         for filing in self.filing_documents:
             self._require(filing.issuer_id in issuer_ids, filing.filing_id, "issuer_id")
             self._require(
                 filing.source_record_id in source_ids, filing.filing_id, "source_record_id"
             )
+            self._require(
+                filing.jurisdiction == issuer_by_id[filing.issuer_id].jurisdiction,
+                filing.filing_id,
+                "jurisdiction",
+            )
+            self._require(
+                source_by_id[filing.source_record_id].source_type.value == "FILING",
+                filing.filing_id,
+                "source_record_id",
+            )
             if filing.supersedes_filing_id:
                 self._require(
                     filing.supersedes_filing_id in filing_ids,
+                    filing.filing_id,
+                    "supersedes_filing_id",
+                )
+                previous_filing = filing_by_id[filing.supersedes_filing_id]
+                self._require(
+                    previous_filing.issuer_id == filing.issuer_id
+                    and previous_filing.jurisdiction == filing.jurisdiction
+                    and previous_filing.form_type == filing.form_type
+                    and previous_filing.period_end == filing.period_end,
                     filing.filing_id,
                     "supersedes_filing_id",
                 )
@@ -271,16 +514,24 @@ class FixtureRepository:
                 sentence_change.change_id,
                 "current_filing_id",
             )
-        for valuation in self.valuation_scenarios:
             self._require(
-                valuation.issuer_id in issuer_ids, valuation.valuation_scenario_id, "issuer_id"
+                filing_by_id[sentence_change.previous_filing_id].issuer_id
+                == sentence_change.issuer_id,
+                sentence_change.change_id,
+                "previous_filing_id",
             )
-            for valuation_input_id in valuation.input_data_ids:
-                self._require(
-                    valuation_input_id in input_ids,
-                    valuation.valuation_scenario_id,
-                    "input_data_ids",
-                )
+            self._require(
+                filing_by_id[sentence_change.current_filing_id].issuer_id
+                == sentence_change.issuer_id,
+                sentence_change.change_id,
+                "current_filing_id",
+            )
+            self._require(
+                filing_by_id[sentence_change.current_filing_id].supersedes_filing_id
+                == sentence_change.previous_filing_id,
+                sentence_change.change_id,
+                "current_filing_id",
+            )
         for evidence_item in self.evidence:
             self._require(
                 evidence_item.issuer_id in issuer_ids, evidence_item.evidence_id, "issuer_id"
@@ -293,6 +544,83 @@ class FixtureRepository:
                 )
         for quality in self.data_quality_statuses:
             self._require(quality.issuer_id in issuer_ids, quality.quality_status_id, "issuer_id")
+            if quality.source_record_id:
+                self._require(
+                    quality.source_record_id in source_ids,
+                    quality.quality_status_id,
+                    "source_record_id",
+                )
+                self._require(
+                    source_by_id[quality.source_record_id].source_system == quality.source_system,
+                    quality.quality_status_id,
+                    "source_record_id",
+                )
+
+        input_records = [
+            *(
+                (item.price_bar_id, security_by_id[item.security_id].issuer_id, "PriceBar")
+                for item in self.price_bars
+            ),
+            *(
+                (
+                    item.market_flow_id,
+                    security_by_id[item.security_id].issuer_id,
+                    "DailyMarketFlow",
+                )
+                for item in self.market_flows
+            ),
+            *(
+                (item.financial_fact_id, item.issuer_id, "FinancialFact")
+                for item in self.financial_facts
+            ),
+            *(
+                (
+                    item.holding_id,
+                    security_by_id[item.security_id].issuer_id,
+                    "InstitutionHolding",
+                )
+                for item in self.institution_holdings
+            ),
+            *(
+                (
+                    item.holding_change_id,
+                    security_by_id[item.security_id].issuer_id,
+                    "InstitutionHoldingChange",
+                )
+                for item in self.institution_holding_changes
+            ),
+            *((item.filing_id, item.issuer_id, "FilingDocument") for item in self.filing_documents),
+            *(
+                (item.change_id, item.issuer_id, "FilingSentenceChange")
+                for item in self.filing_sentence_changes
+            ),
+            *((item.evidence_id, item.issuer_id, "Evidence") for item in self.evidence),
+        ]
+        input_owner_ids: dict[str, str] = {}
+        input_datasets: dict[str, str] = {}
+        for input_id, owner_id, dataset in input_records:
+            if input_id in input_owner_ids:
+                raise FixtureValidationError(
+                    f"ambiguous input data ID {input_id}: {input_datasets[input_id]} and {dataset}"
+                )
+            input_owner_ids[input_id] = owner_id
+            input_datasets[input_id] = dataset
+        input_ids = set(input_owner_ids)
+        for valuation in self.valuation_scenarios:
+            self._require(
+                valuation.issuer_id in issuer_ids, valuation.valuation_scenario_id, "issuer_id"
+            )
+            for valuation_input_id in valuation.input_data_ids:
+                self._require(
+                    valuation_input_id in input_ids,
+                    valuation.valuation_scenario_id,
+                    "input_data_ids",
+                )
+                self._require(
+                    input_owner_ids[valuation_input_id] == valuation.issuer_id,
+                    valuation.valuation_scenario_id,
+                    "input_data_ids",
+                )
 
         _assert_no_cycles(
             cast(list[BaseModel], self.source_records), "source_record_id", "supersedes_id"
@@ -310,13 +638,34 @@ class FixtureRepository:
             self.packet.packet_id,
             "selected_security_id",
         )
+        self._require(
+            security_by_id[self.packet.selected_security_id].issuer_id == self.packet.issuer_id,
+            self.packet.packet_id,
+            "selected_security_id",
+        )
         for evidence_id in self.packet.evidence_ids:
             self._require(evidence_id in evidence_ids, self.packet.packet_id, "evidence_ids")
+            self._require(
+                next(item for item in self.evidence if item.evidence_id == evidence_id).issuer_id
+                == self.packet.issuer_id,
+                self.packet.packet_id,
+                "evidence_ids",
+            )
         for input_id in self.packet.input_data_ids:
             self._require(input_id in input_ids, self.packet.packet_id, "input_data_ids")
+            self._require(
+                input_owner_ids[input_id] == self.packet.issuer_id,
+                self.packet.packet_id,
+                "input_data_ids",
+            )
         for entry in self.packet.source_manifest:
             self._require(
                 entry.source_record_id in source_ids, self.packet.packet_id, "source_manifest"
+            )
+            self._require(
+                entry.raw_content_hash == source_by_id[entry.source_record_id].raw_content_hash,
+                self.packet.packet_id,
+                "source_manifest.raw_content_hash",
             )
 
     def _validate_raw_hashes(self) -> None:

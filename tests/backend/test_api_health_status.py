@@ -1,3 +1,14 @@
+import json
+import shutil
+
+import pytest
+from fastapi.testclient import TestClient
+from tests.backend.conftest import FIXTURE_DIR
+
+from toss_dashboard_api.config import Settings
+from toss_dashboard_api.main import create_app
+
+
 def test_health_is_liveness_only(api_client) -> None:
     response = api_client.get("/health")
     assert response.status_code == 200
@@ -42,3 +53,21 @@ def test_only_exact_local_cors_origin_is_allowed(api_client) -> None:
         headers={"origin": "https://example.invalid", "access-control-request-method": "GET"},
     )
     assert "access-control-allow-origin" not in denied.headers
+
+
+def test_startup_rejects_same_version_with_different_manifest_digest(
+    database_context, workspace_tmp_path
+) -> None:
+    fixture_dir = workspace_tmp_path / "different-manifest"
+    shutil.copytree(FIXTURE_DIR, fixture_dir)
+    manifest_path = fixture_dir / "manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest["generated_at"] = "2026-08-16T02:00:01Z"
+    manifest_path.write_text(
+        json.dumps(manifest, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    app = create_app(Settings(database_url=database_context.url, fixture_dir=fixture_dir))
+    with pytest.raises(RuntimeError, match="manifest digest"):
+        with TestClient(app):
+            pass

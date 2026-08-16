@@ -52,3 +52,10 @@ class SQLiteMetadataRepository:
                 select(FixtureImportRunRow).order_by(FixtureImportRunRow.import_run_id.desc())
             )
             return None if row is None else row.fixture_version
+
+    def fixture_manifest_digest(self) -> str | None:
+        with self._sessions() as session:
+            row = session.scalar(
+                select(FixtureImportRunRow).order_by(FixtureImportRunRow.import_run_id.desc())
+            )
+            return None if row is None else row.manifest_digest

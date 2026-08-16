@@ -14,7 +14,6 @@ from pydantic import (
     Field,
     PlainSerializer,
     StringConstraints,
-    field_serializer,
     field_validator,
 )
 
@@ -134,10 +133,6 @@ class StrictContract(BaseModel):
     ) -> dict[str, MissingReason]:
         if any(not key or key.startswith("_") for key in value):
             raise ValueError("missing reason keys must be public field names")
-        return value
-
-    @field_serializer("contract_version")
-    def serialize_contract_version(self, value: str) -> str:
         return value
 
     def require_missing_reasons(self, *field_names: str) -> None:

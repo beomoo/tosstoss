@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Request
 
+from toss_dashboard_api.contracts.base import SafeId
 from toss_dashboard_api.contracts.responses import CompanyOverviewResponse, DataQualityResponse
 from toss_dashboard_api.errors import NotFoundError, ServiceUnavailableError
 
@@ -7,7 +8,7 @@ router = APIRouter(prefix="/api/v1/companies", tags=["companies"])
 
 
 @router.get("/{issuer_id}/overview", response_model=CompanyOverviewResponse)
-def company_overview(issuer_id: str, request: Request) -> CompanyOverviewResponse:
+def company_overview(issuer_id: SafeId, request: Request) -> CompanyOverviewResponse:
     try:
         overview = request.app.state.analytics_repository.company_overview(issuer_id)
     except Exception as exc:
@@ -22,7 +23,7 @@ def company_overview(issuer_id: str, request: Request) -> CompanyOverviewRespons
 
 
 @router.get("/{issuer_id}/data-quality", response_model=DataQualityResponse)
-def company_data_quality(issuer_id: str, request: Request) -> DataQualityResponse:
+def company_data_quality(issuer_id: SafeId, request: Request) -> DataQualityResponse:
     repository = request.app.state.metadata_repository
     try:
         if not repository.issuer_exists(issuer_id):

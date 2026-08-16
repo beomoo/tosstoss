@@ -1,7 +1,7 @@
 from datetime import date
-from typing import Self
+from typing import Annotated, Self
 
-from pydantic import model_validator
+from pydantic import StringConstraints, model_validator
 
 from toss_dashboard_api.contracts.base import DecimalString, NormalizedRecord, SafeId
 from toss_dashboard_api.contracts.enums import (
@@ -12,6 +12,11 @@ from toss_dashboard_api.contracts.enums import (
     ReportingStructure,
     SampleResult,
 )
+
+InstitutionFilingId = Annotated[
+    str,
+    StringConstraints(pattern=r"^ifiling_[a-z0-9_]{3,119}$", max_length=128),
+]
 
 
 class InstitutionManager(NormalizedRecord):
@@ -36,7 +41,8 @@ class InstitutionManager(NormalizedRecord):
 
 class InstitutionHolding(NormalizedRecord):
     holding_id: SafeId
-    filing_id: SafeId
+    # Opaque institutional filing ID; this is intentionally not a FilingDocument FK.
+    filing_id: InstitutionFilingId
     manager_id: SafeId
     security_id: SafeId
     cusip_original: str
@@ -87,6 +93,8 @@ class InstitutionHoldingChange(NormalizedRecord):
         self.require_missing_reasons("shares_delta_pct", "estimated_trade_effect")
         if self.previous_period >= self.current_period:
             raise ValueError("previous_period must be before current_period")
+        if self.previous_shares < 0 or self.current_shares < 0:
+            raise ValueError("snapshot share quantities must not be negative")
         if self.current_shares - self.previous_shares != self.shares_delta:
             raise ValueError("shares_delta must equal current minus previous shares")
         if not 0 <= self.confidence <= 1:

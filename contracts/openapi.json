@@ -12,6 +12,7 @@
         "additionalProperties": false,
         "properties": {
           "contract_version": {
+            "const": "0.1.0",
             "title": "Contract Version",
             "type": "string"
           },
@@ -102,6 +103,7 @@
         "additionalProperties": false,
         "properties": {
           "contract_version": {
+            "const": "0.1.0",
             "title": "Contract Version",
             "type": "string"
           },
@@ -150,6 +152,7 @@
         "additionalProperties": false,
         "properties": {
           "contract_version": {
+            "const": "0.1.0",
             "title": "Contract Version",
             "type": "string"
           },
@@ -261,6 +264,7 @@
         "additionalProperties": false,
         "properties": {
           "contract_version": {
+            "const": "0.1.0",
             "title": "Contract Version",
             "type": "string"
           },
@@ -308,6 +312,7 @@
         "additionalProperties": false,
         "properties": {
           "contract_version": {
+            "const": "0.1.0",
             "title": "Contract Version",
             "type": "string"
           },
@@ -411,6 +416,7 @@
         "additionalProperties": false,
         "properties": {
           "contract_version": {
+            "const": "0.1.0",
             "title": "Contract Version",
             "type": "string"
           },
@@ -460,6 +466,7 @@
             "$ref": "#/components/schemas/AvailabilityStatus"
           },
           "contract_version": {
+            "const": "0.1.0",
             "title": "Contract Version",
             "type": "string"
           },
@@ -620,6 +627,49 @@
         "title": "DataQualityStatus",
         "type": "object"
       },
+      "ErrorBody": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "message"
+        ],
+        "title": "ErrorBody",
+        "type": "object"
+      },
+      "ErrorEnvelope": {
+        "additionalProperties": false,
+        "properties": {
+          "contract_version": {
+            "const": "0.1.0",
+            "title": "Contract Version",
+            "type": "string"
+          },
+          "error": {
+            "$ref": "#/components/schemas/ErrorBody"
+          },
+          "request_id": {
+            "title": "Request Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "contract_version",
+          "error",
+          "request_id"
+        ],
+        "title": "ErrorEnvelope",
+        "type": "object"
+      },
       "Evidence": {
         "additionalProperties": false,
         "properties": {
@@ -632,6 +682,7 @@
             "type": "string"
           },
           "contract_version": {
+            "const": "0.1.0",
             "title": "Contract Version",
             "type": "string"
           },
@@ -754,6 +805,7 @@
         "additionalProperties": false,
         "properties": {
           "contract_version": {
+            "const": "0.1.0",
             "title": "Contract Version",
             "type": "string"
           },
@@ -864,6 +916,7 @@
             "type": "string"
           },
           "contract_version": {
+            "const": "0.1.0",
             "title": "Contract Version",
             "type": "string"
           },
@@ -981,6 +1034,7 @@
             "$ref": "#/components/schemas/Consolidation"
           },
           "contract_version": {
+            "const": "0.1.0",
             "title": "Contract Version",
             "type": "string"
           },
@@ -1092,23 +1146,11 @@
         "title": "FreshnessStatus",
         "type": "string"
       },
-      "HTTPValidationError": {
-        "properties": {
-          "detail": {
-            "items": {
-              "$ref": "#/components/schemas/ValidationError"
-            },
-            "title": "Detail",
-            "type": "array"
-          }
-        },
-        "title": "HTTPValidationError",
-        "type": "object"
-      },
       "HealthResponse": {
         "additionalProperties": false,
         "properties": {
           "contract_version": {
+            "const": "0.1.0",
             "title": "Contract Version",
             "type": "string"
           },
@@ -1168,6 +1210,7 @@
         "additionalProperties": false,
         "properties": {
           "contract_version": {
+            "const": "0.1.0",
             "title": "Contract Version",
             "type": "string"
           },
@@ -1177,7 +1220,7 @@
           },
           "filing_id": {
             "maxLength": 128,
-            "pattern": "^[a-z][a-z0-9_]{2,127}$",
+            "pattern": "^ifiling_[a-z0-9_]{3,119}$",
             "title": "Filing Id",
             "type": "string"
           },
@@ -1298,6 +1341,7 @@
             "type": "string"
           },
           "contract_version": {
+            "const": "0.1.0",
             "title": "Contract Version",
             "type": "string"
           },
@@ -1429,6 +1473,7 @@
             "type": "string"
           },
           "contract_version": {
+            "const": "0.1.0",
             "title": "Contract Version",
             "type": "string"
           },
@@ -1520,6 +1565,7 @@
             "title": "Cik"
           },
           "contract_version": {
+            "const": "0.1.0",
             "title": "Contract Version",
             "type": "string"
           },
@@ -1628,6 +1674,7 @@
         "additionalProperties": false,
         "properties": {
           "contract_version": {
+            "const": "0.1.0",
             "title": "Contract Version",
             "type": "string"
           },
@@ -1684,6 +1731,7 @@
         "additionalProperties": false,
         "properties": {
           "contract_version": {
+            "const": "0.1.0",
             "title": "Contract Version",
             "type": "string"
           },
@@ -1739,6 +1787,7 @@
             "type": "string"
           },
           "contract_version": {
+            "const": "0.1.0",
             "title": "Contract Version",
             "type": "string"
           },
@@ -1873,6 +1922,7 @@
             "type": "boolean"
           },
           "contract_version": {
+            "const": "0.1.0",
             "title": "Contract Version",
             "type": "string"
           },
@@ -1931,6 +1981,7 @@
         "additionalProperties": false,
         "properties": {
           "contract_version": {
+            "const": "0.1.0",
             "title": "Contract Version",
             "type": "string"
           },
@@ -1972,6 +2023,7 @@
         "additionalProperties": false,
         "properties": {
           "contract_version": {
+            "const": "0.1.0",
             "title": "Contract Version",
             "type": "string"
           },
@@ -2128,6 +2180,7 @@
         "additionalProperties": false,
         "properties": {
           "contract_version": {
+            "const": "0.1.0",
             "title": "Contract Version",
             "type": "string"
           },
@@ -2180,39 +2233,6 @@
         "title": "SystemStatusResponse",
         "type": "object"
       },
-      "ValidationError": {
-        "properties": {
-          "loc": {
-            "items": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "integer"
-                }
-              ]
-            },
-            "title": "Location",
-            "type": "array"
-          },
-          "msg": {
-            "title": "Message",
-            "type": "string"
-          },
-          "type": {
-            "title": "Error Type",
-            "type": "string"
-          }
-        },
-        "required": [
-          "loc",
-          "msg",
-          "type"
-        ],
-        "title": "ValidationError",
-        "type": "object"
-      },
       "ValuationMethod": {
         "enum": [
           "PER"
@@ -2232,6 +2252,7 @@
             "$ref": "#/components/schemas/AssumptionSource"
           },
           "contract_version": {
+            "const": "0.1.0",
             "title": "Contract Version",
             "type": "string"
           },
@@ -2360,6 +2381,8 @@
             "name": "issuer_id",
             "required": true,
             "schema": {
+              "maxLength": 128,
+              "pattern": "^[a-z][a-z0-9_]{2,127}$",
               "title": "Issuer Id",
               "type": "string"
             }
@@ -2376,15 +2399,65 @@
             },
             "description": "Successful Response"
           },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Invalid host or request boundary"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Requested API resource or route was not found"
+          },
+          "405": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "HTTP method is not allowed"
+          },
           "422": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ErrorEnvelope"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Request validation failed"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unhandled internal failure"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Required fixture data is unavailable"
           }
         },
         "summary": "Company Data Quality",
@@ -2402,6 +2475,8 @@
             "name": "issuer_id",
             "required": true,
             "schema": {
+              "maxLength": 128,
+              "pattern": "^[a-z][a-z0-9_]{2,127}$",
               "title": "Issuer Id",
               "type": "string"
             }
@@ -2418,15 +2493,65 @@
             },
             "description": "Successful Response"
           },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Invalid host or request boundary"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Requested API resource or route was not found"
+          },
+          "405": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "HTTP method is not allowed"
+          },
           "422": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ErrorEnvelope"
                 }
               }
             },
-            "description": "Validation Error"
+            "description": "Request validation failed"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unhandled internal failure"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Required fixture data is unavailable"
           }
         },
         "summary": "Company Overview",
@@ -2448,6 +2573,66 @@
               }
             },
             "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Invalid host or request boundary"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Requested API resource or route was not found"
+          },
+          "405": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "HTTP method is not allowed"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Request validation failed"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unhandled internal failure"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Required fixture data is unavailable"
           }
         },
         "summary": "Analysis Packet",
@@ -2469,6 +2654,66 @@
               }
             },
             "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Invalid host or request boundary"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Requested API resource or route was not found"
+          },
+          "405": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "HTTP method is not allowed"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Request validation failed"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unhandled internal failure"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Required fixture data is unavailable"
           }
         },
         "summary": "Securities",
@@ -2490,6 +2735,66 @@
               }
             },
             "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Invalid host or request boundary"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Requested API resource or route was not found"
+          },
+          "405": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "HTTP method is not allowed"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Request validation failed"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unhandled internal failure"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Required fixture data is unavailable"
           }
         },
         "summary": "System Status",
@@ -2511,6 +2816,66 @@
               }
             },
             "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Invalid host or request boundary"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Requested API resource or route was not found"
+          },
+          "405": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "HTTP method is not allowed"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Request validation failed"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unhandled internal failure"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Required fixture data is unavailable"
           }
         },
         "summary": "Health"

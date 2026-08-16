@@ -32,6 +32,25 @@ def request_id_for(request: Request) -> str:
     return str(getattr(request.state, "request_id", "unavailable"))
 
 
+def route_template_for(request: Request) -> str:
+    route = request.scope.get("route")
+    template = getattr(route, "path", None)
+    return template if isinstance(template, str) and template.startswith("/") else "<unmatched>"
+
+
+def error_response(*, status_code: int, code: str, message: str, request_id: str) -> JSONResponse:
+    body = ErrorEnvelope(
+        contract_version="0.1.0",
+        error=ErrorBody(code=code, message=message),
+        request_id=request_id,
+    )
+    return JSONResponse(
+        status_code=status_code,
+        content=body.model_dump(mode="json"),
+        headers={"x-request-id": request_id},
+    )
+
+
 async def app_error_handler(request: Request, exc: AppError) -> JSONResponse:
     logger.warning(
         "request_failed",
@@ -41,19 +60,16 @@ async def app_error_handler(request: Request, exc: AppError) -> JSONResponse:
             "stage": "request",
             "source": "application_error_handler",
             "method": request.method,
-            "path": request.url.path,
+            "path": route_template_for(request),
             "status_code": exc.status_code,
         },
     )
-    body = ErrorEnvelope(
-        contract_version="0.1.0",
-        error=ErrorBody(
-            code=exc.code,
-            message=exc.safe_message,
-        ),
+    return error_response(
+        status_code=exc.status_code,
+        code=exc.code,
+        message=exc.safe_message,
         request_id=request_id_for(request),
     )
-    return JSONResponse(status_code=exc.status_code, content=body.model_dump(mode="json"))
 
 
 async def unhandled_error_handler(request: Request, exc: Exception) -> JSONResponse:
@@ -65,17 +81,14 @@ async def unhandled_error_handler(request: Request, exc: Exception) -> JSONRespo
             "stage": "request",
             "source": "unhandled_exception_handler",
             "method": request.method,
-            "path": request.url.path,
+            "path": route_template_for(request),
             "status_code": 500,
         },
         exc_info=(type(exc), exc, exc.__traceback__),
     )
-    body = ErrorEnvelope(
-        contract_version="0.1.0",
-        error=ErrorBody(
-            code="INTERNAL_ERROR",
-            message="The request could not be completed",
-        ),
+    return error_response(
+        status_code=500,
+        code="INTERNAL_ERROR",
+        message="The request could not be completed",
         request_id=request_id_for(request),
     )
-    return JSONResponse(status_code=500, content=body.model_dump(mode="json"))

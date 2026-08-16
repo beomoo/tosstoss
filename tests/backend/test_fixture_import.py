@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 
 import pytest
@@ -12,7 +13,7 @@ from toss_dashboard_api.fixtures.importer import (
 )
 from toss_dashboard_api.repositories.fixture import FixtureRepository
 from toss_dashboard_api.storage.database import create_database_engine, session_factory
-from toss_dashboard_api.storage.models import IssuerRow
+from toss_dashboard_api.storage.models import FixtureImportRunRow, IssuerRow
 
 
 def test_fixture_import_is_idempotent(workspace_tmp_path: Path) -> None:
@@ -68,3 +69,33 @@ def test_same_stable_id_with_different_hash_rolls_back(workspace_tmp_path: Path)
             assert stored.normalized_content_hash == before.normalized_content_hash
     finally:
         engine.dispose()
+
+
+@pytest.mark.parametrize("corruption", ["payload_json", "denormalized_column"])
+def test_existing_row_corruption_is_never_accepted_as_unchanged(
+    database_context, corruption: str
+) -> None:
+    sessions = session_factory(database_context.engine)
+    with sessions.begin() as session:
+        row = session.get(IssuerRow, "issuer_kr_synthetic")
+        assert row is not None
+        if corruption == "payload_json":
+            payload = json.loads(row.payload_json)
+            payload["display_name"] = "Corrupted Synthetic Name"
+            row.payload_json = json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
+        else:
+            row.jurisdiction = "US"
+
+    with sessions() as session:
+        run_count_before = session.scalar(select(func.count()).select_from(FixtureImportRunRow))
+    with pytest.raises(ImportConflictError, match="stored row corruption"):
+        FixtureImporter(sessions).import_repository(database_context.analytics)
+    with sessions() as session:
+        run_count_after = session.scalar(select(func.count()).select_from(FixtureImportRunRow))
+        row = session.get(IssuerRow, "issuer_kr_synthetic")
+        assert row is not None
+        if corruption == "payload_json":
+            assert "Corrupted Synthetic Name" in row.payload_json
+        else:
+            assert row.jurisdiction == "US"
+    assert run_count_after == run_count_before

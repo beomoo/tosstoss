@@ -41,4 +41,29 @@ describe("CompanyOverview", () => {
     expect(within(priceSection).getByText("확인 불가 — 현재 이용 불가")).toBeVisible();
     expect(screen.queryByText("0 KRW")).not.toBeInTheDocument();
   });
+
+  it("US 근거 원문이 null이면 계약의 결측 사유를 함께 표시한다", () => {
+    const overview = createCompanyOverview();
+    const evidence = overview.evidence?.[0];
+    if (evidence === undefined) {
+      throw new Error("근거 fixture가 없습니다.");
+    }
+    overview.evidence = [
+      {
+        ...evidence,
+        issuer_id: "issuer_us_synthetic",
+        source_excerpt: null,
+        source_record_id: null,
+        missing_reasons: {
+          source_excerpt: "UNAVAILABLE",
+          source_record_id: "UNRESOLVED",
+        },
+      },
+    ];
+
+    render(<CompanyOverview overview={overview} />);
+
+    expect(screen.getByText("원문 발췌 확인 불가 — 현재 이용 불가")).toBeVisible();
+    expect(screen.getByText("원문 레코드: 확인 불가 — 확인되지 않음")).toBeVisible();
+  });
 });

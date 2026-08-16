@@ -11,9 +11,14 @@ SENSITIVE_KEY = re.compile(
     r"authorization|cookie|secret|token|api[_-]?key|password|account", re.IGNORECASE
 )
 SENSITIVE_VALUE = re.compile(
-    r"(?i)(bearer\s+\S+|sk-(?:proj-)?[A-Za-z0-9_-]{8,}|canary[-_ ]?secret\S*)"
+    r"(?i)(bearer\s+\S+|sk-(?:proj-)?[A-Za-z0-9_-]{8,}|canary[-_ ]?secret\S*|"
+    r"gh[pousr]_[A-Za-z0-9]{20,}|AKIA[0-9A-Z]{16}|AIza[A-Za-z0-9_-]{20,}|"
+    r"xox[baprs]-[A-Za-z0-9-]{10,}|"
+    r"eyJ[A-Za-z0-9_-]{5,}\.eyJ[A-Za-z0-9_-]{5,}\.[A-Za-z0-9_-]{5,})"
 )
 REDACTED = "[REDACTED]"
+UVICORN_ERROR_EVENT = "uvicorn_error"
+MULTILINE_EVENT = "multiline_event_suppressed"
 
 
 def redact(value: Any, key: str | None = None) -> Any:
@@ -29,6 +34,19 @@ def redact(value: Any, key: str | None = None) -> Any:
     if isinstance(value, str):
         return SENSITIVE_VALUE.sub(REDACTED, value)
     return value
+
+
+def safe_log_event(record: logging.LogRecord) -> str:
+    """Reduce server exception records to fixed events before JSON serialization."""
+
+    message = record.getMessage()
+    if record.name == "uvicorn" or record.name.startswith("uvicorn."):
+        if record.levelno >= logging.ERROR or "\n" in message or "\r" in message:
+            return UVICORN_ERROR_EVENT
+    if "\n" in message or "\r" in message:
+        return MULTILINE_EVENT
+    redacted = redact(message)
+    return redacted if isinstance(redacted, str) else REDACTED
 
 
 class JsonFormatter(logging.Formatter):
@@ -55,7 +73,7 @@ class JsonFormatter(logging.Formatter):
             .replace("+00:00", "Z"),
             "level": record.levelname,
             "logger": record.name,
-            "event": redact(record.getMessage()),
+            "event": safe_log_event(record),
         }
         for field in self._optional_fields:
             if hasattr(record, field):
@@ -75,3 +93,12 @@ def configure_logging(level: int = logging.INFO) -> None:
     for name in tuple(root.manager.loggerDict):
         if name == "toss_dashboard_api" or name.startswith("toss_dashboard_api."):
             logging.getLogger(name).disabled = False
+    for name in ("uvicorn", "uvicorn.error"):
+        uvicorn_logger = logging.getLogger(name)
+        uvicorn_logger.handlers.clear()
+        uvicorn_logger.propagate = True
+        uvicorn_logger.disabled = False
+    access_logger = logging.getLogger("uvicorn.access")
+    access_logger.handlers.clear()
+    access_logger.propagate = False
+    access_logger.disabled = True

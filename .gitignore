@@ -23,6 +23,7 @@ pytest-cache-files-*/
 *.egg-info/
 .next/
 apps/web/.next/
+apps/web/next-env.d.ts
 coverage/
 apps/web/coverage/
 playwright-report/

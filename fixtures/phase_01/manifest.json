@@ -12,7 +12,7 @@
     "filing_sentence_changes.json": "sha256:46b64d54fdb3e4db3605bfc08c8786b38ed0af98266674f0b24e02c6114b99f5",
     "financial_facts.json": "sha256:fcd901ac059b53efbfc5ebca65b38a5de8b8fd891bc657de33cfd52a68b8c60a",
     "institution_holding_changes.json": "sha256:2be541031ad41b050b728a4103374e553ca92daffb7fec31fdf67a4efa777883",
-    "institution_holdings.json": "sha256:08b59da10df61ffc02a56b1d67ea478fd61521be43e7f057b6b41fa6b7774422",
+    "institution_holdings.json": "sha256:15af33826868fdbf738e2f07933e0a76ee5c36256b7e39df1c061b24f718f2d1",
     "institution_managers.json": "sha256:a8e15d313382d19943d59ebdbf43b4d47aa84cc00399381079cffd535e78243a",
     "issuers.json": "sha256:5efa52b157bff0e6f6fd346315e0b901e8ba2d865fabef13fc2dc5caf4c037a1",
     "price_bars.json": "sha256:5fad30a8bf01758ab2c4e84632ae52ffc811607baf0ca376fec9d81763373f3b",

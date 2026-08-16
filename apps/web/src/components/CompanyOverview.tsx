@@ -217,10 +217,17 @@ function EvidenceList({ evidence }: { evidence: Evidence[] }) {
               <span className="verification-status">{item.verification_status}</span>
             </div>
             <p className="evidence-card__claim">{item.claim}</p>
-            <p className="evidence-card__excerpt">{item.source_excerpt ?? "원문 발췌 확인 불가"}</p>
+            <p className="evidence-card__excerpt">
+              {item.source_excerpt ??
+                `원문 발췌 확인 불가 — ${formatMissingReason(item.missing_reasons?.source_excerpt)}`}
+            </p>
             <div className="evidence-card__meta">
               <span>{formatTimestamp(item.observed_at)}</span>
-              <span>원문 레코드: {item.source_record_id ?? "확인 불가"}</span>
+              <span>
+                원문 레코드:{" "}
+                {item.source_record_id ??
+                  `확인 불가 — ${formatMissingReason(item.missing_reasons?.source_record_id)}`}
+              </span>
             </div>
           </article>
         );

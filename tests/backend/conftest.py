@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+import shutil
+import time
 import uuid
 from collections.abc import Iterator
+from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -21,6 +24,7 @@ from toss_dashboard_api.storage.database import create_database_engine, session_
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 FIXTURE_DIR = PROJECT_ROOT / "fixtures" / "phase_01"
 INVALID_FIXTURE_DIR = PROJECT_ROOT / "tests" / "fixtures" / "invalid"
+WORKSPACE_TEST_BASE = (PROJECT_ROOT / "var" / "tmp" / "backend-tests").resolve()
 
 
 def alembic_config(database_url: str) -> Config:
@@ -45,13 +49,40 @@ def fixture_repository() -> FixtureRepository:
 
 @pytest.fixture
 def workspace_tmp_path() -> Iterator[Path]:
-    base = (PROJECT_ROOT / "var" / "tmp" / "backend-tests").resolve()
-    base.mkdir(parents=True, exist_ok=True)
-    path = (base / uuid.uuid4().hex).resolve()
-    if path.parent != base:
+    with managed_workspace_test_directory() as path:
+        yield path
+
+
+def _validated_workspace_test_path(path: Path) -> Path:
+    resolved = path.resolve()
+    if resolved.parent != WORKSPACE_TEST_BASE:
         raise RuntimeError("test path escaped its workspace-owned base")
+    return resolved
+
+
+def _remove_workspace_test_path(path: Path) -> None:
+    resolved = _validated_workspace_test_path(path)
+    for attempt in range(3):
+        try:
+            shutil.rmtree(resolved)
+            return
+        except FileNotFoundError:
+            return
+        except PermissionError:
+            if attempt == 2:
+                raise
+            time.sleep(0.05)
+
+
+@contextmanager
+def managed_workspace_test_directory() -> Iterator[Path]:
+    WORKSPACE_TEST_BASE.mkdir(parents=True, exist_ok=True)
+    path = _validated_workspace_test_path(WORKSPACE_TEST_BASE / uuid.uuid4().hex)
     path.mkdir()
-    yield path
+    try:
+        yield path
+    finally:
+        _remove_workspace_test_path(path)
 
 
 @pytest.fixture

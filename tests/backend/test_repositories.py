@@ -8,6 +8,10 @@ def test_sqlite_metadata_repository_roundtrips(database_context) -> None:
     assert database_context.metadata.issuer_exists("issuer_missing") is False
     assert database_context.metadata.database_revision() == "0001_phase_01"
     assert database_context.metadata.fixture_version() == "0.1.0"
+    assert (
+        database_context.metadata.fixture_manifest_digest()
+        == database_context.analytics.manifest_digest
+    )
 
 
 def test_analytics_repository_keeps_missing_as_null(database_context) -> None:

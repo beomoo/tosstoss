@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "disable_existing_loggers": false,
+  "formatters": {
+    "json": {
+      "()": "toss_dashboard_api.logging_config.JsonFormatter"
+    }
+  },
+  "handlers": {
+    "default": {
+      "class": "logging.StreamHandler",
+      "formatter": "json",
+      "stream": "ext://sys.stderr"
+    }
+  },
+  "loggers": {
+    "uvicorn": {
+      "handlers": ["default"],
+      "level": "INFO",
+      "propagate": false
+    },
+    "uvicorn.error": {
+      "level": "INFO"
+    },
+    "uvicorn.access": {
+      "handlers": [],
+      "level": "CRITICAL",
+      "propagate": false
+    }
+  },
+  "root": {
+    "handlers": ["default"],
+    "level": "INFO"
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "contract_version": "0.1.0",
+  "missing_reasons": {},
+  "normalized_content_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "valuation_scenario_id": "valuation_invalid_probability",
+  "valuation_run_id": "valuation_run_invalid",
+  "issuer_id": "issuer_kr_synthetic",
+  "scenario": "BASE",
+  "as_of": "2026-08-16",
+  "method": "PER",
+  "forecast_eps": "1",
+  "target_multiple": "1",
+  "implied_price": "1",
+  "currency": "KRW",
+  "unit_scale": "1",
+  "probability": "1.01",
+  "assumption_source": "USER_ASSUMPTION",
+  "formula_version": "per_fixture_v1",
+  "input_data_ids": ["fact_kr_revenue_2026q2"],
+  "result_status": "SAMPLE_RESULT"
+}
