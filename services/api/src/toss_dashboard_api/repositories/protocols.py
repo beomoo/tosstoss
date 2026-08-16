@@ -1,0 +1,24 @@
+from typing import Protocol
+
+from toss_dashboard_api.contracts.packet import AnalysisPacket
+from toss_dashboard_api.contracts.quality import DataQualityStatus
+from toss_dashboard_api.contracts.security import Security
+from toss_dashboard_api.domain.overview import CompanyOverview
+
+
+class MetadataRepository(Protocol):
+    def list_securities(self) -> list[Security]: ...
+
+    def issuer_exists(self, issuer_id: str) -> bool: ...
+
+    def data_quality_for_issuer(self, issuer_id: str) -> list[DataQualityStatus]: ...
+
+    def database_revision(self) -> str: ...
+
+    def fixture_version(self) -> str | None: ...
+
+
+class AnalyticsRepository(Protocol):
+    def company_overview(self, issuer_id: str) -> CompanyOverview | None: ...
+
+    def analysis_packet(self) -> AnalysisPacket | None: ...

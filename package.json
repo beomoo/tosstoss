@@ -1,0 +1,27 @@
+{
+  "name": "toss-invest-dashboard",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Local-only fixture foundation for the investment research dashboard.",
+  "packageManager": "npm@11.12.1",
+  "workspaces": [
+    "apps/web"
+  ],
+  "engines": {
+    "node": ">=24.15.0 <25",
+    "npm": ">=11 <12"
+  },
+  "scripts": {
+    "dev": "npm run dev --workspace @toss-dashboard/web",
+    "lint": "npm run lint --workspace @toss-dashboard/web",
+    "typecheck": "npm run typecheck --workspace @toss-dashboard/web",
+    "test": "npm run test --workspace @toss-dashboard/web",
+    "test:frontend": "npm run test --workspace @toss-dashboard/web",
+    "generate:api": "npm run generate:api --workspace @toss-dashboard/web",
+    "check:api": "npm run check:api --workspace @toss-dashboard/web",
+    "build": "npm run build --workspace @toss-dashboard/web",
+    "start": "npm run start --workspace @toss-dashboard/web",
+    "e2e": "npm run e2e --workspace @toss-dashboard/web",
+    "test:e2e": "npm run test:e2e --workspace @toss-dashboard/web"
+  }
+}

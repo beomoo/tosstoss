@@ -1,0 +1,28 @@
+{
+  "contract_version": "0.1.0",
+  "fixture_version": "0.1.0",
+  "data_mode": "FIXTURE",
+  "generated_at": "2026-08-16T02:00:00Z",
+  "files": {
+    "analysis_packet.json": "sha256:fa921f7b41d4dad59deb281f87de768f550984c24be428f52bfa99c98c93959e",
+    "daily_market_flows.json": "sha256:e1ac2c51a4435cc9f0d4c671a2de1bf5036cf3c6828582084c841f8662eba77c",
+    "data_quality_statuses.json": "sha256:175769d1e82f38bf300d8bcc14d49a04315a3f65e0118ece177d4e54ead3acab",
+    "evidence.json": "sha256:a06118c1d89a66a61637e2311f533fc8f716c3d2ae69f69e394161ce1414e0d0",
+    "filing_documents.json": "sha256:1a5ae812723e11cf598466f28f8883d248083e271019f437640d9ee109a0ce79",
+    "filing_sentence_changes.json": "sha256:46b64d54fdb3e4db3605bfc08c8786b38ed0af98266674f0b24e02c6114b99f5",
+    "financial_facts.json": "sha256:fcd901ac059b53efbfc5ebca65b38a5de8b8fd891bc657de33cfd52a68b8c60a",
+    "institution_holding_changes.json": "sha256:2be541031ad41b050b728a4103374e553ca92daffb7fec31fdf67a4efa777883",
+    "institution_holdings.json": "sha256:08b59da10df61ffc02a56b1d67ea478fd61521be43e7f057b6b41fa6b7774422",
+    "institution_managers.json": "sha256:a8e15d313382d19943d59ebdbf43b4d47aa84cc00399381079cffd535e78243a",
+    "issuers.json": "sha256:5efa52b157bff0e6f6fd346315e0b901e8ba2d865fabef13fc2dc5caf4c037a1",
+    "price_bars.json": "sha256:5fad30a8bf01758ab2c4e84632ae52ffc811607baf0ca376fec9d81763373f3b",
+    "raw/financial_snapshot.fixture.json": "sha256:429b2c04b2c905000e54ab3872117953f4afecef467a5d9b7e7882ce083c8883",
+    "raw/kr_filing_amended.fixture.json": "sha256:268197effe82504335b9069ed124dfbc83e3e0db7b72613de29517b41afc8108",
+    "raw/kr_filing_original.fixture.json": "sha256:8e3de6a698d0fb87480f3b41474622902c6ead9ff380cf14aebf30e1400b9b08",
+    "raw/market_snapshot.fixture.json": "sha256:1e0622587dcedd14795ba7ca37e03a845cae10352f3b10d07e945398c0eb5414",
+    "raw/us_holding.fixture.json": "sha256:5fb1cbe054dadf8d74159873666a935e59278b40427a147da90018e7ee5384ca",
+    "securities.json": "sha256:f0ddd5c6fc2d27592fde000752b7d4fbe74e80f5e89c555e224d6666630a22af",
+    "source_records.json": "sha256:dcbc4aacb8bc3aa39538674b20165e6cfc4fd97f226bc188174403452df488c0",
+    "valuation_scenarios.json": "sha256:01e1bc3117496ae488ec45a0310f75ff821e6b5ea11ae0c7cc40baa5249b8ed3"
+  }
+}

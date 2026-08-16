@@ -1,0 +1,21 @@
+{
+  "contract_version": "0.1.0",
+  "missing_reasons": {},
+  "normalized_content_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "price_bar_id": "price_invalid_number",
+  "security_id": "security_kr_synthetic_common",
+  "interval": "1d",
+  "bar_start": "2026-08-14T00:00:00Z",
+  "exchange_trade_date": "2026-08-14",
+  "open": 100.25,
+  "high": "101.00",
+  "low": "99.00",
+  "close": "100.00",
+  "volume": "1",
+  "currency": "KRW",
+  "adjustment_status": "RAW",
+  "source_record_id": "source_fixture_market",
+  "freshness_status": "FRESH",
+  "finality_status": "FINAL",
+  "revision_status": "ORIGINAL"
+}

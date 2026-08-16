@@ -1,0 +1,11 @@
+{
+  "contract_version": "0.1.0",
+  "missing_reasons": {},
+  "normalized_content_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "issuer_id": "issuer_invalid_missing",
+  "legal_name": "Invalid Synthetic Issuer",
+  "display_name": "Invalid Synthetic",
+  "jurisdiction": "KR",
+  "corp_code": "90000999",
+  "cik": null
+}

@@ -1,0 +1,1 @@
+"""Validated synthetic fixture import."""

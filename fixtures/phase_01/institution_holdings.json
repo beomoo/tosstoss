@@ -1,0 +1,6 @@
+[
+  {
+    "contract_version": "0.1.0", "missing_reasons": {"put_call": "NOT_APPLICABLE"}, "normalized_content_hash": "sha256:3bf8d4c9526debfc8ea9d5370117a8d45a97fe77587f4ee837fad2b024289db1",
+    "holding_id": "holding_us_synthetic_2026q2", "filing_id": "institution_filing_us_synthetic_2026q2", "manager_id": "manager_us_synthetic", "security_id": "security_us_synthetic_common", "cusip_original": "999999999", "issuer_name_original": "NORTHSTAR FIXTURE SYSTEMS INC", "title_of_class": "COM", "put_call": null, "report_period": "2026-06-30", "shares": "1000000", "market_value_reported": "52250000", "reported_currency": "USD", "reported_unit_scale": "1", "portfolio_weight": "0.025", "mapping_status": "VERIFIED", "source_record_id": "source_us_holding"
+  }
+]

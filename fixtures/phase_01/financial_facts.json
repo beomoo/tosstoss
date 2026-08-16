@@ -1,0 +1,10 @@
+[
+  {
+    "contract_version": "0.1.0", "missing_reasons": {}, "normalized_content_hash": "sha256:223b8c3d35e755caabe023bbb47728e3d3fd1396db52cf7116395fa2e1eb7801",
+    "financial_fact_id": "fact_kr_revenue_2026q2", "issuer_id": "issuer_kr_synthetic", "report_type": "QUARTERLY", "fiscal_period": "2026Q2", "statement": "INCOME_STATEMENT", "account_code": "Revenue", "account_name_original": "합성 매출액", "value": "999999999999999999999999.000100", "currency": "KRW", "unit_scale": "1", "consolidation": "CONSOLIDATED", "period_start": "2026-04-01", "period_end": "2026-06-30", "source_record_id": "source_fixture_financial", "finality_status": "FINAL", "revision_status": "ORIGINAL"
+  },
+  {
+    "contract_version": "0.1.0", "missing_reasons": {"value": "UNAVAILABLE"}, "normalized_content_hash": "sha256:b419e6d0438c078afb676e45233b7b062343b8f340c5040211114fae39bcdac1",
+    "financial_fact_id": "fact_kr_eps_2026q2", "issuer_id": "issuer_kr_synthetic", "report_type": "QUARTERLY", "fiscal_period": "2026Q2", "statement": "INCOME_STATEMENT", "account_code": "EarningsPerShare", "account_name_original": "합성 주당이익", "value": null, "currency": "KRW", "unit_scale": "1", "consolidation": "CONSOLIDATED", "period_start": "2026-04-01", "period_end": "2026-06-30", "source_record_id": "source_fixture_financial", "finality_status": "FINAL", "revision_status": "ORIGINAL"
+  }
+]

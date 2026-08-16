@@ -1,0 +1,6 @@
+[
+  {
+    "contract_version": "0.1.0", "missing_reasons": {"parent_manager_id": "NOT_APPLICABLE"}, "normalized_content_hash": "sha256:c8a16ab98f29adf00be17549143a48656924cfa3aba9da505bff2258a71975c0",
+    "manager_id": "manager_us_synthetic", "display_name": "Sample Meridian Manager", "legal_name": "Sample Meridian Manager LLC", "cik": "9999999998", "manager_type": "ACTIVE_ASSET_MANAGER", "parent_manager_id": null, "reporting_manager_id": "manager_us_synthetic", "reporting_structure": "DIRECT", "signal_weight": "0.50", "active_status": true
+  }
+]

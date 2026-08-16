@@ -1,0 +1,14 @@
+[
+  {
+    "contract_version": "0.1.0", "missing_reasons": {}, "normalized_content_hash": "sha256:1d811c84f7f0b9193437e39dbcb649989da74c448d74e9c80c1fcc298f5e9944",
+    "valuation_scenario_id": "valuation_kr_bear", "valuation_run_id": "valuation_run_kr_sample", "issuer_id": "issuer_kr_synthetic", "scenario": "BEAR", "as_of": "2026-08-16", "method": "PER", "forecast_eps": "7000", "target_multiple": "10", "implied_price": "70000", "currency": "KRW", "unit_scale": "1", "probability": "0.20", "assumption_source": "USER_ASSUMPTION", "formula_version": "per_fixture_v1", "input_data_ids": ["fact_kr_revenue_2026q2", "price_kr_20260814"], "result_status": "SAMPLE_RESULT"
+  },
+  {
+    "contract_version": "0.1.0", "missing_reasons": {}, "normalized_content_hash": "sha256:bfba4b0212d6d53d171218cc7fdb2e8593af9376a5480f61426d86b358bd41fd",
+    "valuation_scenario_id": "valuation_kr_base", "valuation_run_id": "valuation_run_kr_sample", "issuer_id": "issuer_kr_synthetic", "scenario": "BASE", "as_of": "2026-08-16", "method": "PER", "forecast_eps": "8000", "target_multiple": "15", "implied_price": "120000", "currency": "KRW", "unit_scale": "1", "probability": "0.55", "assumption_source": "USER_ASSUMPTION", "formula_version": "per_fixture_v1", "input_data_ids": ["fact_kr_revenue_2026q2", "price_kr_20260814"], "result_status": "SAMPLE_RESULT"
+  },
+  {
+    "contract_version": "0.1.0", "missing_reasons": {}, "normalized_content_hash": "sha256:e0116d0a7ab4599348566a33c3844055a03d9a89828c4176c0205e7c02ebc527",
+    "valuation_scenario_id": "valuation_kr_bull", "valuation_run_id": "valuation_run_kr_sample", "issuer_id": "issuer_kr_synthetic", "scenario": "BULL", "as_of": "2026-08-16", "method": "PER", "forecast_eps": "9000", "target_multiple": "20", "implied_price": "180000", "currency": "KRW", "unit_scale": "1", "probability": "0.25", "assumption_source": "USER_ASSUMPTION", "formula_version": "per_fixture_v1", "input_data_ids": ["fact_kr_revenue_2026q2", "price_kr_20260814"], "result_status": "SAMPLE_RESULT"
+  }
+]

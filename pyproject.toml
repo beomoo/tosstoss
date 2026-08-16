@@ -1,0 +1,59 @@
+[build-system]
+requires = ["setuptools==80.9.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "toss-invest-dashboard"
+version = "0.1.0"
+description = "Local fixture-only foundation for a read-only investment research dashboard"
+requires-python = ">=3.13.1,<3.14"
+dependencies = [
+  "alembic==1.16.5",
+  "fastapi==0.116.1",
+  "pydantic==2.11.7",
+  "pydantic-settings==2.10.1",
+  "sqlalchemy==2.0.43",
+  "tzdata==2025.2",
+  "typing-extensions==4.14.1",
+  "uvicorn==0.35.0",
+]
+
+[project.optional-dependencies]
+dev = [
+  "detect-secrets==1.5.0",
+  "httpx==0.28.1",
+  "mypy==1.17.1",
+  "pytest==8.4.1",
+  "pytest-socket==0.7.0",
+  "ruff==0.12.11",
+]
+
+[tool.setuptools]
+package-dir = {"" = "services/api/src"}
+
+[tool.setuptools.packages.find]
+where = ["services/api/src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests/backend"]
+pythonpath = ["services/api/src"]
+addopts = "--strict-config --strict-markers -p no:cacheprovider --allow-hosts=127.0.0.1,::1,localhost"
+
+[tool.ruff]
+target-version = "py313"
+line-length = 100
+src = ["services/api/src", "tests/backend"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "RUF"]
+
+[tool.mypy]
+python_version = "3.13"
+strict = true
+packages = ["toss_dashboard_api"]
+mypy_path = "services/api/src"
+plugins = ["pydantic.mypy"]
+
+[[tool.mypy.overrides]]
+module = ["alembic.*"]
+ignore_missing_imports = true

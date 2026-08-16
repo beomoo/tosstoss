@@ -1,0 +1,10 @@
+[
+  {
+    "contract_version": "0.1.0", "missing_reasons": {}, "normalized_content_hash": "sha256:797d74235671e0a19f16952c445ad15c07cf372ba18e3cd2391faf445c55907d",
+    "filing_id": "filing_kr_synthetic_original", "issuer_id": "issuer_kr_synthetic", "jurisdiction": "KR", "form_type": "QUARTERLY_REPORT", "period_end": "2026-06-30", "filed_at": "2026-08-14T09:00:00+09:00", "revision_status": "ORIGINAL", "supersedes_filing_id": null, "source_record_id": "source_kr_filing_original"
+  },
+  {
+    "contract_version": "0.1.0", "missing_reasons": {}, "normalized_content_hash": "sha256:f9f535344637e027f2deff189696cd7c986915442f9fd00f6f84afcf593fecac",
+    "filing_id": "filing_kr_synthetic_amended", "issuer_id": "issuer_kr_synthetic", "jurisdiction": "KR", "form_type": "QUARTERLY_REPORT", "period_end": "2026-06-30", "filed_at": "2026-08-15T09:00:00+09:00", "revision_status": "AMENDED", "supersedes_filing_id": "filing_kr_synthetic_original", "source_record_id": "source_kr_filing_amended"
+  }
+]

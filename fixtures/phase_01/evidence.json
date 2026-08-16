@@ -1,0 +1,10 @@
+[
+  {
+    "contract_version": "0.1.0", "missing_reasons": {}, "normalized_content_hash": "sha256:05e6a2021c6a005734e462a57c71429c748f47084045de9e2feda381f8ff03a5",
+    "evidence_id": "evidence_kr_filing_change", "issuer_id": "issuer_kr_synthetic", "evidence_basis": "DIRECT_SOURCE", "verification_status": "LATEST_VERIFIED", "direction": "CONTRADICTING", "claim": "합성 샘플에서 목표 수량이 120대에서 90대로 변경되었습니다.", "source_record_id": "source_kr_filing_amended", "source_excerpt": "목표 수량은 90대이며 일정 변동 가능성이 있습니다.", "observed_at": "2026-06-30T15:00:00Z", "confidence": "1.00"
+  },
+  {
+    "contract_version": "0.1.0", "missing_reasons": {"source_record_id": "UNRESOLVED", "source_excerpt": "UNAVAILABLE"}, "normalized_content_hash": "sha256:ab6b8fcb2ae4b67ff3d7a2ee7cd65dfec6120c8a06b12911955c1fdfb77ebac7",
+    "evidence_id": "evidence_us_unconfirmed", "issuer_id": "issuer_us_synthetic", "evidence_basis": "STRUCTURAL_INFERENCE", "verification_status": "UNCONFIRMED", "direction": "NEUTRAL", "claim": "이 문장은 확장 인터페이스 검증용 합성 추론이며 실제 사실이 아닙니다.", "source_record_id": null, "source_excerpt": null, "observed_at": "2026-06-30T00:00:00Z", "confidence": "0.25"
+  }
+]
