@@ -1,5 +1,10 @@
 . (Join-Path $PSScriptRoot "common.ps1")
 
+$powerShellVersion = [System.Version]::Parse($PSVersionTable.PSVersion.ToString())
+if ($powerShellVersion -lt [System.Version]"7.4.0") {
+    throw "PowerShell 7.4 or newer is required. Found $powerShellVersion."
+}
+
 Assert-CommandAvailable -Name "node"
 Assert-CommandAvailable -Name "npm"
 Assert-CommandAvailable -Name "py"
@@ -11,6 +16,15 @@ if ($LASTEXITCODE -ne 0) {
 $nodeVersion = [System.Version]::Parse($nodeVersionText)
 if ($nodeVersion -lt [System.Version]"24.15.0" -or $nodeVersion.Major -ge 25) {
     throw "Node.js 24.15.x is required. Found $nodeVersionText."
+}
+
+$npmVersionText = (& npm --version).Trim()
+if ($LASTEXITCODE -ne 0) {
+    throw "Unable to read npm version."
+}
+$npmVersion = [System.Version]::Parse($npmVersionText)
+if ($npmVersion.Major -ne 11) {
+    throw "npm 11 is required. Found $npmVersionText."
 }
 
 $pythonVersionText = (& py -3.13 -c "import sys; print('.'.join(map(str, sys.version_info[:3])))").Trim()
