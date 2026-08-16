@@ -1,0 +1,137 @@
+{
+  "package": "toss_invest_dashboard_codex_docs_v0.1",
+  "version": "0.1.0",
+  "created_at": "2026-08-16",
+  "files": [
+    {
+      "path": "AGENTS.md",
+      "size": 4804,
+      "sha256": "f4f0aac124c1032840b520517eb83be21bee07434009a276f2780d4c663720fd"
+    },
+    {
+      "path": "CHANGELOG.md",
+      "size": 545,
+      "sha256": "62083973d84722c451280ffe1ac0e3f285cf5b707aa33576e213967ce89cf6b8"
+    },
+    {
+      "path": "DECISIONS.md",
+      "size": 1794,
+      "sha256": "29ef89339aee9517f021aa4dbf54ace3991b00e15965a6fb1e87c66618460113"
+    },
+    {
+      "path": "KNOWN_ISSUES.md",
+      "size": 1543,
+      "sha256": "5e31cd5778c4c2d5c556d118c112a8e56fa5f69f0fa079c381f8e287b3f981ab"
+    },
+    {
+      "path": "README_START_HERE.md",
+      "size": 4496,
+      "sha256": "9178546f3f0ef670ba8ed79a0b6c62c67ccfc329674a820409b6de7b789d91a8"
+    },
+    {
+      "path": "STATUS.md",
+      "size": 823,
+      "sha256": "29cd5fe3abc7506442d2b0f5e204ae0987b9efef7214d9aa213e05195d7c7be4"
+    },
+    {
+      "path": "docs/00_MASTER_IMPLEMENTATION_PLAN.md",
+      "size": 6604,
+      "sha256": "aa46127f520e810a058d28e4fc2cdf41cd3aa32fc683ae576f1eba3abbb3c0d2"
+    },
+    {
+      "path": "docs/01_PRODUCT_REQUIREMENTS.md",
+      "size": 4982,
+      "sha256": "a3da011261bd0899da8a22af2924496f1380a1538222594ff853a09629829d8a"
+    },
+    {
+      "path": "docs/02_ARCHITECTURE.md",
+      "size": 4040,
+      "sha256": "5848e4d9d95b94280966443c120a832848a716ead5ffdeaf4bf553542cdaf5be"
+    },
+    {
+      "path": "docs/03_DATA_SOURCES_AND_FRESHNESS.md",
+      "size": 3928,
+      "sha256": "c611b3a9f9a2d3eec87f837925fab67da77b2fb074e76a381156813b3c33927d"
+    },
+    {
+      "path": "docs/04_DATA_CONTRACTS.md",
+      "size": 6438,
+      "sha256": "364429b15d0df511760ba781ef87c575bc16beaf3e578ca419386b1556c947ea"
+    },
+    {
+      "path": "docs/05_INSTITUTIONAL_FLOW_SPEC.md",
+      "size": 4311,
+      "sha256": "d65d3c0f0dc1e17a0620c48704a7067578b7cd3c11577caea69f9bc94d28f7dd"
+    },
+    {
+      "path": "docs/06_VALUATION_SPEC.md",
+      "size": 2652,
+      "sha256": "26d57d67271b9deb883d15068c4b4b689dff533c0af980250829ece192a32ed8"
+    },
+    {
+      "path": "docs/07_FILING_DIFF_SPEC.md",
+      "size": 3111,
+      "sha256": "437c54f369febbba98779d84fd84a5ff1085b55f06459702b979cff3bf36eaf9"
+    },
+    {
+      "path": "docs/08_MACRO_COMPANY_IMPACT_SPEC.md",
+      "size": 2838,
+      "sha256": "16a38e0b0b2ebaa19efc639d6ad2fbee7f9625f6cdd1d8050ec25d9ebfce228b"
+    },
+    {
+      "path": "docs/09_ASSETSQUARE_INTERFACE_SPEC.md",
+      "size": 2616,
+      "sha256": "cf1fcc6a5ca1919bf87f8e6e5898e923125fc5f928b2a0c2b900ba5e427ce0ec"
+    },
+    {
+      "path": "docs/10_SECURITY_AND_OPERATIONS.md",
+      "size": 2703,
+      "sha256": "b2785f0fc81cb7a15114bb1f497dde0e3ed6dea5f7cc5e5cc2651c7a325fc4b5"
+    },
+    {
+      "path": "docs/11_ACCEPTANCE_TESTS.md",
+      "size": 2594,
+      "sha256": "90338584749a9543d5ab904ab304bd7fa96005e5976efbf322fea58168c62916"
+    },
+    {
+      "path": "docs/12_CODEX_WORKFLOW.md",
+      "size": 2699,
+      "sha256": "86a3f85e851a92a587fa6ed0ec9e788315f29c4fa2a25c87581027cf81ee2405"
+    },
+    {
+      "path": "docs/13_UI_AND_DASHBOARD_SPEC.md",
+      "size": 1875,
+      "sha256": "23c8a95142a5dd134ecd9450b6b795d3a491ffb0f8bdb37f2a5a84cb5ea63cab"
+    },
+    {
+      "path": "docs/14_NEWS_AND_EVENT_SPEC.md",
+      "size": 2068,
+      "sha256": "908f870902565423feaa075a1254d24a386d2f4e9152ccf8286ad27619b3f299"
+    },
+    {
+      "path": "plans/PHASE_01_FOUNDATION_BRIEF.md",
+      "size": 2109,
+      "sha256": "b0a7134173f218016dfd788911464c83a60248b55469ae3bcf2fc0bd68fb1ca3"
+    },
+    {
+      "path": "prompts/00_PHASE_00_PLAN_PROMPT.md",
+      "size": 2694,
+      "sha256": "fe79c17a42e7a377658f5891c99f7777064a574257434701f4e8ef96d9a9f8ec"
+    },
+    {
+      "path": "prompts/01_PHASE_01_GOAL_PROMPT.md",
+      "size": 2662,
+      "sha256": "9d55226d0571c9e4753b16cf454a2a36ec14fc1a9943515211478b6efe97bafb"
+    },
+    {
+      "path": "prompts/02_PHASE_01_INDEPENDENT_REVIEW_PROMPT.md",
+      "size": 1738,
+      "sha256": "29a29c8bf014d3fc23894a681186360cee868b710f41e9a2642ee610a49f9fb2"
+    },
+    {
+      "path": "templates/PHASE_QA_TEMPLATE.md",
+      "size": 1138,
+      "sha256": "996dc1afacc17fa9afc320916e1e47cc5cfede5ccab5ace7c883c8491519ad05"
+    }
+  ]
+}
