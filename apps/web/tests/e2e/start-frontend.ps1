@@ -22,6 +22,7 @@ $webLogPath = [System.IO.Path]::GetFullPath(
 foreach ($mutablePath in @($logDirectory, $webLogPath)) {
     Assert-SafeRepositoryPath -Path $mutablePath
 }
+Assert-SafeMutableRepositoryFile -Path $webLogPath
 if (
     [System.IO.Path]::GetDirectoryName($sentinelPath) -ne $runtimeDirectory -or
     [System.IO.Path]::GetFileName($sentinelPath) -ne "phase-01-build-sentinel.txt"
@@ -85,6 +86,7 @@ Assert-SafeRepositoryPath -Path $logDirectory
     $webLogPath,
     ("PHASE1_E2E_WEB_BUILD_ID=$buildId" + [Environment]::NewLine)
 )
+Assert-SafeMutableRepositoryFile -Path $webLogPath
 
 $env:PHASE1_SERVER_ONLY_SENTINEL = $sentinel
 $env:DASHBOARD_API_BASE_URL = "http://127.0.0.1:8000"

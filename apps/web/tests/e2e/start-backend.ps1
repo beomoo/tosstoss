@@ -5,6 +5,7 @@ $repoRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot "..\..\..\.."
 if ([System.IO.Path]::GetFullPath((Get-RepoRoot)) -cne $repoRoot) {
     throw "The E2E backend resolved an unexpected repository root."
 }
+Assert-NoProjectPythonBytecode
 $python = Join-Path $repoRoot ".venv\Scripts\python.exe"
 if (-not (Test-Path -LiteralPath $python -PathType Leaf)) {
     throw "The repository .venv is missing. Run scripts/setup.ps1 first."
@@ -69,7 +70,7 @@ Assert-SafeRepositoryPath -Path $logDirectory
 [System.IO.Directory]::CreateDirectory($logDirectory) | Out-Null
 Assert-SafeRepositoryPath -Path $logDirectory
 $apiLogPath = [System.IO.Path]::GetFullPath((Join-Path $logDirectory "phase-01-e2e-api.jsonl"))
-Assert-SafeRepositoryPath -Path $apiLogPath
+Assert-SafeMutableRepositoryFile -Path $apiLogPath
 if (
     [System.IO.Path]::GetDirectoryName($apiLogPath) -ne $logDirectory -or
     [System.IO.Path]::GetFileName($apiLogPath) -ne "phase-01-e2e-api.jsonl"
@@ -88,6 +89,7 @@ $coherenceMarker = [ordered]@{
     $apiLogPath,
     (($coherenceMarker | ConvertTo-Json -Compress) + [Environment]::NewLine)
 )
+Assert-SafeMutableRepositoryFile -Path $apiLogPath
 $configuredDatabasePath = [Environment]::GetEnvironmentVariable(
     "PHASE1_E2E_DATABASE_PATH"
 )
@@ -127,7 +129,7 @@ if (
     throw "Refusing to use an E2E database outside a fresh Phase 1 task directory."
 }
 Assert-SafeRepositoryPath -Path $databaseDirectory
-Assert-SafeRepositoryPath -Path $databasePath
+Assert-SafeSqliteDatabaseFiles -DatabasePath $databasePath
 if (Test-Path -LiteralPath $databasePath) {
     throw "The disposable E2E database path must not exist before startup."
 }
@@ -136,16 +138,25 @@ $databaseUrl = "sqlite:///$normalizedDatabasePath"
 
 Push-Location -LiteralPath $repoRoot
 try {
-    & $python -m alembic -x "database_url=$databaseUrl" upgrade head
+    $migrationArguments = Get-GuardedPythonModuleArguments `
+        -Module "alembic" `
+        -ArgumentList @("-x", "database_url=$databaseUrl", "upgrade", "head")
+    & $python @migrationArguments
     if ($LASTEXITCODE -ne 0) {
         throw "E2E database migration failed."
     }
-    & $python -m toss_dashboard_api.fixtures.importer `
-        --database-url $databaseUrl `
-        --fixture-dir $fixtureDirectory
+    Assert-SafeSqliteDatabaseFiles -DatabasePath $databasePath
+    $importArguments = Get-GuardedPythonModuleArguments `
+        -Module "toss_dashboard_api.fixtures.importer" `
+        -ArgumentList @(
+            "--database-url", $databaseUrl,
+            "--fixture-dir", $fixtureDirectory
+        )
+    & $python @importArguments
     if ($LASTEXITCODE -ne 0) {
         throw "E2E fixture import failed."
     }
+    Assert-SafeSqliteDatabaseFiles -DatabasePath $databasePath
 }
 finally {
     Pop-Location
@@ -153,12 +164,17 @@ finally {
 
 $env:DASHBOARD_DATABASE_URL = $databaseUrl
 $env:DASHBOARD_FIXTURE_DIR = $fixtureDirectory
-& $python -m uvicorn toss_dashboard_api.main:app `
-    --app-dir (Join-Path $repoRoot "services\api\src") `
-    --host 127.0.0.1 `
-    --port 8000 `
-    --no-access-log `
-    --log-config $uvicornLogConfig 2>&1 | Tee-Object -FilePath $apiLogPath -Append
+$uvicornArguments = Get-GuardedPythonModuleArguments `
+    -Module "uvicorn" `
+    -ArgumentList @(
+        "toss_dashboard_api.main:app",
+        "--app-dir", (Join-Path $repoRoot "services\api\src"),
+        "--host", "127.0.0.1",
+        "--port", "8000",
+        "--no-access-log",
+        "--log-config", $uvicornLogConfig
+    )
+& $python @uvicornArguments 2>&1 | Tee-Object -FilePath $apiLogPath -Append
 $apiExitCode = $LASTEXITCODE
 if ($apiExitCode -ne 0) {
     throw "E2E backend exited with a non-zero status."

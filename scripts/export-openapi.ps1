@@ -6,13 +6,21 @@ param(
 
 $python = Get-VenvPython
 $repoRoot = Get-RepoRoot
-$outputPath = Join-Path $repoRoot "contracts\openapi.json"
+Assert-NoProjectPythonBytecode
+$outputPath = [System.IO.Path]::GetFullPath(
+    (Join-Path $repoRoot "contracts\openapi.json")
+)
+Assert-SafeRepositoryPath -Path $outputPath
 
 if ($Check) {
     $temporaryDirectory = New-TaskTempDirectory
     try {
         $candidatePath = Join-Path $temporaryDirectory "openapi.json"
-        Invoke-Checked -FilePath $python -ArgumentList @("-m", "toss_dashboard_api.openapi_export", "--output", $candidatePath)
+        Invoke-Checked `
+            -FilePath $python `
+            -ArgumentList (Get-GuardedPythonModuleArguments `
+                -Module "toss_dashboard_api.openapi_export" `
+                -ArgumentList @("--output", $candidatePath))
         if (-not (Test-Path -LiteralPath $outputPath -PathType Leaf)) {
             throw "Committed OpenAPI snapshot is missing: $outputPath"
         }
@@ -30,9 +38,27 @@ if ($Check) {
     }
 }
 else {
-    [System.IO.Directory]::CreateDirectory((Split-Path -Parent $outputPath)) | Out-Null
-    Invoke-Checked -FilePath $python -ArgumentList @("-m", "toss_dashboard_api.openapi_export", "--output", $outputPath)
+    $outputDirectory = Split-Path -Parent $outputPath
+    $generatedTypesDirectory = [System.IO.Path]::GetFullPath(
+        (Join-Path $repoRoot "apps\web\src\types")
+    )
+    foreach ($directory in @($outputDirectory, $generatedTypesDirectory)) {
+        Assert-SafeRepositoryPath -Path $directory
+        if (Test-Path -LiteralPath $directory -PathType Container) {
+            Assert-NoReparsePointsInTree -Path $directory -RejectHardLinks
+        }
+    }
+    [System.IO.Directory]::CreateDirectory($outputDirectory) | Out-Null
+    Assert-SafeRepositoryPath -Path $outputDirectory
+    Assert-SafeMutableRepositoryFile -Path $outputPath
+    Invoke-Checked `
+        -FilePath $python `
+        -ArgumentList (Get-GuardedPythonModuleArguments `
+            -Module "toss_dashboard_api.openapi_export" `
+            -ArgumentList @("--output", $outputPath))
+    Assert-SafeMutableRepositoryFile -Path $outputPath
     Invoke-Checked -FilePath "npm" -ArgumentList @(
         "run", "generate:api", "--workspace", "apps/web"
     )
+    Assert-NoReparsePointsInTree -Path $generatedTypesDirectory -RejectHardLinks
 }

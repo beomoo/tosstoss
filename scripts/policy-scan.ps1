@@ -1,6 +1,7 @@
 . (Join-Path $PSScriptRoot "common.ps1")
 
 $repoRoot = Get-RepoRoot
+Assert-NoProjectPythonBytecode
 $scopedRoots = @(
     (Join-Path $repoRoot "services\api"),
     (Join-Path $repoRoot "apps\web"),
@@ -8,20 +9,169 @@ $scopedRoots = @(
     (Join-Path $repoRoot "scripts")
 ) | Where-Object { Test-Path -LiteralPath $_ -PathType Container }
 
-$sourceFiles = foreach ($root in $scopedRoots) {
-    Get-ChildItem -LiteralPath $root -Recurse -File |
-        Where-Object {
-            $_.FullName -notmatch '[\\/](node_modules|\.next|playwright-report|test-results|__pycache__)[\\/]' -and
-            $_.Name -ne "next-env.d.ts"
+function Get-PolicySourceFiles {
+    param([Parameter(Mandatory = $true)][string[]] $Roots)
+
+    $excludedDirectories = [System.Collections.Generic.HashSet[string]]::new(
+        [System.StringComparer]::OrdinalIgnoreCase
+    )
+    foreach ($excludedPath in @(
+        (Join-Path $repoRoot "apps\web\.next"),
+        (Join-Path $repoRoot "apps\web\node_modules"),
+        (Join-Path $repoRoot "apps\web\playwright-report"),
+        (Join-Path $repoRoot "apps\web\test-results")
+    )) {
+        $null = $excludedDirectories.Add(
+            [System.IO.Path]::GetFullPath($excludedPath)
+        )
+    }
+    $nextEnvironmentPath = [System.IO.Path]::GetFullPath(
+        (Join-Path $repoRoot "apps\web\next-env.d.ts")
+    )
+    $files = [System.Collections.Generic.List[System.IO.FileInfo]]::new()
+    foreach ($root in $Roots) {
+        $rootPath = [System.IO.Path]::GetFullPath($root)
+        $rootItem = Get-Item -LiteralPath $rootPath -Force
+        if (
+            -not $rootItem.PSIsContainer -or
+            ($rootItem.Attributes -band [System.IO.FileAttributes]::ReparsePoint)
+        ) {
+            throw "A policy source root is missing or is a reparse point: $rootPath"
         }
+        $directories = [System.Collections.Generic.Stack[string]]::new()
+        $directories.Push($rootPath)
+        while ($directories.Count -gt 0) {
+            $directory = $directories.Pop()
+            foreach ($item in Get-ChildItem -LiteralPath $directory -Force -ErrorAction Stop) {
+                if ($item.Attributes -band [System.IO.FileAttributes]::ReparsePoint) {
+                    throw "A policy source path is a reparse point: $($item.FullName)"
+                }
+                if ($item.PSIsContainer) {
+                    if (-not $excludedDirectories.Contains($item.FullName)) {
+                        $directories.Push($item.FullName)
+                    }
+                    continue
+                }
+                if ([string] $item.LinkType -ceq "HardLink") {
+                    throw "A policy source file is hard-linked: $($item.FullName)"
+                }
+                if ($item.FullName -ceq $nextEnvironmentPath) {
+                    continue
+                }
+                $files.Add([System.IO.FileInfo] $item)
+            }
+        }
+    }
+    return @($files)
 }
+$sourceFiles = @(Get-PolicySourceFiles -Roots $scopedRoots)
+$hiddenScopeCanaryDirectory = New-TaskTempDirectory
+try {
+    $hiddenScopeCanaryPath = Join-Path $hiddenScopeCanaryDirectory "hidden-policy.py"
+    $cacheNamedCanaryDirectory = Join-Path $hiddenScopeCanaryDirectory "__pycache__"
+    [System.IO.Directory]::CreateDirectory($cacheNamedCanaryDirectory) | Out-Null
+    $cacheNamedCanaryPath = Join-Path $cacheNamedCanaryDirectory "policy-source.py"
+    [System.IO.File]::WriteAllText($hiddenScopeCanaryPath, "value = 1")
+    [System.IO.File]::WriteAllText($cacheNamedCanaryPath, "value = 2")
+    $hiddenScopeCanaryItem = Get-Item -LiteralPath $hiddenScopeCanaryPath -Force
+    $hiddenScopeCanaryItem.Attributes =
+        $hiddenScopeCanaryItem.Attributes -bor [System.IO.FileAttributes]::Hidden
+    $hiddenScopeFiles = @(
+        Get-PolicySourceFiles -Roots @($hiddenScopeCanaryDirectory)
+    )
+    if (
+        $hiddenScopeFiles.Count -ne 2 -or
+        $hiddenScopeFiles.FullName -notcontains $hiddenScopeCanaryPath -or
+        $hiddenScopeFiles.FullName -notcontains $cacheNamedCanaryPath
+    ) {
+        throw "The policy source scope omitted a hidden or cache-named source canary."
+    }
+}
+finally {
+    Remove-TaskTempDirectory -Path $hiddenScopeCanaryDirectory
+}
+function Test-IsRuntimePolicySourcePath {
+    param([Parameter(Mandatory = $true)][string] $Path)
+
+    $fullPath = [System.IO.Path]::GetFullPath($Path)
+    $testRoot = [System.IO.Path]::GetFullPath((Join-Path $repoRoot "tests"))
+    $webTestRoot = [System.IO.Path]::GetFullPath((Join-Path $repoRoot "apps\web\tests"))
+    $testRootPrefix = $testRoot.TrimEnd(
+        [System.IO.Path]::DirectorySeparatorChar
+    ) + [System.IO.Path]::DirectorySeparatorChar
+    $webTestRootPrefix = $webTestRoot.TrimEnd(
+        [System.IO.Path]::DirectorySeparatorChar
+    ) + [System.IO.Path]::DirectorySeparatorChar
+    if ($fullPath.StartsWith($testRootPrefix, [System.StringComparison]::OrdinalIgnoreCase)) {
+        return $false
+    }
+    if (-not $fullPath.StartsWith(
+            $webTestRootPrefix,
+            [System.StringComparison]::OrdinalIgnoreCase
+        )) {
+        return $true
+    }
+
+    $approvedWebTestRuntimePaths = @(
+        [System.IO.Path]::GetFullPath(
+            (Join-Path $webTestRoot "e2e\start-backend.ps1")
+        ),
+        [System.IO.Path]::GetFullPath(
+            (Join-Path $webTestRoot "e2e\start-frontend.ps1")
+        )
+    )
+    return $approvedWebTestRuntimePaths -contains $fullPath
+}
+
 $runtimeSourceFiles = @(
     $sourceFiles | Where-Object {
-        $_.FullName -notmatch '[\\/]tests?[\\/]' -or
-        $_.FullName -match '[\\/]apps[\\/]web[\\/]tests[\\/]e2e[\\/]start-(?:backend|frontend)\.ps1$'
+        Test-IsRuntimePolicySourcePath -Path $_.FullName
     }
 )
-$prohibitedDependencyNamePattern = '(?i)(^|[-_.])(openai(?:[-_.]agents?)?|dart[-_.]?fss|sec[-_.]?edgar[-_.]?downloader|yfinance|finnhub(?:[-_.]?python)?|polygon[-_.]?api[-_.]?client|alpaca[-_.]?py)([-_.]|$)'
+$applicationRuntimeRoots = @(
+    (Join-Path $repoRoot "services\api\src"),
+    (Join-Path $repoRoot "apps\web\src")
+)
+$applicationRuntimeSourceFiles = @(
+    Get-PolicySourceFiles -Roots $applicationRuntimeRoots
+)
+if ($applicationRuntimeSourceFiles.Count -eq 0) {
+    throw "The application runtime policy source scope is empty."
+}
+$runtimeScopeCanaries = @(
+    @{
+        Path = Join-Path $repoRoot "services\api\src\test\provider.py"
+        Expected = $true
+    },
+    @{
+        Path = Join-Path $repoRoot "apps\web\src\broker.test.ts"
+        Expected = $true
+    },
+    @{
+        Path = Join-Path $repoRoot "tests\backend\runtime_canary.py"
+        Expected = $false
+    },
+    @{
+        Path = Join-Path $repoRoot "apps\web\tests\e2e\phase-01.spec.ts"
+        Expected = $false
+    },
+    @{
+        Path = Join-Path $repoRoot "apps\web\tests\e2e\start-backend.ps1"
+        Expected = $true
+    }
+)
+foreach ($canary in $runtimeScopeCanaries) {
+    $actual = Test-IsRuntimePolicySourcePath -Path $canary.Path
+    if ($actual -ne $canary.Expected) {
+        throw "The runtime policy source classifier accepted a path-name bypass canary."
+    }
+}
+$openAiDependencyName = [regex]::Escape([string]::Concat("open", "ai"))
+$prohibitedDependencyNamePattern = '(?i)(^|[-_./@])(?:' +
+    $openAiDependencyName +
+    '(?:[-_.]agents?)?|dart[-_.]?fss|sec[-_.]?edgar[-_.]?downloader|' +
+    'yfinance|finnhub(?:[-_.]?python)?|polygon[-_.]?api[-_.]?client|' +
+    'alpaca[-_.]?py)([-_./@]|$)'
 
 function Assert-NoPattern {
     param(
@@ -37,7 +187,45 @@ function Assert-NoPattern {
     $hits = $Files | Select-String -Pattern $Pattern
     if ($hits) {
         if (-not $SuppressHitOutput) {
-            $hits | Select-Object Path, LineNumber | Format-Table -AutoSize | Out-Host
+            foreach ($hit in $hits) {
+                Write-Host "$($hit.Path):$($hit.LineNumber)"
+            }
+        }
+        throw $Message
+    }
+}
+
+function Assert-NoRawPattern {
+    param(
+        [Parameter(Mandatory = $true)][string] $Pattern,
+        [Parameter(Mandatory = $true)][string] $Message,
+        [Parameter(Mandatory = $true)][System.IO.FileInfo[]] $Files,
+        [switch] $SuppressHitOutput
+    )
+
+    if (-not $Files -or $Files.Count -eq 0) {
+        throw "Raw-text policy scan received an empty file scope."
+    }
+    $hits = @()
+    foreach ($file in $Files) {
+        $text = [string] (Get-Content -LiteralPath $file.FullName -Raw)
+        $match = [regex]::Match($text, $Pattern)
+        if ($match.Success) {
+            $lineNumber = 1 + [regex]::Matches(
+                $text.Substring(0, $match.Index),
+                "\r\n|\r|\n"
+            ).Count
+            $hits += [pscustomobject]@{
+                Path = $file.FullName
+                LineNumber = $lineNumber
+            }
+        }
+    }
+    if ($hits.Count -gt 0) {
+        if (-not $SuppressHitOutput) {
+            foreach ($hit in $hits) {
+                Write-Host "$($hit.Path):$($hit.LineNumber)"
+            }
         }
         throw $Message
     }
@@ -127,6 +315,106 @@ function Assert-PatternRejectsCanary {
     }
 }
 
+function Assert-RawPatternRejectsCanary {
+    param(
+        [Parameter(Mandatory = $true)][string] $Pattern,
+        [Parameter(Mandatory = $true)][string] $Content,
+        [Parameter(Mandatory = $true)][string] $Message
+    )
+
+    $tempDirectory = New-TaskTempDirectory
+    try {
+        $canaryPath = Join-Path $tempDirectory "raw-policy-canary.txt"
+        [System.IO.File]::WriteAllText($canaryPath, $Content)
+        $canaryFile = Get-Item -LiteralPath $canaryPath
+        Assert-PolicyCanaryRejected `
+            -Action {
+                Assert-NoRawPattern `
+                    -Pattern $Pattern `
+                    -Message "Expected raw negative canary rejection." `
+                    -Files @($canaryFile) `
+                    -SuppressHitOutput
+            } `
+            -Message $Message
+    }
+    finally {
+        Remove-TaskTempDirectory -Path $tempDirectory
+    }
+}
+
+function Assert-NoConstantStringConcatenationPattern {
+    param(
+        [Parameter(Mandatory = $true)][string] $Pattern,
+        [Parameter(Mandatory = $true)][string] $Message,
+        [Parameter(Mandatory = $true)][System.IO.FileInfo[]] $Files,
+        [switch] $SuppressHitOutput
+    )
+
+    if (-not $Files -or $Files.Count -eq 0) {
+        throw "Constant-concatenation policy scan received an empty file scope."
+    }
+    $hits = @()
+    foreach ($file in $Files) {
+        $text = Get-Content -LiteralPath $file.FullName -Raw
+        $normalized = [regex]::Replace(
+            $text,
+            '["''`]\s*\+\s*["''`]',
+            ""
+        )
+        $normalized = [regex]::Replace(
+            $normalized,
+            '["''`]\s+(?:[rRuUbBfF]{0,2})?["''`]',
+            ""
+        )
+        $match = [regex]::Match($normalized, $Pattern)
+        if ($match.Success) {
+            $lineNumber = 1 + [regex]::Matches(
+                $normalized.Substring(0, $match.Index),
+                "\r\n|\r|\n"
+            ).Count
+            $hits += [pscustomobject]@{
+                Path = $file.FullName
+                LineNumber = $lineNumber
+            }
+        }
+    }
+    if ($hits.Count -gt 0) {
+        if (-not $SuppressHitOutput) {
+            foreach ($hit in $hits) {
+                Write-Host "$($hit.Path):$($hit.LineNumber)"
+            }
+        }
+        throw $Message
+    }
+}
+
+function Assert-NormalizedPatternRejectsCanary {
+    param(
+        [Parameter(Mandatory = $true)][string] $Pattern,
+        [Parameter(Mandatory = $true)][string] $Content,
+        [Parameter(Mandatory = $true)][string] $Message
+    )
+
+    $tempDirectory = New-TaskTempDirectory
+    try {
+        $canaryPath = Join-Path $tempDirectory "normalized-policy-canary.txt"
+        [System.IO.File]::WriteAllText($canaryPath, $Content)
+        $canaryFile = Get-Item -LiteralPath $canaryPath
+        Assert-PolicyCanaryRejected `
+            -Action {
+                Assert-NoConstantStringConcatenationPattern `
+                    -Pattern $Pattern `
+                    -Message "Expected normalized negative canary rejection." `
+                    -Files @($canaryFile) `
+                    -SuppressHitOutput
+            } `
+            -Message $Message
+    }
+    finally {
+        Remove-TaskTempDirectory -Path $tempDirectory
+    }
+}
+
 function Get-NodeDependencyNames {
     param([Parameter(Mandatory = $true)][object] $Manifest)
 
@@ -195,6 +483,43 @@ function Assert-NodeDependencySpecifiers {
             Out-Host
         throw "A Node dependency uses an unapproved package or specifier."
     }
+}
+
+$hardLinkCanaryDirectory = New-TaskTempDirectory
+try {
+    $hardLinkCanaryTarget = Join-Path $hardLinkCanaryDirectory "target.txt"
+    $hardLinkCanaryAlias = Join-Path $hardLinkCanaryDirectory "alias.txt"
+    [System.IO.File]::WriteAllText($hardLinkCanaryTarget, "fixture")
+    New-Item `
+        -ItemType HardLink `
+        -Path $hardLinkCanaryAlias `
+        -Target $hardLinkCanaryTarget | Out-Null
+    Assert-PolicyCanaryRejected `
+        -Action {
+            Assert-SafeMutableRepositoryFile -Path $hardLinkCanaryTarget
+        } `
+        -Message "The mutable-file path guard accepted a hard-link canary."
+    Assert-PolicyCanaryRejected `
+        -Action {
+            Assert-NoReparsePointsInTree `
+                -Path $hardLinkCanaryDirectory `
+                -RejectHardLinks
+        } `
+        -Message "The mutable-tree path guard accepted a hard-link canary."
+    $sqliteCanaryPath = Join-Path $hardLinkCanaryDirectory "fixture.db"
+    $sqliteWalCanaryPath = "$sqliteCanaryPath-wal"
+    New-Item `
+        -ItemType HardLink `
+        -Path $sqliteWalCanaryPath `
+        -Target $hardLinkCanaryTarget | Out-Null
+    Assert-PolicyCanaryRejected `
+        -Action {
+            Assert-SafeSqliteDatabaseFiles -DatabasePath $sqliteCanaryPath
+        } `
+        -Message "The SQLite path guard accepted a hard-linked sidecar canary."
+}
+finally {
+    Remove-TaskTempDirectory -Path $hardLinkCanaryDirectory
 }
 
 function Read-JsonFile {
@@ -374,6 +699,18 @@ $packageLockPath = Join-Path $repoRoot "package-lock.json"
 $rootPackage = Read-JsonFile -Path $rootPackagePath
 $webPackage = Read-JsonFile -Path $webPackagePath
 $packageLock = Read-JsonFile -Path $packageLockPath -AsHashtable
+$approvedPackageLockSha256 = [string]::Concat(
+    "71abcfc0", "28cbb5e4",
+    "74c35f2c", "1d3e1aab",
+    "1152e61b", "87850709",
+    "a808b4b4", "f3280f92"
+)
+$actualPackageLockSha256 = (
+    Get-FileHash -LiteralPath $packageLockPath -Algorithm SHA256
+).Hash.ToLowerInvariant()
+if ($actualPackageLockSha256 -cne $approvedPackageLockSha256) {
+    throw "package-lock.json does not match the approved Phase 1 lock digest."
+}
 if (
     $rootPackage.name -cne "toss-invest-dashboard" -or
     $rootPackage.private -ne $true -or
@@ -521,26 +858,37 @@ foreach ($lockEntry in $packageLock["packages"].GetEnumerator()) {
         -RegistryPrefix $registryPrefix
 }
 
-$providerPackageCanary = [string]::Concat("open", "ai-agents")
-$providerCanaryEntry = [ordered]@{
-    version = "1.0.0"
-    resolved = [string]::Concat(
-        $registryPrefix,
-        $providerPackageCanary,
-        "/-/",
-        $providerPackageCanary,
-        "-1.0.0.tgz"
-    )
-    integrity = [string]::Concat("sha512-", ("A" * 86), "==")
+$providerPackageCanaries = @(
+    [string]::Concat("open", "ai-agents"),
+    [string]::Concat("@open", "ai/agents"),
+    [string]::Concat("@open", "ai/sdk"),
+    [string]::Concat("@scope/open", "ai-agents")
+)
+foreach ($providerPackageCanary in $providerPackageCanaries) {
+    if ($providerPackageCanary -notmatch $prohibitedDependencyNamePattern) {
+        throw "The prohibited provider package pattern missed a negative canary."
+    }
+    $providerCanaryTarballName = ($providerPackageCanary -split '/')[-1]
+    $providerCanaryEntry = [ordered]@{
+        version = "1.0.0"
+        resolved = [string]::Concat(
+            $registryPrefix,
+            $providerPackageCanary,
+            "/-/",
+            $providerCanaryTarballName,
+            "-1.0.0.tgz"
+        )
+        integrity = [string]::Concat("sha512-", ("A" * 86), "==")
+    }
+    Assert-PolicyCanaryRejected `
+        -Action {
+            Assert-NodeLockPackageEntry `
+                -LockKey ([string]::Concat("node_modules/", $providerPackageCanary)) `
+                -Entry $providerCanaryEntry `
+                -RegistryPrefix $registryPrefix
+        } `
+        -Message "The Node lock policy accepted a prohibited provider package canary."
 }
-Assert-PolicyCanaryRejected `
-    -Action {
-        Assert-NodeLockPackageEntry `
-            -LockKey ([string]::Concat("node_modules/", $providerPackageCanary)) `
-            -Entry $providerCanaryEntry `
-            -RegistryPrefix $registryPrefix
-    } `
-    -Message "The Node lock policy accepted a prohibited provider package canary."
 $externalTarballCanary = [ordered]@{
     version = "1.0.0"
     resolved = [string]::Concat(
@@ -567,6 +915,8 @@ import tomllib
 from packaging.requirements import Requirement
 from packaging.utils import canonicalize_name
 
+if sys.flags.isolated != 1 or not sys.dont_write_bytecode:
+    raise RuntimeError("The dependency reader requires isolated, bytecode-free Python.")
 document = tomllib.loads(pathlib.Path(sys.argv[1]).read_text(encoding="utf-8"))
 requirements = list(document.get("build-system", {}).get("requires", []))
 project = document.get("project", {})
@@ -585,7 +935,7 @@ for value in requirements:
     })
 print(json.dumps(records))
 '@
-$pythonDependencyJson = & $python -c $pythonDependencyReader $pyprojectPath
+$pythonDependencyJson = & $python -I -B -c $pythonDependencyReader $pyprojectPath
 if ($LASTEXITCODE -ne 0) {
     throw "Unable to parse Python dependency metadata from pyproject.toml."
 }
@@ -740,10 +1090,389 @@ if (
     throw "requirements.lock does not match the exact Phase 1 dependency allowlist."
 }
 
-$nonLocalUrlPattern = '(?i)(?:https?|wss?)://(?!(?:127\.0\.0\.1|localhost|example\.invalid)(?=[:/"''\s]|$))(?:[a-z0-9]|\[)|["''](?:https?|wss?)["'']\s*\+\s*["'']://'
-$nonLocalBindPattern = '(?ix)(?:--host(?:name)?["'']?\s*(?:,\s*|=\s*|\s+)["'']?(?!127\.0\.0\.1(?=["''\s,\)]|$))[^\s"'',\)]+|\bhost(?:name)?\s*(?::|=(?!=))\s*["'']?(?!127\.0\.0\.1(?=["''\s,\}\)]|$))[^\s"'',\}\)]+|\blisten\s*\(\s*(?:[0-9]+\s*,\s*)?["'']?(?!127\.0\.0\.1(?=["''\s,\)]|$))[A-Za-z0-9:*\.\[\]-]+|(?<![0-9])(?!(?:127\.0\.0\.1)(?![0-9]))(?:25[0-5]|2[0-4][0-9]|1?[0-9]{1,2})(?:\.(?:25[0-5]|2[0-4][0-9]|1?[0-9]{1,2})){3}(?![0-9])|(?:allow_origins|cors_origins)\s*=\s*[\[\(]\s*["'']\*["'']|allow_origin_regex\s*=\s*["'']\.\*["''])'
-$prohibitedExecutionPattern = '(?i)(["'']/api/["'']\s*\+\s*["''](?:orders?|accounts?|brokerage|trades?)|/(?:api/)?[A-Za-z0-9_/-]*(?:orders?|accounts?|brokerage|trades?)\b|\b(?:execute|place|submit|send|create|buy|sell)[_-](?:trade|order)(?:[_-][a-z0-9]+)*\b|\b(?:execute|place|submit|send|create|buy|sell)(?-i:Trade|Order)\b|\b(?:broker(?:age)?|orders?|trades?|accounts?|order[_-]?(?:client|service|api|sdk)|trade[_-]?(?:client|service|api|sdk))\s*\[\s*(?:["''$]|[A-Za-z])|\b(?:broker(?:age)?|orders?|trades?|accounts?|order[_-]?(?:client|service|api|sdk)|trade[_-]?(?:client|service|api|sdk))(?:\s*\??\.\s*[a-z_][a-z0-9_]*){0,2}\s*\??\.\s*(?:create|place|submit|send|execute|buy|sell)\b)'
-$disabledTestPattern = '(?i)(\bpytest\.(?:(?:mark\.)?(?:skip|xfail)|importorskip)\b|\bunittest\.(?:skip|skipIf|skipUnless)\b|\b(?:xdescribe|xit|xtest)\s*\(|\b(?:describe|it|test)(?:\.(?:concurrent|serial|each))*\.(?:skip|todo|fixme|only|failing)\b)'
+function Assert-ApprovedFileSha256 {
+    param(
+        [Parameter(Mandatory = $true)][string] $Path,
+        [Parameter(Mandatory = $true)][string] $ExpectedSha256
+    )
+
+    $fullPath = [System.IO.Path]::GetFullPath($Path)
+    Assert-SafeRepositoryPath -Path $fullPath
+    if (
+        $ExpectedSha256 -cnotmatch '^[0-9a-f]{64}$' -or
+        -not (Test-Path -LiteralPath $fullPath -PathType Leaf)
+    ) {
+        throw "An approved policy file definition is invalid."
+    }
+    $actualSha256 = (
+        Get-FileHash -LiteralPath $fullPath -Algorithm SHA256
+    ).Hash.ToLowerInvariant()
+    if ($actualSha256 -cne $ExpectedSha256) {
+        throw "A Phase 1 test configuration does not match its approved digest."
+    }
+}
+
+function Assert-ExactRelativeFileSet {
+    param(
+        [Parameter(Mandatory = $true)][string[]] $Expected,
+        [Parameter(Mandatory = $true)][string[]] $Actual,
+        [Parameter(Mandatory = $true)][string] $Name
+    )
+
+    $expectedSet = [System.Collections.Generic.HashSet[string]]::new(
+        [System.StringComparer]::Ordinal
+    )
+    $actualSet = [System.Collections.Generic.HashSet[string]]::new(
+        [System.StringComparer]::Ordinal
+    )
+    foreach ($value in $Expected) {
+        $null = $expectedSet.Add($value)
+    }
+    foreach ($value in $Actual) {
+        $null = $actualSet.Add($value)
+    }
+    if (
+        $expectedSet.Count -ne $Expected.Count -or
+        $actualSet.Count -ne $Actual.Count -or
+        -not $expectedSet.SetEquals($actualSet)
+    ) {
+        throw "$Name does not match the exact approved Phase 1 file set."
+    }
+}
+
+function Get-FileSetManifestSha256 {
+    param(
+        [Parameter(Mandatory = $true)][System.IO.FileInfo[]] $Files
+    )
+
+    if (-not $Files -or $Files.Count -eq 0) {
+        throw "A file-set digest requires at least one file."
+    }
+    $relativePaths = [string[]] @(
+        $Files | ForEach-Object {
+            [System.IO.Path]::GetRelativePath($repoRoot, $_.FullName).Replace("\", "/")
+        }
+    )
+    [System.Array]::Sort($relativePaths, [System.StringComparer]::Ordinal)
+    $records = foreach ($relativePath in $relativePaths) {
+        $fullPath = [System.IO.Path]::GetFullPath(
+            (Join-Path $repoRoot $relativePath.Replace("/", "\"))
+        )
+        Assert-SafeRepositoryPath -Path $fullPath
+        $sha256 = (
+            Get-FileHash -LiteralPath $fullPath -Algorithm SHA256
+        ).Hash.ToLowerInvariant()
+        "$relativePath`t$sha256"
+    }
+    $payload = [System.Text.Encoding]::UTF8.GetBytes(($records -join "`n"))
+    $sha256Algorithm = [System.Security.Cryptography.SHA256]::Create()
+    try {
+        return [System.Convert]::ToHexString(
+            $sha256Algorithm.ComputeHash($payload)
+        ).ToLowerInvariant()
+    }
+    finally {
+        $sha256Algorithm.Dispose()
+    }
+}
+
+$approvedTestConfigurationDigests = @(
+    [pscustomobject]@{
+        Path = Join-Path $repoRoot "pyproject.toml"
+        Sha256 = [string]::Concat(
+            "11197c96", "e7316942", "e1cbb72d", "763fd01a",
+            "8b763599", "f82a578d", "9f21675e", "df11351c"
+        )
+    },
+    [pscustomobject]@{
+        Path = Join-Path $repoRoot "apps\web\vitest.config.ts"
+        Sha256 = [string]::Concat(
+            "b8be2da4", "0a9d828e", "c12534fe", "04823f10",
+            "d169cc87", "5e28f74b", "62cf0c65", "0133c546"
+        )
+    },
+    [pscustomobject]@{
+        Path = Join-Path $repoRoot "apps\web\playwright.config.ts"
+        Sha256 = [string]::Concat(
+            "06833529", "ead8b7e9", "d821a0eb", "4c30a32f",
+            "c6209bd7", "6277dfc0", "d544b85c", "74688210"
+        )
+    },
+    [pscustomobject]@{
+        Path = Join-Path $repoRoot "apps\web\vitest.setup.ts"
+        Sha256 = [string]::Concat(
+            "9b328c48", "43431fa7", "6d8de000", "08fc159e",
+            "95f99a84", "0211085f", "f3b8f25e", "53d14409"
+        )
+    },
+    [pscustomobject]@{
+        Path = Join-Path $repoRoot "tests\backend\conftest.py"
+        Sha256 = [string]::Concat(
+            "e8361296", "45eec16a", "4d4e4287", "c1c80d51",
+            "17380b62", "6acf9bbc", "8efbb834", "2d504ece"
+        )
+    }
+)
+foreach ($configuration in $approvedTestConfigurationDigests) {
+    Assert-ApprovedFileSha256 `
+        -Path $configuration.Path `
+        -ExpectedSha256 $configuration.Sha256
+}
+$competingPytestConfigurations = @(
+    "pytest.ini",
+    ".pytest.ini",
+    "tox.ini",
+    "setup.cfg"
+) | ForEach-Object { Join-Path $repoRoot $_ }
+if (@($competingPytestConfigurations | Where-Object {
+    Test-Path -LiteralPath $_
+}).Count -gt 0) {
+    throw "A competing root-level pytest configuration is prohibited."
+}
+
+$expectedBackendTestFiles = @(
+    "tests/backend/test_api_analysis_packet.py",
+    "tests/backend/test_api_companies.py",
+    "tests/backend/test_api_data_quality.py",
+    "tests/backend/test_api_error_contract.py",
+    "tests/backend/test_api_health_status.py",
+    "tests/backend/test_contract_decimal.py",
+    "tests/backend/test_contract_ids_hashes.py",
+    "tests/backend/test_contract_nonempty_strings.py",
+    "tests/backend/test_contract_null_enum.py",
+    "tests/backend/test_contract_required_fields.py",
+    "tests/backend/test_contract_roundtrip.py",
+    "tests/backend/test_contract_time.py",
+    "tests/backend/test_error_isolation.py",
+    "tests/backend/test_fixture_import.py",
+    "tests/backend/test_logging_redaction.py",
+    "tests/backend/test_migrations.py",
+    "tests/backend/test_no_external_network.py",
+    "tests/backend/test_openapi_snapshot.py",
+    "tests/backend/test_rejection_matrix.py",
+    "tests/backend/test_repositories.py",
+    "tests/backend/test_settings_security.py",
+    "tests/backend/test_temp_cleanup.py",
+    "tests/backend/test_uvicorn_runtime_logging.py"
+)
+$actualBackendTestFiles = @(
+    Get-ChildItem -LiteralPath (Join-Path $repoRoot "tests\backend") `
+        -Recurse -File -Force -Filter "test_*.py" |
+        ForEach-Object {
+            [System.IO.Path]::GetRelativePath($repoRoot, $_.FullName).Replace("\", "/")
+        }
+)
+Assert-ExactRelativeFileSet `
+    -Expected $expectedBackendTestFiles `
+    -Actual $actualBackendTestFiles `
+    -Name "Backend test source"
+
+$expectedFrontendTestFiles = @(
+    "apps/web/src/components/AppShell.test.tsx",
+    "apps/web/src/components/CompanyOverview.test.tsx",
+    "apps/web/src/components/DataField.test.tsx",
+    "apps/web/src/components/DataQualityGrid.test.tsx",
+    "apps/web/src/components/FixtureBanner.test.tsx",
+    "apps/web/src/components/StatePanel.test.tsx",
+    "apps/web/src/lib/format.test.ts",
+    "apps/web/src/lib/issuer-id.test.ts",
+    "apps/web/src/lib/runtime-boundary.test.ts",
+    "apps/web/src/lib/safe-url.test.ts"
+)
+$actualFrontendTestFiles = @(
+    Get-ChildItem -LiteralPath (Join-Path $repoRoot "apps\web\src") `
+        -Recurse -File -Force |
+        Where-Object { $_.Name -match '\.test\.(?:ts|tsx)$' } |
+        ForEach-Object {
+            [System.IO.Path]::GetRelativePath($repoRoot, $_.FullName).Replace("\", "/")
+        }
+)
+Assert-ExactRelativeFileSet `
+    -Expected $expectedFrontendTestFiles `
+    -Actual $actualFrontendTestFiles `
+    -Name "Frontend unit test source"
+
+$expectedE2eTestFiles = @("apps/web/tests/e2e/phase-01.spec.ts")
+$actualE2eTestFiles = @(
+    Get-ChildItem -LiteralPath (Join-Path $repoRoot "apps\web\tests\e2e") `
+        -Recurse -File -Force |
+        Where-Object { $_.Name -match '\.spec\.(?:ts|tsx)$' } |
+        ForEach-Object {
+            [System.IO.Path]::GetRelativePath($repoRoot, $_.FullName).Replace("\", "/")
+        }
+)
+Assert-ExactRelativeFileSet `
+    -Expected $expectedE2eTestFiles `
+    -Actual $actualE2eTestFiles `
+    -Name "Playwright test source"
+
+$repoConftestFiles = @(
+    $rootConftestPath = Join-Path $repoRoot "conftest.py"
+    if (Test-Path -LiteralPath $rootConftestPath -PathType Leaf) {
+        Get-Item -LiteralPath $rootConftestPath
+    }
+    Get-ChildItem -LiteralPath (Join-Path $repoRoot "tests") `
+        -Recurse -File -Force -Filter "conftest.py"
+)
+$actualConftestPaths = @(
+    $repoConftestFiles | ForEach-Object {
+        [System.IO.Path]::GetRelativePath($repoRoot, $_.FullName).Replace("\", "/")
+    }
+)
+Assert-ExactRelativeFileSet `
+    -Expected @("tests/backend/conftest.py") `
+    -Actual $actualConftestPaths `
+    -Name "Pytest conftest source"
+
+$phaseControlFiles = @(
+    Get-ChildItem -LiteralPath (Join-Path $repoRoot "tests\backend") `
+        -Recurse -File -Force -Filter "*.py"
+    Get-ChildItem -LiteralPath (Join-Path $repoRoot "apps\web\src") `
+        -Recurse -File -Force |
+        Where-Object { $_.Name -match '\.test\.(?:ts|tsx)$' }
+    Get-ChildItem -LiteralPath (Join-Path $repoRoot "apps\web\tests\e2e") `
+        -Recurse -File -Force |
+        Where-Object { $_.Extension -in @(".ps1", ".ts", ".tsx") }
+    Get-ChildItem -LiteralPath (Join-Path $repoRoot "scripts") -File -Force |
+        Where-Object { $_.Name -cne "policy-scan.ps1" }
+)
+$approvedPhaseControlDigest = [string]::Concat(
+    "abb94cfb", "fa98f30e", "7217f270", "95651699",
+    "2ae38509", "9815abae", "eecfb10a", "c4d44543"
+)
+if (
+    $phaseControlFiles.Count -ne 59 -or
+    (Get-FileSetManifestSha256 -Files $phaseControlFiles) -cne
+        $approvedPhaseControlDigest
+) {
+    throw "The Phase 1 control-plane source digest does not match the approved suite."
+}
+
+$testSourceFiles = @(
+    $sourceFiles | Where-Object {
+        $_.FullName -match '(?i)(?:[\\/](?:tests?|__tests__)[\\/]|\.(?:test|spec)\.)'
+    }
+)
+$testConfigurationFiles = @(
+    $approvedTestConfigurationDigests | ForEach-Object {
+        Get-Item -LiteralPath $_.Path
+    }
+)
+$testPolicyFiles = @(
+    @($testSourceFiles) + @($testConfigurationFiles) |
+        Sort-Object FullName -Unique
+)
+
+$nonLocalUrlPattern = '(?i)(?:(?:https?|wss?)://(?!(?:127\.0\.0\.1|localhost)(?=[:/"''`\s]|$))(?:[a-z0-9]|\[)|["''`](?:https?|wss?):?["''`]\s*\+\s*["''`](?::?//)|["''`]//(?!(?:127\.0\.0\.1|localhost)(?=[:/"''`\s]|$))(?:[a-z0-9]|\[)|\burl\s*\(\s*//(?!(?:127\.0\.0\.1|localhost)(?=[:/\s\)]|$))(?:[a-z0-9]|\[)|\b(?:src|href|action|poster)\s*=\s*//(?!(?:127\.0\.0\.1|localhost)(?=[:/\s>]|$))(?:[a-z0-9]|\[))'
+$nonLocalBindPattern = '(?ix)(?:--host(?:name)?["'']?\s*(?:,\s*|=\s*|\s+)["'']?(?!127\.0\.0\.1(?=["''\s,\)]|$))[^\s"'',\)]+|\bhost(?:name)?\s*(?::|=(?!=))\s*["'']?(?!127\.0\.0\.1(?=["''\s,\}\)]|$))[^\s"'',\}\)]+|\blisten\s*\(\s*(?:[0-9]+\s*,\s*)?["'']?(?!127\.0\.0\.1(?=["''\s,\)]|$))[A-Za-z0-9:*\.\[\]-]+|(?<![0-9])(?!(?:127\.0\.0\.1)(?![0-9]))(?:25[0-5]|2[0-4][0-9]|1?[0-9]{1,2})(?:\.(?:25[0-5]|2[0-4][0-9]|1?[0-9]{1,2})){3}(?![0-9])|(?:allow_origins|cors_origins)\s*=\s*[\[\(]\s*["'']\*["'']|allow_origin_regex\s*=\s*(?:r|u|f|fr|rf)?["'']\.\*["''])'
+$wildcardAccessPattern = @'
+(?ixs)
+(?:
+    \b(?:allow_origins|cors_origins|allowed_hosts|trusted_hosts)\b
+    \s*(?::\s*[^=\r\n]{0,128})?\s*(?:=|:)\s*
+    (?:[A-Za-z_][A-Za-z0-9_.]*\s*\([^\)]{0,128})?
+    [\[\(\{][^\]\)\}]{0,512}
+    ["']\s*\*\s*["']
+  |
+    \ballow_origin_regex\b
+    \s*(?::\s*[^=\r\n]{0,128})?\s*(?:=|:)\s*
+    (?:re\s*\.\s*compile\s*\(\s*)?
+    (?:r|u|f|fr|rf)?["']\s*\^?\.\*\$?\s*["']\s*\)?
+)
+'@
+$prohibitedExecutionPattern = '(?i)(["'']/api/["'']\s*\+\s*["''](?:orders?|accounts?|brokerage|trades?)|/(?:api/)?[A-Za-z0-9_/-]*(?:orders?|accounts?|brokerage|trades?)\b|\b(?:execute|place|submit|send|create|buy|sell)[_-](?:trade|order)(?:[_-][a-z0-9]+)*\b|\b(?:execute|place|submit|send|create|buy|sell)(?-i:Trade|Order)\b|\bgetattr\s*\(\s*(?:broker(?:age)?|orders?|trades?|accounts?|order[_-]?(?:client|service|api|sdk)|trade[_-]?(?:client|service|api|sdk))\b|\b(?:broker(?:age)?|orders?|trades?|accounts?|order[_-]?(?:client|service|api|sdk)|trade[_-]?(?:client|service|api|sdk))\s*\[\s*(?:["''$]|[A-Za-z])|\b(?:broker(?:age)?|orders?|trades?|accounts?|order[_-]?(?:client|service|api|sdk)|trade[_-]?(?:client|service|api|sdk))(?:\s*\??\.\s*[a-z_][a-z0-9_]*){0,2}\s*\??\.\s*(?:create|place|submit|send|execute|buy|sell)\b)'
+$prohibitedProviderRuntimePattern = @'
+(?imx)
+(?:
+    ^\s*(?:from\s+(?:openai|agents)(?:\.|\s+import\b)|import\s+(?:openai|agents)\b)
+  |
+    \b(?:
+        from\s*|
+        require\s*\(\s*|
+        import\s*(?:\(\s*)?
+    )["'](?:openai|@openai/)
+  |
+    \bOpenAI\s*\(
+  |
+    \bopenai\s*\.
+)
+'@
+$prohibitedApplicationEscapePattern = @'
+(?imx)
+(?:
+    ^\s*(?:
+        from\s+(?:ctypes|_winapi|_socket|subprocess|multiprocessing)\b
+      |
+        import\s+(?:ctypes|_winapi|_socket|subprocess|multiprocessing)\b
+      |
+        from\s+os\s+import[^\r\n]*\b(?:system|popen|spawn\w*|exec\w*|startfile)\b
+    )
+  |
+    \b(?:__import__|import_module)\s*\(\s*["']
+        (?:ctypes|_winapi|_socket|subprocess|multiprocessing)["']
+  |
+    \b(?:ctypes|_winapi|_socket|subprocess|multiprocessing)\s*\.
+  |
+    \bos\s*\.\s*(?:system|popen|spawn\w*|exec\w*|startfile)\s*\(
+  |
+    \b(?:ctypes\s*\.\s*)?(?:WinDLL|CDLL|PyDLL)\s*\(
+  |
+    \b(?:from\s*|require\s*\(\s*|import\s*(?:\(\s*)?)["']
+        (?:node:)?(?:child_process|worker_threads|cluster|net|dgram|dns|tls|http|https|http2)["']
+  |
+    \bprocess\s*(?:
+        \.\s*(?:binding|_linkedBinding|getBuiltinModule)\s*\(
+      |
+        \[\s*["'](?:binding|_linkedBinding|getBuiltinModule)["']\s*\]\s*\(
+    )
+  |
+    \b(?:RTCPeerConnection|webkitRTCPeerConnection|WebTransport|WebSocketStream|SharedWorker|Worker)\b
+)
+'@
+$disabledTestPattern = @'
+(?ix)
+(?:
+    \bpytest\s*(?:\.\s*mark)?\s*\.\s*
+        (?:skip|skipif|xfail|importorskip)\b
+  |
+    \b(?:unittest|mark)\s*\.\s*
+        (?:skip|skipif|skipunless|xfail|expectedfailure)\b
+  |
+    \bfrom\s+(?:pytest(?:\.mark)?|unittest)\s+import[^\r\n]*
+        \b(?:skip|skipif|skipunless|xfail|importorskip|expectedfailure)\b
+  |
+    \b(?:import\s+(?:pytest|unittest)|from\s+pytest\s+import\s+mark)\s+as\b
+  |
+    \b(?:xdescribe|xit|xtest)\s*\(
+  |
+    \b(?:describe|suite|it|test)\b
+    (?:
+        \s*(?:\?\.|\.)\s*[A-Za-z_$][A-Za-z0-9_$]*
+        (?:\s*\([^;{}]*\))?
+    )*
+    \s*(?:\?\.|\.)\s*
+        (?:skip|skipif|runif|todo|fixme|only|failing|fails|fail)\b
+  |
+    \b(?:describe|suite|it|test)\b\s*\[\s*["']
+        (?:skip|skipif|runif|todo|fixme|only|failing|fails|fail)
+        ["']\s*\]
+)
+'@
+$disabledTestConfigurationPattern = @'
+(?ix)
+(?:
+    \b(?:passWithNoTests|testIgnore|grepInvert|hideSkippedTests|
+        dangerouslyIgnoreUnhandledErrors)\b
+  |
+    --(?:pass-with-no-tests|last-failed|only-changed|test-list-invert)\b
+  |
+    \b(?:allowOnly|reuseExistingServer)\s*:\s*true\b
+  |
+    \bforbidOnly\s*:\s*false\b
+  |
+    ^\s*addopts\s*=.*(?:--ignore|--deselect|(?:^|\s)-(?:k|m)(?:\s|$))
+)
+'@
 $remoteIntegrationNames = @(
     [string]::Concat("next/font/", "google"),
     [string]::Concat("fonts.google", "apis.com"),
@@ -768,7 +1497,8 @@ $remoteIntegrationPattern = '(?i)(' + (
 $bindCanaries = @(
     [string]::Concat('@("--host", "', (@("0", "0", "0", "0") -join "."), '")'),
     [string]::Concat('--host ', (@("192", "168", "1", "5") -join ".")),
-    [string]::Concat('--host ', (":" * 2))
+    [string]::Concat('--host ', (":" * 2)),
+    [string]::Concat("allow_origin_", 'regex = r".*"')
 )
 foreach ($canary in $bindCanaries) {
     Assert-PatternRejectsCanary `
@@ -776,9 +1506,38 @@ foreach ($canary in $bindCanaries) {
         -Content $canary `
         -Message "The local-bind policy accepted a non-loopback canary."
 }
+$wildcardAccessCanaries = @(
+    [string]::Concat("allowed_", 'hosts = ["', "*", '"]'),
+    [string]::Concat("trusted_", 'hosts = ["', "*", '"]'),
+    [string]::Concat(
+        "allow_",
+        'origins = ["http://127.0.0.1:3000", "',
+        "*",
+        '"]'
+    ),
+    [string]::Concat("allow_origin_", 'regex = r"^.', "*", '$"'),
+    [string]::Concat("allow_origin_", 'regex = re.compile(".', "*", '")'),
+    [string]::Concat("allowed_", "hosts = [`n    'safe',`n    '", "*", "'`n]")
+    [string]::Concat("allow_", "origins = {'", "*", "'}")
+)
+foreach ($canary in $wildcardAccessCanaries) {
+    Assert-RawPatternRejectsCanary `
+        -Pattern $wildcardAccessPattern `
+        -Content $canary `
+        -Message "The wildcard host/CORS policy accepted a prohibited canary."
+}
 $urlCanaries = @(
     [string]::Concat("w", "ss://outside.invalid/socket"),
-    [string]::Concat('"w', 'ss" + "://outside.invalid/socket"')
+    [string]::Concat('"w', 'ss" + "://outside.invalid/socket"'),
+    [string]::Concat(
+        'httpx.get("http',
+        's:" + "',
+        '/',
+        '/outside.invalid")'
+    ),
+    [string]::Concat('fetch("', '/', '/outside.invalid/path")'),
+    [string]::Concat('.x{background:url(', '/', '/outside.invalid/a.png)}'),
+    [string]::Concat('<img src=', '/', '/outside.invalid/a.png>')
 )
 foreach ($canary in $urlCanaries) {
     Assert-PatternRejectsCanary `
@@ -786,10 +1545,27 @@ foreach ($canary in $urlCanaries) {
         -Content $canary `
         -Message "The local-URL policy accepted an external URL canary."
 }
+$normalizedUrlCanaries = @(
+    [string]::Concat('httpx.get("h" + "tt', 'ps://outside.invalid")'),
+    [string]::Concat('fetch(`w` + `s', '://outside.invalid`)'),
+    [string]::Concat(
+        'httpx.get("http',
+        's:" "',
+        '/',
+        '/outside.invalid")'
+    )
+)
+foreach ($canary in $normalizedUrlCanaries) {
+    Assert-NormalizedPatternRejectsCanary `
+        -Pattern $nonLocalUrlPattern `
+        -Content $canary `
+        -Message "The normalized URL policy accepted a split external URL canary."
+}
 $executionCanaries = @(
     [string]::Concat("'/api/' + '", "orders'"),
     [string]::Concat("create_", "order_request"),
     [string]::Concat("bro", "ker['dynamicMethod']"),
+    [string]::Concat("getattr(bro", "ker, 'create')()"),
     [string]::Concat("submit", "Order")
 )
 foreach ($canary in $executionCanaries) {
@@ -798,17 +1574,76 @@ foreach ($canary in $executionCanaries) {
         -Content $canary `
         -Message "The execution-path policy accepted a prohibited canary."
 }
+$providerRuntimeCanaries = @(
+    [string]::Concat("import open", "ai"),
+    [string]::Concat("from open", "ai import OpenAI"),
+    [string]::Concat('import SDK from "@open', 'ai/agents"'),
+    [string]::Concat('import "@open', 'ai/agents"'),
+    [string]::Concat('import "open', 'ai"'),
+    [string]::Concat("from agents import ", "Agent"),
+    [string]::Concat("client = Open", "AI()")
+)
+foreach ($canary in $providerRuntimeCanaries) {
+    Assert-RawPatternRejectsCanary `
+        -Pattern $prohibitedProviderRuntimePattern `
+        -Content $canary `
+        -Message "The provider-runtime policy accepted a prohibited canary."
+}
+$applicationEscapeCanaries = @(
+    [string]::Concat("import cty", "pes"),
+    [string]::Concat("from _win", "api import CreateProcess"),
+    [string]::Concat("import _sock", "et"),
+    [string]::Concat("subprocess.", "Popen(command)"),
+    [string]::Concat("os.", "spawnv(mode, path, args)"),
+    [string]::Concat('require("node:', 'child_process")'),
+    [string]::Concat('import { Worker } from "', 'worker_threads"'),
+    [string]::Concat('import net from "node:', 'net"'),
+    [string]::Concat('process["bind', 'ing"]("tcp_wrap")'),
+    [string]::Concat('process.getBuiltin', 'Module("net")'),
+    [string]::Concat("new RTCPeer", "Connection(configuration)"),
+    [string]::Concat("globalThis.Web", "Transport")
+    [string]::Concat("new WebSocket", "Stream(url)")
+)
+foreach ($canary in $applicationEscapeCanaries) {
+    Assert-RawPatternRejectsCanary `
+        -Pattern $prohibitedApplicationEscapePattern `
+        -Content $canary `
+        -Message "The application escape policy accepted a low-level bypass canary."
+}
 $testCanaries = @(
     [string]::Concat("it.", "todo('fixture')"),
     [string]::Concat("test.concurrent.", "skip('fixture')"),
     [string]::Concat("pytest.", "importorskip('fixture')"),
-    [string]::Concat("describe.", "only('fixture')")
+    [string]::Concat("pytest.mark.", "skipif(True, reason='fixture')"),
+    [string]::Concat("suite.", "skip('fixture')"),
+    [string]::Concat("test.", "skipIf(true)('fixture')"),
+    [string]::Concat("test.", "fails('fixture')"),
+    [string]::Concat("test.", "fail(true, 'fixture')"),
+    [string]::Concat("describe.", "only('fixture')"),
+    [string]::Concat("from pytest import mark; @mark.", "skip"),
+    [string]::Concat("from unittest import ", "skip"),
+    [string]::Concat('test["', 'skip"]("fixture")'),
+    [string]::Concat("test?.", "skip('fixture')"),
+    [string]::Concat("test.each(cases).", "skip('fixture')"),
+    [string]::Concat("test ", ".skip('fixture')")
 )
 foreach ($canary in $testCanaries) {
-    Assert-PatternRejectsCanary `
+    Assert-RawPatternRejectsCanary `
         -Pattern $disabledTestPattern `
         -Content $canary `
         -Message "The disabled-test policy accepted a skip/focus canary."
+}
+$testConfigurationCanaries = @(
+    [string]::Concat("passWithNo", "Tests: true"),
+    [string]::Concat("forbid", "Only: false"),
+    [string]::Concat("reuseExisting", "Server: true"),
+    [string]::Concat("--pass-with-no-", "tests")
+)
+foreach ($canary in $testConfigurationCanaries) {
+    Assert-RawPatternRejectsCanary `
+        -Pattern $disabledTestConfigurationPattern `
+        -Content $canary `
+        -Message "The test-configuration policy accepted a false-green canary."
 }
 $prohibitedPythonCanary = [string]::Concat("open", "ai-agents")
 if ($allowedPythonDependencies.Contains($prohibitedPythonCanary)) {
@@ -817,16 +1652,31 @@ if ($allowedPythonDependencies.Contains($prohibitedPythonCanary)) {
 
 Assert-NoPattern `
     -Pattern $nonLocalUrlPattern `
-    -Message "A non-local URL was found in Phase 1 source."
+    -Message "A non-local URL was found in Phase 1 runtime source." `
+    -Files $runtimeSourceFiles
+Assert-NoConstantStringConcatenationPattern `
+    -Pattern $nonLocalUrlPattern `
+    -Message "A constant-concatenated non-local URL was found in Phase 1 source." `
+    -Files $runtimeSourceFiles
 Assert-NoPattern `
     -Pattern $remoteIntegrationPattern `
     -Message "A remote font, analytics, or telemetry integration was found."
-Assert-NoPattern `
+Assert-NoRawPattern `
+    -Pattern $prohibitedProviderRuntimePattern `
+    -Message "A prohibited provider import or call was found." `
+    -Files $sourceFiles
+Assert-NoRawPattern `
+    -Pattern $prohibitedApplicationEscapePattern `
+    -Message "A low-level process, native-network, or unmediated browser escape was found." `
+    -Files $applicationRuntimeSourceFiles
+Assert-NoRawPattern `
     -Pattern $disabledTestPattern `
     -Message "A skipped, focused, todo, fixme, or xfail test was found." `
-    -Files ($sourceFiles | Where-Object {
-        $_.FullName -match '[\\/](tests?|__tests__)[\\/]|\.test\.|\.spec\.'
-    })
+    -Files $testPolicyFiles
+Assert-NoRawPattern `
+    -Pattern $disabledTestConfigurationPattern `
+    -Message "A false-green test configuration was found." `
+    -Files $testPolicyFiles
 Assert-NoPattern `
     -Pattern '(?i)\bNEXT_PUBLIC_[A-Z0-9_]+' `
     -Message "A NEXT_PUBLIC variable was found in Phase 1 runtime source." `
@@ -834,6 +1684,10 @@ Assert-NoPattern `
 Assert-NoPattern `
     -Pattern $nonLocalBindPattern `
     -Message "A non-local bind or wildcard setting was found." `
+    -Files $runtimeSourceFiles
+Assert-NoRawPattern `
+    -Pattern $wildcardAccessPattern `
+    -Message "A wildcard host or CORS setting was found." `
     -Files $runtimeSourceFiles
 Assert-NoPattern `
     -Pattern $prohibitedExecutionPattern `

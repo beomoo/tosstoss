@@ -14,6 +14,7 @@ import httpx
 from tests.backend.conftest import FIXTURE_DIR, PROJECT_ROOT, DatabaseContext
 
 LOG_CONFIG = PROJECT_ROOT / "services" / "api" / "uvicorn_log_config.json"
+PYTHON_RUNTIME_GUARD = PROJECT_ROOT / "scripts" / "python_runtime_guard.py"
 
 
 def _runtime_environment(database_url: str, fixture_dir: Path) -> dict[str, str]:
@@ -39,8 +40,13 @@ def _runtime_environment(database_url: str, fixture_dir: Path) -> dict[str, str]
 def _uvicorn_command(application: str, port: int) -> list[str]:
     return [
         sys.executable,
-        "-m",
+        "-I",
+        "-B",
+        "-S",
+        str(PYTHON_RUNTIME_GUARD),
+        "--module",
         "uvicorn",
+        "--",
         application,
         "--host",
         "127.0.0.1",
@@ -89,7 +95,8 @@ def test_unhandled_runtime_failure_emits_only_redacted_json_logs(
     environment["UVICORN_TEST_EXCEPTION"] = sentinel
     process = subprocess.Popen(
         _uvicorn_command("tests.backend.uvicorn_canary_app:app", port),
-        cwd=PROJECT_ROOT,
+        executable=sys.executable,
+        cwd=str(PROJECT_ROOT),
         env=environment,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
@@ -146,7 +153,8 @@ def test_startup_failure_traceback_and_paths_are_suppressed(
     )
     result = subprocess.run(
         _uvicorn_command("toss_dashboard_api.main:app", _free_loopback_port()),
-        cwd=PROJECT_ROOT,
+        executable=sys.executable,
+        cwd=str(PROJECT_ROOT),
         env=_runtime_environment(database_context.url, fixture_copy),
         capture_output=True,
         text=True,

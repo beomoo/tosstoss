@@ -3,22 +3,55 @@ param(
 )
 
 . (Join-Path $PSScriptRoot "common.ps1")
+. (Join-Path $PSScriptRoot "process-ownership.ps1")
 
 $repoRoot = Get-RepoRoot
+Assert-NoProjectPythonBytecode
 $python = Get-VenvPython
-$npmCommand = Get-Command npm.cmd -ErrorAction SilentlyContinue
-if ($null -eq $npmCommand) {
-    throw "npm.cmd is not installed or not available on PATH."
+$nodeCommand = Get-Command node.exe -ErrorAction SilentlyContinue
+if ($null -eq $nodeCommand) {
+    throw "node.exe is not installed or not available on PATH."
 }
-$npmPath = $npmCommand.Source
+$nodePath = $nodeCommand.Source
 $webRoot = [System.IO.Path]::GetFullPath((Join-Path $repoRoot "apps\web"))
+$offlineGuardPath = [System.IO.Path]::GetFullPath(
+    (Join-Path $repoRoot "scripts\node_offline_guard.cjs")
+)
+$nodePreflightPath = [System.IO.Path]::GetFullPath(
+    (Join-Path $repoRoot "scripts\node_runtime_preflight.cjs")
+)
+foreach ($requiredNodeScript in @($offlineGuardPath, $nodePreflightPath)) {
+    if (-not (Test-Path -LiteralPath $requiredNodeScript -PathType Leaf)) {
+        throw "A required offline Node.js guard is missing: $requiredNodeScript"
+    }
+}
+$nextDirectory = [System.IO.Path]::GetFullPath((Join-Path $webRoot ".next"))
+$nextEnvPath = [System.IO.Path]::GetFullPath((Join-Path $webRoot "next-env.d.ts"))
+$tsconfigPath = [System.IO.Path]::GetFullPath((Join-Path $webRoot "tsconfig.json"))
+Assert-SafeRepositoryPath -Path $nextDirectory
+if (Test-Path -LiteralPath $nextDirectory) {
+    if (-not (Test-Path -LiteralPath $nextDirectory -PathType Container)) {
+        throw "The Next.js development output path must be a directory."
+    }
+    Assert-NoReparsePointsInTree -Path $nextDirectory -RejectHardLinks
+}
+Assert-SafeMutableRepositoryFile -Path $nextEnvPath
+Assert-SafeMutableRepositoryFile -Path $tsconfigPath
+$nextCliPath = [System.IO.Path]::GetFullPath(
+    (Join-Path $repoRoot "node_modules\next\dist\bin\next")
+)
+Assert-SafeRepositoryPath -Path $nextCliPath
+if (-not (Test-Path -LiteralPath $nextCliPath -PathType Leaf)) {
+    throw "The installed Next.js CLI is missing. Run scripts/setup.ps1 first."
+}
+$nextCliArgument = $nextCliPath
 $uvicornLogConfig = [System.IO.Path]::GetFullPath(
     (Join-Path $repoRoot "services\api\uvicorn_log_config.json")
 )
 if (-not (Test-Path -LiteralPath $uvicornLogConfig -PathType Leaf)) {
     throw "The Uvicorn JSON log configuration is missing."
 }
-$uvicornLogConfigArgument = '"' + $uvicornLogConfig + '"'
+$uvicornLogConfigArgument = $uvicornLogConfig
 
 function Wait-ForLocalEndpoint {
     param(
@@ -91,25 +124,59 @@ function Wait-ForLocalEndpoint {
     throw "$Name did not become ready within $TimeoutSeconds seconds."
 }
 
-function Stop-OwnedProcessTree {
+function Get-DevelopmentPortListeners {
     param(
-        [System.Diagnostics.Process] $Process
+        [Parameter(Mandatory = $true)]
+        [int[]] $Ports
     )
 
-    if ($null -eq $Process) {
-        return
-    }
-    $Process.Refresh()
-    if ($Process.HasExited) {
-        return
-    }
+    return @(
+        Get-NetTCPConnection -State Listen -ErrorAction Stop |
+            Where-Object { $_.LocalPort -in $Ports }
+    )
+}
 
-    $taskkill = Join-Path $env:SystemRoot "System32\taskkill.exe"
-    & $taskkill /PID $Process.Id /T /F *> $null
-    if ($LASTEXITCODE -ne 0) {
-        Stop-Process -Id $Process.Id -Force -ErrorAction SilentlyContinue
+function Assert-DevelopmentPortsAvailable {
+    param(
+        [Parameter(Mandatory = $true)]
+        [int[]] $Ports
+    )
+
+    $listeners = @(Get-DevelopmentPortListeners -Ports $Ports)
+    if ($listeners.Count -gt 0) {
+        $listeners |
+            Select-Object LocalAddress, LocalPort, OwningProcess |
+            Format-Table -AutoSize |
+            Out-Host
+        throw "A required development port is already in use."
     }
 }
+
+function Wait-ForDevelopmentPortsReleased {
+    param(
+        [Parameter(Mandatory = $true)]
+        [int[]] $Ports,
+        [int] $TimeoutSeconds = 10
+    )
+
+    $deadline = [System.DateTime]::UtcNow.AddSeconds($TimeoutSeconds)
+    do {
+        $listeners = @(Get-DevelopmentPortListeners -Ports $Ports)
+        if ($listeners.Count -eq 0) {
+            return
+        }
+        Start-Sleep -Milliseconds 200
+    } while ([System.DateTime]::UtcNow -lt $deadline)
+
+    $listeners |
+        Select-Object LocalAddress, LocalPort, OwningProcess |
+        Format-Table -AutoSize |
+        Out-Host
+    throw "An owned development listener remained after process-tree cleanup."
+}
+
+$developmentPorts = @(3000, 8000)
+Assert-DevelopmentPortsAvailable -Ports $developmentPorts
 
 function Assert-JsonLogLines {
     param(
@@ -156,14 +223,31 @@ else {
     $null
 }
 
-$smokeTempDirectory = $null
+$taskTempDirectory = $null
 $sentinelWasConfigured = $false
 $apiProcess = $null
 $webProcess = $null
+$ownedProcessGroup = $null
+$primaryFailure = $null
+$hadNodeOptions = Test-Path -LiteralPath Env:NODE_OPTIONS
+$previousNodeOptions = $env:NODE_OPTIONS
+$hadPythonBytecodeSetting = Test-Path -LiteralPath Env:PYTHONDONTWRITEBYTECODE
+$previousPythonBytecodeSetting = $env:PYTHONDONTWRITEBYTECODE
+$env:NODE_OPTIONS = [System.String]::Concat(
+    '--require="',
+    $offlineGuardPath.Replace("\", "/"),
+    '"'
+)
+$env:NPM_CONFIG_OFFLINE = "true"
+$env:NEXT_IGNORE_INCORRECT_LOCKFILE = "1"
+$env:NEXT_DISABLE_SWC_WASM = "1"
+$env:PYTHONDONTWRITEBYTECODE = "1"
 try {
+    Assert-NpmDependencyTreeClean
+    Invoke-Checked -FilePath $nodePath -ArgumentList @($nodePreflightPath)
+    $taskTempDirectory = New-TaskTempDirectory
     if ($Smoke) {
-        $smokeTempDirectory = New-TaskTempDirectory
-        $databasePath = Join-Path $smokeTempDirectory "dashboard.db"
+        $databasePath = Join-Path $taskTempDirectory "dashboard.db"
     }
     else {
         $runtimeDirectory = [System.IO.Path]::GetFullPath((Join-Path $repoRoot "var"))
@@ -179,6 +263,7 @@ try {
         $databaseName = "dashboard-fixture-$($fixtureManifestHash.Substring(0, 12)).db"
         $databasePath = Join-Path $runtimeDirectory $databaseName
     }
+    Assert-SafeSqliteDatabaseFiles -DatabasePath $databasePath
 
     Invoke-PhaseScript `
         -Name "migrate.ps1" `
@@ -186,6 +271,7 @@ try {
     Invoke-PhaseScript `
         -Name "import-fixtures.ps1" `
         -ArgumentList @("-DatabasePath", $databasePath)
+    Assert-SafeSqliteDatabaseFiles -DatabasePath $databasePath
 
     $logDirectory = [System.IO.Path]::GetFullPath((Join-Path $repoRoot "var\logs"))
     Assert-SafeRepositoryPath -Path $logDirectory
@@ -196,8 +282,9 @@ try {
     $webOut = Join-Path $logDirectory "web.out.log"
     $webErr = Join-Path $logDirectory "web.err.log"
     foreach ($logPath in @($apiOut, $apiErr, $webOut, $webErr)) {
-        Assert-SafeRepositoryPath -Path $logPath
+        Assert-SafeMutableRepositoryFile -Path $logPath
         [System.IO.File]::WriteAllText($logPath, "")
+        Assert-SafeMutableRepositoryFile -Path $logPath
     }
 
     $env:DASHBOARD_DATABASE_URL = Convert-ToSqliteUrl -Path $databasePath
@@ -221,19 +308,34 @@ try {
     $env:PHASE1_SERVER_ONLY_SENTINEL = $runtimeSentinel
     $sentinelWasConfigured = $true
 
-    $apiProcess = Start-Process -FilePath $python `
-        -ArgumentList @(
-            "-m", "uvicorn", "toss_dashboard_api.main:app",
+    $ownedProcessGroup = New-OwnedProcessGroup
+    $apiProcess = Start-OwnedProcess `
+        -Group $ownedProcessGroup `
+        -Name "api" `
+        -FilePath $python `
+        -ArgumentList (Get-GuardedPythonModuleArguments `
+            -Module "uvicorn" `
+            -ArgumentList @(
+            "toss_dashboard_api.main:app",
             "--host", "127.0.0.1", "--port", "8000",
             "--no-access-log", "--log-config", $uvicornLogConfigArgument
-        ) `
-        -WorkingDirectory $repoRoot -PassThru -WindowStyle Hidden `
-        -RedirectStandardOutput $apiOut -RedirectStandardError $apiErr
+        )) `
+        -WorkingDirectory $repoRoot `
+        -TaskTempDirectory $taskTempDirectory `
+        -StandardOutputPath $apiOut `
+        -StandardErrorPath $apiErr
 
-    $webProcess = Start-Process -FilePath $npmPath `
-        -ArgumentList @("run", "dev") `
-        -WorkingDirectory $webRoot -PassThru -WindowStyle Hidden `
-        -RedirectStandardOutput $webOut -RedirectStandardError $webErr
+    $webProcess = Start-OwnedProcess `
+        -Group $ownedProcessGroup `
+        -Name "web" `
+        -FilePath $nodePath `
+        -ArgumentList @(
+            $nextCliArgument, "dev", "--hostname", "127.0.0.1", "--port", "3000"
+        ) `
+        -WorkingDirectory $webRoot `
+        -TaskTempDirectory $taskTempDirectory `
+        -StandardOutputPath $webOut `
+        -StandardErrorPath $webErr
 
     $ownedProcesses = @($apiProcess, $webProcess)
     $healthResponse = Wait-ForLocalEndpoint `
@@ -268,9 +370,37 @@ try {
     }
     throw "A development process exited unexpectedly. See logs in $logDirectory"
 }
+catch {
+    $primaryFailure = $_
+    throw
+}
 finally {
-    foreach ($process in @($webProcess, $apiProcess)) {
-        Stop-OwnedProcessTree -Process $process
+    $processCleanupErrors = [System.Collections.Generic.List[string]]::new()
+    if ($null -ne $ownedProcessGroup) {
+        try {
+            Stop-OwnedProcessGroup -Group $ownedProcessGroup
+        }
+        catch {
+            $processCleanupErrors.Add($_.Exception.Message)
+        }
+    }
+    try {
+        Wait-ForDevelopmentPortsReleased -Ports $developmentPorts
+    }
+    catch {
+        $processCleanupErrors.Add($_.Exception.Message)
+    }
+    try {
+        Assert-SafeMutableRepositoryFile -Path $nextEnvPath
+        Assert-SafeMutableRepositoryFile -Path $tsconfigPath
+        if (Test-Path -LiteralPath $nextDirectory -PathType Container) {
+            Assert-NoReparsePointsInTree `
+                -Path $nextDirectory `
+                -RejectHardLinks
+        }
+    }
+    catch {
+        $processCleanupErrors.Add($_.Exception.Message)
     }
     Remove-Item Env:DASHBOARD_DATABASE_URL -ErrorAction SilentlyContinue
     Remove-Item Env:DASHBOARD_FIXTURE_DIR -ErrorAction SilentlyContinue
@@ -283,7 +413,33 @@ finally {
             Remove-Item Env:PHASE1_SERVER_ONLY_SENTINEL -ErrorAction SilentlyContinue
         }
     }
-    if ($null -ne $smokeTempDirectory) {
-        Remove-TaskTempDirectory -Path $smokeTempDirectory
+    if ($hadNodeOptions) {
+        $env:NODE_OPTIONS = $previousNodeOptions
+    }
+    else {
+        Remove-Item Env:NODE_OPTIONS -ErrorAction SilentlyContinue
+    }
+    if ($hadPythonBytecodeSetting) {
+        $env:PYTHONDONTWRITEBYTECODE = $previousPythonBytecodeSetting
+    }
+    else {
+        Remove-Item Env:PYTHONDONTWRITEBYTECODE -ErrorAction SilentlyContinue
+    }
+    if ($null -ne $taskTempDirectory) {
+        try {
+            Remove-TaskTempDirectory -Path $taskTempDirectory
+        }
+        catch {
+            $processCleanupErrors.Add($_.Exception.Message)
+        }
+    }
+    if ($processCleanupErrors.Count -gt 0) {
+        $cleanupMessage = $processCleanupErrors -join [Environment]::NewLine
+        if ($null -ne $primaryFailure) {
+            Write-Warning "Cleanup also failed: $cleanupMessage"
+        }
+        else {
+            throw $cleanupMessage
+        }
     }
 }

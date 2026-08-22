@@ -5,6 +5,13 @@ $scanner = Join-Path $repoRoot ".venv\Scripts\detect-secrets.exe"
 if (-not (Test-Path -LiteralPath $scanner -PathType Leaf)) {
     throw "detect-secrets is not installed. Run scripts/setup.ps1 first."
 }
+$python = Join-Path $repoRoot ".venv\Scripts\python.exe"
+$serialScanDriver = Join-Path $repoRoot "scripts\secret_scan_driver.py"
+foreach ($requiredScannerFile in @($python, $serialScanDriver)) {
+    if (-not (Test-Path -LiteralPath $requiredScannerFile -PathType Leaf)) {
+        throw "A required secret-scan component is missing: $requiredScannerFile"
+    }
+}
 
 $webRoot = [System.IO.Path]::GetFullPath((Join-Path $repoRoot "apps\web"))
 $nextRoot = [System.IO.Path]::GetFullPath((Join-Path $webRoot ".next"))
@@ -32,26 +39,43 @@ $playwrightResultsRoot = [System.IO.Path]::GetFullPath(
     (Join-Path $webRoot "test-results")
 )
 $playwrightArtifactRoots = @($playwrightReportRoot, $playwrightResultsRoot)
-$textArtifactExtensions = @(
-    ".js", ".mjs", ".cjs", ".ts", ".tsx", ".json", ".jsonl", ".map",
-    ".html", ".txt", ".log", ".css", ".xml", ".har", ".trace", ".network",
-    ".toml", ".yaml", ".yml"
-)
 $sensitivePattern = '(?i)(sk-(?:(?:live|proj|svcacct)[_-][a-z0-9_-]{20,}|[a-z0-9]{32,})|github_pat_[a-z0-9_]{20,}|gh[pousr]_[a-z0-9]{20,}|glpat-[a-z0-9_-]{20,}|AKIA[0-9A-Z]{16}|AIza[0-9A-Za-z_-]{30,}|xox[baprs]-[A-Za-z0-9-]{20,}|-----BEGIN [A-Z ]*PRIVATE KEY-----|Bearer\s+[A-Za-z0-9._-]{20,}|eyJ[A-Za-z0-9_-]{16,}\.[A-Za-z0-9_-]{16,}\.[A-Za-z0-9_-]{10,})'
 $script:AllowedArtifactSecretHashes = @{}
 $inlineAllowlistFilter = "detect_secrets.filters.allowlist.is_line_allowlisted"
-$utf8TextExtensions = [System.Collections.Generic.HashSet[string]]::new(
+$invalidFileFilter = "detect_secrets.filters.common.is_invalid_file"
+$lockFileFilter = "detect_secrets.filters.heuristic.is_lock_file"
+$nonTextFileFilter = "detect_secrets.filters.heuristic.is_non_text_file"
+$swaggerFileFilter = "detect_secrets.filters.heuristic.is_swagger_file"
+$prohibitedDetectSecretsFilters = @(
+    $inlineAllowlistFilter,
+    $invalidFileFilter,
+    $lockFileFilter,
+    $nonTextFileFilter,
+    $swaggerFileFilter
+)
+$approvedBinaryExtensions = [System.Collections.Generic.HashSet[string]]::new(
     [System.StringComparer]::OrdinalIgnoreCase
 )
 foreach ($extension in @(
-    ".cfg", ".conf", ".css", ".csv", ".html", ".ini", ".js", ".json",
-    ".jsonl", ".jsx", ".lock", ".log", ".md", ".mjs", ".cjs", ".ps1",
-    ".psd1", ".psm1", ".py", ".pyi", ".scss", ".toml", ".ts", ".tsx",
-    ".txt", ".xml", ".yaml", ".yml"
+    ".7z", ".avif", ".bin", ".blob", ".bmp", ".bz2", ".class", ".db",
+    ".db-journal", ".db-shm", ".db-wal", ".dll", ".dmg", ".doc", ".docx",
+    ".eot", ".exe", ".gif", ".gz", ".ico", ".jar", ".jpeg", ".jpg",
+    ".mo", ".node", ".pack", ".pdf", ".png", ".psd", ".pyc", ".pyd",
+    ".rar", ".realm", ".s7z", ".sqlite", ".sqlite3", ".sst", ".tar",
+    ".tif", ".tiff", ".ttf", ".wasm", ".webm", ".webp", ".woff",
+    ".woff2", ".xls", ".xlsx", ".zip"
 )) {
-    $null = $utf8TextExtensions.Add($extension)
+    $null = $approvedBinaryExtensions.Add($extension)
 }
-
+$compressedContainerExtensions = [System.Collections.Generic.HashSet[string]]::new(
+    [System.StringComparer]::OrdinalIgnoreCase
+)
+foreach ($extension in @(
+    ".7z", ".bz2", ".dmg", ".doc", ".docx", ".gz", ".jar", ".rar",
+    ".s7z", ".tar", ".xls", ".xlsx", ".zip"
+)) {
+    $null = $compressedContainerExtensions.Add($extension)
+}
 function Get-Sha1Hex {
     param([Parameter(Mandatory = $true)][string] $Value)
 
@@ -65,11 +89,27 @@ function Get-Sha1Hex {
     }
 }
 
+function Get-Sha256HexFromBytes {
+    param([Parameter(Mandatory = $true)][byte[]] $Bytes)
+
+    $sha256 = [System.Security.Cryptography.SHA256]::Create()
+    try {
+        return [System.Convert]::ToHexString(
+            $sha256.ComputeHash($Bytes)
+        ).ToLowerInvariant()
+    }
+    finally {
+        $sha256.Dispose()
+    }
+}
+
 function Add-AllowedArtifactSecret {
     param(
         [Parameter(Mandatory = $true)][string] $Path,
         [Parameter(Mandatory = $true)][string] $Value,
-        [ValidateRange(0, [int]::MaxValue)][int] $LineNumber = 0
+        [Parameter(Mandatory = $true)]
+        [ValidateRange(1, [int]::MaxValue)]
+        [int] $LineNumber
     )
 
     $key = [System.IO.Path]::GetFullPath($Path).ToLowerInvariant()
@@ -79,9 +119,40 @@ function Add-AllowedArtifactSecret {
                 [System.StringComparer]::OrdinalIgnoreCase
             )
     }
-    $lineKey = if ($LineNumber -gt 0) { [string] $LineNumber } else { "*" }
-    $findingKey = [string]::Concat($lineKey, "|", (Get-Sha1Hex -Value $Value))
+    $findingKey = [string]::Concat(
+        [string] $LineNumber,
+        "|",
+        (Get-Sha1Hex -Value $Value)
+    )
     $null = $script:AllowedArtifactSecretHashes[$key].Add($findingKey)
+}
+
+function Add-AllowedArtifactSecretAtMatchingLines {
+    param(
+        [Parameter(Mandatory = $true)][string] $Path,
+        [Parameter(Mandatory = $true)][string] $Value,
+        [string] $SearchValue = $Value
+    )
+
+    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) {
+        throw "An allowed secret artifact is missing: $Path"
+    }
+    $matchingLines = @()
+    $lines = [System.IO.File]::ReadAllLines($Path)
+    for ($lineIndex = 0; $lineIndex -lt $lines.Count; $lineIndex += 1) {
+        if ($lines[$lineIndex].Contains($SearchValue)) {
+            $matchingLines += $lineIndex + 1
+        }
+    }
+    if ($matchingLines.Count -eq 0) {
+        throw "An allowed artifact value is missing from its validated text line."
+    }
+    foreach ($lineNumber in $matchingLines) {
+        Add-AllowedArtifactSecret `
+            -Path $Path `
+            -Value $Value `
+            -LineNumber $lineNumber
+    }
 }
 
 function Get-JsonSha256Values {
@@ -234,16 +305,55 @@ function Add-ValidatedEvidenceManifestExceptions {
                 }
             }
         )
-        if ($matchingLines.Count -ne 1) {
-            throw "An evidence manifest digest is missing or duplicated in the JSON text."
+        if ($matchingLines.Count -eq 0) {
+            throw "An evidence manifest digest is missing from the JSON text."
         }
-        Add-AllowedArtifactSecret `
-            -Path $Path `
-            -Value $expectedHash `
-            -LineNumber $matchingLines[0]
+        foreach ($matchingLine in $matchingLines) {
+            Add-AllowedArtifactSecret `
+                -Path $Path `
+                -Value $expectedHash `
+                -LineNumber $matchingLine
+        }
     }
     if (@(Get-JsonSha256Values -Node $manifest).Count -ne $records.Count) {
         throw "The evidence manifest contains an unvalidated SHA-256 property."
+    }
+}
+
+function Add-ValidatedPackageLockExceptions {
+    param([Parameter(Mandatory = $true)][string] $Path)
+
+    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) {
+        throw "package-lock.json is missing from the secret-scan scope."
+    }
+    $approvedPackageLockSha256 = [string]::Concat(
+        "71abcfc0", "28cbb5e4",
+        "74c35f2c", "1d3e1aab",
+        "1152e61b", "87850709",
+        "a808b4b4", "f3280f92"
+    )
+    $actualPackageLockSha256 = (
+        Get-FileHash -LiteralPath $Path -Algorithm SHA256
+    ).Hash.ToLowerInvariant()
+    if ($actualPackageLockSha256 -cne $approvedPackageLockSha256) {
+        throw "package-lock.json does not match its approved immutable digest."
+    }
+    $integrityCount = 0
+    $lines = @(Get-Content -LiteralPath $Path)
+    for ($lineIndex = 0; $lineIndex -lt $lines.Count; $lineIndex += 1) {
+        if (
+            $lines[$lineIndex] -match
+                '"integrity"\s*:\s*"(sha512-[A-Za-z0-9+/]+={0,2})"'
+        ) {
+            Add-AllowedArtifactSecret `
+                -Path $Path `
+                -Value $Matches[1] `
+                -LineNumber ($lineIndex + 1)
+            $integrityCount += 1
+        }
+    }
+    if ($integrityCount -lt 500) {
+        throw "package-lock.json did not expose the expected integrity population."
     }
 }
 
@@ -259,6 +369,105 @@ function Convert-ToScanArgument {
     return $fullPath
 }
 
+function Assert-GitIndexMatchesWorkingTree {
+    param([Parameter(Mandatory = $true)][string] $Root)
+
+    foreach ($variableName in @(
+        "GIT_INDEX_FILE",
+        "GIT_DIR",
+        "GIT_WORK_TREE",
+        "GIT_COMMON_DIR",
+        "GIT_OBJECT_DIRECTORY",
+        "GIT_ALTERNATE_OBJECT_DIRECTORIES"
+    )) {
+        if (
+            (Test-Path -LiteralPath "Env:$variableName") -and
+            -not [string]::IsNullOrWhiteSpace(
+                [string] [Environment]::GetEnvironmentVariable($variableName)
+            )
+        ) {
+            throw "A Git repository environment override is prohibited during the secret scan."
+        }
+    }
+    $rootPath = [System.IO.Path]::GetFullPath($Root)
+    Assert-SafeRepositoryPath -Path $rootPath
+    $indexOutput = [string] (& git -C $rootPath ls-files --stage -z)
+    if ($LASTEXITCODE -ne 0) {
+        throw "Unable to enumerate the Git index for the secret scan."
+    }
+    $indexRecords = @(
+        $indexOutput.Split(
+            [char] 0,
+            [System.StringSplitOptions]::RemoveEmptyEntries
+        )
+    )
+    if ($indexRecords.Count -eq 0) {
+        throw "The Git index is empty during the secret scan."
+    }
+
+    $rootPrefix = $rootPath.TrimEnd(
+        [System.IO.Path]::DirectorySeparatorChar
+    ) + [System.IO.Path]::DirectorySeparatorChar
+    $seenPaths = [System.Collections.Generic.HashSet[string]]::new(
+        [System.StringComparer]::OrdinalIgnoreCase
+    )
+    foreach ($record in $indexRecords) {
+        $match = [regex]::Match(
+            $record,
+            '^(?<mode>[0-9]{6}) (?<oid>[0-9a-f]{40}|[0-9a-f]{64}) (?<stage>[0-3])\t(?<path>.*)$',
+            [System.Text.RegularExpressions.RegexOptions]::Singleline
+        )
+        if (-not $match.Success) {
+            throw "A Git index record has an unexpected shape."
+        }
+        $mode = $match.Groups["mode"].Value
+        $objectId = $match.Groups["oid"].Value
+        $stage = $match.Groups["stage"].Value
+        $relativePath = $match.Groups["path"].Value
+        if (
+            $mode -notin @("100644", "100755") -or
+            $stage -cne "0" -or
+            [string]::IsNullOrEmpty($relativePath) -or
+            [System.IO.Path]::IsPathRooted($relativePath) -or
+            $relativePath.Contains("\")
+        ) {
+            throw "The Git index contains an unsupported entry."
+        }
+        $fullPath = [System.IO.Path]::GetFullPath(
+            (Join-Path $rootPath $relativePath.Replace("/", "\"))
+        )
+        if (
+            -not $fullPath.StartsWith(
+                $rootPrefix,
+                [System.StringComparison]::OrdinalIgnoreCase
+            ) -or
+            -not $seenPaths.Add($fullPath) -or
+            -not (Test-Path -LiteralPath $fullPath -PathType Leaf)
+        ) {
+            throw "A Git index path is missing, duplicated, or outside the worktree."
+        }
+        Assert-NoReparsePointInPath -Path $fullPath
+        $item = Get-Item -LiteralPath $fullPath -Force
+        if (
+            ($item.Attributes -band [System.IO.FileAttributes]::ReparsePoint) -or
+            [string] $item.LinkType -ceq "HardLink"
+        ) {
+            throw "A Git index path is linked outside the exact worktree snapshot."
+        }
+
+        $workingObjectOutput = @(
+            & git -C $rootPath hash-object --no-filters -- $relativePath 2>&1
+        )
+        if (
+            $LASTEXITCODE -ne 0 -or
+            $workingObjectOutput.Count -ne 1 -or
+            [string] $workingObjectOutput[0] -cne $objectId
+        ) {
+            throw "The Git index and working tree differ during the secret scan."
+        }
+    }
+}
+
 function Invoke-DetectSecretsJson {
     param(
         [Parameter(Mandatory = $true)][string[]] $Files,
@@ -271,16 +480,52 @@ function Invoke-DetectSecretsJson {
     }
     Assert-SafeRepositoryPath -Path $WorkingDirectory
     Assert-SafeRepositoryPath -Path $OutputPath
+    Assert-SafeMutableRepositoryFile -Path $OutputPath
+    $fileRecords = @(
+        foreach ($scanPath in $Files) {
+            $fullPath = if ([System.IO.Path]::IsPathRooted($scanPath)) {
+                [System.IO.Path]::GetFullPath($scanPath)
+            }
+            else {
+                [System.IO.Path]::GetFullPath((Join-Path $WorkingDirectory $scanPath))
+            }
+            if (-not (Test-Path -LiteralPath $fullPath -PathType Leaf)) {
+                throw "A serial secret-scan input is missing: $fullPath"
+            }
+            $item = Get-Item -LiteralPath $fullPath -Force
+            if ($item.Attributes -band [System.IO.FileAttributes]::ReparsePoint) {
+                throw "A serial secret-scan input is a reparse point: $fullPath"
+            }
+            [ordered]@{
+                scan_path = $scanPath.Replace("\", "/")
+                full_path = $fullPath
+                size = [int64] $item.Length
+                sha256 = (
+                    Get-FileHash -LiteralPath $fullPath -Algorithm SHA256
+                ).Hash.ToLowerInvariant()
+            }
+        }
+    )
+    $requestPath = [System.String]::Concat($OutputPath, ".request.json")
+    Assert-SafeMutableRepositoryFile -Path $requestPath
+    $request = [ordered]@{
+        root = [System.IO.Path]::GetFullPath($WorkingDirectory)
+        files = $fileRecords
+    }
+    [System.IO.File]::WriteAllText(
+        $requestPath,
+        (($request | ConvertTo-Json -Depth 20) + [Environment]::NewLine),
+        [System.Text.UTF8Encoding]::new($false)
+    )
+    Assert-SafeMutableRepositoryFile -Path $requestPath
     Push-Location -LiteralPath $WorkingDirectory
     try {
-        $scanOutput = & $scanner -c 1 scan `
-            --force-use-all-plugins `
-            --no-verify `
-            --disable-filter $inlineAllowlistFilter `
-            -- `
-            @Files
+        $driverArguments = Get-GuardedPythonScriptArguments `
+            -ScriptPath $serialScanDriver `
+            -ArgumentList @($requestPath)
+        $scanOutput = & $python @driverArguments
         if ($LASTEXITCODE -ne 0) {
-            throw "detect-secrets scan failed with exit code $LASTEXITCODE."
+            throw "The serial detect-secrets scan failed with exit code $LASTEXITCODE."
         }
     }
     finally {
@@ -290,23 +535,249 @@ function Invoke-DetectSecretsJson {
         $OutputPath,
         ($scanOutput -join [Environment]::NewLine)
     )
+    Assert-SafeMutableRepositoryFile -Path $OutputPath
     try {
         $document = Get-Content -LiteralPath $OutputPath -Raw |
             ConvertFrom-Json -ErrorAction Stop
-        if (@($document.filters_used.path) -contains $inlineAllowlistFilter) {
-            throw "detect-secrets kept the prohibited inline allowlist filter enabled."
-        }
-        return $document
     }
     catch {
         throw "detect-secrets did not emit valid JSON."
     }
+    $activeFilterPaths = @($document.serial_scan.active_filters)
+    foreach ($prohibitedFilter in $prohibitedDetectSecretsFilters) {
+        if ($activeFilterPaths -contains $prohibitedFilter) {
+            throw "The serial secret scanner kept a prohibited bypass filter enabled."
+        }
+    }
+    $completed = @($document.serial_scan.completed)
+    if ($completed.Count -ne $fileRecords.Count) {
+        throw "The serial secret scanner did not report every input file as completed."
+    }
+    for ($index = 0; $index -lt $fileRecords.Count; $index += 1) {
+        $expected = $fileRecords[$index]
+        $actual = $completed[$index]
+        if (
+            $actual.scan_path -cne $expected.scan_path -or
+            $actual.full_path -cne $expected.full_path -or
+            [int64] $actual.size -ne [int64] $expected.size -or
+            $actual.sha256 -cne $expected.sha256
+        ) {
+            throw "The serial secret scanner returned an invalid completion record."
+        }
+    }
+    return $document
+}
+
+function Get-ShannonEntropy {
+    param([Parameter(Mandatory = $true)][string] $Value)
+
+    if ($Value.Length -eq 0) {
+        return 0.0
+    }
+    $counts = @{}
+    foreach ($character in $Value.ToCharArray()) {
+        $key = [string] $character
+        if ($counts.ContainsKey($key)) {
+            $counts[$key] += 1
+        }
+        else {
+            $counts[$key] = 1
+        }
+    }
+    $entropy = 0.0
+    foreach ($count in $counts.Values) {
+        $probability = [double] $count / [double] $Value.Length
+        $entropy -= $probability * [Math]::Log($probability, 2)
+    }
+    return $entropy
+}
+
+function Assert-NoHighConfidenceSecretInBytes {
+    param(
+        [Parameter(Mandatory = $true)][byte[]] $Bytes,
+        [Parameter(Mandatory = $true)][string] $SourceLabel
+    )
+
+    $inspectionText = [System.Text.Encoding]::Latin1.GetString($bytes).Replace(
+        [string][char]0,
+        ""
+    )
+    if ($inspectionText -match $sensitivePattern) {
+        throw "A high-confidence secret pattern was found in $SourceLabel."
+    }
+
+    # Mirror detect-secrets 1.5.0's quoted high-entropy detectors for files that
+    # cannot safely be decoded as UTF-8. Otherwise, one invalid byte could turn
+    # an approved binary extension into a bypass for a generic opaque secret.
+    $base64QuotedPattern = '(?<quote>[''"])(?<value>[A-Za-z0-9+/\\_=\-]+)\k<quote>'
+    foreach ($match in [regex]::Matches($inspectionText, $base64QuotedPattern)) {
+        $value = $match.Groups["value"].Value
+        if ((Get-ShannonEntropy -Value $value) -gt 4.5) {
+            throw "A Base64 high-entropy string was found in $SourceLabel."
+        }
+    }
+
+    $hexQuotedPattern = '(?<quote>[''"])(?<value>[0-9A-Fa-f]+)\k<quote>'
+    foreach ($match in [regex]::Matches($inspectionText, $hexQuotedPattern)) {
+        $value = $match.Groups["value"].Value
+        $entropy = Get-ShannonEntropy -Value $value
+        if ($value.Length -gt 1 -and $value -cmatch '^[0-9]+$') {
+            $entropy -= 1.2 / [Math]::Log($value.Length, 2)
+        }
+        if ($entropy -gt 3.0) {
+            throw "A hexadecimal high-entropy string was found in $SourceLabel."
+        }
+    }
+}
+
+function Assert-NoHighConfidenceSecretInBinaryFile {
+    param([Parameter(Mandatory = $true)][System.IO.FileInfo] $File)
+
+    Assert-NoHighConfidenceSecretInBytes `
+        -Bytes ([System.IO.File]::ReadAllBytes($File.FullName)) `
+        -SourceLabel ([System.String]::Concat("binary file ", $File.FullName))
+}
+
+function Add-ValidatedBinaryCompletionRecord {
+    param(
+        [Parameter(Mandatory = $true)][System.IO.FileInfo] $File,
+        [Parameter(Mandatory = $true)][byte[]] $Bytes,
+        [AllowNull()][System.Collections.Generic.List[object]] $CompletionRecords
+    )
+
+    Assert-NoHighConfidenceSecretInBytes `
+        -Bytes $Bytes `
+        -SourceLabel ([System.String]::Concat("binary file ", $File.FullName))
+    $expectedSize = [int64] $Bytes.Length
+    $expectedSha256 = Get-Sha256HexFromBytes -Bytes $Bytes
+    Assert-NoReparsePointInPath -Path $File.FullName
+    $currentItem = Get-Item -LiteralPath $File.FullName -Force
+    if (
+        ($currentItem.Attributes -band [System.IO.FileAttributes]::ReparsePoint) -or
+        [string] $currentItem.LinkType -ceq "HardLink" -or
+        [int64] $currentItem.Length -ne $expectedSize -or
+        (Get-FileHash -LiteralPath $File.FullName -Algorithm SHA256).Hash.ToLowerInvariant() -cne
+            $expectedSha256
+    ) {
+        throw "A binary secret-scan input changed during inspection."
+    }
+    if ($null -ne $CompletionRecords) {
+        $CompletionRecords.Add([pscustomobject]@{
+            full_path = [System.IO.Path]::GetFullPath($File.FullName)
+            size = $expectedSize
+            sha256 = $expectedSha256
+        })
+    }
+}
+
+function Get-SecretScanRepositoryFiles {
+    param(
+        [Parameter(Mandatory = $true)][string] $Root,
+        [string[]] $ExcludedExactDirectories = @()
+    )
+
+    $rootPath = [System.IO.Path]::GetFullPath($Root)
+    $isRepositoryRoot = $rootPath -ceq [System.IO.Path]::GetFullPath($repoRoot)
+    $excludedDirectoryPaths = [System.Collections.Generic.HashSet[string]]::new(
+        [System.StringComparer]::OrdinalIgnoreCase
+    )
+    if ($isRepositoryRoot) {
+        foreach ($relativePath in @(
+            ".git",
+            ".venv",
+            "node_modules",
+            "apps\web\node_modules",
+            ".playwright-browsers",
+            "ms-playwright",
+            "apps\web\.playwright-browsers",
+            "apps\web\ms-playwright"
+        )) {
+            $null = $excludedDirectoryPaths.Add(
+                [System.IO.Path]::GetFullPath((Join-Path $repoRoot $relativePath))
+            )
+        }
+    }
+    foreach ($excludedPath in $ExcludedExactDirectories) {
+        $fullExcludedPath = [System.IO.Path]::GetFullPath($excludedPath)
+        $rootPrefix = $rootPath.TrimEnd(
+            [System.IO.Path]::DirectorySeparatorChar
+        ) + [System.IO.Path]::DirectorySeparatorChar
+        if (-not $fullExcludedPath.StartsWith(
+            $rootPrefix,
+            [System.StringComparison]::OrdinalIgnoreCase
+        )) {
+            throw "A dynamic secret-scan exclusion is outside its enumeration root."
+        }
+        $null = $excludedDirectoryPaths.Add($fullExcludedPath)
+    }
+    $directories = [System.Collections.Generic.Stack[string]]::new()
+    $directories.Push($rootPath)
+    $files = [System.Collections.Generic.List[System.IO.FileInfo]]::new()
+    $seenFiles = [System.Collections.Generic.HashSet[string]]::new(
+        [System.StringComparer]::OrdinalIgnoreCase
+    )
+    while ($directories.Count -gt 0) {
+        $directory = $directories.Pop()
+        foreach ($item in Get-ChildItem -LiteralPath $directory -Force -ErrorAction Stop) {
+            if ($item.PSIsContainer) {
+                if ($item.Attributes -band [System.IO.FileAttributes]::ReparsePoint) {
+                    throw "A secret-scan directory is a reparse point: $($item.FullName)"
+                }
+                if ($excludedDirectoryPaths.Contains($item.FullName)) {
+                    continue
+                }
+                $directories.Push($item.FullName)
+                continue
+            }
+            if ($item.Attributes -band [System.IO.FileAttributes]::ReparsePoint) {
+                throw "A secret-scan input file is a reparse point: $($item.FullName)"
+            }
+            if ($seenFiles.Add($item.FullName)) {
+                $files.Add([System.IO.FileInfo] $item)
+            }
+        }
+    }
+
+    if ($isRepositoryRoot) {
+        $trackedOutput = [string] (& git -C $repoRoot ls-files -z)
+        if ($LASTEXITCODE -ne 0) {
+            throw "Unable to enumerate Git-tracked files for the secret scan."
+        }
+        foreach ($relativePath in $trackedOutput.Split(
+            [char] 0,
+            [System.StringSplitOptions]::RemoveEmptyEntries
+        )) {
+            $fullPath = [System.IO.Path]::GetFullPath(
+                (Join-Path $repoRoot $relativePath)
+            )
+            $repoPrefix = $rootPath.TrimEnd(
+                [System.IO.Path]::DirectorySeparatorChar
+            ) + [System.IO.Path]::DirectorySeparatorChar
+            if (
+                -not $fullPath.StartsWith(
+                    $repoPrefix,
+                    [System.StringComparison]::OrdinalIgnoreCase
+                ) -or
+                -not (Test-Path -LiteralPath $fullPath -PathType Leaf)
+            ) {
+                throw "A Git-tracked secret-scan input is missing or out of scope."
+            }
+            Assert-NoReparsePointInPath -Path $fullPath
+            $item = Get-Item -LiteralPath $fullPath -Force
+            if ($seenFiles.Add($item.FullName)) {
+                $files.Add([System.IO.FileInfo] $item)
+            }
+        }
+    }
+    return @($files)
 }
 
 function Get-ValidatedUtf8TextFiles {
     param(
         [Parameter(Mandatory = $true)][string[]] $Files,
-        [string] $WorkingDirectory = $repoRoot
+        [string] $WorkingDirectory = $repoRoot,
+        [AllowNull()]
+        [System.Collections.Generic.List[object]] $BinaryCompletionRecords
     )
 
     $strictUtf8 = [System.Text.UTF8Encoding]::new($false, $true)
@@ -322,14 +793,31 @@ function Get-ValidatedUtf8TextFiles {
             throw "A secret-scan input file is missing: $fullPath"
         }
         $item = Get-Item -LiteralPath $fullPath -Force
-        $isTextCandidate =
-            $utf8TextExtensions.Contains($item.Extension) -or
-            $item.Name.StartsWith(".env", [System.StringComparison]::OrdinalIgnoreCase) -or
-            [string]::IsNullOrEmpty($item.Extension)
-        if (-not $isTextCandidate) {
-            continue
+        Assert-NoReparsePointInPath -Path $fullPath
+        if ([string] $item.LinkType -ceq "HardLink") {
+            throw "A secret-scan input cannot be hard-linked: $fullPath"
         }
-
+        if ($compressedContainerExtensions.Contains($item.Extension)) {
+            $isValidatedPlaywrightTrace = $false
+            if ($item.Extension -ieq ".zip") {
+                foreach ($artifactRoot in $playwrightArtifactRoots) {
+                    $artifactPrefix = [System.IO.Path]::GetFullPath(
+                        $artifactRoot
+                    ).TrimEnd([System.IO.Path]::DirectorySeparatorChar) +
+                        [System.IO.Path]::DirectorySeparatorChar
+                    if ($fullPath.StartsWith(
+                        $artifactPrefix,
+                        [System.StringComparison]::OrdinalIgnoreCase
+                    )) {
+                        $isValidatedPlaywrightTrace = $true
+                        break
+                    }
+                }
+            }
+            if (-not $isValidatedPlaywrightTrace) {
+                throw "A compressed project container cannot be inspected safely: $fullPath"
+            }
+        }
         $bytes = [System.IO.File]::ReadAllBytes($fullPath)
         if (
             ($bytes.Length -ge 2 -and (
@@ -349,10 +837,24 @@ function Get-ValidatedUtf8TextFiles {
             $text = $strictUtf8.GetString($bytes)
         }
         catch [System.Text.DecoderFallbackException] {
-            throw "A secret-scan text input is not valid UTF-8: $fullPath"
+            if (-not $approvedBinaryExtensions.Contains($item.Extension)) {
+                throw "A non-binary secret-scan input is not valid UTF-8: $fullPath"
+            }
+            Add-ValidatedBinaryCompletionRecord `
+                -File $item `
+                -Bytes $bytes `
+                -CompletionRecords $BinaryCompletionRecords
+            continue
         }
         if ($text.Contains([char] 0)) {
-            throw "A secret-scan text input contains NUL bytes: $fullPath"
+            if (-not $approvedBinaryExtensions.Contains($item.Extension)) {
+                throw "A non-binary secret-scan input contains NUL bytes: $fullPath"
+            }
+            Add-ValidatedBinaryCompletionRecord `
+                -File $item `
+                -Bytes $bytes `
+                -CompletionRecords $BinaryCompletionRecords
+            continue
         }
         $validatedFiles += $item
     }
@@ -384,14 +886,68 @@ function Test-AllowedArtifactFinding {
         "|",
         $findingHash
     )
-    $anyLineFindingKey = [string]::Concat("*|", $findingHash)
     return (
         $script:AllowedArtifactSecretHashes.ContainsKey($key) -and
-        (
-            $script:AllowedArtifactSecretHashes[$key].Contains($exactFindingKey) -or
-            $script:AllowedArtifactSecretHashes[$key].Contains($anyLineFindingKey)
-        )
+        $script:AllowedArtifactSecretHashes[$key].Contains($exactFindingKey)
     )
+}
+
+function Assert-SecretScanCompletionCoverage {
+    param(
+        [Parameter(Mandatory = $true)][System.IO.FileInfo[]] $ExpectedFiles,
+        [Parameter(Mandatory = $true)][object[]] $TextCompletionRecords,
+        [Parameter(Mandatory = $true)][object[]] $BinaryCompletionRecords
+    )
+
+    $expectedPaths = [System.Collections.Generic.HashSet[string]]::new(
+        [System.StringComparer]::OrdinalIgnoreCase
+    )
+    foreach ($file in $ExpectedFiles) {
+        $fullPath = [System.IO.Path]::GetFullPath($file.FullName)
+        if (-not $expectedPaths.Add($fullPath)) {
+            throw "The secret-scan artifact scope contains a duplicate path."
+        }
+    }
+
+    $completedPaths = [System.Collections.Generic.HashSet[string]]::new(
+        [System.StringComparer]::OrdinalIgnoreCase
+    )
+    foreach ($record in @($TextCompletionRecords) + @($BinaryCompletionRecords)) {
+        $properties = @($record.PSObject.Properties.Name | Sort-Object)
+        $requiredProperties = @("full_path", "sha256", "size")
+        $allowedProperties = @("full_path", "scan_path", "sha256", "size")
+        if (
+            @($requiredProperties | Where-Object { $_ -notin $properties }).Count -gt 0 -or
+            @($properties | Where-Object { $_ -notin $allowedProperties }).Count -gt 0
+        ) {
+            throw "A secret-scan completion record has an unexpected schema."
+        }
+        $fullPath = [System.IO.Path]::GetFullPath([string] $record.full_path)
+        $expectedSize = [int64] $record.size
+        $expectedSha256 = [string] $record.sha256
+        if (
+            $expectedSize -lt 0 -or
+            $expectedSha256 -cnotmatch '^[0-9a-f]{64}$' -or
+            -not (Test-Path -LiteralPath $fullPath -PathType Leaf) -or
+            -not $completedPaths.Add($fullPath)
+        ) {
+            throw "A secret-scan completion record is invalid or duplicated."
+        }
+        Assert-NoReparsePointInPath -Path $fullPath
+        $item = Get-Item -LiteralPath $fullPath -Force
+        if (
+            ($item.Attributes -band [System.IO.FileAttributes]::ReparsePoint) -or
+            [string] $item.LinkType -ceq "HardLink" -or
+            [int64] $item.Length -ne $expectedSize -or
+            (Get-FileHash -LiteralPath $fullPath -Algorithm SHA256).Hash.ToLowerInvariant() -cne
+                $expectedSha256
+        ) {
+            throw "A completed secret-scan input changed after inspection."
+        }
+    }
+    if (-not $expectedPaths.SetEquals($completedPaths)) {
+        throw "Secret-scan completion coverage does not match the exact artifact scope."
+    }
 }
 
 function Assert-CurrentBuildEvidence {
@@ -409,7 +965,9 @@ function Assert-CurrentBuildEvidence {
         if ($directoryItem.Attributes -band [System.IO.FileAttributes]::ReparsePoint) {
             throw "A required production build directory cannot be a reparse point."
         }
-        $artifactFiles = @(Get-ChildItem -LiteralPath $requiredDirectory -Recurse -File)
+        $artifactFiles = @(
+            Get-ChildItem -LiteralPath $requiredDirectory -Recurse -File -Force
+        )
         if ($artifactFiles.Count -eq 0) {
             throw "A required production build directory is empty: $requiredDirectory"
         }
@@ -635,7 +1193,7 @@ function Assert-E2eEvidence {
 
 function Add-NextGeneratedHashExceptions {
     foreach ($nftPath in @(
-        Get-ChildItem -LiteralPath $nextRoot -Recurse -File -Filter "*.nft.json"
+        Get-ChildItem -LiteralPath $nextRoot -Recurse -File -Filter "*.nft.json" -Force
     )) {
         try {
             $nft = Get-Content -LiteralPath $nftPath.FullName -Raw |
@@ -653,13 +1211,17 @@ function Add-NextGeneratedHashExceptions {
             if ($hash -isnot [string] -or $hash -cnotmatch '^[0-9a-f]{32}$') {
                 throw "A Next.js file-trace manifest contains an invalid file hash."
             }
-            Add-AllowedArtifactSecret -Path $nftPath.FullName -Value $hash
+            Add-AllowedArtifactSecretAtMatchingLines `
+                -Path $nftPath.FullName `
+                -Value $hash
         }
         if ("entryHash" -in $nft.PSObject.Properties.Name -and $null -ne $nft.entryHash) {
             if ($nft.entryHash -isnot [string] -or $nft.entryHash -cnotmatch '^[0-9a-f]{32}$') {
                 throw "A Next.js file-trace manifest contains an invalid entry hash."
             }
-            Add-AllowedArtifactSecret -Path $nftPath.FullName -Value $nft.entryHash
+            Add-AllowedArtifactSecretAtMatchingLines `
+                -Path $nftPath.FullName `
+                -Value $nft.entryHash
         }
     }
 }
@@ -702,7 +1264,9 @@ function Add-NextPrerenderManifestExceptions {
         throw "The production prerender preview keys have invalid shapes."
     }
     foreach ($value in @($previewModeId, $signingKey, $encryptionKey)) {
-        Add-AllowedArtifactSecret -Path $manifestPath -Value $value
+        Add-AllowedArtifactSecretAtMatchingLines `
+            -Path $manifestPath `
+            -Value $value
     }
 }
 
@@ -728,7 +1292,9 @@ function Add-SentinelUnitFixtureExceptions {
         if (-not $fixtureText.Contains(('"' + $value + '"'))) {
             throw "The runtime-boundary unit-test fixture has an unexpected shape."
         }
-        Add-AllowedArtifactSecret -Path $fixturePath -Value $value
+        Add-AllowedArtifactSecretAtMatchingLines `
+            -Path $fixturePath `
+            -Value $value
     }
 }
 
@@ -756,13 +1322,18 @@ function Add-NextEncryptionKeyExceptions {
     if (-not $manifestJs.Contains($encryptionKey)) {
         throw "The Next.js server-reference manifests do not contain the same encryption key."
     }
-    Add-AllowedArtifactSecret -Path $manifestJsonPath -Value $encryptionKey
-    Add-AllowedArtifactSecret -Path $manifestJsPath -Value $encryptionKey
+    Add-AllowedArtifactSecretAtMatchingLines `
+        -Path $manifestJsonPath `
+        -Value $encryptionKey
+    Add-AllowedArtifactSecretAtMatchingLines `
+        -Path $manifestJsPath `
+        -Value $encryptionKey
     # The JS wrapper escapes the closing JSON quote, and detect-secrets includes
     # that one trailing backslash in its entropy token.
-    Add-AllowedArtifactSecret `
+    Add-AllowedArtifactSecretAtMatchingLines `
         -Path $manifestJsPath `
-        -Value ([string]::Concat($encryptionKey, [char] 92))
+        -Value ([string]::Concat($encryptionKey, [char] 92)) `
+        -SearchValue $encryptionKey
     return [pscustomobject]@{
         Value = $encryptionKey
         AllowedPaths = @(
@@ -776,7 +1347,10 @@ function Expand-TraceTextArtifacts {
     param(
         [Parameter(Mandatory = $true)][AllowEmptyCollection()][System.IO.FileInfo[]] $Archives,
         [Parameter(Mandatory = $true)][string] $Destination,
-        [Parameter(Mandatory = $true)][string] $Sentinel
+        [Parameter(Mandatory = $true)][string] $Sentinel,
+        [Parameter(Mandatory = $true)]
+        [AllowEmptyCollection()]
+        [System.Collections.Generic.List[object]] $ArchiveCompletionRecords
     )
 
     [System.IO.Directory]::CreateDirectory($Destination) | Out-Null
@@ -785,57 +1359,111 @@ function Expand-TraceTextArtifacts {
     $entryIndex = 0
     $totalBytes = [int64] 0
     foreach ($traceArchive in $Archives) {
-        $archive = [System.IO.Compression.ZipFile]::OpenRead($traceArchive.FullName)
+        Assert-NoReparsePointInPath -Path $traceArchive.FullName
+        $archiveItem = Get-Item -LiteralPath $traceArchive.FullName -Force
+        if (
+            ($archiveItem.Attributes -band [System.IO.FileAttributes]::ReparsePoint) -or
+            [string] $archiveItem.LinkType -ceq "HardLink"
+        ) {
+            throw "A Playwright trace archive cannot be linked."
+        }
+        $archiveBytes = [System.IO.File]::ReadAllBytes($traceArchive.FullName)
+        Add-ValidatedBinaryCompletionRecord `
+            -File $archiveItem `
+            -Bytes $archiveBytes `
+            -CompletionRecords $ArchiveCompletionRecords
+        $archiveMemory = [System.IO.MemoryStream]::new($archiveBytes, $false)
         try {
-            foreach ($entry in $archive.Entries) {
-                if ([string]::IsNullOrEmpty($entry.Name)) {
-                    continue
-                }
-                if ($entry.Length -gt 25MB) {
-                    throw "A Playwright trace entry exceeds the 25 MiB inspection limit."
-                }
-                $totalBytes += $entry.Length
-                if ($totalBytes -gt 200MB) {
-                    throw "Playwright trace text exceeds the 200 MiB inspection limit."
-                }
-                $memory = [System.IO.MemoryStream]::new()
-                try {
-                    $entryStream = $entry.Open()
+            $archive = [System.IO.Compression.ZipArchive]::new(
+                $archiveMemory,
+                [System.IO.Compression.ZipArchiveMode]::Read,
+                $false
+            )
+            try {
+                foreach ($entry in $archive.Entries) {
+                    if ([string]::IsNullOrEmpty($entry.Name)) {
+                        continue
+                    }
+                    if ($entry.Length -gt 25MB) {
+                        throw "A Playwright trace entry exceeds the 25 MiB inspection limit."
+                    }
+                    $totalBytes += $entry.Length
+                    if ($totalBytes -gt 200MB) {
+                        throw "Playwright trace text exceeds the 200 MiB inspection limit."
+                    }
+                    $memory = [System.IO.MemoryStream]::new()
                     try {
-                        $entryStream.CopyTo($memory)
+                        $entryStream = $entry.Open()
+                        try {
+                            $entryStream.CopyTo($memory)
+                        }
+                        finally {
+                            $entryStream.Dispose()
+                        }
+                        $bytes = $memory.ToArray()
                     }
                     finally {
-                        $entryStream.Dispose()
+                        $memory.Dispose()
                     }
-                    $bytes = $memory.ToArray()
+                    $entryExtension = [System.IO.Path]::GetExtension($entry.Name)
+                    $hasCompressedSignature = (
+                        $bytes.Length -ge 4 -and
+                        $bytes[0] -eq 0x50 -and
+                        $bytes[1] -eq 0x4b -and
+                        $bytes[2] -in @(0x03, 0x05, 0x07) -and
+                        $bytes[3] -in @(0x04, 0x06, 0x08)
+                    ) -or (
+                        $bytes.Length -ge 2 -and
+                        $bytes[0] -eq 0x1f -and
+                        $bytes[1] -eq 0x8b
+                    ) -or (
+                        $bytes.Length -ge 3 -and
+                        $bytes[0] -eq 0x42 -and
+                        $bytes[1] -eq 0x5a -and
+                        $bytes[2] -eq 0x68
+                    ) -or (
+                        $bytes.Length -ge 6 -and
+                        $bytes[0] -eq 0x37 -and
+                        $bytes[1] -eq 0x7a -and
+                        $bytes[2] -eq 0xbc -and
+                        $bytes[3] -eq 0xaf -and
+                        $bytes[4] -eq 0x27 -and
+                        $bytes[5] -eq 0x1c
+                    )
+                    if (
+                        $compressedContainerExtensions.Contains($entryExtension) -or
+                        $hasCompressedSignature
+                    ) {
+                        throw "A nested compressed Playwright trace entry is prohibited."
+                    }
+                    Assert-NoHighConfidenceSecretInBytes `
+                        -Bytes $bytes `
+                        -SourceLabel "a Playwright trace entry"
+                    $inspectionText = [System.Text.Encoding]::UTF8.GetString($bytes)
+                    if ($inspectionText.Contains($Sentinel)) {
+                        throw "The runtime sentinel leaked into a Playwright trace archive."
+                    }
+                    try {
+                        $strictText = $strictUtf8.GetString($bytes)
+                    }
+                    catch [System.Text.DecoderFallbackException] {
+                        continue
+                    }
+                    if ($strictText.Contains([char] 0)) {
+                        continue
+                    }
+                    $entryIndex += 1
+                    $destinationPath = Join-Path $Destination ("trace-{0:D6}.txt" -f $entryIndex)
+                    [System.IO.File]::WriteAllText($destinationPath, $strictText)
+                    $extracted += Get-Item -LiteralPath $destinationPath
                 }
-                finally {
-                    $memory.Dispose()
-                }
-                $inspectionText = [System.Text.Encoding]::UTF8.GetString($bytes)
-                if ($inspectionText.Contains($Sentinel)) {
-                    throw "The runtime sentinel leaked into a Playwright trace archive."
-                }
-                if ($inspectionText -match $sensitivePattern) {
-                    throw "A high-confidence secret pattern was found in a Playwright trace archive."
-                }
-                try {
-                    $strictText = $strictUtf8.GetString($bytes)
-                }
-                catch [System.Text.DecoderFallbackException] {
-                    continue
-                }
-                if ($strictText.Contains([char] 0)) {
-                    continue
-                }
-                $entryIndex += 1
-                $destinationPath = Join-Path $Destination ("trace-{0:D6}.txt" -f $entryIndex)
-                [System.IO.File]::WriteAllText($destinationPath, $strictText)
-                $extracted += Get-Item -LiteralPath $destinationPath
+            }
+            finally {
+                $archive.Dispose()
             }
         }
         finally {
-            $archive.Dispose()
+            $archiveMemory.Dispose()
         }
     }
     return $extracted
@@ -843,15 +1471,208 @@ function Expand-TraceTextArtifacts {
 
 $tempDirectory = New-TaskTempDirectory
 try {
+    $repositoryFiles = @(
+        Get-SecretScanRepositoryFiles `
+            -Root $repoRoot `
+            -ExcludedExactDirectories @($tempDirectory)
+    )
+
+    $indexCanaryRoot = Join-Path $tempDirectory "index-worktree-canary"
+    [System.IO.Directory]::CreateDirectory($indexCanaryRoot) | Out-Null
+    & git -C $indexCanaryRoot init --quiet
+    if ($LASTEXITCODE -ne 0) {
+        throw "Unable to initialize the Git index secret-scan canary."
+    }
+    & git -C $indexCanaryRoot config core.autocrlf false
+    if ($LASTEXITCODE -ne 0) {
+        throw "Unable to configure the Git index secret-scan canary."
+    }
+    $indexCanaryPath = Join-Path $indexCanaryRoot "guarded.txt"
+    [System.IO.File]::WriteAllText(
+        $indexCanaryPath,
+        "safe index snapshot`n",
+        [System.Text.UTF8Encoding]::new($false)
+    )
+    & git -C $indexCanaryRoot add -- "guarded.txt"
+    if ($LASTEXITCODE -ne 0) {
+        throw "Unable to stage the Git index secret-scan canary."
+    }
+    Assert-GitIndexMatchesWorkingTree -Root $indexCanaryRoot
+    [System.IO.File]::WriteAllText(
+        $indexCanaryPath,
+        "different working snapshot`n",
+        [System.Text.UTF8Encoding]::new($false)
+    )
+    $indexMismatchRejected = $false
+    try {
+        Assert-GitIndexMatchesWorkingTree -Root $indexCanaryRoot
+    }
+    catch {
+        $indexMismatchRejected = $true
+    }
+    if (-not $indexMismatchRejected) {
+        throw "The secret scan accepted a Git index/working-tree mismatch canary."
+    }
+    [System.IO.File]::WriteAllText(
+        $indexCanaryPath,
+        "safe index snapshot`n",
+        [System.Text.UTF8Encoding]::new($false)
+    )
+    Assert-GitIndexMatchesWorkingTree -Root $indexCanaryRoot
+    $hadIndexEnvironment = Test-Path -LiteralPath Env:GIT_INDEX_FILE
+    $previousIndexEnvironment = $env:GIT_INDEX_FILE
+    $indexEnvironmentRejected = $false
+    try {
+        $env:GIT_INDEX_FILE = Join-Path $indexCanaryRoot "alternate-index"
+        try {
+            Assert-GitIndexMatchesWorkingTree -Root $indexCanaryRoot
+        }
+        catch {
+            $indexEnvironmentRejected = $true
+        }
+    }
+    finally {
+        if ($hadIndexEnvironment) {
+            $env:GIT_INDEX_FILE = $previousIndexEnvironment
+        }
+        else {
+            Remove-Item Env:GIT_INDEX_FILE -ErrorAction SilentlyContinue
+        }
+    }
+    if (-not $indexEnvironmentRejected) {
+        throw "The secret scan accepted a Git index environment override canary."
+    }
+
+    $scopeCanaryRoot = Join-Path $tempDirectory "scope-enumeration"
+    $scopeIncludedDirectory = Join-Path $scopeCanaryRoot ".vscode"
+    $scopeNamedDirectory = Join-Path $scopeCanaryRoot "node_modules"
+    [System.IO.Directory]::CreateDirectory($scopeIncludedDirectory) | Out-Null
+    [System.IO.Directory]::CreateDirectory($scopeNamedDirectory) | Out-Null
+    $scopeIncludedPath = Join-Path $scopeIncludedDirectory "settings.json"
+    $scopeNamedPath = Join-Path $scopeNamedDirectory "project-file.txt"
+    [System.IO.File]::WriteAllText($scopeIncludedPath, '{"scope":"included"}')
+    [System.IO.File]::WriteAllText($scopeNamedPath, "project content")
+    $scopeIncludedItem = Get-Item -LiteralPath $scopeIncludedPath -Force
+    $scopeIncludedItem.Attributes =
+        $scopeIncludedItem.Attributes -bor [System.IO.FileAttributes]::Hidden
+    $scopeCanaryFiles = @(
+        Get-SecretScanRepositoryFiles -Root $scopeCanaryRoot
+    ).FullName
+    if (
+        $scopeCanaryFiles -notcontains $scopeIncludedPath -or
+        $scopeCanaryFiles -notcontains $scopeNamedPath
+    ) {
+        throw "The secret-scan scope omitted a hidden or dependency-named project file."
+    }
+
+    $traceSnapshotCanaryPath = Join-Path $tempDirectory "trace-snapshot-canary.zip"
+    $traceSnapshotCanaryArchive = [System.IO.Compression.ZipFile]::Open(
+        $traceSnapshotCanaryPath,
+        [System.IO.Compression.ZipArchiveMode]::Create
+    )
+    try {
+        $traceSnapshotCanaryEntry = $traceSnapshotCanaryArchive.CreateEntry(
+            "trace.txt",
+            [System.IO.Compression.CompressionLevel]::Optimal
+        )
+        $traceSnapshotCanaryWriter = [System.IO.StreamWriter]::new(
+            $traceSnapshotCanaryEntry.Open(),
+            [System.Text.UTF8Encoding]::new($false)
+        )
+        try {
+            $traceSnapshotCanaryWriter.Write("first immutable snapshot")
+        }
+        finally {
+            $traceSnapshotCanaryWriter.Dispose()
+        }
+    }
+    finally {
+        $traceSnapshotCanaryArchive.Dispose()
+    }
+    $traceSnapshotCanaryRecords = [System.Collections.Generic.List[object]]::new()
+    $traceSnapshotCanaryFiles = @(
+        Expand-TraceTextArtifacts `
+            -Archives @((Get-Item -LiteralPath $traceSnapshotCanaryPath)) `
+            -Destination (Join-Path $tempDirectory "trace-snapshot-output") `
+            -Sentinel "PHASE1_TRACE_SNAPSHOT_CANARY" `
+            -ArchiveCompletionRecords $traceSnapshotCanaryRecords
+    )
+    if (
+        $traceSnapshotCanaryRecords.Count -ne 1 -or
+        $traceSnapshotCanaryFiles.Count -ne 1 -or
+        [System.IO.File]::ReadAllText($traceSnapshotCanaryFiles[0].FullName) -cne
+            "first immutable snapshot"
+    ) {
+        throw "The Playwright trace immutable-snapshot canary was not inspected exactly once."
+    }
+
+    $replacementMemory = [System.IO.MemoryStream]::new()
+    try {
+        $replacementArchive = [System.IO.Compression.ZipArchive]::new(
+            $replacementMemory,
+            [System.IO.Compression.ZipArchiveMode]::Create,
+            $true
+        )
+        try {
+            $replacementEntry = $replacementArchive.CreateEntry(
+                "trace.txt",
+                [System.IO.Compression.CompressionLevel]::Optimal
+            )
+            $replacementWriter = [System.IO.StreamWriter]::new(
+                $replacementEntry.Open(),
+                [System.Text.UTF8Encoding]::new($false)
+            )
+            try {
+                $replacementWriter.Write("replacement archive snapshot")
+            }
+            finally {
+                $replacementWriter.Dispose()
+            }
+        }
+        finally {
+            $replacementArchive.Dispose()
+        }
+        $replacementBytes = $replacementMemory.ToArray()
+    }
+    finally {
+        $replacementMemory.Dispose()
+    }
+    [System.IO.File]::WriteAllBytes($traceSnapshotCanaryPath, $replacementBytes)
+    $traceSnapshotMutationRejected = $false
+    try {
+        Assert-SecretScanCompletionCoverage `
+            -ExpectedFiles @((Get-Item -LiteralPath $traceSnapshotCanaryPath)) `
+            -TextCompletionRecords @() `
+            -BinaryCompletionRecords @($traceSnapshotCanaryRecords)
+    }
+    catch {
+        $traceSnapshotMutationRejected = $true
+    }
+    if (-not $traceSnapshotMutationRejected) {
+        throw "The secret scan accepted a mutated Playwright trace archive canary."
+    }
+
+    Assert-GitIndexMatchesWorkingTree -Root $repoRoot
+
     $build = Assert-CurrentBuildEvidence
     Assert-E2eEvidence -Build $build
 
-    Add-AllowedArtifactSecret -Path $buildIdPath -Value $build.BuildId
-    Add-AllowedArtifactSecret -Path $buildEvidencePath -Value $build.BuildId
-    Add-AllowedArtifactSecret -Path $buildEvidencePath -Value $build.SentinelSha256
-    Add-AllowedArtifactSecret -Path $e2eApiLog -Value $build.BuildId
-    Add-AllowedArtifactSecret -Path $e2eApiLog -Value $build.SentinelSha256
-    Add-AllowedArtifactSecret -Path $e2eWebLog -Value $build.BuildId
+    Add-AllowedArtifactSecretAtMatchingLines -Path $buildIdPath -Value $build.BuildId
+    Add-AllowedArtifactSecretAtMatchingLines `
+        -Path $buildEvidencePath `
+        -Value $build.BuildId
+    Add-AllowedArtifactSecretAtMatchingLines `
+        -Path $buildEvidencePath `
+        -Value $build.SentinelSha256
+    Add-AllowedArtifactSecretAtMatchingLines `
+        -Path $e2eApiLog `
+        -Value $build.BuildId
+    Add-AllowedArtifactSecretAtMatchingLines `
+        -Path $e2eApiLog `
+        -Value $build.SentinelSha256
+    Add-AllowedArtifactSecretAtMatchingLines `
+        -Path $e2eWebLog `
+        -Value $build.BuildId
     $packageManifestPath = Join-Path $repoRoot "PACKAGE_MANIFEST.json"
     $approvedPackageManifestSha256 = [string]::Concat(
         "c11bb9c8", "42694512",
@@ -866,6 +1687,9 @@ try {
         throw "PACKAGE_MANIFEST.json does not match its approved immutable digest."
     }
     Add-StructuredSha256Exceptions -Path $packageManifestPath
+    Add-ValidatedPackageLockExceptions -Path (
+        Join-Path $repoRoot "package-lock.json"
+    )
     Add-ValidatedEvidenceManifestExceptions -Path (
         Join-Path $repoRoot "qa\evidence\phase_01\evidence-manifest.json"
     )
@@ -883,11 +1707,45 @@ try {
         $entropyCanaryPath,
         "opaque_value = `"$entropyCanary`" $inlinePragma"
     )
+    $lockCanaryPath = Join-Path $tempDirectory "package-lock.json"
+    [System.IO.File]::WriteAllText(
+        $lockCanaryPath,
+        "{`"opaque`":`"$entropyCanary`"}"
+    )
+    $nonTextExtensionCanaryPath = Join-Path $tempDirectory "entropy-canary.svg"
+    $nonTextEntropyCanaryBytes = [byte[]]::new(48)
+    [System.Security.Cryptography.RandomNumberGenerator]::Fill(
+        $nonTextEntropyCanaryBytes
+    )
+    $nonTextEntropyCanary = [System.Convert]::ToBase64String(
+        $nonTextEntropyCanaryBytes
+    )
+    [System.IO.File]::WriteAllText(
+        $nonTextExtensionCanaryPath,
+        "<svg><!-- opaque_value = `"$nonTextEntropyCanary`" --></svg>"
+    )
+    $fakeBinaryExtensionCanaryPath = Join-Path $tempDirectory "text-canary.png"
+    [System.IO.File]::WriteAllText(
+        $fakeBinaryExtensionCanaryPath,
+        [System.String]::Concat("opaque_value = `"", $nonTextEntropyCanary, "`"")
+    )
+    $utf8SwaggerCanaryPath = Join-Path $tempDirectory "emoji-swagger-canary.txt"
+    [System.IO.File]::WriteAllText(
+        $utf8SwaggerCanaryPath,
+        [System.String]::Concat("표시 = `"", $nonTextEntropyCanary, "`"")
+    )
+    $detectSecretsCanaryFiles = @(
+        "--only-allowlisted",
+        "package-lock.json",
+        "entropy-canary.svg",
+        "emoji-swagger-canary.txt",
+        "text-canary.png"
+    )
     $null = Get-ValidatedUtf8TextFiles `
-        -Files @("--only-allowlisted") `
+        -Files $detectSecretsCanaryFiles `
         -WorkingDirectory $tempDirectory
     $canaryScan = Invoke-DetectSecretsJson `
-        -Files @("--only-allowlisted") `
+        -Files $detectSecretsCanaryFiles `
         -OutputPath (Join-Path $tempDirectory "canary-scan.json") `
         -WorkingDirectory $tempDirectory
     $canaryTypes = @(
@@ -897,8 +1755,38 @@ try {
             }
         }
     )
-    if ($canaryTypes -notcontains "Base64 High Entropy String") {
-        throw "detect-secrets did not reject the inline-allowlisted option-name canary."
+    $canaryFindingPaths = @($canaryScan.results.PSObject.Properties.Name)
+    if (
+        $canaryTypes -notcontains "Base64 High Entropy String" -or
+        $canaryFindingPaths -notcontains "--only-allowlisted" -or
+        $canaryFindingPaths -notcontains "package-lock.json" -or
+        $canaryFindingPaths -notcontains "entropy-canary.svg" -or
+        $canaryFindingPaths -notcontains "emoji-swagger-canary.txt" -or
+        $canaryFindingPaths -notcontains "text-canary.png"
+    ) {
+        throw "detect-secrets did not reject every filter, path, extension, and UTF-8 canary."
+    }
+    $lineScopeCanaryPath = Join-Path $tempDirectory "line-scoped-exception-canary.txt"
+    [System.IO.File]::WriteAllLines(
+        $lineScopeCanaryPath,
+        @(
+            [System.String]::Concat("first = `"", $entropyCanary, "`""),
+            [System.String]::Concat("second = `"", $entropyCanary, "`"")
+        )
+    )
+    Add-AllowedArtifactSecret `
+        -Path $lineScopeCanaryPath `
+        -Value $entropyCanary `
+        -LineNumber 1
+    $wrongLineFinding = [pscustomobject]@{
+        type = "Base64 High Entropy String"
+        hashed_secret = Get-Sha1Hex -Value $entropyCanary
+        line_number = 2
+    }
+    if (Test-AllowedArtifactFinding `
+        -FindingPath $lineScopeCanaryPath `
+        -Finding $wrongLineFinding) {
+        throw "A generated-secret exception escaped its exact validated line."
     }
 
     $utf16CanaryPath = Join-Path $tempDirectory "utf16-encoding-canary.ps1"
@@ -919,98 +1807,174 @@ try {
     if (-not $utf16Rejected) {
         throw "The secret-scan encoding gate accepted a UTF-16 text canary."
     }
-
-    Push-Location -LiteralPath $repoRoot
+    $invalidUtf8CanaryPath = Join-Path $tempDirectory "invalid-utf8-canary.txt"
+    $invalidUtf8Prefix = [System.Text.Encoding]::UTF8.GetBytes(
+        [System.String]::Concat("opaque_value = `"", $entropyCanary, "`"")
+    )
+    $invalidUtf8Bytes = [byte[]]::new($invalidUtf8Prefix.Length + 1)
+    [System.Array]::Copy(
+        $invalidUtf8Prefix,
+        $invalidUtf8Bytes,
+        $invalidUtf8Prefix.Length
+    )
+    $invalidUtf8Bytes[$invalidUtf8Bytes.Length - 1] = 0x80
+    [System.IO.File]::WriteAllBytes($invalidUtf8CanaryPath, $invalidUtf8Bytes)
+    $invalidUtf8Rejected = $false
     try {
-        $gitFiles = @(& git ls-files --cached --others --exclude-standard)
-        if ($LASTEXITCODE -ne 0) {
-            throw "Unable to enumerate tracked and untracked repository files."
+        $null = Get-ValidatedUtf8TextFiles `
+            -Files @($invalidUtf8CanaryPath) `
+            -WorkingDirectory $tempDirectory
+    }
+    catch {
+        $invalidUtf8Rejected = $true
+    }
+    if (-not $invalidUtf8Rejected) {
+        throw "The secret-scan encoding gate accepted an invalid UTF-8 text canary."
+    }
+
+    $binaryEntropyCanaryPath = Join-Path $tempDirectory "binary-entropy-canary.png"
+    $binaryEntropyPrefix = [System.Text.Encoding]::UTF8.GetBytes(
+        [System.String]::Concat("opaque_value = `"", $entropyCanary, "`"")
+    )
+    $binaryEntropyBytes = [byte[]]::new($binaryEntropyPrefix.Length + 1)
+    [System.Array]::Copy(
+        $binaryEntropyPrefix,
+        $binaryEntropyBytes,
+        $binaryEntropyPrefix.Length
+    )
+    $binaryEntropyBytes[$binaryEntropyBytes.Length - 1] = 0x80
+    [System.IO.File]::WriteAllBytes(
+        $binaryEntropyCanaryPath,
+        $binaryEntropyBytes
+    )
+    $binaryEntropyRejected = $false
+    try {
+        $null = Get-ValidatedUtf8TextFiles `
+            -Files @($binaryEntropyCanaryPath) `
+            -WorkingDirectory $tempDirectory
+    }
+    catch {
+        $binaryEntropyRejected = $true
+    }
+    if (-not $binaryEntropyRejected) {
+        throw "The binary inspection gate accepted a high-entropy invalid UTF-8 canary."
+    }
+    $compressedCanaryPath = Join-Path $tempDirectory "compressed-secret-canary.zip"
+    $compressedCanaryArchive = [System.IO.Compression.ZipFile]::Open(
+        $compressedCanaryPath,
+        [System.IO.Compression.ZipArchiveMode]::Create
+    )
+    try {
+        $compressedCanaryEntry = $compressedCanaryArchive.CreateEntry(
+            "credentials.txt",
+            [System.IO.Compression.CompressionLevel]::Optimal
+        )
+        $compressedCanaryWriter = [System.IO.StreamWriter]::new(
+            $compressedCanaryEntry.Open(),
+            [System.Text.UTF8Encoding]::new($false)
+        )
+        try {
+            $compressedCanaryWriter.Write(
+                [System.String]::Concat("opaque_value = `"", $entropyCanary, "`"")
+            )
+        }
+        finally {
+            $compressedCanaryWriter.Dispose()
         }
     }
     finally {
-        Pop-Location
+        $compressedCanaryArchive.Dispose()
+    }
+    $compressedCanaryRejected = $false
+    try {
+        $null = Get-ValidatedUtf8TextFiles `
+            -Files @($compressedCanaryPath) `
+            -WorkingDirectory $tempDirectory
+    }
+    catch {
+        $compressedCanaryRejected = $true
+    }
+    if (-not $compressedCanaryRejected) {
+        throw "The secret-scan gate accepted an uninspectable compressed project archive."
+    }
+    $binaryCompletionCanaryPath = Join-Path $tempDirectory "binary-completion-canary.png"
+    $binaryCompletionCanaryBytes = [byte[]] @(0x89, 0x50, 0x4e, 0x47, 0x80)
+    [System.IO.File]::WriteAllBytes(
+        $binaryCompletionCanaryPath,
+        $binaryCompletionCanaryBytes
+    )
+    $binaryCanaryRecords = [System.Collections.Generic.List[object]]::new()
+    $binaryCanaryTextFiles = @(
+        Get-ValidatedUtf8TextFiles `
+            -Files @($binaryCompletionCanaryPath) `
+            -WorkingDirectory $tempDirectory `
+            -BinaryCompletionRecords $binaryCanaryRecords
+    )
+    if (
+        $binaryCanaryTextFiles.Count -ne 0 -or
+        $binaryCanaryRecords.Count -ne 1 -or
+        $binaryCanaryRecords[0].full_path -cne $binaryCompletionCanaryPath -or
+        [int64] $binaryCanaryRecords[0].size -ne $binaryCompletionCanaryBytes.Length -or
+        $binaryCanaryRecords[0].sha256 -cne
+            (Get-Sha256HexFromBytes -Bytes $binaryCompletionCanaryBytes)
+    ) {
+        throw "The binary inspection gate omitted an exact completion record."
     }
 
-    $nextArtifactFiles = @(
-        Get-ChildItem -LiteralPath $nextRoot -Recurse -File |
-            Where-Object {
-                $relative = [System.IO.Path]::GetRelativePath($nextRoot, $_.FullName)
-                $topLevel = $relative.Split(
-                    [System.IO.Path]::DirectorySeparatorChar,
-                    [System.StringSplitOptions]::RemoveEmptyEntries
-                )[0]
-                $topLevel -notin @("cache", "dev") -and (
-                    $_.Extension.ToLowerInvariant() -in $textArtifactExtensions -or
-                    $_.Name -eq "BUILD_ID"
-                )
-            }
-    )
-    $logArtifactFiles = @(
-        Get-ChildItem -LiteralPath $logRoot -Recurse -File |
-            Where-Object { $_.Extension.ToLowerInvariant() -in $textArtifactExtensions }
-    )
-    $playwrightTextFiles = @(
-        foreach ($root in $playwrightArtifactRoots) {
-            Get-ChildItem -LiteralPath $root -Recurse -File |
-                Where-Object { $_.Extension.ToLowerInvariant() -in $textArtifactExtensions }
-        }
-    )
-    $qaTextFiles = @(
-        Get-ChildItem -LiteralPath (Join-Path $repoRoot "qa") -Recurse -File |
-            Where-Object { $_.Extension.ToLowerInvariant() -in $textArtifactExtensions }
-    )
     $ignoredEnvironmentFiles = @(
-        Get-ChildItem -LiteralPath $repoRoot -Recurse -File -Force |
-            Where-Object {
-                $_.Name -like ".env*" -and
-                $_.FullName -notmatch '[\\/](\.git|\.venv|node_modules|\.next)[\\/]'
-            }
-    )
-    $ignoredLogFiles = @(
-        Get-ChildItem -LiteralPath $repoRoot -Recurse -File -Filter "*.log" -Force |
-            Where-Object {
-                $_.FullName -notmatch '[\\/](\.git|\.venv|node_modules)[\\/]'
-            }
+        $repositoryFiles | Where-Object { $_.Name -like ".env*" }
     )
     $traceArchives = @(
         foreach ($root in $playwrightArtifactRoots) {
-            Get-ChildItem -LiteralPath $root -Recurse -File -Filter "*.zip"
+            Get-ChildItem -LiteralPath $root -Recurse -File -Filter "*.zip" -Force
         }
     )
+    $traceArchivePaths = [System.Collections.Generic.HashSet[string]]::new(
+        [System.StringComparer]::OrdinalIgnoreCase
+    )
+    foreach ($traceArchive in $traceArchives) {
+        $null = $traceArchivePaths.Add(
+            [System.IO.Path]::GetFullPath($traceArchive.FullName)
+        )
+    }
+    $binaryCompletionRecords = [System.Collections.Generic.List[object]]::new()
     $traceTextFiles = @(
         Expand-TraceTextArtifacts `
             -Archives $traceArchives `
             -Destination (Join-Path $tempDirectory "trace-text") `
-            -Sentinel $build.Sentinel
+            -Sentinel $build.Sentinel `
+            -ArchiveCompletionRecords $binaryCompletionRecords
     )
 
-    $artifactFiles = @(
-        $nextArtifactFiles +
-        $logArtifactFiles +
-        $playwrightTextFiles +
-        $qaTextFiles +
-        $ignoredEnvironmentFiles +
-        $ignoredLogFiles +
-        $traceTextFiles +
-        @(Get-Item -LiteralPath $buildEvidencePath)
-    )
-    $artifactScanArguments = @(
-        $artifactFiles |
-            ForEach-Object { Convert-ToScanArgument -Path $_.FullName } |
-            Where-Object { $_ } |
-            Sort-Object -Unique
-    )
+    $artifactFiles = @($repositoryFiles + $traceTextFiles)
     $scanFiles = @(
-        $gitFiles + $artifactScanArguments |
-            Where-Object { $_ } |
+        $artifactFiles |
+            Where-Object {
+                -not $traceArchivePaths.Contains(
+                    [System.IO.Path]::GetFullPath($_.FullName)
+                )
+            } |
+            ForEach-Object { Convert-ToScanArgument -Path $_.FullName } |
             Sort-Object -Unique
     )
     $validatedTextScanFiles = @(
-        Get-ValidatedUtf8TextFiles -Files $scanFiles -WorkingDirectory $repoRoot
+        Get-ValidatedUtf8TextFiles `
+            -Files $scanFiles `
+            -WorkingDirectory $repoRoot `
+            -BinaryCompletionRecords $binaryCompletionRecords
+    )
+    $validatedTextScanArguments = @(
+        $validatedTextScanFiles |
+            ForEach-Object { Convert-ToScanArgument -Path $_.FullName } |
+            Sort-Object -Unique
     )
     $scan = Invoke-DetectSecretsJson `
-        -Files $scanFiles `
+        -Files $validatedTextScanArguments `
         -OutputPath (Join-Path $tempDirectory "scan.json")
+    Assert-SecretScanCompletionCoverage `
+        -ExpectedFiles $artifactFiles `
+        -TextCompletionRecords @($scan.serial_scan.completed) `
+        -BinaryCompletionRecords @($binaryCompletionRecords)
 
     $findings = @()
     $allowedFindingCount = 0
@@ -1034,7 +1998,7 @@ try {
     Write-Host "Validated narrow generated-hash exceptions: $allowedFindingCount"
 
     $inspectionFiles = @(
-        $validatedTextScanFiles + $artifactFiles |
+        $validatedTextScanFiles |
             Sort-Object -Property FullName -Unique
     )
     $patternHits = $inspectionFiles | Select-String -Pattern $sensitivePattern
@@ -1043,7 +2007,7 @@ try {
         throw "High-confidence secret pattern detected."
     }
 
-    $bundleHits = Get-ChildItem -LiteralPath $nextStaticRoot -Recurse -File |
+    $bundleHits = Get-ChildItem -LiteralPath $nextStaticRoot -Recurse -File -Force |
         Select-String -Pattern '(?i)(CLIENT_SECRET|ACCESS_TOKEN|AUTHORIZATION|PHASE1_SERVER_ONLY_SENTINEL|NEXT_PUBLIC_[A-Z0-9_]+)'
     if ($bundleHits) {
         $bundleHits | Select-Object Path, LineNumber | Format-Table -AutoSize | Out-Host
@@ -1060,7 +2024,7 @@ try {
     }
 
     $sentinelLeakFiles = @(
-        Get-ChildItem -LiteralPath $nextRoot -Recurse -File |
+        Get-ChildItem -LiteralPath $nextRoot -Recurse -File -Force |
             Where-Object {
                 $relative = [System.IO.Path]::GetRelativePath($nextRoot, $_.FullName)
                 $relative -notmatch '^(cache|dev)[\\/]'
@@ -1073,7 +2037,9 @@ try {
         $playwrightReportRoot,
         $playwrightResultsRoot
     )) {
-        $sentinelLeakFiles += @(Get-ChildItem -LiteralPath $root -Recurse -File)
+        $sentinelLeakFiles += @(
+            Get-ChildItem -LiteralPath $root -Recurse -File -Force
+        )
     }
     $sentinelLeaks = $sentinelLeakFiles | Select-String -SimpleMatch $build.Sentinel
     if ($sentinelLeaks) {
@@ -1127,6 +2093,40 @@ try {
         } | Format-Table -AutoSize | Out-Host
         throw "A non-example environment file is tracked by Git."
     }
+
+    $finalRepositoryFiles = @(
+        Get-SecretScanRepositoryFiles `
+            -Root $repoRoot `
+            -ExcludedExactDirectories @($tempDirectory)
+    )
+    $initialRepositoryPaths = [System.Collections.Generic.HashSet[string]]::new(
+        [System.StringComparer]::OrdinalIgnoreCase
+    )
+    $finalRepositoryPaths = [System.Collections.Generic.HashSet[string]]::new(
+        [System.StringComparer]::OrdinalIgnoreCase
+    )
+    foreach ($file in $repositoryFiles) {
+        $null = $initialRepositoryPaths.Add(
+            [System.IO.Path]::GetFullPath($file.FullName)
+        )
+    }
+    foreach ($file in $finalRepositoryFiles) {
+        $null = $finalRepositoryPaths.Add(
+            [System.IO.Path]::GetFullPath($file.FullName)
+        )
+    }
+    if (
+        $initialRepositoryPaths.Count -ne $repositoryFiles.Count -or
+        $finalRepositoryPaths.Count -ne $finalRepositoryFiles.Count -or
+        -not $initialRepositoryPaths.SetEquals($finalRepositoryPaths)
+    ) {
+        throw "The repository file scope changed during the secret scan."
+    }
+    Assert-SecretScanCompletionCoverage `
+        -ExpectedFiles $artifactFiles `
+        -TextCompletionRecords @($scan.serial_scan.completed) `
+        -BinaryCompletionRecords @($binaryCompletionRecords)
+    Assert-GitIndexMatchesWorkingTree -Root $repoRoot
 
     Write-Host "Secret scan passed."
 }

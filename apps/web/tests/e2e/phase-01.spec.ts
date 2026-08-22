@@ -1,9 +1,14 @@
 import { readFileSync } from "node:fs";
+import { createSocket } from "node:dgram";
+import { createServer } from "node:net";
 import { resolve } from "node:path";
 
 import { expect, test, type Page } from "@playwright/test";
 
-const SENTINEL_PATH = resolve(process.cwd(), "../../var/phase-01-build-sentinel.txt");
+const SENTINEL_PATH = resolve(
+  process.cwd(),
+  "../../var/phase-01-build-sentinel.txt",
+);
 
 function readServerOnlySentinel(): string {
   const sentinel = readFileSync(SENTINEL_PATH, "utf8").trim();
@@ -26,14 +31,18 @@ function isAllowedBrowserUrl(rawUrl: string): boolean {
   }
 }
 
-async function withInspectionTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
+async function withInspectionTimeout<T>(
+  promise: Promise<T>,
+  timeoutMs: number,
+): Promise<T> {
   let timer: ReturnType<typeof setTimeout> | undefined;
   try {
     return await Promise.race([
       promise,
       new Promise<never>((_, reject) => {
         timer = setTimeout(
-          () => reject(new Error(`Response inspection exceeded ${timeoutMs}ms.`)),
+          () =>
+            reject(new Error(`Response inspection exceeded ${timeoutMs}ms.`)),
           timeoutMs,
         );
       }),
@@ -46,6 +55,7 @@ async function withInspectionTimeout<T>(promise: Promise<T>, timeoutMs: number):
 }
 
 async function observePageBoundary(page: Page, sentinel: string) {
+  const context = page.context();
   const requestUrls: string[] = [];
   const forbiddenRequestUrls: string[] = [];
   const directBackendRequestUrls: string[] = [];
@@ -53,11 +63,38 @@ async function observePageBoundary(page: Page, sentinel: string) {
   const uninspectedResponses: string[] = [];
   const responseInspections: Promise<void>[] = [];
   const inspectedInterceptedUrls = new Set<string>();
+  const boundaryCanaryUrls = new Set<string>();
   const sentinelBytes = Buffer.from(sentinel);
+
+  // Playwright's HTTP and WebSocket routing does not mediate peer-to-peer or
+  // QUIC transports. Remove those constructors before any application script
+  // runs; workers are removed as well so they cannot create an unobserved
+  // transport in a separate global scope.
+  const blockedTransportConstructors = [
+    "RTCPeerConnection",
+    "webkitRTCPeerConnection",
+    "WebTransport",
+    "WebSocketStream",
+    "Worker",
+    "SharedWorker",
+  ];
+  await context.addInitScript((constructorNames: string[]) => {
+    for (const constructorName of constructorNames) {
+      Object.defineProperty(globalThis, constructorName, {
+        configurable: false,
+        enumerable: false,
+        value: undefined,
+        writable: false,
+      });
+    }
+  }, blockedTransportConstructors);
+  // The page fixture already owns an initial about:blank document. Navigate it
+  // once so the context init script is active before the behavioral canaries.
+  await page.goto("about:blank");
 
   const inspectUrl = (url: string) => {
     requestUrls.push(url);
-    if (!isAllowedBrowserUrl(url)) {
+    if (!isAllowedBrowserUrl(url) && !boundaryCanaryUrls.has(url)) {
       forbiddenRequestUrls.push(url);
     }
     try {
@@ -69,25 +106,49 @@ async function observePageBoundary(page: Page, sentinel: string) {
     }
   };
 
-  page.on("request", (request) => {
+  context.on("request", (request) => {
     inspectUrl(request.url());
   });
 
-  page.on("websocket", (socket) => {
-    inspectUrl(socket.url());
-    socket.on("framereceived", ({ payload }) => {
-      const frame = typeof payload === "string" ? Buffer.from(payload) : payload;
+  // Install this at context scope before any page code runs so a popup's first
+  // navigation cannot escape the offline boundary. Forbidden sockets are
+  // closed without creating a server-side connection; allowed local sockets
+  // are forwarded while both directions are inspected.
+  await context.routeWebSocket(/.*/, async (socket) => {
+    const url = socket.url();
+    inspectUrl(url);
+    if (!isAllowedBrowserUrl(url)) {
+      await socket.close({ code: 1008, reason: "Phase 1 offline boundary" });
+      return;
+    }
+    const serverSocket = socket.connectToServer();
+    socket.onMessage((payload) => {
+      const frame =
+        typeof payload === "string" ? Buffer.from(payload) : payload;
       if (frame.includes(sentinelBytes)) {
-        sentinelLeaks.push(`websocket:${socket.url()}`);
+        sentinelLeaks.push(`websocket-client:${url}`);
       }
+      serverSocket.send(payload);
+    });
+    serverSocket.onMessage((payload) => {
+      const frame =
+        typeof payload === "string" ? Buffer.from(payload) : payload;
+      if (frame.includes(sentinelBytes)) {
+        sentinelLeaks.push(`websocket-server:${url}`);
+      }
+      socket.send(payload);
     });
   });
 
   // Next.js prefetch responses can remain open until navigation cancels them.
   // Buffer each local RSC fetch before the browser sees it so the exact response
   // (not a replay) is inspected and a timeout aborts the request fail-closed.
-  await page.route("**/*", async (route) => {
+  await context.route("**/*", async (route) => {
     const request = route.request();
+    if (!isAllowedBrowserUrl(request.url())) {
+      await route.abort("blockedbyclient");
+      return;
+    }
     let url: URL;
     try {
       url = new URL(request.url());
@@ -106,7 +167,10 @@ async function observePageBoundary(page: Page, sentinel: string) {
       return;
     }
     try {
-      const bufferedResponse = await route.fetch({ maxRedirects: 0, timeout: 5_000 });
+      const bufferedResponse = await route.fetch({
+        maxRedirects: 0,
+        timeout: 5_000,
+      });
       const headers = JSON.stringify(bufferedResponse.headers());
       const body = await withInspectionTimeout(bufferedResponse.body(), 5_000);
       if (headers.includes(sentinel) || body.includes(sentinelBytes)) {
@@ -120,7 +184,7 @@ async function observePageBoundary(page: Page, sentinel: string) {
     }
   });
 
-  page.on("response", (response) => {
+  context.on("response", (response) => {
     responseInspections.push(
       (async () => {
         try {
@@ -162,6 +226,184 @@ async function observePageBoundary(page: Page, sentinel: string) {
   });
 
   return {
+    async assertPreNetworkBlocking() {
+      const connectionHits: string[] = [];
+      const datagramHits: string[] = [];
+      const canaryServer = createServer((socket) => {
+        connectionHits.push(
+          `${socket.remoteAddress ?? "unknown"}:${socket.remotePort ?? 0}`,
+        );
+        socket.destroy();
+      });
+      await new Promise<void>((resolveListen, rejectListen) => {
+        canaryServer.once("error", rejectListen);
+        canaryServer.listen(0, "127.0.0.1", () => {
+          canaryServer.off("error", rejectListen);
+          resolveListen();
+        });
+      });
+      const datagramServer = createSocket("udp4");
+      let datagramBound = false;
+      datagramServer.on("message", (_message, remote) => {
+        datagramHits.push(`${remote.address}:${remote.port}`);
+      });
+      try {
+        await new Promise<void>((resolveBind, rejectBind) => {
+          datagramServer.once("error", rejectBind);
+          datagramServer.bind(0, "127.0.0.1", () => {
+            datagramServer.off("error", rejectBind);
+            datagramBound = true;
+            resolveBind();
+          });
+        });
+        const address = canaryServer.address();
+        if (address === null || typeof address === "string") {
+          throw new Error(
+            "The browser boundary canary did not acquire a TCP port.",
+          );
+        }
+        const datagramAddress = datagramServer.address();
+        if (typeof datagramAddress === "string") {
+          throw new Error(
+            "The browser boundary canary did not acquire a UDP port.",
+          );
+        }
+        const httpUrl = `http://127.0.0.1:${address.port}/must-not-connect`;
+        const websocketUrl = `ws://127.0.0.1:${address.port}/must-not-connect`;
+        boundaryCanaryUrls.add(httpUrl);
+        boundaryCanaryUrls.add(websocketUrl);
+
+        const result = await page.evaluate(
+          async ({
+            canaryHttpUrl,
+            canaryWebsocketUrl,
+            stunUrl,
+            blockedConstructors,
+          }) => {
+            const http = await fetch(canaryHttpUrl).then(
+              () => "completed",
+              () => "blocked",
+            );
+            const websocket = await new Promise<string>((resolveSocket) => {
+              const socket = new WebSocket(canaryWebsocketUrl);
+              let settled = false;
+              const finish = (value: string) => {
+                if (settled) return;
+                settled = true;
+                socket.close();
+                resolveSocket(value);
+              };
+              socket.addEventListener("open", () => finish("opened"), {
+                once: true,
+              });
+              socket.addEventListener("error", () => finish("blocked"), {
+                once: true,
+              });
+              socket.addEventListener("close", () => finish("blocked"), {
+                once: true,
+              });
+              setTimeout(() => finish("timeout"), 1_000);
+            });
+            let websocketStream = "blocked";
+            const websocketStreamConstructor = Reflect.get(
+              globalThis,
+              "WebSocketStream",
+            );
+            if (typeof websocketStreamConstructor === "function") {
+              websocketStream = "available";
+              const StreamConstructor = websocketStreamConstructor as new (
+                url: string,
+              ) => { close: () => void; opened: Promise<unknown> };
+              const stream = new StreamConstructor(canaryWebsocketUrl);
+              await Promise.race([
+                stream.opened.catch(() => undefined),
+                new Promise((resolveWait) => setTimeout(resolveWait, 300)),
+              ]);
+              stream.close();
+            }
+            const unavailableConstructors = blockedConstructors.filter(
+              (constructorName) =>
+                Reflect.get(globalThis, constructorName) === undefined &&
+                Object.getOwnPropertyDescriptor(globalThis, constructorName)
+                  ?.configurable === false,
+            );
+            let rtc = "blocked";
+            const rtcConstructor = Reflect.get(globalThis, "RTCPeerConnection");
+            if (typeof rtcConstructor === "function") {
+              rtc = "available";
+              const peer = new (rtcConstructor as typeof RTCPeerConnection)({
+                iceServers: [{ urls: stunUrl }],
+              });
+              try {
+                peer.createDataChannel("phase-01-boundary-canary");
+                await peer.setLocalDescription(await peer.createOffer());
+                await new Promise((resolveWait) =>
+                  setTimeout(resolveWait, 300),
+                );
+              } finally {
+                peer.close();
+              }
+            }
+            return {
+              http,
+              rtc,
+              unavailableConstructors,
+              websocket,
+              websocketStream,
+            };
+          },
+          {
+            blockedConstructors: blockedTransportConstructors,
+            canaryHttpUrl: httpUrl,
+            canaryWebsocketUrl: websocketUrl,
+            stunUrl: `stun:127.0.0.1:${datagramAddress.port}`,
+          },
+        );
+        expect(
+          result.http,
+          "금지된 HTTP 요청은 브라우저 전송 전에 차단되어야 합니다.",
+        ).toBe("blocked");
+        expect(result.websocket).not.toBe("timeout");
+        expect(
+          result.websocketStream,
+          "WebSocketStream must be disabled before application code runs.",
+        ).toBe("blocked");
+        expect(
+          result.rtc,
+          "WebRTC must be disabled before application code runs.",
+        ).toBe("blocked");
+        expect(result.unavailableConstructors).toEqual(
+          blockedTransportConstructors,
+        );
+        await new Promise((resolveWait) => setTimeout(resolveWait, 100));
+        expect(
+          connectionHits,
+          "금지된 HTTP/WebSocket 카나리는 로컬 TCP listener에도 도달하면 안 됩니다.",
+        ).toEqual([]);
+        expect(
+          datagramHits,
+          "금지된 WebRTC STUN 카나리는 UDP listener에 도달하면 안 됩니다.",
+        ).toEqual([]);
+      } finally {
+        const closePromises = [
+          new Promise<void>((resolveClose, rejectClose) => {
+            canaryServer.close((error) =>
+              error ? rejectClose(error) : resolveClose(),
+            );
+          }),
+        ];
+        if (datagramBound) {
+          closePromises.push(
+            new Promise<void>((resolveClose) =>
+              datagramServer.close(resolveClose),
+            ),
+          );
+        } else {
+          datagramServer.removeAllListeners();
+        }
+        await Promise.all(closePromises);
+      }
+    },
     async assertClean() {
       await page.waitForLoadState("networkidle");
 
@@ -172,7 +414,15 @@ async function observePageBoundary(page: Page, sentinel: string) {
         await Promise.all(pending);
       }
 
-      expect(requestUrls.length, "브라우저 요청 URL이 수집되어야 합니다.").toBeGreaterThan(0);
+      expect(
+        requestUrls.length,
+        "브라우저 요청 URL이 수집되어야 합니다.",
+      ).toBeGreaterThan(0);
+      const pages = context.pages();
+      expect(pages, "Phase 1 화면은 새 popup을 만들면 안 됩니다.").toHaveLength(
+        1,
+      );
+      expect(pages[0]).toBe(page);
       expect(
         forbiddenRequestUrls,
         "브라우저는 http/ws 127.0.0.1 경계 밖으로 요청하면 안 됩니다.",
@@ -186,28 +436,43 @@ async function observePageBoundary(page: Page, sentinel: string) {
         uninspectedResponses,
         "bodyless 상태가 아닌 모든 페이지 응답을 sentinel 검사해야 합니다.",
       ).toEqual([]);
-      expect(sentinelLeaks, "server-only sentinel이 응답에 포함되면 안 됩니다.").toEqual([]);
+      expect(
+        sentinelLeaks,
+        "server-only sentinel이 응답에 포함되면 안 됩니다.",
+      ).toEqual([]);
     },
   };
 }
 
-test("Phase 1 합성 Company와 모든 issuer의 Data Quality 화면", async ({ page }, testInfo) => {
+test("Phase 1 합성 Company와 모든 issuer의 Data Quality 화면", async ({
+  page,
+}, testInfo) => {
   const audit = await observePageBoundary(page, readServerOnlySentinel());
+  await audit.assertPreNetworkBlocking();
 
   await page.goto("/");
 
   await expect(page.getByTestId("fixture-banner")).toBeVisible();
-  await expect(page.getByTestId("fixture-banner")).toContainText("실제 투자 데이터 아님");
+  await expect(page.getByTestId("fixture-banner")).toContainText(
+    "실제 투자 데이터 아님",
+  );
   await expect(page).toHaveURL(/\/company\/issuer_[a-z0-9_]+$/);
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
   await expect(page.getByText("SAMPLE_RESULT").first()).toBeVisible();
-  await expect(page.getByRole("button", { name: /후속 Phase에서 제공/ }).first()).toBeDisabled();
+  await expect(
+    page.getByRole("button", { name: /후속 Phase에서 제공/ }).first(),
+  ).toBeDisabled();
   await expect(page.locator('a[href^="javascript:"]')).toHaveCount(0);
-  await page.screenshot({ path: testInfo.outputPath("company.png"), fullPage: true });
+  await page.screenshot({
+    path: testInfo.outputPath("company.png"),
+    fullPage: true,
+  });
 
   await page.getByRole("link", { name: "Data Quality" }).click();
   await expect(page).toHaveURL(/\/data-quality$/);
-  await expect(page.getByRole("heading", { level: 1, name: "Data Quality" })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { level: 1, name: "Data Quality" }),
+  ).toBeVisible();
 
   const krIssuer = page.getByTestId("quality-issuer-issuer_kr_synthetic");
   await expect(krIssuer).toBeVisible();
@@ -223,7 +488,10 @@ test("Phase 1 합성 Company와 모든 issuer의 Data Quality 화면", async ({ 
   await expect(usIssuer.getByText(/마지막 정상 데이터는 보존됨/)).toBeVisible();
 
   await expect(page.locator('a[href^="javascript:"]')).toHaveCount(0);
-  await page.screenshot({ path: testInfo.outputPath("data-quality.png"), fullPage: true });
+  await page.screenshot({
+    path: testInfo.outputPath("data-quality.png"),
+    fullPage: true,
+  });
   await audit.assertClean();
 });
 
@@ -234,8 +502,13 @@ test("알 수 없는 issuer는 안전한 not-found 화면", async ({ page }) => 
 
   await expect(page.getByTestId("fixture-banner")).toBeVisible();
   await expect(
-    page.getByRole("heading", { level: 1, name: "합성 기업을 찾을 수 없습니다" }),
+    page.getByRole("heading", {
+      level: 1,
+      name: "합성 기업을 찾을 수 없습니다",
+    }),
   ).toBeVisible();
-  await expect(page.getByRole("link", { name: "Fixture 홈으로" })).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: "Fixture 홈으로" }),
+  ).toBeVisible();
   await audit.assertClean();
 });

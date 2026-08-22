@@ -1,0 +1,2 @@
+* text=auto eol=lf
+qa/evidence/phase_01/** -text

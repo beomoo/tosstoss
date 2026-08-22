@@ -1,5 +1,6 @@
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
+$env:NODE_DISABLE_COMPILE_CACHE = "1"
 
 $script:RepoRoot = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot "..")).Path
 
@@ -13,6 +14,52 @@ function Get-VenvPython {
         throw "Python virtual environment not found. Run scripts/setup.ps1 first."
     }
     return $pythonPath
+}
+
+function Get-GuardedPythonModuleArguments {
+    param(
+        [Parameter(Mandatory = $true)]
+        [ValidatePattern('^[A-Za-z][A-Za-z0-9_]*(?:\.[A-Za-z][A-Za-z0-9_]*)*$')]
+        [string] $Module,
+        [string[]] $ArgumentList = @()
+    )
+
+    $guardPath = [System.IO.Path]::GetFullPath(
+        (Join-Path $script:RepoRoot "scripts\python_runtime_guard.py")
+    )
+    if (-not (Test-Path -LiteralPath $guardPath -PathType Leaf)) {
+        throw "The Python runtime offline guard is missing."
+    }
+    Assert-SafeMutableRepositoryFile -Path $guardPath
+    return @("-I", "-B", "-S", $guardPath, "--module", $Module, "--") + $ArgumentList
+}
+
+function Get-GuardedPythonScriptArguments {
+    param(
+        [Parameter(Mandatory = $true)][string] $ScriptPath,
+        [string[]] $ArgumentList = @()
+    )
+
+    $guardPath = [System.IO.Path]::GetFullPath(
+        (Join-Path $script:RepoRoot "scripts\python_runtime_guard.py")
+    )
+    $approvedScriptPath = [System.IO.Path]::GetFullPath(
+        (Join-Path $script:RepoRoot "scripts\secret_scan_driver.py")
+    )
+    $fullScriptPath = [System.IO.Path]::GetFullPath($ScriptPath)
+    if (-not (Test-Path -LiteralPath $guardPath -PathType Leaf)) {
+        throw "The Python runtime offline guard is missing."
+    }
+    if ($fullScriptPath -cne $approvedScriptPath) {
+        throw "The guarded Python script is not the exact approved Phase 1 driver."
+    }
+    foreach ($requiredFile in @($guardPath, $fullScriptPath)) {
+        Assert-SafeMutableRepositoryFile -Path $requiredFile
+    }
+    return @(
+        "-I", "-B", "-S", "-X", "utf8", $guardPath,
+        "--script", $fullScriptPath, "--"
+    ) + $ArgumentList
 }
 
 function Assert-CommandAvailable {
@@ -136,10 +183,48 @@ function Assert-SafeRepositoryPath {
     Assert-NoReparsePointInPath -Path $fullPath
 }
 
-function Assert-NoReparsePointsInTree {
+function Assert-SafeMutableRepositoryFile {
     param(
         [Parameter(Mandatory = $true)]
         [string] $Path
+    )
+
+    $fullPath = [System.IO.Path]::GetFullPath($Path)
+    Assert-SafeRepositoryPath -Path $fullPath
+    if (-not (Test-Path -LiteralPath $fullPath)) {
+        return
+    }
+    if (-not (Test-Path -LiteralPath $fullPath -PathType Leaf)) {
+        throw "A mutable repository file path has an unexpected type: $fullPath"
+    }
+    $item = Get-Item -LiteralPath $fullPath -Force
+    if ([string] $item.LinkType -ceq "HardLink") {
+        throw "Refusing to modify a hard-linked repository file: $fullPath"
+    }
+}
+
+function Assert-SafeSqliteDatabaseFiles {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string] $DatabasePath
+    )
+
+    $fullDatabasePath = [System.IO.Path]::GetFullPath($DatabasePath)
+    foreach ($candidate in @(
+        $fullDatabasePath,
+        "$fullDatabasePath-journal",
+        "$fullDatabasePath-wal",
+        "$fullDatabasePath-shm"
+    )) {
+        Assert-SafeMutableRepositoryFile -Path $candidate
+    }
+}
+
+function Assert-NoReparsePointsInTree {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string] $Path,
+        [switch] $RejectHardLinks
     )
 
     $root = [System.IO.Path]::GetFullPath($Path)
@@ -156,10 +241,87 @@ function Assert-NoReparsePointsInTree {
             if ($item.Attributes -band [System.IO.FileAttributes]::ReparsePoint) {
                 throw "Refusing a recursive operation over a reparse point: $($item.FullName)"
             }
+            if (
+                $RejectHardLinks -and
+                -not $item.PSIsContainer -and
+                [string] $item.LinkType -ceq "HardLink"
+            ) {
+                throw "Refusing a mutable tree containing a hard-linked file: $($item.FullName)"
+            }
             if ($item.PSIsContainer) {
                 $pending.Enqueue($item.FullName)
             }
         }
+    }
+}
+
+function Assert-NoProjectPythonBytecode {
+    $bytecodeRoots = @(
+        (Join-Path $script:RepoRoot "services\api"),
+        (Join-Path $script:RepoRoot "tests"),
+        (Join-Path $script:RepoRoot "scripts"),
+        (Join-Path $script:RepoRoot "apps\web\src"),
+        (Join-Path $script:RepoRoot "apps\web\tests")
+    )
+    foreach ($root in $bytecodeRoots) {
+        if (-not (Test-Path -LiteralPath $root -PathType Container)) {
+            throw "A Python source scope is missing: $root"
+        }
+        Assert-NoReparsePointsInTree -Path $root -RejectHardLinks
+        $bytecodeFiles = @(
+            Get-ChildItem -LiteralPath $root -Recurse -File -Force |
+                Where-Object { $_.Extension -in @(".pyc", ".pyo") }
+        )
+        if ($bytecodeFiles.Count -gt 0) {
+            throw "Generated Python bytecode is prohibited in project source scopes."
+        }
+    }
+    $rootBytecodeFiles = @(
+        Get-ChildItem -LiteralPath $script:RepoRoot -File -Force |
+            Where-Object { $_.Extension -in @(".pyc", ".pyo") }
+    )
+    if ($rootBytecodeFiles.Count -gt 0) {
+        throw "Root-level Python bytecode is prohibited."
+    }
+}
+
+function Get-NpmQueryRecords {
+    param([Parameter(Mandatory = $true)][string] $Selector)
+
+    Push-Location -LiteralPath $script:RepoRoot
+    try {
+        $queryOutput = @(& npm query $Selector --json 2>&1)
+        $exitCode = $LASTEXITCODE
+    }
+    finally {
+        Pop-Location
+    }
+    if ($exitCode -ne 0) {
+        $queryOutput | ForEach-Object { Write-Host ([string] $_) }
+        throw "npm query failed for selector '$Selector'."
+    }
+    try {
+        return @(
+            ($queryOutput -join [Environment]::NewLine) |
+                ConvertFrom-Json -ErrorAction Stop
+        )
+    }
+    catch {
+        throw "npm query did not emit valid JSON for selector '$Selector'."
+    }
+}
+
+function Assert-NpmDependencyTreeClean {
+    foreach ($selector in @(':extraneous', ':invalid', ':missing')) {
+        $records = @(Get-NpmQueryRecords -Selector $selector)
+        if ($records.Count -eq 0) {
+            continue
+        }
+        $records |
+            Select-Object name, version, location |
+            Format-Table -AutoSize |
+            Out-Host
+        throw "The npm dependency tree contains $selector package records."
     }
 }
 
