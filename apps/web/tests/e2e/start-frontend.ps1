@@ -5,6 +5,7 @@ $repoRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot "..\..\..\.."
 if ([System.IO.Path]::GetFullPath((Get-RepoRoot)) -cne $repoRoot) {
     throw "The E2E frontend resolved an unexpected repository root."
 }
+$npmPath = Get-PhaseNpmCommandPath
 $webRoot = [System.IO.Path]::GetFullPath((Join-Path $repoRoot "apps\web"))
 $buildDirectory = [System.IO.Path]::GetFullPath((Join-Path $webRoot ".next"))
 $buildIdPath = [System.IO.Path]::GetFullPath((Join-Path $buildDirectory "BUILD_ID"))
@@ -95,7 +96,7 @@ $env:NEXT_TELEMETRY_DISABLED = "1"
 try {
     Push-Location -LiteralPath $webRoot
     try {
-        & npm run start 2>&1 | Tee-Object -FilePath $webLogPath -Append
+        & $npmPath run start 2>&1 | Tee-Object -FilePath $webLogPath -Append
         $webExitCode = $LASTEXITCODE
         if ($webExitCode -ne 0) {
             throw "E2E production frontend exited with a non-zero status."
