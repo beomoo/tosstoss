@@ -1,6 +1,7 @@
 . (Join-Path $PSScriptRoot "common.ps1")
 
-Assert-PhaseNodeRuntime
+$nodePath = Assert-PhaseNodeRuntime
+$npmPath = Get-PhaseNpmCommandPath
 $python = Get-VenvPython
 $repoRoot = Get-RepoRoot
 
@@ -43,9 +44,9 @@ foreach ($nodeScript in @(
     "scripts/node_offline_guard.cjs",
     "scripts/node_runtime_preflight.cjs"
 )) {
-    Invoke-Checked -FilePath "node" -ArgumentList @("--check", $nodeScript)
+    Invoke-Checked -FilePath $nodePath -ArgumentList @("--check", $nodeScript)
 }
 Assert-NpmDependencyTreeClean
-Invoke-Checked -FilePath "npm" -ArgumentList @(
+Invoke-Checked -FilePath $npmPath -ArgumentList @(
     "run", "lint", "--workspace", "apps/web"
 )

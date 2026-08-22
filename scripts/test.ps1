@@ -1,6 +1,40 @@
 . (Join-Path $PSScriptRoot "common.ps1")
 
-Assert-PhaseNodeRuntime
+$nodePath = Assert-PhaseNodeRuntime
+$npmPath = Get-PhaseNpmCommandPath
+$startupNodeOptions = Get-Item -LiteralPath Env:NODE_OPTIONS -ErrorAction SilentlyContinue
+$hadStartupNodeOptions = $null -ne $startupNodeOptions
+$previousStartupNodeOptions = if ($hadStartupNodeOptions) {
+    $startupNodeOptions.Value
+}
+else {
+    $null
+}
+try {
+    $env:NODE_OPTIONS = '--require=C:\phase-01-preload-canary.cjs'
+    $nodeOptionsRejected = $false
+    try {
+        $null = Assert-PhaseNodeRuntime
+    }
+    catch {
+        if ($_.Exception.Message -cne "NODE_OPTIONS must be empty before a Phase 1 script starts.") {
+            throw
+        }
+        $nodeOptionsRejected = $true
+    }
+    if (-not $nodeOptionsRejected) {
+        throw "The inherited NODE_OPTIONS negative canary was not rejected."
+    }
+}
+finally {
+    if ($hadStartupNodeOptions) {
+        $env:NODE_OPTIONS = $previousStartupNodeOptions
+    }
+    else {
+        Remove-Item Env:NODE_OPTIONS -ErrorAction SilentlyContinue
+    }
+}
+Write-Host "Inherited NODE_OPTIONS fail-closed guard verified."
 $python = Get-VenvPython
 $repoRoot = Get-RepoRoot
 $pytestConfiguration = [System.IO.Path]::GetFullPath(
@@ -84,7 +118,7 @@ function Assert-PhaseOneTestInventory {
 
     $frontendCollection = @(
         Invoke-CapturedChecked `
-            -FilePath "npm" `
+            -FilePath $npmPath `
             -ArgumentList @(
                 "exec", "--workspace", "apps/web", "--",
                 "vitest", "list", "--json"
@@ -112,7 +146,7 @@ function Assert-PhaseOneTestInventory {
 
     $e2eCollection = @(
         Invoke-CapturedChecked `
-            -FilePath "npm" `
+            -FilePath $npmPath `
             -ArgumentList @(
                 "exec", "--workspace", "apps/web", "--",
                 "playwright", "test", "--list", "--reporter=list"
@@ -159,6 +193,44 @@ function Clear-StaleBackendTestDirectories {
     }
 }
 
+function Invoke-WithPhaseNodeOfflineGuard {
+    param(
+        [Parameter(Mandatory = $true)]
+        [scriptblock] $Action
+    )
+
+    $previousNodeOptionsEntry = Get-Item `
+        -LiteralPath Env:NODE_OPTIONS `
+        -ErrorAction SilentlyContinue
+    $hadPreviousNodeOptionsEntry = $null -ne $previousNodeOptionsEntry
+    $previousNodeOptionsValue = if ($hadPreviousNodeOptionsEntry) {
+        $previousNodeOptionsEntry.Value
+    }
+    else {
+        $null
+    }
+    if (-not [System.String]::IsNullOrWhiteSpace($previousNodeOptionsValue)) {
+        throw "NODE_OPTIONS must be empty before the offline guard is installed."
+    }
+
+    $env:NODE_OPTIONS = [System.String]::Concat(
+        '--require="',
+        $offlineGuardPath.Replace("\", "/"),
+        '"'
+    )
+    try {
+        & $Action
+    }
+    finally {
+        if ($hadPreviousNodeOptionsEntry) {
+            $env:NODE_OPTIONS = $previousNodeOptionsValue
+        }
+        else {
+            Remove-Item Env:NODE_OPTIONS -ErrorAction SilentlyContinue
+        }
+    }
+}
+
 Invoke-PhaseScript -Name "policy-scan.ps1"
 Clear-StaleBackendTestDirectories
 Invoke-Checked `
@@ -178,14 +250,13 @@ foreach ($requiredNodeScript in @($offlineGuardPath, $nodePreflightPath)) {
     }
     Assert-SafeMutableRepositoryFile -Path $requiredNodeScript
 }
-$env:NODE_OPTIONS = [System.String]::Concat(
-    '--require="',
-    $offlineGuardPath.Replace("\", "/"),
-    '"'
-)
-Invoke-Checked -FilePath "node" -ArgumentList @($nodePreflightPath)
-Assert-NpmDependencyTreeClean
-Invoke-Checked -FilePath "npm" -ArgumentList @("ls", "--depth=0", "--workspaces", "--include-workspace-root")
+Invoke-WithPhaseNodeOfflineGuard -Action {
+    Invoke-Checked -FilePath $nodePath -ArgumentList @($nodePreflightPath)
+    Assert-NpmDependencyTreeClean
+    Invoke-Checked `
+        -FilePath $npmPath `
+        -ArgumentList @("ls", "--depth=0", "--workspaces", "--include-workspace-root")
+}
 Invoke-PhaseScript -Name "lint.ps1"
 Invoke-PhaseScript -Name "typecheck.ps1"
 Invoke-PhaseScript `
@@ -197,7 +268,11 @@ Invoke-Checked -FilePath $python -ArgumentList @(
 )
 Invoke-PhaseScript -Name "migrate.ps1" -ArgumentList @("-Action", "Test")
 Invoke-PhaseScript -Name "import-fixtures.ps1" -ArgumentList @("-VerifyIdempotency")
-Invoke-Checked -FilePath "npm" -ArgumentList @("run", "test", "--workspace", "apps/web")
+Invoke-WithPhaseNodeOfflineGuard -Action {
+    Invoke-Checked `
+        -FilePath $npmPath `
+        -ArgumentList @("run", "test", "--workspace", "apps/web")
+}
 Invoke-PhaseScript -Name "export-openapi.ps1" -ArgumentList @("-Check")
 Invoke-PhaseScript -Name "build.ps1"
 Invoke-PhaseScript -Name "e2e.ps1"

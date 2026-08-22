@@ -5,15 +5,10 @@ param(
 . (Join-Path $PSScriptRoot "common.ps1")
 . (Join-Path $PSScriptRoot "process-ownership.ps1")
 
-Assert-PhaseNodeRuntime
+$nodePath = Assert-PhaseNodeRuntime
 $repoRoot = Get-RepoRoot
 Assert-NoProjectPythonBytecode
 $python = Get-VenvPython
-$nodeCommand = Get-Command node.exe -ErrorAction SilentlyContinue
-if ($null -eq $nodeCommand) {
-    throw "node.exe is not installed or not available on PATH."
-}
-$nodePath = $nodeCommand.Source
 $webRoot = [System.IO.Path]::GetFullPath((Join-Path $repoRoot "apps\web"))
 $offlineGuardPath = [System.IO.Path]::GetFullPath(
     (Join-Path $repoRoot "scripts\node_offline_guard.cjs")

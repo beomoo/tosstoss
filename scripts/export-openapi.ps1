@@ -4,7 +4,8 @@ param(
 
 . (Join-Path $PSScriptRoot "common.ps1")
 
-Assert-PhaseNodeRuntime
+$nodePath = Assert-PhaseNodeRuntime
+$npmPath = Get-PhaseNpmCommandPath
 $python = Get-VenvPython
 $repoRoot = Get-RepoRoot
 Assert-NoProjectPythonBytecode
@@ -30,7 +31,7 @@ if ($Check) {
         if ($expectedHash -ne $candidateHash) {
             throw "OpenAPI snapshot drift detected. Run scripts/export-openapi.ps1."
         }
-        Invoke-Checked -FilePath "npm" -ArgumentList @(
+        Invoke-Checked -FilePath $npmPath -ArgumentList @(
             "run", "check:api", "--workspace", "apps/web"
         )
     }
@@ -58,7 +59,7 @@ else {
             -Module "toss_dashboard_api.openapi_export" `
             -ArgumentList @("--output", $outputPath))
     Assert-SafeMutableRepositoryFile -Path $outputPath
-    Invoke-Checked -FilePath "npm" -ArgumentList @(
+    Invoke-Checked -FilePath $npmPath -ArgumentList @(
         "run", "generate:api", "--workspace", "apps/web"
     )
     Assert-NoReparsePointsInTree -Path $generatedTypesDirectory -RejectHardLinks

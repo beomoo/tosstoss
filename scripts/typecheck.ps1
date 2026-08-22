@@ -1,6 +1,7 @@
 . (Join-Path $PSScriptRoot "common.ps1")
 
-Assert-PhaseNodeRuntime
+$nodePath = Assert-PhaseNodeRuntime
+$npmPath = Get-PhaseNpmCommandPath
 $python = Get-VenvPython
 $repoRoot = Get-RepoRoot
 $nextDirectory = [System.IO.Path]::GetFullPath(
@@ -53,8 +54,8 @@ $env:NEXT_IGNORE_INCORRECT_LOCKFILE = "1"
 $env:NEXT_DISABLE_SWC_WASM = "1"
 try {
     Assert-NpmDependencyTreeClean
-    Invoke-Checked -FilePath "node" -ArgumentList @($nodePreflightPath)
-    Invoke-Checked -FilePath "npm" -ArgumentList @(
+    Invoke-Checked -FilePath $nodePath -ArgumentList @($nodePreflightPath)
+    Invoke-Checked -FilePath $npmPath -ArgumentList @(
         "run", "typecheck", "--workspace", "apps/web"
     )
 }

@@ -17,17 +17,7 @@ function Test-IsSupportedPhaseNodeVersion {
     return $Version.Major -eq 24 -and $Version -ge [System.Version]"24.16.0"
 }
 
-function Assert-PhaseNodeRuntime {
-    $inheritedNodeOptions = Get-Item `
-        -LiteralPath Env:NODE_OPTIONS `
-        -ErrorAction SilentlyContinue
-    if (
-        $null -ne $inheritedNodeOptions -and
-        -not [System.String]::IsNullOrWhiteSpace($inheritedNodeOptions.Value)
-    ) {
-        throw "NODE_OPTIONS must be empty before a Phase 1 script starts."
-    }
-
+function Get-PhaseNodeExecutablePath {
     $nodeCommand = Get-Command `
         -Name "node.exe" `
         -CommandType Application `
@@ -43,6 +33,47 @@ function Assert-PhaseNodeRuntime {
     ) {
         throw "The resolved Node.js runtime is not an executable file."
     }
+    return $nodePath
+}
+
+function Get-PhaseNpmCommandPath {
+    $nodePath = Get-PhaseNodeExecutablePath
+    $npmCommand = Get-Command `
+        -Name "npm.cmd" `
+        -CommandType Application `
+        -ErrorAction SilentlyContinue |
+        Select-Object -First 1
+    if ($null -eq $npmCommand) {
+        throw "Required command 'npm.cmd' was not found."
+    }
+    $npmPath = [System.IO.Path]::GetFullPath($npmCommand.Source)
+    if (
+        -not (Test-Path -LiteralPath $npmPath -PathType Leaf) -or
+        [System.IO.Path]::GetExtension($npmPath) -cne ".cmd"
+    ) {
+        throw "The resolved npm command is not a command file."
+    }
+    if (-not [System.StringComparer]::OrdinalIgnoreCase.Equals(
+            [System.IO.Path]::GetDirectoryName($nodePath),
+            [System.IO.Path]::GetDirectoryName($npmPath)
+        )) {
+        throw "node.exe and npm.cmd must resolve from the same installation."
+    }
+    return $npmPath
+}
+
+function Assert-PhaseNodeRuntime {
+    $inheritedNodeOptions = Get-Item `
+        -LiteralPath Env:NODE_OPTIONS `
+        -ErrorAction SilentlyContinue
+    if (
+        $null -ne $inheritedNodeOptions -and
+        -not [System.String]::IsNullOrWhiteSpace($inheritedNodeOptions.Value)
+    ) {
+        throw "NODE_OPTIONS must be empty before a Phase 1 script starts."
+    }
+
+    $nodePath = Get-PhaseNodeExecutablePath
 
     foreach ($canary in @(
         [pscustomobject]@{ Version = [System.Version]"24.15.0"; Supported = $false },
@@ -72,6 +103,7 @@ function Assert-PhaseNodeRuntime {
             "TCP crash. Found $nodeVersionText."
         )
     }
+    return $nodePath
 }
 
 function Get-VenvPython {
@@ -354,9 +386,10 @@ function Assert-NoProjectPythonBytecode {
 function Get-NpmQueryRecords {
     param([Parameter(Mandatory = $true)][string] $Selector)
 
+    $npmPath = Get-PhaseNpmCommandPath
     Push-Location -LiteralPath $script:RepoRoot
     try {
-        $queryOutput = @(& npm query $Selector --json 2>&1)
+        $queryOutput = @(& $npmPath query $Selector --json 2>&1)
         $exitCode = $LASTEXITCODE
     }
     finally {

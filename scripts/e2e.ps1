@@ -1,7 +1,8 @@
 . (Join-Path $PSScriptRoot "common.ps1")
 . (Join-Path $PSScriptRoot "process-ownership.ps1")
 
-Assert-PhaseNodeRuntime
+$nodePath = Assert-PhaseNodeRuntime
+$npmPath = Get-PhaseNpmCommandPath
 $repoRoot = Get-RepoRoot
 $offlineGuardPath = [System.IO.Path]::GetFullPath(
     (Join-Path $repoRoot "scripts\node_offline_guard.cjs")
@@ -50,15 +51,14 @@ $ownedProcessGroup = $null
 
 try {
     Assert-NpmDependencyTreeClean
-    Invoke-Checked -FilePath "node" -ArgumentList @($nodePreflightPath)
-    $npmCommand = Get-Command npm.cmd -ErrorAction Stop
+    Invoke-Checked -FilePath $nodePath -ArgumentList @($nodePreflightPath)
     $e2eOut = Join-Path $tempDirectory "playwright.out.log"
     $e2eErr = Join-Path $tempDirectory "playwright.err.log"
     $ownedProcessGroup = New-OwnedProcessGroup
     $e2eProcess = Start-OwnedProcess `
         -Group $ownedProcessGroup `
         -Name "playwright" `
-        -FilePath $npmCommand.Source `
+        -FilePath $npmPath `
         -ArgumentList @("run", "test:e2e", "--workspace", "apps/web") `
         -WorkingDirectory $repoRoot `
         -TaskTempDirectory $tempDirectory `

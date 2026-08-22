@@ -1,6 +1,7 @@
 . (Join-Path $PSScriptRoot "common.ps1")
 
-Assert-PhaseNodeRuntime
+$nodePath = Assert-PhaseNodeRuntime
+$npmPath = Get-PhaseNpmCommandPath
 $python = Get-VenvPython
 $repoRoot = Get-RepoRoot
 Assert-NoProjectPythonBytecode
@@ -273,8 +274,8 @@ $env:NODE_OPTIONS = [System.String]::Concat(
 
 try {
     Assert-NpmDependencyTreeClean
-    Invoke-Checked -FilePath "node" -ArgumentList @($nodePreflightPath)
-    Invoke-Checked -FilePath "npm" -ArgumentList @(
+    Invoke-Checked -FilePath $nodePath -ArgumentList @($nodePreflightPath)
+    Invoke-Checked -FilePath $npmPath -ArgumentList @(
         "run", "build", "--workspace", "apps/web"
     )
     Assert-BuildInputsSafe

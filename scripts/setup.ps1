@@ -5,11 +5,11 @@ if ($powerShellVersion -lt [System.Version]"7.4.0") {
     throw "PowerShell 7.4 or newer is required. Found $powerShellVersion."
 }
 
-Assert-PhaseNodeRuntime
-Assert-CommandAvailable -Name "npm"
+$nodePath = Assert-PhaseNodeRuntime
+$npmPath = Get-PhaseNpmCommandPath
 Assert-CommandAvailable -Name "py"
 
-$npmVersionText = (& npm --version).Trim()
+$npmVersionText = (& $npmPath --version).Trim()
 if ($LASTEXITCODE -ne 0) {
     throw "Unable to read npm version."
 }
@@ -193,12 +193,12 @@ function Remove-KnownNpmOptionalOrphans {
 }
 
 Assert-NodeModulesTreeSafe
-Invoke-Checked -FilePath "npm" -ArgumentList @("ci", "--no-audit", "--no-fund")
+Invoke-Checked -FilePath $npmPath -ArgumentList @("ci", "--no-audit", "--no-fund")
 Assert-NodeModulesTreeSafe
 Remove-KnownNpmOptionalOrphans
 Assert-NpmDependencyTreeClean
 Assert-NodeModulesTreeSafe
-Invoke-Checked -FilePath "npm" -ArgumentList @(
+Invoke-Checked -FilePath $npmPath -ArgumentList @(
     "exec", "--workspace", "apps/web", "--", "playwright", "install", "chromium"
 )
 Assert-NoReparsePointsInTree -Path $tempRoot -RejectHardLinks
