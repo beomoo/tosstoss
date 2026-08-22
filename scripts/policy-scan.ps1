@@ -1381,8 +1381,8 @@ $phaseControlFiles = @(
         Where-Object { $_.Name -cne "policy-scan.ps1" }
 )
 $approvedPhaseControlDigest = [string]::Concat(
-    "5aeb4018", "d4dddbee", "aec4584c", "379af52b",
-    "22e800ad", "1577552a", "48725606", "1cde5e2e"
+    "6c1188e0", "a54a17e6", "d3043d81", "83eec325",
+    "eddf7981", "581c4d97", "efbf7bd0", "58e958c1"
 )
 if (
     $phaseControlFiles.Count -ne 59 -or
@@ -1470,7 +1470,7 @@ $prohibitedApplicationEscapePattern = @'
         \[\s*["'](?:binding|_linkedBinding|getBuiltinModule)["']\s*\]\s*\(
     )
   |
-    \b(?:RTCPeerConnection|webkitRTCPeerConnection|WebTransport|WebSocketStream|SharedWorker|Worker)\b
+    \b(?:RTCPeerConnection|webkitRTCPeerConnection|WebTransport|WebSocket|WebSocketStream|SharedWorker|Worker)\b
 )
 '@
 $disabledTestPattern = @'
@@ -1647,6 +1647,7 @@ $applicationEscapeCanaries = @(
     [string]::Concat('process.getBuiltin', 'Module("net")'),
     [string]::Concat("new RTCPeer", "Connection(configuration)"),
     [string]::Concat("globalThis.Web", "Transport")
+    [string]::Concat("new Web", "Socket(url)")
     [string]::Concat("new WebSocket", "Stream(url)")
 )
 foreach ($canary in $applicationEscapeCanaries) {

@@ -97,6 +97,7 @@ async function observePageBoundary(page: Page, sentinel: string) {
     "RTCPeerConnection",
     "webkitRTCPeerConnection",
     "WebTransport",
+    "WebSocket",
     "WebSocketStream",
     "Worker",
     "SharedWorker",
@@ -305,26 +306,32 @@ async function observePageBoundary(page: Page, sentinel: string) {
               () => "completed",
               () => "blocked",
             );
-            const websocket = await new Promise<string>((resolveSocket) => {
-              const socket = new WebSocket(canaryWebsocketUrl);
-              let settled = false;
-              const finish = (value: string) => {
-                if (settled) return;
-                settled = true;
-                socket.close();
-                resolveSocket(value);
-              };
-              socket.addEventListener("open", () => finish("opened"), {
-                once: true,
+            let websocket = "blocked";
+            const websocketConstructor = Reflect.get(globalThis, "WebSocket");
+            if (typeof websocketConstructor === "function") {
+              websocket = await new Promise<string>((resolveSocket) => {
+                const socket = new (websocketConstructor as typeof WebSocket)(
+                  canaryWebsocketUrl,
+                );
+                let settled = false;
+                const finish = (value: string) => {
+                  if (settled) return;
+                  settled = true;
+                  socket.close();
+                  resolveSocket(value);
+                };
+                socket.addEventListener("open", () => finish("opened"), {
+                  once: true,
+                });
+                socket.addEventListener("error", () => finish("blocked"), {
+                  once: true,
+                });
+                socket.addEventListener("close", () => finish("blocked"), {
+                  once: true,
+                });
+                setTimeout(() => finish("timeout"), 1_000);
               });
-              socket.addEventListener("error", () => finish("blocked"), {
-                once: true,
-              });
-              socket.addEventListener("close", () => finish("blocked"), {
-                once: true,
-              });
-              setTimeout(() => finish("timeout"), 1_000);
-            });
+            }
             let websocketStream = "blocked";
             const websocketStreamConstructor = Reflect.get(
               globalThis,
@@ -385,7 +392,10 @@ async function observePageBoundary(page: Page, sentinel: string) {
           result.http,
           "금지된 HTTP 요청은 브라우저 전송 전에 차단되어야 합니다.",
         ).toBe("blocked");
-        expect(result.websocket).not.toBe("timeout");
+        expect(
+          result.websocket,
+          "WebSocket must be disabled before application code runs.",
+        ).toBe("blocked");
         expect(
           result.websocketStream,
           "WebSocketStream must be disabled before application code runs.",
