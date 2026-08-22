@@ -1,6 +1,7 @@
 . (Join-Path $PSScriptRoot "common.ps1")
 . (Join-Path $PSScriptRoot "process-ownership.ps1")
 
+Assert-PhaseNodeRuntime
 $repoRoot = Get-RepoRoot
 $offlineGuardPath = [System.IO.Path]::GetFullPath(
     (Join-Path $repoRoot "scripts\node_offline_guard.cjs")

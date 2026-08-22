@@ -1,5 +1,6 @@
 . (Join-Path $PSScriptRoot "common.ps1")
 
+Assert-PhaseNodeRuntime
 $python = Get-VenvPython
 $repoRoot = Get-RepoRoot
 $pytestConfiguration = [System.IO.Path]::GetFullPath(

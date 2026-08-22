@@ -8,7 +8,7 @@
 
 - Windows
 - PowerShell 7.4 이상
-- Node.js 24.15 이상 25 미만
+- Node.js 24.16 이상 25 미만 (`.node-version`: 24.19.0)
 - npm 11
 - Python 3.13
 

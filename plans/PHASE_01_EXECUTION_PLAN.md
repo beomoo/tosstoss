@@ -50,12 +50,12 @@ git switch -c feature/phase-01-foundation
 
 ### 3.1 실행 기준
 
-현재 확인된 로컬 환경은 PowerShell 7.6.4, Node.js 24.15.0, npm 11.12.1, Python 3.13.1, Git 2.50.1이다. uv와 gitleaks는 설치되어 있지 않다.
+최초 확인된 로컬 환경은 PowerShell 7.6.4, Node.js 24.15.0, npm 11.12.1, Python 3.13.1, Git 2.50.1이었다. 구현 검증 중 Node.js 24.15.0의 Windows TCP 네이티브 충돌이 재현되어 검증 기준을 Node.js 24.19.0과 npm 11.17.0으로 갱신했다. uv와 gitleaks는 설치되어 있지 않다.
 
 | 영역 | 선택 | 지원 기준 | 이유 |
 |---|---|---|---|
 | Shell | PowerShell Core | 7.4 이상, 검증 기준 7.6.4 | 한글·공백 경로와 Windows 프로세스 제어를 명시적으로 검증 |
-| Node | Node.js | 24.15 이상 25 미만 | 현재 환경과 일치하며 Next.js 16의 공식 최소 Node 20.9보다 보수적 |
+| Node | Node.js | 24.16 이상 25 미만, 검증 기준 24.19.0 | 24.15 이하의 Windows TCP 네이티브 충돌을 회피하며 Next.js 16의 공식 최소 Node 20.9보다 보수적 |
 | JS package manager | npm workspaces | npm 11 | 별도 전역 도구 없이 package-lock.json과 npm ci 사용 |
 | Frontend | Next.js 16 App Router, React, TypeScript strict | package-lock에 정확 버전 고정 | Windows 지원, server-side API 경계, loading/error convention |
 | Frontend lint/test | ESLint CLI, Vitest, Testing Library, Playwright Chromium | lockfile 고정 | Next.js 16은 next lint가 아니라 ESLint CLI를 사용; component와 E2E를 분리 |

@@ -5,18 +5,9 @@ if ($powerShellVersion -lt [System.Version]"7.4.0") {
     throw "PowerShell 7.4 or newer is required. Found $powerShellVersion."
 }
 
-Assert-CommandAvailable -Name "node"
+Assert-PhaseNodeRuntime
 Assert-CommandAvailable -Name "npm"
 Assert-CommandAvailable -Name "py"
-
-$nodeVersionText = (& node -p "process.versions.node").Trim()
-if ($LASTEXITCODE -ne 0) {
-    throw "Unable to read Node.js version."
-}
-$nodeVersion = [System.Version]::Parse($nodeVersionText)
-if ($nodeVersion -lt [System.Version]"24.15.0" -or $nodeVersion.Major -ge 25) {
-    throw "Node.js 24.15.x is required. Found $nodeVersionText."
-}
 
 $npmVersionText = (& npm --version).Trim()
 if ($LASTEXITCODE -ne 0) {

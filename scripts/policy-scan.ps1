@@ -740,14 +740,15 @@ $allowedNodeDependencies = New-OrdinalIgnoreCaseSet -Values @($allowedNodeSpecif
 $rootPackagePath = Join-Path $repoRoot "package.json"
 $webPackagePath = Join-Path $repoRoot "apps\web\package.json"
 $packageLockPath = Join-Path $repoRoot "package-lock.json"
+$nodeVersionPath = Join-Path $repoRoot ".node-version"
 $rootPackage = Read-JsonFile -Path $rootPackagePath
 $webPackage = Read-JsonFile -Path $webPackagePath
 $packageLock = Read-JsonFile -Path $packageLockPath -AsHashtable
 $approvedPackageLockSha256 = [string]::Concat(
-    "71abcfc0", "28cbb5e4",
-    "74c35f2c", "1d3e1aab",
-    "1152e61b", "87850709",
-    "a808b4b4", "f3280f92"
+    "f5cf022d", "d418c039",
+    "74095c1f", "8f703c84",
+    "648a90ed", "ff7edbb2",
+    "2c13fb2a", "27614a67"
 )
 $actualPackageLockSha256 = (
     Get-FileHash -LiteralPath $packageLockPath -Algorithm SHA256
@@ -758,7 +759,13 @@ if ($actualPackageLockSha256 -cne $approvedPackageLockSha256) {
 if (
     $rootPackage.name -cne "toss-invest-dashboard" -or
     $rootPackage.private -ne $true -or
-    $rootPackage.packageManager -cne "npm@11.12.1" -or
+    $rootPackage.packageManager -cne "npm@11.17.0" -or
+    [string] $rootPackage.engines.node -cne ">=24.16.0 <25" -or
+    [string] $rootPackage.engines.npm -cne ">=11 <12" -or
+    [string] $packageLock["packages"][""]["engines"]["node"] -cne
+        ">=24.16.0 <25" -or
+    [string] $packageLock["packages"][""]["engines"]["npm"] -cne ">=11 <12" -or
+    [System.IO.File]::ReadAllText($nodeVersionPath).Trim() -cne "24.19.0" -or
     @($rootPackage.workspaces).Count -ne 1 -or
     [string] @($rootPackage.workspaces)[0] -cne "apps/web" -or
     $webPackage.name -cne "@toss-dashboard/web" -or
@@ -1381,8 +1388,8 @@ $phaseControlFiles = @(
         Where-Object { $_.Name -cne "policy-scan.ps1" }
 )
 $approvedPhaseControlDigest = [string]::Concat(
-    "b28277e7", "85dd8746", "874f8681", "81c29ab8",
-    "3620020f", "2207bddf", "79d5d1e9", "3a7ba1fc"
+    "b2b0070b", "80658b86", "c74fd3df", "da801994",
+    "31f9b32a", "1e14506d", "60c1a747", "9411ac5c"
 )
 if (
     $phaseControlFiles.Count -ne 59 -or

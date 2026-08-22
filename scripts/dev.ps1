@@ -5,6 +5,7 @@ param(
 . (Join-Path $PSScriptRoot "common.ps1")
 . (Join-Path $PSScriptRoot "process-ownership.ps1")
 
+Assert-PhaseNodeRuntime
 $repoRoot = Get-RepoRoot
 Assert-NoProjectPythonBytecode
 $python = Get-VenvPython

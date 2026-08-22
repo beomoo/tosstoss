@@ -8,6 +8,48 @@ function Get-RepoRoot {
     return $script:RepoRoot
 }
 
+function Test-IsSupportedPhaseNodeVersion {
+    param(
+        [Parameter(Mandatory = $true)]
+        [System.Version] $Version
+    )
+
+    return $Version.Major -eq 24 -and $Version -ge [System.Version]"24.16.0"
+}
+
+function Assert-PhaseNodeRuntime {
+    Assert-CommandAvailable -Name "node"
+
+    foreach ($canary in @(
+        [pscustomobject]@{ Version = [System.Version]"24.15.0"; Supported = $false },
+        [pscustomobject]@{ Version = [System.Version]"24.16.0"; Supported = $true },
+        [pscustomobject]@{ Version = [System.Version]"24.19.0"; Supported = $true },
+        [pscustomobject]@{ Version = [System.Version]"25.0.0"; Supported = $false }
+    )) {
+        if ((Test-IsSupportedPhaseNodeVersion -Version $canary.Version) -ne $canary.Supported) {
+            throw "The Phase 1 Node.js version classifier failed its self-canary."
+        }
+    }
+
+    $nodeVersionText = (& node -p "process.versions.node").Trim()
+    if ($LASTEXITCODE -ne 0) {
+        throw "Unable to read Node.js version."
+    }
+    try {
+        $nodeVersion = [System.Version]::Parse($nodeVersionText)
+    }
+    catch {
+        throw "Node.js emitted an invalid version: $nodeVersionText"
+    }
+    if (-not (Test-IsSupportedPhaseNodeVersion -Version $nodeVersion)) {
+        throw (
+            "Node.js 24.16.0 or newer within the 24.x line is required. " +
+            "Node.js 24.15 and older are blocked because of a Windows native " +
+            "TCP crash. Found $nodeVersionText."
+        )
+    }
+}
+
 function Get-VenvPython {
     $pythonPath = Join-Path $script:RepoRoot ".venv\Scripts\python.exe"
     if (-not (Test-Path -LiteralPath $pythonPath -PathType Leaf)) {
