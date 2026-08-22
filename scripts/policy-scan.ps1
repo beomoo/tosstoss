@@ -95,6 +95,7 @@ function Test-IsRuntimePolicySourcePath {
 
     $fullPath = [System.IO.Path]::GetFullPath($Path)
     $testRoot = [System.IO.Path]::GetFullPath((Join-Path $repoRoot "tests"))
+    $webSourceRoot = [System.IO.Path]::GetFullPath((Join-Path $repoRoot "apps\web\src"))
     $webTestRoot = [System.IO.Path]::GetFullPath((Join-Path $repoRoot "apps\web\tests"))
     $testRootPrefix = $testRoot.TrimEnd(
         [System.IO.Path]::DirectorySeparatorChar
@@ -102,7 +103,22 @@ function Test-IsRuntimePolicySourcePath {
     $webTestRootPrefix = $webTestRoot.TrimEnd(
         [System.IO.Path]::DirectorySeparatorChar
     ) + [System.IO.Path]::DirectorySeparatorChar
+    $webSourceRootPrefix = $webSourceRoot.TrimEnd(
+        [System.IO.Path]::DirectorySeparatorChar
+    ) + [System.IO.Path]::DirectorySeparatorChar
     if ($fullPath.StartsWith($testRootPrefix, [System.StringComparison]::OrdinalIgnoreCase)) {
+        return $false
+    }
+    if (
+        $fullPath.StartsWith(
+            $webSourceRootPrefix,
+            [System.StringComparison]::OrdinalIgnoreCase
+        ) -and
+        [System.IO.Path]::GetFileName($fullPath) -match '\.test\.(?:ts|tsx)$'
+    ) {
+        # These exact test files are separately inventory-checked and included
+        # in the Phase control-plane digest below. Negative URL/transport
+        # fixtures must not be treated as executable application integrations.
         return $false
     }
     if (-not $fullPath.StartsWith(
@@ -133,7 +149,10 @@ $applicationRuntimeRoots = @(
     (Join-Path $repoRoot "apps\web\src")
 )
 $applicationRuntimeSourceFiles = @(
-    Get-PolicySourceFiles -Roots $applicationRuntimeRoots
+    Get-PolicySourceFiles -Roots $applicationRuntimeRoots |
+        Where-Object {
+            Test-IsRuntimePolicySourcePath -Path $_.FullName
+        }
 )
 if ($applicationRuntimeSourceFiles.Count -eq 0) {
     throw "The application runtime policy source scope is empty."
@@ -145,7 +164,7 @@ $runtimeScopeCanaries = @(
     },
     @{
         Path = Join-Path $repoRoot "apps\web\src\broker.test.ts"
-        Expected = $true
+        Expected = $false
     },
     @{
         Path = Join-Path $repoRoot "tests\backend\runtime_canary.py"
