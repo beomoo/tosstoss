@@ -166,8 +166,10 @@ try {
         $databasePath = Join-Path $smokeTempDirectory "dashboard.db"
     }
     else {
-        $runtimeDirectory = Join-Path $repoRoot "var"
+        $runtimeDirectory = [System.IO.Path]::GetFullPath((Join-Path $repoRoot "var"))
+        Assert-SafeRepositoryPath -Path $runtimeDirectory
         [System.IO.Directory]::CreateDirectory($runtimeDirectory) | Out-Null
+        Assert-SafeRepositoryPath -Path $runtimeDirectory
         $fixtureManifestHash = (Get-FileHash `
                 -LiteralPath $fixtureManifestPath `
                 -Algorithm SHA256).Hash.ToLowerInvariant()
@@ -185,13 +187,16 @@ try {
         -Name "import-fixtures.ps1" `
         -ArgumentList @("-DatabasePath", $databasePath)
 
-    $logDirectory = Join-Path $repoRoot "var\logs"
+    $logDirectory = [System.IO.Path]::GetFullPath((Join-Path $repoRoot "var\logs"))
+    Assert-SafeRepositoryPath -Path $logDirectory
     [System.IO.Directory]::CreateDirectory($logDirectory) | Out-Null
+    Assert-SafeRepositoryPath -Path $logDirectory
     $apiOut = Join-Path $logDirectory "api.out.log"
     $apiErr = Join-Path $logDirectory "api.err.log"
     $webOut = Join-Path $logDirectory "web.out.log"
     $webErr = Join-Path $logDirectory "web.err.log"
     foreach ($logPath in @($apiOut, $apiErr, $webOut, $webErr)) {
+        Assert-SafeRepositoryPath -Path $logPath
         [System.IO.File]::WriteAllText($logPath, "")
     }
 

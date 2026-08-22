@@ -39,6 +39,18 @@ $textArtifactExtensions = @(
 )
 $sensitivePattern = '(?i)(sk-(?:(?:live|proj|svcacct)[_-][a-z0-9_-]{20,}|[a-z0-9]{32,})|github_pat_[a-z0-9_]{20,}|gh[pousr]_[a-z0-9]{20,}|glpat-[a-z0-9_-]{20,}|AKIA[0-9A-Z]{16}|AIza[0-9A-Za-z_-]{30,}|xox[baprs]-[A-Za-z0-9-]{20,}|-----BEGIN [A-Z ]*PRIVATE KEY-----|Bearer\s+[A-Za-z0-9._-]{20,}|eyJ[A-Za-z0-9_-]{16,}\.[A-Za-z0-9_-]{16,}\.[A-Za-z0-9_-]{10,})'
 $script:AllowedArtifactSecretHashes = @{}
+$inlineAllowlistFilter = "detect_secrets.filters.allowlist.is_line_allowlisted"
+$utf8TextExtensions = [System.Collections.Generic.HashSet[string]]::new(
+    [System.StringComparer]::OrdinalIgnoreCase
+)
+foreach ($extension in @(
+    ".cfg", ".conf", ".css", ".csv", ".html", ".ini", ".js", ".json",
+    ".jsonl", ".jsx", ".lock", ".log", ".md", ".mjs", ".cjs", ".ps1",
+    ".psd1", ".psm1", ".py", ".pyi", ".scss", ".toml", ".ts", ".tsx",
+    ".txt", ".xml", ".yaml", ".yml"
+)) {
+    $null = $utf8TextExtensions.Add($extension)
+}
 
 function Get-Sha1Hex {
     param([Parameter(Mandatory = $true)][string] $Value)
@@ -142,6 +154,99 @@ function Add-StructuredSha256Exceptions {
     }
 }
 
+function Add-ValidatedEvidenceManifestExceptions {
+    param([Parameter(Mandatory = $true)][string] $Path)
+
+    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) {
+        return
+    }
+    try {
+        $manifest = Get-Content -LiteralPath $Path -Raw |
+            ConvertFrom-Json -ErrorAction Stop
+    }
+    catch {
+        throw "The Phase 1 evidence manifest is not valid JSON."
+    }
+    $records = @($manifest.files)
+    if ($manifest.schema_version -ne 1 -or $records.Count -eq 0) {
+        throw "The Phase 1 evidence manifest has an unexpected schema."
+    }
+    $evidenceRoot = [System.IO.Path]::GetFullPath(
+        (Join-Path $repoRoot "qa\evidence\phase_01")
+    )
+    $evidencePrefix = $evidenceRoot.TrimEnd(
+        [System.IO.Path]::DirectorySeparatorChar
+    ) + [System.IO.Path]::DirectorySeparatorChar
+    $manifestFullPath = [System.IO.Path]::GetFullPath($Path)
+    $seenPaths = [System.Collections.Generic.HashSet[string]]::new(
+        [System.StringComparer]::OrdinalIgnoreCase
+    )
+    $lines = @(Get-Content -LiteralPath $Path)
+    foreach ($record in $records) {
+        $properties = @($record.PSObject.Properties.Name | Sort-Object)
+        if (Compare-Object `
+            -ReferenceObject @("path", "sha256", "size") `
+            -DifferenceObject $properties) {
+            throw "An evidence manifest file record has an unexpected schema."
+        }
+        $relativePath = [string] $record.path
+        $expectedHash = [string] $record.sha256
+        $expectedSize = [int64] $record.size
+        if (
+            [System.IO.Path]::IsPathRooted($relativePath) -or
+            $relativePath.Contains("\") -or
+            $relativePath -cnotmatch '^qa/evidence/phase_01/[A-Za-z0-9._/-]+$' -or
+            $expectedHash -cnotmatch '^[0-9a-f]{64}$' -or
+            $expectedSize -lt 0
+        ) {
+            throw "An evidence manifest file record is not canonical."
+        }
+        $targetPath = [System.IO.Path]::GetFullPath(
+            (Join-Path $repoRoot $relativePath)
+        )
+        if (
+            -not $targetPath.StartsWith(
+                $evidencePrefix,
+                [System.StringComparison]::OrdinalIgnoreCase
+            ) -or
+            [string]::Equals(
+                $targetPath,
+                $manifestFullPath,
+                [System.StringComparison]::OrdinalIgnoreCase
+            ) -or
+            -not $seenPaths.Add($targetPath) -or
+            -not (Test-Path -LiteralPath $targetPath -PathType Leaf)
+        ) {
+            throw "An evidence manifest target is missing, duplicated, or out of scope."
+        }
+        $targetItem = Get-Item -LiteralPath $targetPath
+        $actualHash = (
+            Get-FileHash -LiteralPath $targetPath -Algorithm SHA256
+        ).Hash.ToLowerInvariant()
+        if ($targetItem.Length -ne $expectedSize -or $actualHash -cne $expectedHash) {
+            throw "An evidence manifest target does not match its recorded digest."
+        }
+        $propertyPattern = '"sha256"\s*:\s*"' + [regex]::Escape($expectedHash) + '"'
+        $matchingLines = @(
+            for ($lineIndex = 0; $lineIndex -lt $lines.Count; $lineIndex += 1) {
+                if ($lines[$lineIndex] -match $propertyPattern) {
+                    $lineIndex + 1
+                }
+            }
+        )
+        if ($matchingLines.Count -ne 1) {
+            throw "An evidence manifest digest is missing or duplicated in the JSON text."
+        }
+        Add-AllowedArtifactSecret `
+            -Path $Path `
+            -Value $expectedHash `
+            -LineNumber $matchingLines[0]
+    }
+    if (@(Get-JsonSha256Values -Node $manifest).Count -ne $records.Count) {
+        throw "The evidence manifest contains an unvalidated SHA-256 property."
+    }
+}
+
 function Convert-ToScanArgument {
     param([Parameter(Mandatory = $true)][string] $Path)
 
@@ -157,15 +262,23 @@ function Convert-ToScanArgument {
 function Invoke-DetectSecretsJson {
     param(
         [Parameter(Mandatory = $true)][string[]] $Files,
-        [Parameter(Mandatory = $true)][string] $OutputPath
+        [Parameter(Mandatory = $true)][string] $OutputPath,
+        [string] $WorkingDirectory = $repoRoot
     )
 
     if ($Files.Count -eq 0) {
         throw "No files were selected for detect-secrets."
     }
-    Push-Location -LiteralPath $repoRoot
+    Assert-SafeRepositoryPath -Path $WorkingDirectory
+    Assert-SafeRepositoryPath -Path $OutputPath
+    Push-Location -LiteralPath $WorkingDirectory
     try {
-        $scanOutput = & $scanner -c 1 scan --force-use-all-plugins --no-verify @Files
+        $scanOutput = & $scanner -c 1 scan `
+            --force-use-all-plugins `
+            --no-verify `
+            --disable-filter $inlineAllowlistFilter `
+            -- `
+            @Files
         if ($LASTEXITCODE -ne 0) {
             throw "detect-secrets scan failed with exit code $LASTEXITCODE."
         }
@@ -180,11 +293,70 @@ function Invoke-DetectSecretsJson {
     try {
         $document = Get-Content -LiteralPath $OutputPath -Raw |
             ConvertFrom-Json -ErrorAction Stop
+        if (@($document.filters_used.path) -contains $inlineAllowlistFilter) {
+            throw "detect-secrets kept the prohibited inline allowlist filter enabled."
+        }
         return $document
     }
     catch {
         throw "detect-secrets did not emit valid JSON."
     }
+}
+
+function Get-ValidatedUtf8TextFiles {
+    param(
+        [Parameter(Mandatory = $true)][string[]] $Files,
+        [string] $WorkingDirectory = $repoRoot
+    )
+
+    $strictUtf8 = [System.Text.UTF8Encoding]::new($false, $true)
+    $validatedFiles = @()
+    foreach ($scanPath in $Files) {
+        $fullPath = if ([System.IO.Path]::IsPathRooted($scanPath)) {
+            [System.IO.Path]::GetFullPath($scanPath)
+        }
+        else {
+            [System.IO.Path]::GetFullPath((Join-Path $WorkingDirectory $scanPath))
+        }
+        if (-not (Test-Path -LiteralPath $fullPath -PathType Leaf)) {
+            throw "A secret-scan input file is missing: $fullPath"
+        }
+        $item = Get-Item -LiteralPath $fullPath -Force
+        $isTextCandidate =
+            $utf8TextExtensions.Contains($item.Extension) -or
+            $item.Name.StartsWith(".env", [System.StringComparison]::OrdinalIgnoreCase) -or
+            [string]::IsNullOrEmpty($item.Extension)
+        if (-not $isTextCandidate) {
+            continue
+        }
+
+        $bytes = [System.IO.File]::ReadAllBytes($fullPath)
+        if (
+            ($bytes.Length -ge 2 -and (
+                ($bytes[0] -eq 0xff -and $bytes[1] -eq 0xfe) -or
+                ($bytes[0] -eq 0xfe -and $bytes[1] -eq 0xff)
+            )) -or
+            ($bytes.Length -ge 4 -and (
+                ($bytes[0] -eq 0xff -and $bytes[1] -eq 0xfe -and
+                    $bytes[2] -eq 0x00 -and $bytes[3] -eq 0x00) -or
+                ($bytes[0] -eq 0x00 -and $bytes[1] -eq 0x00 -and
+                    $bytes[2] -eq 0xfe -and $bytes[3] -eq 0xff)
+            ))
+        ) {
+            throw "A secret-scan text input uses a prohibited UTF-16/UTF-32 encoding: $fullPath"
+        }
+        try {
+            $text = $strictUtf8.GetString($bytes)
+        }
+        catch [System.Text.DecoderFallbackException] {
+            throw "A secret-scan text input is not valid UTF-8: $fullPath"
+        }
+        if ($text.Contains([char] 0)) {
+            throw "A secret-scan text input contains NUL bytes: $fullPath"
+        }
+        $validatedFiles += $item
+    }
+    return @($validatedFiles)
 }
 
 function Test-AllowedArtifactFinding {
@@ -308,7 +480,8 @@ function Assert-CurrentBuildEvidence {
             $evidenceTimestamps["sentinel_written_at_utc"] -or
         $evidenceTimestamps["completed_at_utc"] -lt
             $evidenceTimestamps["build_id_written_at_utc"] -or
-        $buildEvidenceItem.LastWriteTimeUtc -lt $evidenceTimestamps["completed_at_utc"] -or
+        $buildEvidenceItem.LastWriteTimeUtc.AddSeconds(2) -lt
+            $evidenceTimestamps["completed_at_utc"] -or
         $evidenceTimestamps["completed_at_utc"] -gt [System.DateTime]::UtcNow.AddMinutes(5)
     ) {
         throw "The Phase 1 build evidence timestamps are stale or incoherent."
@@ -679,8 +852,21 @@ try {
     Add-AllowedArtifactSecret -Path $e2eApiLog -Value $build.BuildId
     Add-AllowedArtifactSecret -Path $e2eApiLog -Value $build.SentinelSha256
     Add-AllowedArtifactSecret -Path $e2eWebLog -Value $build.BuildId
-    Add-StructuredSha256Exceptions -Path (Join-Path $repoRoot "PACKAGE_MANIFEST.json")
-    Add-StructuredSha256Exceptions -Path (
+    $packageManifestPath = Join-Path $repoRoot "PACKAGE_MANIFEST.json"
+    $approvedPackageManifestSha256 = [string]::Concat(
+        "c11bb9c8", "42694512",
+        "f4026e92", "c7461268",
+        "3a5c7d9e", "1091f9f8",
+        "1faa1832", "9a3afda8"
+    )
+    $actualPackageManifestSha256 = (
+        Get-FileHash -LiteralPath $packageManifestPath -Algorithm SHA256
+    ).Hash.ToLowerInvariant()
+    if ($actualPackageManifestSha256 -cne $approvedPackageManifestSha256) {
+        throw "PACKAGE_MANIFEST.json does not match its approved immutable digest."
+    }
+    Add-StructuredSha256Exceptions -Path $packageManifestPath
+    Add-ValidatedEvidenceManifestExceptions -Path (
         Join-Path $repoRoot "qa\evidence\phase_01\evidence-manifest.json"
     )
     Add-NextGeneratedHashExceptions
@@ -688,14 +874,22 @@ try {
     Add-SentinelUnitFixtureExceptions
     $nextEncryption = Add-NextEncryptionKeyExceptions
 
-    $entropyCanaryPath = Join-Path $tempDirectory "generic-entropy-canary.txt"
+    $entropyCanaryPath = Join-Path $tempDirectory "--only-allowlisted"
     $entropyCanaryBytes = [byte[]]::new(48)
     [System.Security.Cryptography.RandomNumberGenerator]::Fill($entropyCanaryBytes)
     $entropyCanary = [System.Convert]::ToBase64String($entropyCanaryBytes)
-    [System.IO.File]::WriteAllText($entropyCanaryPath, "opaque_value = `"$entropyCanary`"")
+    $inlinePragma = [string]::Concat("# pragma: allowlist ", "secret")
+    [System.IO.File]::WriteAllText(
+        $entropyCanaryPath,
+        "opaque_value = `"$entropyCanary`" $inlinePragma"
+    )
+    $null = Get-ValidatedUtf8TextFiles `
+        -Files @("--only-allowlisted") `
+        -WorkingDirectory $tempDirectory
     $canaryScan = Invoke-DetectSecretsJson `
-        -Files @((Convert-ToScanArgument -Path $entropyCanaryPath)) `
-        -OutputPath (Join-Path $tempDirectory "canary-scan.json")
+        -Files @("--only-allowlisted") `
+        -OutputPath (Join-Path $tempDirectory "canary-scan.json") `
+        -WorkingDirectory $tempDirectory
     $canaryTypes = @(
         foreach ($property in $canaryScan.results.PSObject.Properties) {
             foreach ($finding in $property.Value) {
@@ -704,7 +898,26 @@ try {
         }
     )
     if ($canaryTypes -notcontains "Base64 High Entropy String") {
-        throw "detect-secrets did not reject the generated generic entropy canary."
+        throw "detect-secrets did not reject the inline-allowlisted option-name canary."
+    }
+
+    $utf16CanaryPath = Join-Path $tempDirectory "utf16-encoding-canary.ps1"
+    [System.IO.File]::WriteAllText(
+        $utf16CanaryPath,
+        "opaque_value = `"$entropyCanary`"",
+        [System.Text.Encoding]::Unicode
+    )
+    $utf16Rejected = $false
+    try {
+        $null = Get-ValidatedUtf8TextFiles `
+            -Files @($utf16CanaryPath) `
+            -WorkingDirectory $tempDirectory
+    }
+    catch {
+        $utf16Rejected = $true
+    }
+    if (-not $utf16Rejected) {
+        throw "The secret-scan encoding gate accepted a UTF-16 text canary."
     }
 
     Push-Location -LiteralPath $repoRoot
@@ -792,6 +1005,9 @@ try {
             Where-Object { $_ } |
             Sort-Object -Unique
     )
+    $validatedTextScanFiles = @(
+        Get-ValidatedUtf8TextFiles -Files $scanFiles -WorkingDirectory $repoRoot
+    )
     $scan = Invoke-DetectSecretsJson `
         -Files $scanFiles `
         -OutputPath (Join-Path $tempDirectory "scan.json")
@@ -817,26 +1033,8 @@ try {
     }
     Write-Host "Validated narrow generated-hash exceptions: $allowedFindingCount"
 
-    $strictUtf8 = [System.Text.UTF8Encoding]::new($false, $true)
-    $sourceInspectionFiles = @(
-        Get-ChildItem -LiteralPath $repoRoot -Recurse -File |
-            Where-Object {
-                $_.FullName -notmatch '[\\/](\.git|\.venv|node_modules|\.next|playwright-report|test-results|var)[\\/]'
-            } |
-            Where-Object {
-                try {
-                    $candidateText = $strictUtf8.GetString(
-                        [System.IO.File]::ReadAllBytes($_.FullName)
-                    )
-                    return -not $candidateText.Contains([char] 0)
-                }
-                catch [System.Text.DecoderFallbackException] {
-                    return $false
-                }
-            }
-    )
     $inspectionFiles = @(
-        $sourceInspectionFiles + $artifactFiles |
+        $validatedTextScanFiles + $artifactFiles |
             Sort-Object -Property FullName -Unique
     )
     $patternHits = $inspectionFiles | Select-String -Pattern $sensitivePattern

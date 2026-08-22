@@ -29,8 +29,23 @@ $recursiveEvidencePaths = @(
     [System.IO.Path]::GetFullPath((Join-Path $webRoot "test-results"))
 )
 
+$mutablePaths = @(
+    $runtimeDirectory,
+    $nextDirectory,
+    $sentinelPath,
+    $buildEvidencePath
+)
+$mutablePaths += $staleEvidencePaths
+foreach ($mutablePath in $mutablePaths) {
+    Assert-SafeRepositoryPath -Path $mutablePath
+}
+if (Test-Path -LiteralPath $nextDirectory -PathType Container) {
+    Assert-NoReparsePointsInTree -Path $nextDirectory
+}
+
 function Remove-StaleBuildEvidence {
     foreach ($path in $staleEvidencePaths) {
+        Assert-SafeRepositoryPath -Path $path
         if (Test-Path -LiteralPath $path) {
             $resolvedPath = [System.IO.Path]::GetFullPath($path)
             if (Test-Path -LiteralPath $path -PathType Container) {
@@ -38,6 +53,7 @@ function Remove-StaleBuildEvidence {
                 if ($pathItem.Attributes -band [System.IO.FileAttributes]::ReparsePoint) {
                     throw "Refusing to recursively remove a reparse-point evidence directory."
                 }
+                Assert-NoReparsePointsInTree -Path $resolvedPath
                 if ($resolvedPath -notin $recursiveEvidencePaths) {
                     throw "Refusing to recursively remove an unexpected evidence directory."
                 }
@@ -63,12 +79,25 @@ function Remove-StaleBuildEvidence {
 
 Remove-StaleBuildEvidence
 [System.IO.Directory]::CreateDirectory($runtimeDirectory) | Out-Null
+Assert-SafeRepositoryPath -Path $runtimeDirectory
 
 $publicEnvironmentVariables = @(
     Get-ChildItem Env: | Where-Object { $_.Name -like "NEXT_PUBLIC_*" }
 )
 if ($publicEnvironmentVariables.Count -gt 0) {
     throw "NEXT_PUBLIC environment variables are prohibited in the Phase 1 build."
+}
+$nextEnvironmentFiles = @(
+    Get-ChildItem -LiteralPath $repoRoot -Force -File -Filter ".env*"
+    Get-ChildItem -LiteralPath $webRoot -Force -File -Filter ".env*"
+)
+foreach ($environmentFile in $nextEnvironmentFiles) {
+    if (
+        (Get-Content -LiteralPath $environmentFile.FullName -Raw) -match
+            '(?m)^\s*(?:export\s+)?NEXT_PUBLIC_[A-Za-z0-9_]+\s*='
+    ) {
+        throw "A Next.js environment file contains a prohibited public variable."
+    }
 }
 
 Invoke-Checked -FilePath $python -ArgumentList @(
@@ -97,6 +126,7 @@ try {
         if ($directoryItem.Attributes -band [System.IO.FileAttributes]::ReparsePoint) {
             throw "A required production build directory cannot be a reparse point."
         }
+        Assert-NoReparsePointsInTree -Path $requiredDirectory
         $artifactFiles = @(Get-ChildItem -LiteralPath $requiredDirectory -Recurse -File)
         if ($artifactFiles.Count -eq 0) {
             throw "A required production build directory is empty: $requiredDirectory"

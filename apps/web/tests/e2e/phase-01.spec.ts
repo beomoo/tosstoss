@@ -17,6 +17,7 @@ function isAllowedBrowserUrl(rawUrl: string): boolean {
     return (
       (url.protocol === "http:" || url.protocol === "ws:") &&
       url.hostname === "127.0.0.1" &&
+      url.port === "3000" &&
       url.username === "" &&
       url.password === ""
     );
@@ -133,7 +134,10 @@ async function observePageBoundary(page: Page, sentinel: string) {
 
         const status = response.status();
         const isBodyless =
-          status === 204 || status === 205 || status === 304 || (status >= 300 && status < 400);
+          response.request().method() === "HEAD" ||
+          status === 204 ||
+          status === 205 ||
+          status === 304;
         if (isBodyless) {
           return;
         }

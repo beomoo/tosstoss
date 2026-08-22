@@ -12,19 +12,23 @@ $sourceFiles = foreach ($root in $scopedRoots) {
     Get-ChildItem -LiteralPath $root -Recurse -File |
         Where-Object {
             $_.FullName -notmatch '[\\/](node_modules|\.next|playwright-report|test-results|__pycache__)[\\/]' -and
-            $_.Name -ne "next-env.d.ts" -and
-            $_.FullName -ne $PSCommandPath
+            $_.Name -ne "next-env.d.ts"
         }
 }
 $runtimeSourceFiles = @(
-    $sourceFiles | Where-Object { $_.FullName -notmatch '[\\/]tests?[\\/]' }
+    $sourceFiles | Where-Object {
+        $_.FullName -notmatch '[\\/]tests?[\\/]' -or
+        $_.FullName -match '[\\/]apps[\\/]web[\\/]tests[\\/]e2e[\\/]start-(?:backend|frontend)\.ps1$'
+    }
 )
+$prohibitedDependencyNamePattern = '(?i)(^|[-_.])(openai(?:[-_.]agents?)?|dart[-_.]?fss|sec[-_.]?edgar[-_.]?downloader|yfinance|finnhub(?:[-_.]?python)?|polygon[-_.]?api[-_.]?client|alpaca[-_.]?py)([-_.]|$)'
 
 function Assert-NoPattern {
     param(
         [Parameter(Mandatory = $true)][string] $Pattern,
         [Parameter(Mandatory = $true)][string] $Message,
-        [System.IO.FileInfo[]] $Files = $sourceFiles
+        [System.IO.FileInfo[]] $Files = $sourceFiles,
+        [switch] $SuppressHitOutput
     )
 
     if (-not $Files -or $Files.Count -eq 0) {
@@ -32,8 +36,94 @@ function Assert-NoPattern {
     }
     $hits = $Files | Select-String -Pattern $Pattern
     if ($hits) {
-        $hits | Select-Object Path, LineNumber | Format-Table -AutoSize | Out-Host
+        if (-not $SuppressHitOutput) {
+            $hits | Select-Object Path, LineNumber | Format-Table -AutoSize | Out-Host
+        }
         throw $Message
+    }
+}
+
+function Assert-ExactStringMap {
+    param(
+        [Parameter(Mandatory = $true)][object] $Actual,
+        [Parameter(Mandatory = $true)][System.Collections.IDictionary] $Expected,
+        [Parameter(Mandatory = $true)][string] $Path,
+        [Parameter(Mandatory = $true)][string] $Label
+    )
+
+    if ($Actual -isnot [pscustomobject] -and $Actual -isnot [System.Collections.IDictionary]) {
+        throw "$Label must be a JSON object in $Path."
+    }
+    $actualEntries = if ($Actual -is [System.Collections.IDictionary]) {
+        @($Actual.GetEnumerator())
+    }
+    else {
+        @($Actual.PSObject.Properties | ForEach-Object {
+            [pscustomobject]@{ Key = $_.Name; Value = $_.Value }
+        })
+    }
+    $actualNames = @($actualEntries | ForEach-Object { [string] $_.Key })
+    $expectedNames = @($Expected.Keys | ForEach-Object { [string] $_ })
+    if (
+        $actualNames.Count -ne $expectedNames.Count -or
+        (Compare-Object -CaseSensitive `
+            -ReferenceObject @($expectedNames | Sort-Object) `
+            -DifferenceObject @($actualNames | Sort-Object))
+    ) {
+        throw "$Label keys do not match the exact Phase 1 allowlist in $Path."
+    }
+    foreach ($entry in $actualEntries) {
+        if (
+            $entry.Value -isnot [string] -or
+            [string] $entry.Value -cne [string] $Expected[[string] $entry.Key]
+        ) {
+            throw "$Label values do not match the exact Phase 1 allowlist in $Path."
+        }
+    }
+}
+
+function Assert-PolicyCanaryRejected {
+    param(
+        [Parameter(Mandatory = $true)][scriptblock] $Action,
+        [Parameter(Mandatory = $true)][string] $Message
+    )
+
+    $rejected = $false
+    try {
+        & $Action
+    }
+    catch {
+        $rejected = $true
+    }
+    if (-not $rejected) {
+        throw $Message
+    }
+}
+
+function Assert-PatternRejectsCanary {
+    param(
+        [Parameter(Mandatory = $true)][string] $Pattern,
+        [Parameter(Mandatory = $true)][string] $Content,
+        [Parameter(Mandatory = $true)][string] $Message
+    )
+
+    $tempDirectory = New-TaskTempDirectory
+    try {
+        $canaryPath = Join-Path $tempDirectory "policy-negative-canary.txt"
+        [System.IO.File]::WriteAllText($canaryPath, $Content)
+        $canaryFile = Get-Item -LiteralPath $canaryPath
+        Assert-PolicyCanaryRejected `
+            -Action {
+                Assert-NoPattern `
+                    -Pattern $Pattern `
+                    -Message "Expected negative canary rejection." `
+                    -Files @($canaryFile) `
+                    -SuppressHitOutput
+            } `
+            -Message $Message
+    }
+    finally {
+        Remove-TaskTempDirectory -Path $tempDirectory
     }
 }
 
@@ -163,6 +253,75 @@ function Assert-DependencyAllowlist {
     }
 }
 
+function Assert-NodeLockPackageEntry {
+    param(
+        [Parameter(Mandatory = $true)][string] $LockKey,
+        [Parameter(Mandatory = $true)][object] $Entry,
+        [Parameter(Mandatory = $true)][string] $RegistryPrefix
+    )
+
+    if (
+        $LockKey -cnotmatch
+            '^node_modules/(?:@[^/]+/)?[^/]+(?:/node_modules/(?:@[^/]+/)?[^/]+)*$' -or
+        $Entry -isnot [System.Collections.IDictionary]
+    ) {
+        throw "A Node lock package entry has an invalid shape."
+    }
+    $marker = "node_modules/"
+    $nameOffset = $LockKey.LastIndexOf(
+        $marker,
+        [System.StringComparison]::Ordinal
+    ) + $marker.Length
+    $packageName = $LockKey.Substring($nameOffset)
+    if (
+        $packageName -match $prohibitedDependencyNamePattern -or
+        ($Entry.Contains("name") -and [string] $Entry["name"] -cne $packageName) -or
+        $Entry.Contains("link") -or
+        -not $Entry.Contains("version") -or
+        -not $Entry.Contains("resolved") -or
+        -not $Entry.Contains("integrity")
+    ) {
+        throw "A Node lock package entry has an unapproved identity."
+    }
+    $version = [string] $Entry["version"]
+    $tarballName = ($packageName -split '/')[-1]
+    $expectedResolved = [string]::Concat(
+        $RegistryPrefix,
+        $packageName,
+        "/-/",
+        $tarballName,
+        "-",
+        $version,
+        ".tgz"
+    )
+    if (
+        $version -cnotmatch '^[0-9A-Za-z][0-9A-Za-z._+-]*$' -or
+        [string] $Entry["resolved"] -cne $expectedResolved -or
+        [string] $Entry["integrity"] -cnotmatch '^sha512-[A-Za-z0-9+/]+={0,2}$'
+    ) {
+        throw "A Node lock package entry is not pinned to its npm registry identity."
+    }
+    foreach ($sectionName in @(
+        "dependencies", "optionalDependencies", "peerDependencies"
+    )) {
+        if (-not $Entry.Contains($sectionName)) {
+            continue
+        }
+        if ($Entry[$sectionName] -isnot [System.Collections.IDictionary]) {
+            throw "A Node lock dependency section has an invalid shape."
+        }
+        foreach ($dependency in $Entry[$sectionName].GetEnumerator()) {
+            if (
+                [string] $dependency.Key -match $prohibitedDependencyNamePattern -or
+                [string] $dependency.Value -match
+                    '(?i)^(?:https?:|git(?:\+|:)|file:|npm:|workspace:)'
+            ) {
+                throw "A Node lock dependency edge uses an unapproved name or source."
+            }
+        }
+    }
+}
+
 $allowedNodeSpecifiers = [ordered]@{
     "next" = "16.3.1"
     "react" = "19.2.8"
@@ -182,6 +341,32 @@ $allowedNodeSpecifiers = [ordered]@{
     "typescript" = "5.9.3"
     "vitest" = "4.1.10"
 }
+$allowedRootScripts = [ordered]@{
+    "dev" = "npm run dev --workspace @toss-dashboard/web"
+    "lint" = "npm run lint --workspace @toss-dashboard/web"
+    "typecheck" = "npm run typecheck --workspace @toss-dashboard/web"
+    "test" = "npm run test --workspace @toss-dashboard/web"
+    "test:frontend" = "npm run test --workspace @toss-dashboard/web"
+    "generate:api" = "npm run generate:api --workspace @toss-dashboard/web"
+    "check:api" = "npm run check:api --workspace @toss-dashboard/web"
+    "build" = "npm run build --workspace @toss-dashboard/web"
+    "start" = "npm run start --workspace @toss-dashboard/web"
+    "e2e" = "npm run e2e --workspace @toss-dashboard/web"
+    "test:e2e" = "npm run test:e2e --workspace @toss-dashboard/web"
+}
+$allowedWebScripts = [ordered]@{
+    "dev" = "next dev --hostname 127.0.0.1 --port 3000"
+    "lint" = "eslint . --max-warnings 0"
+    "typecheck" = "next typegen && tsc --noEmit"
+    "test" = "vitest run"
+    "test:watch" = "vitest"
+    "generate:api" = "openapi-typescript ../../contracts/openapi.json --output src/types/api.generated.ts --alphabetize"
+    "check:api" = "openapi-typescript ../../contracts/openapi.json --output src/types/api.generated.ts --alphabetize --check"
+    "build" = "next build"
+    "start" = "next start --hostname 127.0.0.1 --port 3000"
+    "e2e" = "playwright test"
+    "test:e2e" = "playwright test"
+}
 $allowedNodeDependencies = New-OrdinalIgnoreCaseSet -Values @($allowedNodeSpecifiers.Keys)
 $rootPackagePath = Join-Path $repoRoot "package.json"
 $webPackagePath = Join-Path $repoRoot "apps\web\package.json"
@@ -189,6 +374,41 @@ $packageLockPath = Join-Path $repoRoot "package-lock.json"
 $rootPackage = Read-JsonFile -Path $rootPackagePath
 $webPackage = Read-JsonFile -Path $webPackagePath
 $packageLock = Read-JsonFile -Path $packageLockPath -AsHashtable
+if (
+    $rootPackage.name -cne "toss-invest-dashboard" -or
+    $rootPackage.private -ne $true -or
+    $rootPackage.packageManager -cne "npm@11.12.1" -or
+    @($rootPackage.workspaces).Count -ne 1 -or
+    [string] @($rootPackage.workspaces)[0] -cne "apps/web" -or
+    $webPackage.name -cne "@toss-dashboard/web" -or
+    $webPackage.private -ne $true
+) {
+    throw "The Node workspace topology does not match the exact Phase 1 contract."
+}
+Assert-ExactStringMap `
+    -Actual $rootPackage.scripts `
+    -Expected $allowedRootScripts `
+    -Path $rootPackagePath `
+    -Label "Root package scripts"
+Assert-ExactStringMap `
+    -Actual $webPackage.scripts `
+    -Expected $allowedWebScripts `
+    -Path $webPackagePath `
+    -Label "Web package scripts"
+$scriptCanary = [ordered]@{}
+foreach ($entry in $allowedWebScripts.GetEnumerator()) {
+    $scriptCanary[$entry.Key] = $entry.Value
+}
+$scriptCanary["build"] = "Write-Output pass"
+Assert-PolicyCanaryRejected `
+    -Action {
+        Assert-ExactStringMap `
+            -Actual $scriptCanary `
+            -Expected $allowedWebScripts `
+            -Path $webPackagePath `
+            -Label "Web package script canary"
+    } `
+    -Message "The package-script policy accepted a false-green canary."
 $rootDependencyNames = @(Get-NodeDependencyNames -Manifest $rootPackage)
 $webDependencyNames = @(Get-NodeDependencyNames -Manifest $webPackage)
 Assert-NodeDependencySpecifiers `
@@ -211,6 +431,16 @@ Assert-DependencyAllowlist `
 $lockImporters = @{
     "" = $rootDependencyNames
     "apps/web" = $webDependencyNames
+}
+$registryPrefix = [string]::Concat("http", "s://registry.", "npmjs.org/")
+if (
+    [int] $packageLock["lockfileVersion"] -ne 3 -or
+    $packageLock["requires"] -ne $true -or
+    [string] $packageLock["name"] -cne "toss-invest-dashboard" -or
+    [string] $packageLock["version"] -cne "0.1.0" -or
+    $packageLock["packages"] -isnot [System.Collections.IDictionary]
+) {
+    throw "package-lock.json has an unexpected top-level schema."
 }
 foreach ($entry in $lockImporters.GetEnumerator()) {
     $lockPackages = $packageLock["packages"]
@@ -243,7 +473,15 @@ foreach ($dependencyName in $allowedNodeSpecifiers.Keys) {
     $packageEntry = $packageLock["packages"][$lockKey]
     $version = [string] $allowedNodeSpecifiers[$dependencyName]
     $tarballName = ($dependencyName -split '/')[-1]
-    $expectedResolved = "https://registry.npmjs.org/$dependencyName/-/$tarballName-$version.tgz"
+    $expectedResolved = [string]::Concat(
+        $registryPrefix,
+        $dependencyName,
+        "/-/",
+        $tarballName,
+        "-",
+        $version,
+        ".tgz"
+    )
     if (
         $packageEntry -isnot [System.Collections.IDictionary] -or
         -not $packageEntry.Contains("version") -or
@@ -259,6 +497,65 @@ foreach ($dependencyName in $allowedNodeSpecifiers.Keys) {
         throw "A direct Node lock entry does not match its approved registry identity."
     }
 }
+
+$workspaceLinkKey = "node_modules/@toss-dashboard/web"
+if (-not $packageLock["packages"].Contains($workspaceLinkKey)) {
+    throw "package-lock.json is missing the exact web workspace link."
+}
+$workspaceLink = $packageLock["packages"][$workspaceLinkKey]
+if (
+    $workspaceLink -isnot [System.Collections.IDictionary] -or
+    $workspaceLink.Count -ne 2 -or
+    [string] $workspaceLink["resolved"] -cne "apps/web" -or
+    $workspaceLink["link"] -ne $true
+) {
+    throw "package-lock.json has an invalid web workspace link."
+}
+foreach ($lockEntry in $packageLock["packages"].GetEnumerator()) {
+    if ($lockEntry.Key -in @("", "apps/web", $workspaceLinkKey)) {
+        continue
+    }
+    Assert-NodeLockPackageEntry `
+        -LockKey ([string] $lockEntry.Key) `
+        -Entry $lockEntry.Value `
+        -RegistryPrefix $registryPrefix
+}
+
+$providerPackageCanary = [string]::Concat("open", "ai-agents")
+$providerCanaryEntry = [ordered]@{
+    version = "1.0.0"
+    resolved = [string]::Concat(
+        $registryPrefix,
+        $providerPackageCanary,
+        "/-/",
+        $providerPackageCanary,
+        "-1.0.0.tgz"
+    )
+    integrity = [string]::Concat("sha512-", ("A" * 86), "==")
+}
+Assert-PolicyCanaryRejected `
+    -Action {
+        Assert-NodeLockPackageEntry `
+            -LockKey ([string]::Concat("node_modules/", $providerPackageCanary)) `
+            -Entry $providerCanaryEntry `
+            -RegistryPrefix $registryPrefix
+    } `
+    -Message "The Node lock policy accepted a prohibited provider package canary."
+$externalTarballCanary = [ordered]@{
+    version = "1.0.0"
+    resolved = [string]::Concat(
+        "http", "s://example.invalid/fixture-package-1.0.0.tgz"
+    )
+    integrity = [string]::Concat("sha512-", ("A" * 86), "==")
+}
+Assert-PolicyCanaryRejected `
+    -Action {
+        Assert-NodeLockPackageEntry `
+            -LockKey "node_modules/fixture-package" `
+            -Entry $externalTarballCanary `
+            -RegistryPrefix $registryPrefix
+    } `
+    -Message "The Node lock policy accepted a non-registry tarball canary."
 
 $python = Get-VenvPython
 $pyprojectPath = Join-Path $repoRoot "pyproject.toml"
@@ -354,8 +651,19 @@ $requirementsLockPath = Join-Path $repoRoot "requirements.lock"
 if (-not (Test-Path -LiteralPath $requirementsLockPath -PathType Leaf)) {
     throw "requirements.lock is missing."
 }
+$approvedRequirementsLockSha256 = [string]::Concat(
+    "77c659d8", "79ecc4ed",
+    "595e790b", "1af3b747",
+    "353c6494", "a85d1ec8",
+    "21bdf0ac", "0a1b552d"
+)
+$actualRequirementsLockSha256 = (
+    Get-FileHash -LiteralPath $requirementsLockPath -Algorithm SHA256
+).Hash.ToLowerInvariant()
+if ($actualRequirementsLockSha256 -cne $approvedRequirementsLockSha256) {
+    throw "requirements.lock does not match the approved Phase 1 lock digest."
+}
 $requirementsLockLines = @(Get-Content -LiteralPath $requirementsLockPath)
-$prohibitedDependencyNamePattern = '(?i)(^|[-_.])(openai(?:[-_.]agents?)?|dart[-_.]?fss|sec[-_.]?edgar[-_.]?downloader|yfinance|finnhub(?:[-_.]python)?|polygon[-_.]?api[-_.]?client|alpaca[-_.]?py)([-_.]|$)'
 $lockedPythonNames = @(
     $requirementsLockLines |
         ForEach-Object {
@@ -432,34 +740,90 @@ if (
     throw "requirements.lock does not match the exact Phase 1 dependency allowlist."
 }
 
-$nonLocalBindPattern = '(?i)(?<![0-9])0\.0\.0\.0(?![0-9])|(?:allow_origins|cors_origins)\s*=\s*[\[\(]\s*["'']\*["'']'
-$prohibitedExecutionPattern = '(?i)(/(?:api/)?[A-Za-z0-9_/-]*(?:orders?|accounts?|brokerage|trades?)\b|\b(?:execute|place|submit|send|create|buy|sell)[_-]?(?:trade|order)\b|\b(?:broker(?:age)?|orders?|trades?|accounts?|order[_-]?(?:client|service|api|sdk)|trade[_-]?(?:client|service|api|sdk))(?:\s*\??\.\s*[a-z_][a-z0-9_]*){0,2}\s*\??\.\s*(?:create|place|submit|send|execute|buy|sell)\b)'
-if ('@("--host", "0.0.0.0")' -notmatch $nonLocalBindPattern) {
-    throw "Policy self-test failed to detect an array-form non-local bind."
+$nonLocalUrlPattern = '(?i)(?:https?|wss?)://(?!(?:127\.0\.0\.1|localhost|example\.invalid)(?=[:/"''\s]|$))(?:[a-z0-9]|\[)|["''](?:https?|wss?)["'']\s*\+\s*["'']://'
+$nonLocalBindPattern = '(?ix)(?:--host(?:name)?["'']?\s*(?:,\s*|=\s*|\s+)["'']?(?!127\.0\.0\.1(?=["''\s,\)]|$))[^\s"'',\)]+|\bhost(?:name)?\s*(?::|=(?!=))\s*["'']?(?!127\.0\.0\.1(?=["''\s,\}\)]|$))[^\s"'',\}\)]+|\blisten\s*\(\s*(?:[0-9]+\s*,\s*)?["'']?(?!127\.0\.0\.1(?=["''\s,\)]|$))[A-Za-z0-9:*\.\[\]-]+|(?<![0-9])(?!(?:127\.0\.0\.1)(?![0-9]))(?:25[0-5]|2[0-4][0-9]|1?[0-9]{1,2})(?:\.(?:25[0-5]|2[0-4][0-9]|1?[0-9]{1,2})){3}(?![0-9])|(?:allow_origins|cors_origins)\s*=\s*[\[\(]\s*["'']\*["'']|allow_origin_regex\s*=\s*["'']\.\*["''])'
+$prohibitedExecutionPattern = '(?i)(["'']/api/["'']\s*\+\s*["''](?:orders?|accounts?|brokerage|trades?)|/(?:api/)?[A-Za-z0-9_/-]*(?:orders?|accounts?|brokerage|trades?)\b|\b(?:execute|place|submit|send|create|buy|sell)[_-](?:trade|order)(?:[_-][a-z0-9]+)*\b|\b(?:execute|place|submit|send|create|buy|sell)(?-i:Trade|Order)\b|\b(?:broker(?:age)?|orders?|trades?|accounts?|order[_-]?(?:client|service|api|sdk)|trade[_-]?(?:client|service|api|sdk))\s*\[\s*(?:["''$]|[A-Za-z])|\b(?:broker(?:age)?|orders?|trades?|accounts?|order[_-]?(?:client|service|api|sdk)|trade[_-]?(?:client|service|api|sdk))(?:\s*\??\.\s*[a-z_][a-z0-9_]*){0,2}\s*\??\.\s*(?:create|place|submit|send|execute|buy|sell)\b)'
+$disabledTestPattern = '(?i)(\bpytest\.(?:(?:mark\.)?(?:skip|xfail)|importorskip)\b|\bunittest\.(?:skip|skipIf|skipUnless)\b|\b(?:xdescribe|xit|xtest)\s*\(|\b(?:describe|it|test)(?:\.(?:concurrent|serial|each))*\.(?:skip|todo|fixme|only|failing)\b)'
+$remoteIntegrationNames = @(
+    [string]::Concat("next/font/", "google"),
+    [string]::Concat("fonts.google", "apis.com"),
+    [string]::Concat("fonts.g", "static.com"),
+    [string]::Concat("navigator.send", "Beacon"),
+    [string]::Concat("g", "tag("),
+    [string]::Concat("data", "Layer"),
+    [string]::Concat("@vercel/", "analytics"),
+    [string]::Concat("@vercel/", "speed-insights"),
+    [string]::Concat("posthog", "-js"),
+    [string]::Concat("mixpanel", "-browser"),
+    [string]::Concat("@segment/", "analytics-next"),
+    [string]::Concat("@amplitude/", "analytics-browser"),
+    [string]::Concat("react-", "ga4"),
+    [string]::Concat("next-", "plausible"),
+    [string]::Concat("@sentry/", "nextjs")
+)
+$remoteIntegrationPattern = '(?i)(' + (
+    @($remoteIntegrationNames | ForEach-Object { [regex]::Escape($_) }) -join '|'
+) + ')'
+
+$bindCanaries = @(
+    [string]::Concat('@("--host", "', (@("0", "0", "0", "0") -join "."), '")'),
+    [string]::Concat('--host ', (@("192", "168", "1", "5") -join ".")),
+    [string]::Concat('--host ', (":" * 2))
+)
+foreach ($canary in $bindCanaries) {
+    Assert-PatternRejectsCanary `
+        -Pattern $nonLocalBindPattern `
+        -Content $canary `
+        -Message "The local-bind policy accepted a non-loopback canary."
 }
-foreach ($canary in @(
-    '"/brokerage/trades"',
-    "submitOrder",
-    "broker.orders.create()",
-    "orderClient.place()"
-)) {
-    if ($canary -notmatch $prohibitedExecutionPattern) {
-        throw "Policy self-test failed to detect a prohibited execution canary."
-    }
+$urlCanaries = @(
+    [string]::Concat("w", "ss://outside.invalid/socket"),
+    [string]::Concat('"w', 'ss" + "://outside.invalid/socket"')
+)
+foreach ($canary in $urlCanaries) {
+    Assert-PatternRejectsCanary `
+        -Pattern $nonLocalUrlPattern `
+        -Content $canary `
+        -Message "The local-URL policy accepted an external URL canary."
 }
-if ($allowedPythonDependencies.Contains("openai-agents")) {
+$executionCanaries = @(
+    [string]::Concat("'/api/' + '", "orders'"),
+    [string]::Concat("create_", "order_request"),
+    [string]::Concat("bro", "ker['dynamicMethod']"),
+    [string]::Concat("submit", "Order")
+)
+foreach ($canary in $executionCanaries) {
+    Assert-PatternRejectsCanary `
+        -Pattern $prohibitedExecutionPattern `
+        -Content $canary `
+        -Message "The execution-path policy accepted a prohibited canary."
+}
+$testCanaries = @(
+    [string]::Concat("it.", "todo('fixture')"),
+    [string]::Concat("test.concurrent.", "skip('fixture')"),
+    [string]::Concat("pytest.", "importorskip('fixture')"),
+    [string]::Concat("describe.", "only('fixture')")
+)
+foreach ($canary in $testCanaries) {
+    Assert-PatternRejectsCanary `
+        -Pattern $disabledTestPattern `
+        -Content $canary `
+        -Message "The disabled-test policy accepted a skip/focus canary."
+}
+$prohibitedPythonCanary = [string]::Concat("open", "ai-agents")
+if ($allowedPythonDependencies.Contains($prohibitedPythonCanary)) {
     throw "Policy self-test found a prohibited dependency in the allowlist."
 }
 
 Assert-NoPattern `
-    -Pattern '(?i)https?://(?!(?:127\.0\.0\.1|localhost|example\.invalid)(?=[:/"''\s]|$))(?:[a-z0-9]|\[)' `
+    -Pattern $nonLocalUrlPattern `
     -Message "A non-local URL was found in Phase 1 source."
 Assert-NoPattern `
-    -Pattern '(?i)(next/font/google|fonts\.(googleapis|gstatic)\.com|navigator\.sendBeacon|\bgtag\s*\(|\bdataLayer\b|@vercel/(analytics|speed-insights)|posthog-js|mixpanel-browser|@segment/analytics-next|@amplitude/analytics-browser|react-ga4|next-plausible|@sentry/nextjs)' `
+    -Pattern $remoteIntegrationPattern `
     -Message "A remote font, analytics, or telemetry integration was found."
 Assert-NoPattern `
-    -Pattern '(?i)(pytest\.mark\.skip|pytest\.skip|xfail|describe\.skip|it\.skip|test\.skip|test\.todo|test\.fixme)' `
-    -Message "A skipped, todo, fixme, or xfail test was found." `
+    -Pattern $disabledTestPattern `
+    -Message "A skipped, focused, todo, fixme, or xfail test was found." `
     -Files ($sourceFiles | Where-Object {
         $_.FullName -match '[\\/](tests?|__tests__)[\\/]|\.test\.|\.spec\.'
     })

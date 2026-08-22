@@ -1,6 +1,10 @@
 $ErrorActionPreference = "Stop"
 
 $repoRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot "..\..\..\.."))
+. (Join-Path $repoRoot "scripts\common.ps1")
+if ([System.IO.Path]::GetFullPath((Get-RepoRoot)) -cne $repoRoot) {
+    throw "The E2E backend resolved an unexpected repository root."
+}
 $python = Join-Path $repoRoot ".venv\Scripts\python.exe"
 if (-not (Test-Path -LiteralPath $python -PathType Leaf)) {
     throw "The repository .venv is missing. Run scripts/setup.ps1 first."
@@ -14,7 +18,9 @@ if (-not (Test-Path -LiteralPath $uvicornLogConfig -PathType Leaf)) {
 
 $fixtureDirectory = Join-Path $repoRoot "fixtures\phase_01"
 $runtimeDirectory = [System.IO.Path]::GetFullPath((Join-Path $repoRoot "var"))
+Assert-SafeRepositoryPath -Path $runtimeDirectory
 [System.IO.Directory]::CreateDirectory($runtimeDirectory) | Out-Null
+Assert-SafeRepositoryPath -Path $runtimeDirectory
 $webBuildDirectory = [System.IO.Path]::GetFullPath((Join-Path $repoRoot "apps\web\.next"))
 $buildIdPath = [System.IO.Path]::GetFullPath((Join-Path $webBuildDirectory "BUILD_ID"))
 $sentinelPath = [System.IO.Path]::GetFullPath(
@@ -59,8 +65,11 @@ if (
 }
 
 $logDirectory = [System.IO.Path]::GetFullPath((Join-Path $runtimeDirectory "logs"))
+Assert-SafeRepositoryPath -Path $logDirectory
 [System.IO.Directory]::CreateDirectory($logDirectory) | Out-Null
+Assert-SafeRepositoryPath -Path $logDirectory
 $apiLogPath = [System.IO.Path]::GetFullPath((Join-Path $logDirectory "phase-01-e2e-api.jsonl"))
+Assert-SafeRepositoryPath -Path $apiLogPath
 if (
     [System.IO.Path]::GetDirectoryName($apiLogPath) -ne $logDirectory -or
     [System.IO.Path]::GetFileName($apiLogPath) -ne "phase-01-e2e-api.jsonl"
@@ -79,52 +88,78 @@ $coherenceMarker = [ordered]@{
     $apiLogPath,
     (($coherenceMarker | ConvertTo-Json -Compress) + [Environment]::NewLine)
 )
-$databasePath = [System.IO.Path]::GetFullPath((Join-Path $runtimeDirectory "playwright-e2e.db"))
-if (
-    [System.IO.Path]::GetDirectoryName($databasePath) -ne $runtimeDirectory -or
-    [System.IO.Path]::GetFileName($databasePath) -ne "playwright-e2e.db"
-) {
-    throw "Refusing to prepare an E2E database outside the repository runtime directory."
+$configuredDatabasePath = [Environment]::GetEnvironmentVariable(
+    "PHASE1_E2E_DATABASE_PATH"
+)
+if ([string]::IsNullOrWhiteSpace($configuredDatabasePath)) {
+    throw "The parent E2E script did not provide a disposable database path."
 }
-if (Test-Path -LiteralPath $databasePath -PathType Leaf) {
-    Remove-Item -LiteralPath $databasePath -Force
+$databasePath = [System.IO.Path]::GetFullPath($configuredDatabasePath)
+$taskTempRoot = [System.IO.Path]::GetFullPath(
+    (Join-Path $repoRoot "var\tmp\phase-01")
+)
+$taskTempPrefix = $taskTempRoot.TrimEnd(
+    [System.IO.Path]::DirectorySeparatorChar
+) + [System.IO.Path]::DirectorySeparatorChar
+$databaseDirectory = [System.IO.Path]::GetDirectoryName($databasePath)
+$relativeDatabasePath = [System.IO.Path]::GetRelativePath(
+    $taskTempRoot,
+    $databasePath
+)
+$relativeSegments = @(
+    $relativeDatabasePath.Split(
+        [System.IO.Path]::DirectorySeparatorChar,
+        [System.StringSplitOptions]::RemoveEmptyEntries
+    )
+)
+if (
+    -not $databasePath.StartsWith(
+        $taskTempPrefix,
+        [System.StringComparison]::OrdinalIgnoreCase
+    ) -or
+    $relativeSegments.Count -ne 2 -or
+    $relativeSegments[0] -cnotmatch '^[0-9a-f]{32}$' -or
+    $relativeSegments[1] -cne "playwright-e2e.db" -or
+    -not (Test-Path -LiteralPath $databaseDirectory -PathType Container) -or
+    ((Get-Item -LiteralPath $databaseDirectory).Attributes -band
+        [System.IO.FileAttributes]::ReparsePoint)
+) {
+    throw "Refusing to use an E2E database outside a fresh Phase 1 task directory."
+}
+Assert-SafeRepositoryPath -Path $databaseDirectory
+Assert-SafeRepositoryPath -Path $databasePath
+if (Test-Path -LiteralPath $databasePath) {
+    throw "The disposable E2E database path must not exist before startup."
 }
 $normalizedDatabasePath = $databasePath.Replace("\", "/")
 $databaseUrl = "sqlite:///$normalizedDatabasePath"
 
+Push-Location -LiteralPath $repoRoot
 try {
-    Push-Location -LiteralPath $repoRoot
-    try {
-        & $python -m alembic -x "database_url=$databaseUrl" upgrade head
-        if ($LASTEXITCODE -ne 0) {
-            throw "E2E database migration failed."
-        }
-        & $python -m toss_dashboard_api.fixtures.importer `
-            --database-url $databaseUrl `
-            --fixture-dir $fixtureDirectory
-        if ($LASTEXITCODE -ne 0) {
-            throw "E2E fixture import failed."
-        }
+    & $python -m alembic -x "database_url=$databaseUrl" upgrade head
+    if ($LASTEXITCODE -ne 0) {
+        throw "E2E database migration failed."
     }
-    finally {
-        Pop-Location
-    }
-
-    $env:DASHBOARD_DATABASE_URL = $databaseUrl
-    $env:DASHBOARD_FIXTURE_DIR = $fixtureDirectory
-    & $python -m uvicorn toss_dashboard_api.main:app `
-        --app-dir (Join-Path $repoRoot "services\api\src") `
-        --host 127.0.0.1 `
-        --port 8000 `
-        --no-access-log `
-        --log-config $uvicornLogConfig 2>&1 | Tee-Object -FilePath $apiLogPath -Append
-    $apiExitCode = $LASTEXITCODE
-    if ($apiExitCode -ne 0) {
-        throw "E2E backend exited with a non-zero status."
+    & $python -m toss_dashboard_api.fixtures.importer `
+        --database-url $databaseUrl `
+        --fixture-dir $fixtureDirectory
+    if ($LASTEXITCODE -ne 0) {
+        throw "E2E fixture import failed."
     }
 }
 finally {
-    if (Test-Path -LiteralPath $databasePath -PathType Leaf) {
-        Remove-Item -LiteralPath $databasePath -Force
-    }
+    Pop-Location
+}
+
+$env:DASHBOARD_DATABASE_URL = $databaseUrl
+$env:DASHBOARD_FIXTURE_DIR = $fixtureDirectory
+& $python -m uvicorn toss_dashboard_api.main:app `
+    --app-dir (Join-Path $repoRoot "services\api\src") `
+    --host 127.0.0.1 `
+    --port 8000 `
+    --no-access-log `
+    --log-config $uvicornLogConfig 2>&1 | Tee-Object -FilePath $apiLogPath -Append
+$apiExitCode = $LASTEXITCODE
+if ($apiExitCode -ne 0) {
+    throw "E2E backend exited with a non-zero status."
 }

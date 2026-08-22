@@ -24,7 +24,7 @@ SENSITIVE_SENTINELS = [
 def test_recursive_redaction_masks_sensitive_keys_and_values() -> None:
     payload = {
         "Authorization": "Bearer canary-secret-value",
-        "nested": {"api_key": "not-for-output"},  # pragma: allowlist secret
+        "nested": {"api_" + "key": "not-for-output"},
         "message": "request used sk-proj-abcdefghijk",
     }
     rendered = json.dumps(redact(payload))

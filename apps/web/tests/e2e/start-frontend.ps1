@@ -1,6 +1,10 @@
 $ErrorActionPreference = "Stop"
 
 $repoRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot "..\..\..\.."))
+. (Join-Path $repoRoot "scripts\common.ps1")
+if ([System.IO.Path]::GetFullPath((Get-RepoRoot)) -cne $repoRoot) {
+    throw "The E2E frontend resolved an unexpected repository root."
+}
 $webRoot = [System.IO.Path]::GetFullPath((Join-Path $repoRoot "apps\web"))
 $buildDirectory = [System.IO.Path]::GetFullPath((Join-Path $webRoot ".next"))
 $buildIdPath = [System.IO.Path]::GetFullPath((Join-Path $buildDirectory "BUILD_ID"))
@@ -15,6 +19,9 @@ $logDirectory = [System.IO.Path]::GetFullPath((Join-Path $runtimeDirectory "logs
 $webLogPath = [System.IO.Path]::GetFullPath(
     (Join-Path $logDirectory "phase-01-e2e-web.log")
 )
+foreach ($mutablePath in @($logDirectory, $webLogPath)) {
+    Assert-SafeRepositoryPath -Path $mutablePath
+}
 if (
     [System.IO.Path]::GetDirectoryName($sentinelPath) -ne $runtimeDirectory -or
     [System.IO.Path]::GetFileName($sentinelPath) -ne "phase-01-build-sentinel.txt"
@@ -73,6 +80,7 @@ if (
     throw "Refusing to write an E2E web log outside the repository log directory."
 }
 [System.IO.Directory]::CreateDirectory($logDirectory) | Out-Null
+Assert-SafeRepositoryPath -Path $logDirectory
 [System.IO.File]::WriteAllText(
     $webLogPath,
     ("PHASE1_E2E_WEB_BUILD_ID=$buildId" + [Environment]::NewLine)
