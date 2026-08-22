@@ -18,7 +18,31 @@ function Test-IsSupportedPhaseNodeVersion {
 }
 
 function Assert-PhaseNodeRuntime {
-    Assert-CommandAvailable -Name "node"
+    $inheritedNodeOptions = Get-Item `
+        -LiteralPath Env:NODE_OPTIONS `
+        -ErrorAction SilentlyContinue
+    if (
+        $null -ne $inheritedNodeOptions -and
+        -not [System.String]::IsNullOrWhiteSpace($inheritedNodeOptions.Value)
+    ) {
+        throw "NODE_OPTIONS must be empty before a Phase 1 script starts."
+    }
+
+    $nodeCommand = Get-Command `
+        -Name "node.exe" `
+        -CommandType Application `
+        -ErrorAction SilentlyContinue |
+        Select-Object -First 1
+    if ($null -eq $nodeCommand) {
+        throw "Required command 'node.exe' was not found."
+    }
+    $nodePath = [System.IO.Path]::GetFullPath($nodeCommand.Source)
+    if (
+        -not (Test-Path -LiteralPath $nodePath -PathType Leaf) -or
+        [System.IO.Path]::GetExtension($nodePath) -cne ".exe"
+    ) {
+        throw "The resolved Node.js runtime is not an executable file."
+    }
 
     foreach ($canary in @(
         [pscustomobject]@{ Version = [System.Version]"24.15.0"; Supported = $false },
@@ -31,7 +55,7 @@ function Assert-PhaseNodeRuntime {
         }
     }
 
-    $nodeVersionText = (& node -p "process.versions.node").Trim()
+    $nodeVersionText = (& $nodePath -p "process.versions.node").Trim()
     if ($LASTEXITCODE -ne 0) {
         throw "Unable to read Node.js version."
     }
