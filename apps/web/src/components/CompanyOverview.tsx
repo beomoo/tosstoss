@@ -248,7 +248,8 @@ export function CompanyOverview({ overview }: CompanyOverviewProps) {
   const evidence = overview.evidence ?? [];
   const dataQuality = overview.data_quality ?? [];
   const latestPrice = priceBars.reduce<PriceBar | null>(
-    (latest, item) => (latest === null || item.bar_start > latest.bar_start ? item : latest),
+    (latest, item) =>
+      latest === null || Date.parse(item.bar_start) > Date.parse(latest.bar_start) ? item : latest,
     null,
   );
 

@@ -25,13 +25,33 @@ function isAllowedBrowserUrl(rawUrl: string): boolean {
   }
 }
 
-function observePageBoundary(page: Page, sentinel: string) {
+async function withInspectionTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(
+          () => reject(new Error(`Response inspection exceeded ${timeoutMs}ms.`)),
+          timeoutMs,
+        );
+      }),
+    ]);
+  } finally {
+    if (timer !== undefined) {
+      clearTimeout(timer);
+    }
+  }
+}
+
+async function observePageBoundary(page: Page, sentinel: string) {
   const requestUrls: string[] = [];
   const forbiddenRequestUrls: string[] = [];
   const directBackendRequestUrls: string[] = [];
   const sentinelLeaks: string[] = [];
   const uninspectedResponses: string[] = [];
   const responseInspections: Promise<void>[] = [];
+  const inspectedInterceptedUrls = new Set<string>();
   const sentinelBytes = Buffer.from(sentinel);
 
   const inspectUrl = (url: string) => {
@@ -62,6 +82,43 @@ function observePageBoundary(page: Page, sentinel: string) {
     });
   });
 
+  // Next.js prefetch responses can remain open until navigation cancels them.
+  // Buffer each local RSC fetch before the browser sees it so the exact response
+  // (not a replay) is inspected and a timeout aborts the request fail-closed.
+  await page.route("**/*", async (route) => {
+    const request = route.request();
+    let url: URL;
+    try {
+      url = new URL(request.url());
+    } catch {
+      await route.abort("failed");
+      return;
+    }
+    const isLocalRscFetch =
+      request.method() === "GET" &&
+      request.resourceType() === "fetch" &&
+      url.hostname === "127.0.0.1" &&
+      url.port === "3000" &&
+      url.searchParams.has("_rsc");
+    if (!isLocalRscFetch) {
+      await route.continue();
+      return;
+    }
+    try {
+      const bufferedResponse = await route.fetch({ maxRedirects: 0, timeout: 5_000 });
+      const headers = JSON.stringify(bufferedResponse.headers());
+      const body = await withInspectionTimeout(bufferedResponse.body(), 5_000);
+      if (headers.includes(sentinel) || body.includes(sentinelBytes)) {
+        sentinelLeaks.push(`intercepted:${request.url()}`);
+      }
+      inspectedInterceptedUrls.add(request.url());
+      await route.fulfill({ response: bufferedResponse, body });
+    } catch {
+      uninspectedResponses.push(`intercepted:${request.url()}`);
+      await route.abort("failed");
+    }
+  });
+
   page.on("response", (response) => {
     responseInspections.push(
       (async () => {
@@ -81,24 +138,18 @@ function observePageBoundary(page: Page, sentinel: string) {
           return;
         }
         try {
-          await response.finished();
-          const body = await response.body();
+          const body = await withInspectionTimeout(
+            (async () => {
+              await response.finished();
+              return response.body();
+            })(),
+            5_000,
+          );
           if (body.includes(sentinelBytes)) {
             sentinelLeaks.push(`body:${response.url()}`);
           }
         } catch {
-          try {
-            const url = response.url();
-            if (response.request().method() !== "GET" || !isAllowedBrowserUrl(url)) {
-              throw new Error("Only local GET responses may use the inspection fallback.");
-            }
-            const fallback = await fetch(url, { method: "GET", redirect: "error" });
-            const fallbackHeaders = JSON.stringify(Object.fromEntries(fallback.headers.entries()));
-            const fallbackBody = Buffer.from(await fallback.arrayBuffer());
-            if (fallbackHeaders.includes(sentinel) || fallbackBody.includes(sentinelBytes)) {
-              sentinelLeaks.push(`fallback:${url}`);
-            }
-          } catch {
+          if (!inspectedInterceptedUrls.has(response.url())) {
             uninspectedResponses.push(`body:${response.url()}`);
           }
         }
@@ -137,7 +188,7 @@ function observePageBoundary(page: Page, sentinel: string) {
 }
 
 test("Phase 1 합성 Company와 모든 issuer의 Data Quality 화면", async ({ page }, testInfo) => {
-  const audit = observePageBoundary(page, readServerOnlySentinel());
+  const audit = await observePageBoundary(page, readServerOnlySentinel());
 
   await page.goto("/");
 
@@ -173,7 +224,7 @@ test("Phase 1 합성 Company와 모든 issuer의 Data Quality 화면", async ({ 
 });
 
 test("알 수 없는 issuer는 안전한 not-found 화면", async ({ page }) => {
-  const audit = observePageBoundary(page, readServerOnlySentinel());
+  const audit = await observePageBoundary(page, readServerOnlySentinel());
 
   await page.goto("/company/issuer_not_in_fixture");
 

@@ -2,7 +2,13 @@ from typing import Self
 
 from pydantic import model_validator
 
-from toss_dashboard_api.contracts.base import DecimalString, NormalizedRecord, SafeId, UtcDatetime
+from toss_dashboard_api.contracts.base import (
+    DecimalString,
+    NonEmptyText,
+    NormalizedRecord,
+    SafeId,
+    UtcDatetime,
+)
 from toss_dashboard_api.contracts.enums import (
     EvidenceBasis,
     EvidenceDirection,
@@ -16,9 +22,9 @@ class Evidence(NormalizedRecord):
     evidence_basis: EvidenceBasis
     verification_status: VerificationStatus
     direction: EvidenceDirection
-    claim: str
+    claim: NonEmptyText
     source_record_id: SafeId | None
-    source_excerpt: str | None
+    source_excerpt: NonEmptyText | None
     observed_at: UtcDatetime
     confidence: DecimalString
 

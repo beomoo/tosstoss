@@ -3,6 +3,7 @@ from typing import Self
 from pydantic import NonNegativeInt, model_validator
 
 from toss_dashboard_api.contracts.base import (
+    NonEmptyText,
     NormalizedRecord,
     SafeId,
     UtcDatetime,
@@ -21,7 +22,7 @@ class DataQualityStatus(NormalizedRecord):
     quality_status_id: SafeId
     issuer_id: SafeId
     source_system: SourceSystem
-    dataset: str
+    dataset: NonEmptyText
     availability_status: AvailabilityStatus
     last_attempt_at: UtcDatetime
     last_success_at: UtcDatetime | None
@@ -31,12 +32,12 @@ class DataQualityStatus(NormalizedRecord):
     finality_status: FinalityStatus
     revision_status: RevisionStatus
     source_record_id: SafeId | None
-    source_locator: str
-    error_code: str | None
-    error_message: str | None
+    source_locator: NonEmptyText
+    error_code: NonEmptyText | None
+    error_message: NonEmptyText | None
     records_received: NonNegativeInt
     records_rejected: NonNegativeInt
-    quality_flags: list[str]
+    quality_flags: list[NonEmptyText]
 
     @model_validator(mode="after")
     def validate_quality_state(self) -> Self:

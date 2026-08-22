@@ -24,6 +24,7 @@ ContractVersion = Literal["0.1.0"]
 HASH_PATTERN = re.compile(r"^sha256:[0-9a-f]{64}$")
 DECIMAL_PATTERN = re.compile(r"^-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?$")
 ID_PATTERN = re.compile(r"^[a-z][a-z0-9_]{2,127}$")
+NonEmptyText = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
 SafeId = Annotated[str, StringConstraints(pattern=ID_PATTERN.pattern, max_length=128)]
 Sha256 = Annotated[str, StringConstraints(pattern=HASH_PATTERN.pattern)]
 
@@ -124,13 +125,13 @@ class StrictContract(BaseModel):
     )
 
     contract_version: ContractVersion
-    missing_reasons: dict[str, MissingReason] = Field(default_factory=dict)
+    missing_reasons: dict[NonEmptyText, MissingReason] = Field(default_factory=dict)
 
     @field_validator("missing_reasons")
     @classmethod
     def validate_missing_reason_keys(
-        cls, value: dict[str, MissingReason]
-    ) -> dict[str, MissingReason]:
+        cls, value: dict[NonEmptyText, MissingReason]
+    ) -> dict[NonEmptyText, MissingReason]:
         if any(not key or key.startswith("_") for key in value):
             raise ValueError("missing reason keys must be public field names")
         return value

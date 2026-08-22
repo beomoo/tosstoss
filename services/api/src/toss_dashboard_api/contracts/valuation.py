@@ -3,7 +3,7 @@ from typing import Self
 
 from pydantic import model_validator
 
-from toss_dashboard_api.contracts.base import DecimalString, NormalizedRecord, SafeId
+from toss_dashboard_api.contracts.base import DecimalString, NonEmptyText, NormalizedRecord, SafeId
 from toss_dashboard_api.contracts.enums import (
     AssumptionSource,
     Currency,
@@ -27,7 +27,7 @@ class ValuationScenario(NormalizedRecord):
     unit_scale: DecimalString
     probability: DecimalString
     assumption_source: AssumptionSource
-    formula_version: str
+    formula_version: NonEmptyText
     input_data_ids: list[SafeId]
     result_status: SampleResult
 

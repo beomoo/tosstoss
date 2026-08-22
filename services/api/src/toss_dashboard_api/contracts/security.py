@@ -3,10 +3,10 @@ from typing import Annotated, Self
 
 from pydantic import StringConstraints, model_validator
 
-from toss_dashboard_api.contracts.base import NormalizedRecord, SafeId
+from toss_dashboard_api.contracts.base import NonEmptyText, NormalizedRecord, SafeId
 from toss_dashboard_api.contracts.enums import Currency, MappingStatus, Market, ShareClass
 
-Symbol = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=32)]
+Symbol = Annotated[NonEmptyText, StringConstraints(max_length=32)]
 
 
 class Security(NormalizedRecord):
@@ -17,9 +17,9 @@ class Security(NormalizedRecord):
     ticker: Symbol
     share_class: ShareClass
     currency: Currency
-    cusip: str | None
-    isin: str | None
-    figi: str | None
+    cusip: NonEmptyText | None
+    isin: NonEmptyText | None
+    figi: NonEmptyText | None
     mapping_status: MappingStatus
     valid_from: date | None
     valid_to: date | None

@@ -3,7 +3,7 @@ from typing import Self
 
 from pydantic import model_validator
 
-from toss_dashboard_api.contracts.base import DecimalString, NormalizedRecord, SafeId
+from toss_dashboard_api.contracts.base import DecimalString, NonEmptyText, NormalizedRecord, SafeId
 from toss_dashboard_api.contracts.enums import (
     Consolidation,
     Currency,
@@ -18,10 +18,10 @@ class FinancialFact(NormalizedRecord):
     financial_fact_id: SafeId
     issuer_id: SafeId
     report_type: ReportType
-    fiscal_period: str
+    fiscal_period: NonEmptyText
     statement: StatementType
-    account_code: str
-    account_name_original: str
+    account_code: NonEmptyText
+    account_name_original: NonEmptyText
     value: DecimalString | None
     currency: Currency
     unit_scale: DecimalString

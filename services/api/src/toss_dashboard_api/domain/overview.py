@@ -1,6 +1,6 @@
 from pydantic import Field
 
-from toss_dashboard_api.contracts.base import StrictContract
+from toss_dashboard_api.contracts.base import SafeId, StrictContract
 from toss_dashboard_api.contracts.evidence import Evidence
 from toss_dashboard_api.contracts.filing import FilingDocument, FilingSentenceChange
 from toss_dashboard_api.contracts.financial import FinancialFact
@@ -18,7 +18,7 @@ from toss_dashboard_api.contracts.valuation import ValuationScenario
 
 class CompanyOverview(StrictContract):
     issuer: Issuer
-    selected_security_id: str
+    selected_security_id: SafeId
     security: Security
     price_bars: list[PriceBar] = Field(default_factory=list)
     market_flows: list[DailyMarketFlow] = Field(default_factory=list)

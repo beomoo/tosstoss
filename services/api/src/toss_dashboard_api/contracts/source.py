@@ -3,6 +3,7 @@ from typing import Annotated, Self
 from pydantic import StringConstraints, field_validator, model_validator
 
 from toss_dashboard_api.contracts.base import (
+    NonEmptyText,
     NormalizedRecord,
     SafeId,
     Sha256,
@@ -26,8 +27,8 @@ class SourceRecord(NormalizedRecord):
     source_record_id: SafeId
     source_system: SourceSystem
     source_type: SourceType
-    external_id: Annotated[str, StringConstraints(min_length=1, max_length=128)]
-    source_locator: Annotated[str, StringConstraints(min_length=1, max_length=2048)]
+    external_id: Annotated[NonEmptyText, StringConstraints(max_length=128)]
+    source_locator: Annotated[NonEmptyText, StringConstraints(max_length=2048)]
     observed_at: UtcDatetime
     published_at: UtcDatetime
     fetched_at: UtcDatetime
@@ -36,7 +37,7 @@ class SourceRecord(NormalizedRecord):
     revision_status: RevisionStatus
     supersedes_id: SafeId | None
     raw_content_hash: Sha256
-    parser_version: Annotated[str, StringConstraints(pattern=r"^[0-9]+\.[0-9]+\.[0-9]+$")]
+    parser_version: Annotated[NonEmptyText, StringConstraints(pattern=r"^[0-9]+\.[0-9]+\.[0-9]+$")]
     raw_storage_ref: OpaqueRef
 
     @field_validator("source_locator")
@@ -46,6 +47,7 @@ class SourceRecord(NormalizedRecord):
 
     @model_validator(mode="after")
     def validate_revision(self) -> Self:
+        self.require_missing_reasons("supersedes_id")
         if self.supersedes_id == self.source_record_id:
             raise ValueError("source record cannot supersede itself")
         if self.revision_status == RevisionStatus.AMENDED and self.supersedes_id is None:

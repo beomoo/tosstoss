@@ -8,7 +8,7 @@
     "daily_market_flows.json": "sha256:e1ac2c51a4435cc9f0d4c671a2de1bf5036cf3c6828582084c841f8662eba77c",
     "data_quality_statuses.json": "sha256:175769d1e82f38bf300d8bcc14d49a04315a3f65e0118ece177d4e54ead3acab",
     "evidence.json": "sha256:a06118c1d89a66a61637e2311f533fc8f716c3d2ae69f69e394161ce1414e0d0",
-    "filing_documents.json": "sha256:1a5ae812723e11cf598466f28f8883d248083e271019f437640d9ee109a0ce79",
+    "filing_documents.json": "sha256:8aa686f06b03d893b8621762e47e1a484d1e22408c0839b93459a6330230d23c",
     "filing_sentence_changes.json": "sha256:46b64d54fdb3e4db3605bfc08c8786b38ed0af98266674f0b24e02c6114b99f5",
     "financial_facts.json": "sha256:fcd901ac059b53efbfc5ebca65b38a5de8b8fd891bc657de33cfd52a68b8c60a",
     "institution_holding_changes.json": "sha256:2be541031ad41b050b728a4103374e553ca92daffb7fec31fdf67a4efa777883",
@@ -22,7 +22,7 @@
     "raw/market_snapshot.fixture.json": "sha256:1e0622587dcedd14795ba7ca37e03a845cae10352f3b10d07e945398c0eb5414",
     "raw/us_holding.fixture.json": "sha256:5fb1cbe054dadf8d74159873666a935e59278b40427a147da90018e7ee5384ca",
     "securities.json": "sha256:f0ddd5c6fc2d27592fde000752b7d4fbe74e80f5e89c555e224d6666630a22af",
-    "source_records.json": "sha256:dcbc4aacb8bc3aa39538674b20165e6cfc4fd97f226bc188174403452df488c0",
+    "source_records.json": "sha256:877cc6b839d6ef7101db5c2988c092ac029f17441a12855c0bf21766528b55c0",
     "valuation_scenarios.json": "sha256:01e1bc3117496ae488ec45a0310f75ff821e6b5ea11ae0c7cc40baa5249b8ed3"
   }
 }

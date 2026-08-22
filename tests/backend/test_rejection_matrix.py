@@ -210,6 +210,7 @@ def test_rejection_11_supersedes_cycle_from_invalid_fixture() -> None:
 def test_rejection_11_self_reference(fixture_repository: FixtureRepository) -> None:
     payload = fixture_repository.source_records[0].model_dump(mode="json")
     payload["supersedes_id"] = payload["source_record_id"]
+    payload["missing_reasons"].pop("supersedes_id")
     with pytest.raises(ValidationError, match="supersede itself"):
         SourceRecord.model_validate_json(json.dumps(payload))
 

@@ -3,7 +3,13 @@ from typing import Self
 
 from pydantic import model_validator
 
-from toss_dashboard_api.contracts.base import DecimalString, NormalizedRecord, SafeId, UtcDatetime
+from toss_dashboard_api.contracts.base import (
+    DecimalString,
+    NonEmptyText,
+    NormalizedRecord,
+    SafeId,
+    UtcDatetime,
+)
 from toss_dashboard_api.contracts.enums import (
     FilingChangeType,
     FilingFormType,
@@ -27,6 +33,7 @@ class FilingDocument(NormalizedRecord):
 
     @model_validator(mode="after")
     def validate_revision(self) -> Self:
+        self.require_missing_reasons("supersedes_filing_id")
         if self.supersedes_filing_id == self.filing_id:
             raise ValueError("filing cannot supersede itself")
         if self.revision_status == RevisionStatus.AMENDED and self.supersedes_filing_id is None:
@@ -44,14 +51,14 @@ class FilingSentenceChange(NormalizedRecord):
     issuer_id: SafeId
     previous_filing_id: SafeId
     current_filing_id: SafeId
-    section_key: str
+    section_key: NonEmptyText
     primary_change_type: FilingChangeType
     change_types: list[FilingChangeType]
-    previous_sentence: str
-    current_sentence: str
+    previous_sentence: NonEmptyText
+    current_sentence: NonEmptyText
     semantic_similarity: DecimalString
     confidence: DecimalString
-    rule_hits: list[str]
+    rule_hits: list[NonEmptyText]
     review_status: ReviewStatus
     human_review_required: bool
     result_status: SampleResult

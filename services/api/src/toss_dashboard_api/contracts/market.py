@@ -3,7 +3,13 @@ from typing import Self
 
 from pydantic import model_validator
 
-from toss_dashboard_api.contracts.base import DecimalString, NormalizedRecord, SafeId, UtcDatetime
+from toss_dashboard_api.contracts.base import (
+    DecimalString,
+    NonEmptyText,
+    NormalizedRecord,
+    SafeId,
+    UtcDatetime,
+)
 from toss_dashboard_api.contracts.enums import (
     AdjustmentStatus,
     Currency,
@@ -17,7 +23,7 @@ from toss_dashboard_api.contracts.enums import (
 class PriceBar(NormalizedRecord):
     price_bar_id: SafeId
     security_id: SafeId
-    interval: str
+    interval: NonEmptyText
     bar_start: UtcDatetime
     exchange_trade_date: date
     open: DecimalString

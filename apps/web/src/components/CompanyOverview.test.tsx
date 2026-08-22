@@ -42,6 +42,37 @@ describe("CompanyOverview", () => {
     expect(screen.queryByText("0 KRW")).not.toBeInTheDocument();
   });
 
+  it("UTC 직렬화 정밀도가 달라도 실제 최신 price bar를 선택한다", () => {
+    const overview = createCompanyOverview();
+    const older = overview.price_bars?.[0];
+    if (older === undefined) {
+      throw new Error("가격 fixture가 없습니다.");
+    }
+    overview.price_bars = [
+      older,
+      {
+        ...older,
+        price_bar_id: "price_kr_fixture_002",
+        bar_start: "2026-08-15T06:30:00.100000Z",
+        open: "41",
+        high: "43",
+        low: "40",
+        close: "42",
+        volume: "10",
+      },
+    ];
+
+    render(<CompanyOverview overview={overview} />);
+
+    const priceSection = screen.getByRole("heading", { name: "최근 가격 샘플" }).closest("section");
+    if (priceSection === null) {
+      throw new Error("가격 섹션이 렌더링되지 않았습니다.");
+    }
+    expect(within(priceSection).getByText("42 KRW")).toBeVisible();
+    expect(within(priceSection).queryByText("999,999,999,999,999,999,999,999.000100 KRW"))
+      .not.toBeInTheDocument();
+  });
+
   it("US 근거 원문이 null이면 계약의 결측 사유를 함께 표시한다", () => {
     const overview = createCompanyOverview();
     const evidence = overview.evidence?.[0];

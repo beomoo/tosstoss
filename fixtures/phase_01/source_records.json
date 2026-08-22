@@ -1,8 +1,8 @@
 [
   {
     "contract_version": "0.1.0",
-    "missing_reasons": {},
-    "normalized_content_hash": "sha256:6ea595936f89005e007c685aea116981c0698a3fae8d0d0b98862285ab195acd",
+    "missing_reasons": {"supersedes_id": "NOT_APPLICABLE"},
+    "normalized_content_hash": "sha256:29eae7417c62244942de4a4d4dd231161a1e16edd5bd382f3a0a43bdd4432e95",
     "source_record_id": "source_kr_filing_original",
     "source_system": "FIXTURE_KR_REGULATOR",
     "source_type": "FILING",
@@ -41,8 +41,8 @@
   },
   {
     "contract_version": "0.1.0",
-    "missing_reasons": {},
-    "normalized_content_hash": "sha256:df7eee7a16a25e3769cd905d1fd76518578c68899738a438ce2b3a86cee30093",
+    "missing_reasons": {"supersedes_id": "NOT_APPLICABLE"},
+    "normalized_content_hash": "sha256:815d97bc84dcb1e4b716ddc255b6e6baaa233443d42288b12bf6e11a4c7ad5d6",
     "source_record_id": "source_us_holding",
     "source_system": "FIXTURE_US_REGULATOR",
     "source_type": "HOLDING",
@@ -61,8 +61,8 @@
   },
   {
     "contract_version": "0.1.0",
-    "missing_reasons": {},
-    "normalized_content_hash": "sha256:4302f19d09652df3a6778f8f7df54ed2d2252337d78cd66bea150f78078e2ae6",
+    "missing_reasons": {"supersedes_id": "NOT_APPLICABLE"},
+    "normalized_content_hash": "sha256:0b69acfcc0c67ad19354529196ac4060b3a49cf00be365a5ab79fe6b143b3c82",
     "source_record_id": "source_fixture_market",
     "source_system": "FIXTURE_MARKET",
     "source_type": "MARKET_DATA",
@@ -81,8 +81,8 @@
   },
   {
     "contract_version": "0.1.0",
-    "missing_reasons": {},
-    "normalized_content_hash": "sha256:81c712e447df82e77284701a89bd8bc1c837aeb738ffb9cf3ad239d5ada0c20d",
+    "missing_reasons": {"supersedes_id": "NOT_APPLICABLE"},
+    "normalized_content_hash": "sha256:f36e2144b92bd20a555c6622b875b6da2ebbb0b664a8474200b6f56e752b7caa",
     "source_record_id": "source_fixture_financial",
     "source_system": "FIXTURE_KR_REGULATOR",
     "source_type": "FINANCIAL",

@@ -2,7 +2,13 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from toss_dashboard_api.contracts.base import ApiEnvelopeBase, ContractVersion, StrictContract
+from toss_dashboard_api.contracts.base import (
+    ApiEnvelopeBase,
+    ContractVersion,
+    NonEmptyText,
+    SafeId,
+    StrictContract,
+)
 from toss_dashboard_api.contracts.packet import AnalysisPacket
 from toss_dashboard_api.contracts.quality import DataQualityStatus
 from toss_dashboard_api.contracts.security import Security
@@ -10,10 +16,10 @@ from toss_dashboard_api.domain.overview import CompanyOverview
 
 
 class HealthResponse(StrictContract):
-    service: str
-    version: str
+    service: NonEmptyText
+    version: NonEmptyText
     data_mode: Literal["FIXTURE"]
-    status: str
+    status: NonEmptyText
 
 
 class SafetyStatus(StrictContract):
@@ -25,11 +31,11 @@ class SafetyStatus(StrictContract):
 
 
 class SystemStatusResponse(ApiEnvelopeBase):
-    service: str
-    version: str
-    status: str
-    database_revision: str
-    fixture_version: str
+    service: NonEmptyText
+    version: NonEmptyText
+    status: NonEmptyText
+    database_revision: NonEmptyText
+    fixture_version: NonEmptyText
     safety: SafetyStatus
 
 
@@ -43,7 +49,7 @@ class CompanyOverviewResponse(ApiEnvelopeBase):
 
 
 class DataQualityResponse(ApiEnvelopeBase):
-    issuer_id: str
+    issuer_id: SafeId
     data: list[DataQualityStatus]
     count: int = Field(ge=0)
 
@@ -55,8 +61,8 @@ class AnalysisPacketResponse(ApiEnvelopeBase):
 class ErrorBody(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True, frozen=True)
 
-    code: str
-    message: str
+    code: NonEmptyText
+    message: NonEmptyText
 
 
 class ErrorEnvelope(BaseModel):
@@ -64,4 +70,4 @@ class ErrorEnvelope(BaseModel):
 
     contract_version: ContractVersion
     error: ErrorBody
-    request_id: str
+    request_id: NonEmptyText

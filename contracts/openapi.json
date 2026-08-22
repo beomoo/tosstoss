@@ -52,6 +52,9 @@
             "additionalProperties": {
               "$ref": "#/components/schemas/MissingReason"
             },
+            "propertyNames": {
+              "minLength": 1
+            },
             "title": "Missing Reasons",
             "type": "object"
           },
@@ -118,6 +121,9 @@
           "missing_reasons": {
             "additionalProperties": {
               "$ref": "#/components/schemas/MissingReason"
+            },
+            "propertyNames": {
+              "minLength": 1
             },
             "title": "Missing Reasons",
             "type": "object"
@@ -226,6 +232,9 @@
             "additionalProperties": {
               "$ref": "#/components/schemas/MissingReason"
             },
+            "propertyNames": {
+              "minLength": 1
+            },
             "title": "Missing Reasons",
             "type": "object"
           },
@@ -240,6 +249,8 @@
             "$ref": "#/components/schemas/Security"
           },
           "selected_security_id": {
+            "maxLength": 128,
+            "pattern": "^[a-z][a-z0-9_]{2,127}$",
             "title": "Selected Security Id",
             "type": "string"
           },
@@ -279,6 +290,9 @@
           "missing_reasons": {
             "additionalProperties": {
               "$ref": "#/components/schemas/MissingReason"
+            },
+            "propertyNames": {
+              "minLength": 1
             },
             "title": "Missing Reasons",
             "type": "object"
@@ -334,6 +348,9 @@
           "missing_reasons": {
             "additionalProperties": {
               "$ref": "#/components/schemas/MissingReason"
+            },
+            "propertyNames": {
+              "minLength": 1
             },
             "title": "Missing Reasons",
             "type": "object"
@@ -438,12 +455,17 @@
             "type": "string"
           },
           "issuer_id": {
+            "maxLength": 128,
+            "pattern": "^[a-z][a-z0-9_]{2,127}$",
             "title": "Issuer Id",
             "type": "string"
           },
           "missing_reasons": {
             "additionalProperties": {
               "$ref": "#/components/schemas/MissingReason"
+            },
+            "propertyNames": {
+              "minLength": 1
             },
             "title": "Missing Reasons",
             "type": "object"
@@ -471,12 +493,14 @@
             "type": "string"
           },
           "dataset": {
+            "minLength": 1,
             "title": "Dataset",
             "type": "string"
           },
           "error_code": {
             "anyOf": [
               {
+                "minLength": 1,
                 "type": "string"
               },
               {
@@ -488,6 +512,7 @@
           "error_message": {
             "anyOf": [
               {
+                "minLength": 1,
                 "type": "string"
               },
               {
@@ -546,6 +571,9 @@
             "additionalProperties": {
               "$ref": "#/components/schemas/MissingReason"
             },
+            "propertyNames": {
+              "minLength": 1
+            },
             "title": "Missing Reasons",
             "type": "object"
           },
@@ -556,6 +584,7 @@
           },
           "quality_flags": {
             "items": {
+              "minLength": 1,
               "type": "string"
             },
             "title": "Quality Flags",
@@ -581,6 +610,7 @@
             "$ref": "#/components/schemas/RevisionStatus"
           },
           "source_locator": {
+            "minLength": 1,
             "title": "Source Locator",
             "type": "string"
           },
@@ -631,10 +661,12 @@
         "additionalProperties": false,
         "properties": {
           "code": {
+            "minLength": 1,
             "title": "Code",
             "type": "string"
           },
           "message": {
+            "minLength": 1,
             "title": "Message",
             "type": "string"
           }
@@ -658,6 +690,7 @@
             "$ref": "#/components/schemas/ErrorBody"
           },
           "request_id": {
+            "minLength": 1,
             "title": "Request Id",
             "type": "string"
           }
@@ -674,6 +707,7 @@
         "additionalProperties": false,
         "properties": {
           "claim": {
+            "minLength": 1,
             "title": "Claim",
             "type": "string"
           },
@@ -708,6 +742,9 @@
             "additionalProperties": {
               "$ref": "#/components/schemas/MissingReason"
             },
+            "propertyNames": {
+              "minLength": 1
+            },
             "title": "Missing Reasons",
             "type": "object"
           },
@@ -724,6 +761,7 @@
           "source_excerpt": {
             "anyOf": [
               {
+                "minLength": 1,
                 "type": "string"
               },
               {
@@ -836,6 +874,9 @@
             "additionalProperties": {
               "$ref": "#/components/schemas/MissingReason"
             },
+            "propertyNames": {
+              "minLength": 1
+            },
             "title": "Missing Reasons",
             "type": "object"
           },
@@ -927,6 +968,7 @@
             "type": "string"
           },
           "current_sentence": {
+            "minLength": 1,
             "title": "Current Sentence",
             "type": "string"
           },
@@ -944,6 +986,9 @@
             "additionalProperties": {
               "$ref": "#/components/schemas/MissingReason"
             },
+            "propertyNames": {
+              "minLength": 1
+            },
             "title": "Missing Reasons",
             "type": "object"
           },
@@ -959,6 +1004,7 @@
             "type": "string"
           },
           "previous_sentence": {
+            "minLength": 1,
             "title": "Previous Sentence",
             "type": "string"
           },
@@ -973,12 +1019,14 @@
           },
           "rule_hits": {
             "items": {
+              "minLength": 1,
               "type": "string"
             },
             "title": "Rule Hits",
             "type": "array"
           },
           "section_key": {
+            "minLength": 1,
             "title": "Section Key",
             "type": "string"
           },
@@ -1023,10 +1071,12 @@
         "additionalProperties": false,
         "properties": {
           "account_code": {
+            "minLength": 1,
             "title": "Account Code",
             "type": "string"
           },
           "account_name_original": {
+            "minLength": 1,
             "title": "Account Name Original",
             "type": "string"
           },
@@ -1051,6 +1101,7 @@
             "type": "string"
           },
           "fiscal_period": {
+            "minLength": 1,
             "title": "Fiscal Period",
             "type": "string"
           },
@@ -1063,6 +1114,9 @@
           "missing_reasons": {
             "additionalProperties": {
               "$ref": "#/components/schemas/MissingReason"
+            },
+            "propertyNames": {
+              "minLength": 1
             },
             "title": "Missing Reasons",
             "type": "object"
@@ -1163,18 +1217,24 @@
             "additionalProperties": {
               "$ref": "#/components/schemas/MissingReason"
             },
+            "propertyNames": {
+              "minLength": 1
+            },
             "title": "Missing Reasons",
             "type": "object"
           },
           "service": {
+            "minLength": 1,
             "title": "Service",
             "type": "string"
           },
           "status": {
+            "minLength": 1,
             "title": "Status",
             "type": "string"
           },
           "version": {
+            "minLength": 1,
             "title": "Version",
             "type": "string"
           }
@@ -1215,6 +1275,7 @@
             "type": "string"
           },
           "cusip_original": {
+            "minLength": 1,
             "title": "Cusip Original",
             "type": "string"
           },
@@ -1231,6 +1292,7 @@
             "type": "string"
           },
           "issuer_name_original": {
+            "minLength": 1,
             "title": "Issuer Name Original",
             "type": "string"
           },
@@ -1251,6 +1313,9 @@
             "additionalProperties": {
               "$ref": "#/components/schemas/MissingReason"
             },
+            "propertyNames": {
+              "minLength": 1
+            },
             "title": "Missing Reasons",
             "type": "object"
           },
@@ -1266,6 +1331,7 @@
           "put_call": {
             "anyOf": [
               {
+                "minLength": 1,
                 "type": "string"
               },
               {
@@ -1303,6 +1369,7 @@
             "type": "string"
           },
           "title_of_class": {
+            "minLength": 1,
             "title": "Title Of Class",
             "type": "string"
           }
@@ -1373,6 +1440,7 @@
           },
           "limitations": {
             "items": {
+              "minLength": 1,
               "type": "string"
             },
             "title": "Limitations",
@@ -1387,6 +1455,9 @@
           "missing_reasons": {
             "additionalProperties": {
               "$ref": "#/components/schemas/MissingReason"
+            },
+            "propertyNames": {
+              "minLength": 1
             },
             "title": "Missing Reasons",
             "type": "object"
@@ -1469,6 +1540,7 @@
             "type": "boolean"
           },
           "cik": {
+            "minLength": 1,
             "title": "Cik",
             "type": "string"
           },
@@ -1478,10 +1550,12 @@
             "type": "string"
           },
           "display_name": {
+            "minLength": 1,
             "title": "Display Name",
             "type": "string"
           },
           "legal_name": {
+            "minLength": 1,
             "title": "Legal Name",
             "type": "string"
           },
@@ -1497,6 +1571,9 @@
           "missing_reasons": {
             "additionalProperties": {
               "$ref": "#/components/schemas/MissingReason"
+            },
+            "propertyNames": {
+              "minLength": 1
             },
             "title": "Missing Reasons",
             "type": "object"
@@ -1556,6 +1633,7 @@
           "cik": {
             "anyOf": [
               {
+                "minLength": 1,
                 "type": "string"
               },
               {
@@ -1572,6 +1650,7 @@
           "corp_code": {
             "anyOf": [
               {
+                "minLength": 1,
                 "type": "string"
               },
               {
@@ -1604,6 +1683,9 @@
           "missing_reasons": {
             "additionalProperties": {
               "$ref": "#/components/schemas/MissingReason"
+            },
+            "propertyNames": {
+              "minLength": 1
             },
             "title": "Missing Reasons",
             "type": "object"
@@ -1679,13 +1761,18 @@
             "type": "string"
           },
           "extension_version": {
+            "minLength": 1,
             "title": "Extension Version",
             "type": "string"
           },
           "hypotheses": {
             "items": {
               "additionalProperties": {
+                "minLength": 1,
                 "type": "string"
+              },
+              "propertyNames": {
+                "minLength": 1
               },
               "type": "object"
             },
@@ -1695,7 +1782,11 @@
           "invalidation_conditions": {
             "items": {
               "additionalProperties": {
+                "minLength": 1,
                 "type": "string"
+              },
+              "propertyNames": {
+                "minLength": 1
               },
               "type": "object"
             },
@@ -1706,13 +1797,20 @@
             "additionalProperties": {
               "$ref": "#/components/schemas/MissingReason"
             },
+            "propertyNames": {
+              "minLength": 1
+            },
             "title": "Missing Reasons",
             "type": "object"
           },
           "scenario_probability_changes": {
             "items": {
               "additionalProperties": {
+                "minLength": 1,
                 "type": "string"
+              },
+              "propertyNames": {
+                "minLength": 1
               },
               "type": "object"
             },
@@ -1738,6 +1836,9 @@
           "missing_reasons": {
             "additionalProperties": {
               "$ref": "#/components/schemas/MissingReason"
+            },
+            "propertyNames": {
+              "minLength": 1
             },
             "title": "Missing Reasons",
             "type": "object"
@@ -1810,6 +1911,7 @@
             "type": "string"
           },
           "interval": {
+            "minLength": 1,
             "title": "Interval",
             "type": "string"
           },
@@ -1820,6 +1922,9 @@
           "missing_reasons": {
             "additionalProperties": {
               "$ref": "#/components/schemas/MissingReason"
+            },
+            "propertyNames": {
+              "minLength": 1
             },
             "title": "Missing Reasons",
             "type": "object"
@@ -1938,6 +2043,9 @@
             "additionalProperties": {
               "$ref": "#/components/schemas/MissingReason"
             },
+            "propertyNames": {
+              "minLength": 1
+            },
             "title": "Missing Reasons",
             "type": "object"
           },
@@ -2006,6 +2114,9 @@
             "additionalProperties": {
               "$ref": "#/components/schemas/MissingReason"
             },
+            "propertyNames": {
+              "minLength": 1
+            },
             "title": "Missing Reasons",
             "type": "object"
           }
@@ -2033,6 +2144,7 @@
           "cusip": {
             "anyOf": [
               {
+                "minLength": 1,
                 "type": "string"
               },
               {
@@ -2050,6 +2162,7 @@
           "figi": {
             "anyOf": [
               {
+                "minLength": 1,
                 "type": "string"
               },
               {
@@ -2061,6 +2174,7 @@
           "isin": {
             "anyOf": [
               {
+                "minLength": 1,
                 "type": "string"
               },
               {
@@ -2084,6 +2198,9 @@
           "missing_reasons": {
             "additionalProperties": {
               "$ref": "#/components/schemas/MissingReason"
+            },
+            "propertyNames": {
+              "minLength": 1
             },
             "title": "Missing Reasons",
             "type": "object"
@@ -2190,16 +2307,21 @@
             "type": "string"
           },
           "database_revision": {
+            "minLength": 1,
             "title": "Database Revision",
             "type": "string"
           },
           "fixture_version": {
+            "minLength": 1,
             "title": "Fixture Version",
             "type": "string"
           },
           "missing_reasons": {
             "additionalProperties": {
               "$ref": "#/components/schemas/MissingReason"
+            },
+            "propertyNames": {
+              "minLength": 1
             },
             "title": "Missing Reasons",
             "type": "object"
@@ -2208,14 +2330,17 @@
             "$ref": "#/components/schemas/SafetyStatus"
           },
           "service": {
+            "minLength": 1,
             "title": "Service",
             "type": "string"
           },
           "status": {
+            "minLength": 1,
             "title": "Status",
             "type": "string"
           },
           "version": {
+            "minLength": 1,
             "title": "Version",
             "type": "string"
           }
@@ -2264,6 +2389,7 @@
             "type": "string"
           },
           "formula_version": {
+            "minLength": 1,
             "title": "Formula Version",
             "type": "string"
           },
@@ -2292,6 +2418,9 @@
           "missing_reasons": {
             "additionalProperties": {
               "$ref": "#/components/schemas/MissingReason"
+            },
+            "propertyNames": {
+              "minLength": 1
             },
             "title": "Missing Reasons",
             "type": "object"

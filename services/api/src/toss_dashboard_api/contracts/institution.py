@@ -3,7 +3,7 @@ from typing import Annotated, Self
 
 from pydantic import StringConstraints, model_validator
 
-from toss_dashboard_api.contracts.base import DecimalString, NormalizedRecord, SafeId
+from toss_dashboard_api.contracts.base import DecimalString, NonEmptyText, NormalizedRecord, SafeId
 from toss_dashboard_api.contracts.enums import (
     Currency,
     HoldingChangeClass,
@@ -21,9 +21,9 @@ InstitutionFilingId = Annotated[
 
 class InstitutionManager(NormalizedRecord):
     manager_id: SafeId
-    display_name: str
-    legal_name: str
-    cik: str
+    display_name: NonEmptyText
+    legal_name: NonEmptyText
+    cik: NonEmptyText
     manager_type: ManagerType
     parent_manager_id: SafeId | None
     reporting_manager_id: SafeId
@@ -45,10 +45,10 @@ class InstitutionHolding(NormalizedRecord):
     filing_id: InstitutionFilingId
     manager_id: SafeId
     security_id: SafeId
-    cusip_original: str
-    issuer_name_original: str
-    title_of_class: str
-    put_call: str | None
+    cusip_original: NonEmptyText
+    issuer_name_original: NonEmptyText
+    title_of_class: NonEmptyText
+    put_call: NonEmptyText | None
     report_period: date
     shares: DecimalString
     market_value_reported: DecimalString
@@ -85,7 +85,7 @@ class InstitutionHoldingChange(NormalizedRecord):
     change_class: HoldingChangeClass
     estimated_trade_effect: DecimalString | None
     confidence: DecimalString
-    limitations: list[str]
+    limitations: list[NonEmptyText]
     result_status: SampleResult
 
     @model_validator(mode="after")

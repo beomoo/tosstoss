@@ -1,5 +1,7 @@
 import "server-only";
 
+import { isValidIssuerId } from "@/lib/issuer-id";
+import { isValidPhase1RuntimeSentinel } from "@/lib/runtime-boundary";
 import type {
   CompanyOverviewResponse,
   DataQualityResponse,
@@ -12,7 +14,6 @@ const CONTRACT_VERSION = "0.1.0";
 const DATA_MODE = "FIXTURE";
 const DEFAULT_BACKEND_ORIGIN = "http://127.0.0.1:8000";
 const REQUEST_TIMEOUT_MS = 4_000;
-const ISSUER_ID_PATTERN = /^[A-Za-z0-9_-]{1,100}$/;
 
 export class BackendRequestError extends Error {
   readonly status: number;
@@ -73,7 +74,7 @@ function assertFixtureContract(payload: unknown): void {
 
 function assertServerOnlyRuntimeBoundary(): void {
   const sentinel = process.env["PHASE1_SERVER_ONLY_SENTINEL"];
-  if (sentinel === "") {
+  if (!isValidPhase1RuntimeSentinel(sentinel)) {
     throw new BackendRequestError(503, "SERVER_RUNTIME_CONFIGURATION_INVALID");
   }
 }
@@ -113,7 +114,7 @@ async function fetchFixtureJson<T>(path: string): Promise<T> {
 }
 
 function issuerPath(issuerId: string): string {
-  if (!ISSUER_ID_PATTERN.test(issuerId)) {
+  if (!isValidIssuerId(issuerId)) {
     throw new BackendRequestError(404, "ISSUER_NOT_FOUND");
   }
   return encodeURIComponent(issuerId);
