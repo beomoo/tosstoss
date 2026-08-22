@@ -10,7 +10,14 @@ const http = require("node:http");
 const http2 = require("node:http2");
 const https = require("node:https");
 const net = require("node:net");
+const path = require("node:path");
 const tls = require("node:tls");
+
+const playwrightCoreRoot = path.dirname(require.resolve("playwright-core/package.json"));
+const {
+  httpHappyEyeballsAgent,
+  httpsHappyEyeballsAgent,
+} = require(path.join(playwrightCoreRoot, "lib/server/utils/happyEyeballs.js"));
 
 const BLOCKED_NETWORK_CODE = "ERR_OFFLINE_NON_LOOPBACK";
 const externalHostname = "phase-01-network-canary.example.invalid";
@@ -285,6 +292,15 @@ async function verifyExternalRejection() {
       ["http.get", () => http.get(externalHttpUrl, { lookup: localOnlyCanaryLookup })],
       ["https.request", () => https.request(externalHttpsUrl, { lookup: localOnlyCanaryLookup })],
       ["https.get", () => https.get(externalHttpsUrl, { lookup: localOnlyCanaryLookup })],
+      [
+        "http.request approved Playwright agent with external target",
+        () => http.request({
+          agent: httpHappyEyeballsAgent,
+          host: externalHostname,
+          lookup: localOnlyCanaryLookup,
+          port: 80,
+        }),
+      ],
       ["net.connect", () => net.connect({ host: externalHostname, lookup: localOnlyCanaryLookup, port: 443 })],
       ["net.createConnection", () => net.createConnection({ host: externalHostname, lookup: localOnlyCanaryLookup, port: 443 })],
       ["tls.connect", () => tls.connect({ host: externalHostname, lookup: localOnlyCanaryLookup, port: 443 })],
@@ -673,7 +689,7 @@ async function verifyLoopbackAllowance(fetchState) {
     assert.equal(httpLookupReads, 1, "HTTP must read lookup exactly once.");
     assert.equal(httpLookupCalls, 0, "HTTP must retain its literal-IP snapshot.");
 
-    for (const agent of [null, false, http.globalAgent]) {
+    for (const agent of [null, false, http.globalAgent, httpHappyEyeballsAgent]) {
       assert.equal(
         await requestOptionsText({
           agent,
@@ -955,7 +971,13 @@ async function verifyLoopbackAllowance(fetchState) {
       client.once("error", reject);
     });
 
-    for (const agent of [undefined, null, false, https.globalAgent]) {
+    for (const agent of [
+      undefined,
+      null,
+      false,
+      https.globalAgent,
+      httpsHappyEyeballsAgent,
+    ]) {
       let loopbackHttpsRequest;
       assert.doesNotThrow(() => {
         loopbackHttpsRequest = https.request({

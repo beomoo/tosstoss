@@ -7,6 +7,7 @@ const http = require("node:http");
 const http2 = require("node:http2");
 const https = require("node:https");
 const net = require("node:net");
+const path = require("node:path");
 const tls = require("node:tls");
 const { syncBuiltinESMExports } = require("node:module");
 const { URL: NativeURL } = require("node:url");
@@ -24,6 +25,14 @@ const nativeUrlHrefGetter = Object.getOwnPropertyDescriptor(
   NativeURL.prototype,
   "href",
 ).get;
+const playwrightCoreRoot = path.dirname(require.resolve("playwright-core/package.json"));
+const playwrightHappyEyeballs = require(
+  path.join(playwrightCoreRoot, "lib/server/utils/happyEyeballs.js"),
+);
+const approvedLoopbackHttpAgents = new WeakMap([
+  [http, playwrightHappyEyeballs.httpHappyEyeballsAgent],
+  [https, playwrightHappyEyeballs.httpsHappyEyeballsAgent],
+]);
 
 loopbackAddresses.addSubnet("127.0.0.0", 8, "ipv4");
 loopbackAddresses.addAddress("::1", "ipv6");
@@ -459,7 +468,8 @@ function assertHttpTransport(args, moduleObject, apiName) {
     agent === undefined ||
     agent === null ||
     agent === false ||
-    agent === moduleObject.globalAgent
+    agent === moduleObject.globalAgent ||
+    agent === approvedLoopbackHttpAgents.get(moduleObject)
   ) {
     return;
   }

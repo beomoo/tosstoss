@@ -1381,8 +1381,8 @@ $phaseControlFiles = @(
         Where-Object { $_.Name -cne "policy-scan.ps1" }
 )
 $approvedPhaseControlDigest = [string]::Concat(
-    "abb94cfb", "fa98f30e", "7217f270", "95651699",
-    "2ae38509", "9815abae", "eecfb10a", "c4d44543"
+    "10b5d957", "21953db9", "a85fb8ce", "bb1c928e",
+    "23917377", "bb22656e", "9d272d39", "331365f9"
 )
 if (
     $phaseControlFiles.Count -ne 59 -or
@@ -1462,7 +1462,7 @@ $prohibitedApplicationEscapePattern = @'
     \b(?:ctypes\s*\.\s*)?(?:WinDLL|CDLL|PyDLL)\s*\(
   |
     \b(?:from\s*|require\s*\(\s*|import\s*(?:\(\s*)?)["']
-        (?:node:)?(?:child_process|worker_threads|cluster|net|dgram|dns|tls|http|https|http2)["']
+        (?:(?:node:)?(?:child_process|worker_threads|cluster|net|dgram|dns|tls|http|https|http2)|playwright-core(?:/[^"']+)*)["']
   |
     \bprocess\s*(?:
         \.\s*(?:binding|_linkedBinding|getBuiltinModule)\s*\(
@@ -1642,6 +1642,7 @@ $applicationEscapeCanaries = @(
     [string]::Concat('require("node:', 'child_process")'),
     [string]::Concat('import { Worker } from "', 'worker_threads"'),
     [string]::Concat('import net from "node:', 'net"'),
+    [string]::Concat('import { httpHappyEyeballsAgent } from "playwright-', 'core/lib/internal"'),
     [string]::Concat('process["bind', 'ing"]("tcp_wrap")'),
     [string]::Concat('process.getBuiltin', 'Module("net")'),
     [string]::Concat("new RTCPeer", "Connection(configuration)"),
