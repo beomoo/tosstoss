@@ -94,6 +94,17 @@ function Test-IsRuntimePolicySourcePath {
     param([Parameter(Mandatory = $true)][string] $Path)
 
     $fullPath = [System.IO.Path]::GetFullPath($Path)
+    $approvedBoundaryGuardPaths = @(
+        [System.IO.Path]::GetFullPath(
+            (Join-Path $repoRoot "scripts\node_offline_guard.cjs")
+        ),
+        [System.IO.Path]::GetFullPath(
+            (Join-Path $repoRoot "scripts\node_runtime_preflight.cjs")
+        ),
+        [System.IO.Path]::GetFullPath(
+            (Join-Path $repoRoot "scripts\python_runtime_guard.py")
+        )
+    )
     $testRoot = [System.IO.Path]::GetFullPath((Join-Path $repoRoot "tests"))
     $webSourceRoot = [System.IO.Path]::GetFullPath((Join-Path $repoRoot "apps\web\src"))
     $webTestRoot = [System.IO.Path]::GetFullPath((Join-Path $repoRoot "apps\web\tests"))
@@ -106,6 +117,12 @@ function Test-IsRuntimePolicySourcePath {
     $webSourceRootPrefix = $webSourceRoot.TrimEnd(
         [System.IO.Path]::DirectorySeparatorChar
     ) + [System.IO.Path]::DirectorySeparatorChar
+    if ($approvedBoundaryGuardPaths -contains $fullPath) {
+        # These files intentionally contain hostile-address and bind canaries.
+        # Their exact bytes are pinned by the Phase control-plane digest and
+        # their behavior is exercised by the runtime preflight/self-tests.
+        return $false
+    }
     if ($fullPath.StartsWith($testRootPrefix, [System.StringComparison]::OrdinalIgnoreCase)) {
         return $false
     }
@@ -176,6 +193,14 @@ $runtimeScopeCanaries = @(
     },
     @{
         Path = Join-Path $repoRoot "apps\web\tests\e2e\start-backend.ps1"
+        Expected = $true
+    },
+    @{
+        Path = Join-Path $repoRoot "scripts\node_offline_guard.cjs"
+        Expected = $false
+    },
+    @{
+        Path = Join-Path $repoRoot "scripts\network-wrapper.cjs"
         Expected = $true
     }
 )
