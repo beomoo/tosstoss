@@ -54,6 +54,29 @@ async function withInspectionTimeout<T>(
   }
 }
 
+async function createTcpBoundaryCanary() {
+  const hits: string[] = [];
+  const server = createServer((socket) => {
+    hits.push(`${socket.remoteAddress ?? "unknown"}:${socket.remotePort ?? 0}`);
+    socket.destroy();
+  });
+  await new Promise<void>((resolveListen, rejectListen) => {
+    server.once("error", rejectListen);
+    server.listen(0, "127.0.0.1", () => {
+      server.off("error", rejectListen);
+      resolveListen();
+    });
+  });
+  const address = server.address();
+  if (address === null || typeof address === "string") {
+    await new Promise<void>((resolveClose) =>
+      server.close(() => resolveClose()),
+    );
+    throw new Error("The browser boundary canary did not acquire a TCP port.");
+  }
+  return { hits, port: address.port, server };
+}
+
 async function observePageBoundary(page: Page, sentinel: string) {
   const context = page.context();
   const requestUrls: string[] = [];
@@ -227,27 +250,26 @@ async function observePageBoundary(page: Page, sentinel: string) {
 
   return {
     async assertPreNetworkBlocking() {
-      const connectionHits: string[] = [];
       const datagramHits: string[] = [];
-      const canaryServer = createServer((socket) => {
-        connectionHits.push(
-          `${socket.remoteAddress ?? "unknown"}:${socket.remotePort ?? 0}`,
-        );
-        socket.destroy();
-      });
-      await new Promise<void>((resolveListen, rejectListen) => {
-        canaryServer.once("error", rejectListen);
-        canaryServer.listen(0, "127.0.0.1", () => {
-          canaryServer.off("error", rejectListen);
-          resolveListen();
-        });
-      });
+      const tcpCanaries: Awaited<
+        ReturnType<typeof createTcpBoundaryCanary>
+      >[] = [];
       const datagramServer = createSocket("udp4");
       let datagramBound = false;
       datagramServer.on("message", (_message, remote) => {
         datagramHits.push(`${remote.address}:${remote.port}`);
       });
       try {
+        for (let index = 0; index < 3; index += 1) {
+          tcpCanaries.push(await createTcpBoundaryCanary());
+        }
+        const [httpCanary, websocketCanary, websocketStreamCanary] =
+          tcpCanaries;
+        if (!httpCanary || !websocketCanary || !websocketStreamCanary) {
+          throw new Error(
+            "The browser boundary TCP canaries were not initialized.",
+          );
+        }
         await new Promise<void>((resolveBind, rejectBind) => {
           datagramServer.once("error", rejectBind);
           datagramServer.bind(0, "127.0.0.1", () => {
@@ -256,27 +278,26 @@ async function observePageBoundary(page: Page, sentinel: string) {
             resolveBind();
           });
         });
-        const address = canaryServer.address();
-        if (address === null || typeof address === "string") {
-          throw new Error(
-            "The browser boundary canary did not acquire a TCP port.",
-          );
-        }
         const datagramAddress = datagramServer.address();
         if (typeof datagramAddress === "string") {
           throw new Error(
             "The browser boundary canary did not acquire a UDP port.",
           );
         }
-        const httpUrl = `http://127.0.0.1:${address.port}/must-not-connect`;
-        const websocketUrl = `ws://127.0.0.1:${address.port}/must-not-connect`;
+        const httpUrl = `http://127.0.0.1:${httpCanary.port}/must-not-connect`;
+        const websocketUrl =
+          `ws://127.0.0.1:${websocketCanary.port}/must-not-connect`;
+        const websocketStreamUrl =
+          `ws://127.0.0.1:${websocketStreamCanary.port}/must-not-connect`;
         boundaryCanaryUrls.add(httpUrl);
         boundaryCanaryUrls.add(websocketUrl);
+        boundaryCanaryUrls.add(websocketStreamUrl);
 
         const result = await page.evaluate(
           async ({
             canaryHttpUrl,
             canaryWebsocketUrl,
+            canaryWebsocketStreamUrl,
             stunUrl,
             blockedConstructors,
           }) => {
@@ -314,7 +335,7 @@ async function observePageBoundary(page: Page, sentinel: string) {
               const StreamConstructor = websocketStreamConstructor as new (
                 url: string,
               ) => { close: () => void; opened: Promise<unknown> };
-              const stream = new StreamConstructor(canaryWebsocketUrl);
+              const stream = new StreamConstructor(canaryWebsocketStreamUrl);
               await Promise.race([
                 stream.opened.catch(() => undefined),
                 new Promise((resolveWait) => setTimeout(resolveWait, 300)),
@@ -356,6 +377,7 @@ async function observePageBoundary(page: Page, sentinel: string) {
             blockedConstructors: blockedTransportConstructors,
             canaryHttpUrl: httpUrl,
             canaryWebsocketUrl: websocketUrl,
+            canaryWebsocketStreamUrl: websocketStreamUrl,
             stunUrl: `stun:127.0.0.1:${datagramAddress.port}`,
           },
         );
@@ -377,21 +399,30 @@ async function observePageBoundary(page: Page, sentinel: string) {
         );
         await new Promise((resolveWait) => setTimeout(resolveWait, 100));
         expect(
-          connectionHits,
-          "금지된 HTTP/WebSocket 카나리는 로컬 TCP listener에도 도달하면 안 됩니다.",
+          httpCanary.hits,
+          "금지된 HTTP 카나리는 로컬 TCP listener에도 도달하면 안 됩니다.",
+        ).toEqual([]);
+        expect(
+          websocketCanary.hits,
+          "금지된 WebSocket 카나리는 로컬 TCP listener에도 도달하면 안 됩니다.",
+        ).toEqual([]);
+        expect(
+          websocketStreamCanary.hits,
+          "금지된 WebSocketStream 카나리는 로컬 TCP listener에도 도달하면 안 됩니다.",
         ).toEqual([]);
         expect(
           datagramHits,
           "금지된 WebRTC STUN 카나리는 UDP listener에 도달하면 안 됩니다.",
         ).toEqual([]);
       } finally {
-        const closePromises = [
-          new Promise<void>((resolveClose, rejectClose) => {
-            canaryServer.close((error) =>
-              error ? rejectClose(error) : resolveClose(),
-            );
-          }),
-        ];
+        const closePromises = tcpCanaries.map(
+          (canary) =>
+            new Promise<void>((resolveClose, rejectClose) => {
+              canary.server.close((error) =>
+                error ? rejectClose(error) : resolveClose(),
+              );
+            }),
+        );
         if (datagramBound) {
           closePromises.push(
             new Promise<void>((resolveClose) =>
