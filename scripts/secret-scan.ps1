@@ -1226,6 +1226,65 @@ function Add-NextGeneratedHashExceptions {
     }
 }
 
+function Add-NextTraceIdExceptions {
+    $tracePaths = @(
+        (Join-Path $nextRoot "trace"),
+        (Join-Path $nextRoot "trace-build")
+    )
+    $allTraceIds = [System.Collections.Generic.HashSet[string]]::new(
+        [System.StringComparer]::Ordinal
+    )
+    foreach ($tracePath in $tracePaths) {
+        if (-not (Test-Path -LiteralPath $tracePath -PathType Leaf)) {
+            throw "A required Next.js diagnostic trace is missing: $tracePath"
+        }
+        $traceText = [System.IO.File]::ReadAllText($tracePath)
+        try {
+            $events = @($traceText | ConvertFrom-Json -ErrorAction Stop)
+        }
+        catch {
+            throw "A Next.js diagnostic trace is not valid JSON: $tracePath"
+        }
+        if ($events.Count -eq 0) {
+            throw "A Next.js diagnostic trace contains no events: $tracePath"
+        }
+        $fileTraceIds = [System.Collections.Generic.HashSet[string]]::new(
+            [System.StringComparer]::Ordinal
+        )
+        foreach ($event in $events) {
+            if ($event -isnot [pscustomobject]) {
+                throw "A Next.js diagnostic trace contains a non-object event."
+            }
+            $propertyNames = @($event.PSObject.Properties.Name)
+            foreach ($requiredProperty in @(
+                "name", "duration", "timestamp", "id", "tags", "startTime", "traceId"
+            )) {
+                if ($requiredProperty -notin $propertyNames) {
+                    throw "A Next.js diagnostic trace event has an unexpected schema."
+                }
+            }
+            $traceId = [string] $event.traceId
+            if ($traceId -cnotmatch '^[0-9a-f]{16}$') {
+                throw "A Next.js diagnostic trace contains an invalid traceId."
+            }
+            $null = $fileTraceIds.Add($traceId)
+            $null = $allTraceIds.Add($traceId)
+        }
+        foreach ($traceId in $fileTraceIds) {
+            $propertyPattern = '"traceId"\s*:\s*"' + [regex]::Escape($traceId) + '"'
+            if ($traceText -cnotmatch $propertyPattern) {
+                throw "A validated Next.js traceId is missing from its JSON property."
+            }
+            Add-AllowedArtifactSecretAtMatchingLines `
+                -Path $tracePath `
+                -Value $traceId
+        }
+    }
+    if ($allTraceIds.Count -ne 1) {
+        throw "The Next.js diagnostic traces do not share one exact build traceId."
+    }
+}
+
 function Add-NextPrerenderManifestExceptions {
     $manifestPath = Join-Path $nextRoot "prerender-manifest.json"
     if (-not (Test-Path -LiteralPath $manifestPath -PathType Leaf)) {
@@ -1694,6 +1753,7 @@ try {
         Join-Path $repoRoot "qa\evidence\phase_01\evidence-manifest.json"
     )
     Add-NextGeneratedHashExceptions
+    Add-NextTraceIdExceptions
     Add-NextPrerenderManifestExceptions
     Add-SentinelUnitFixtureExceptions
     $nextEncryption = Add-NextEncryptionKeyExceptions
