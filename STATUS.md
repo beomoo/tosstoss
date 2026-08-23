@@ -1,17 +1,17 @@
 # Project Status
 
-- 프로젝트 상태: `PHASE 2 IMPLEMENTATION IN PROGRESS — CP2-A/CP2-B PASS`
-- 현재 Phase: `Phase 2 — OAuth + exact HTTP boundary 완료 / CP2-C 미착수`
+- 프로젝트 상태: `PHASE 2 IMPLEMENTATION IN PROGRESS — CP2-A/CP2-B/CP2-C PASS`
+- 현재 Phase: `Phase 2 — bounded rate/retry 완료 / CP2-D 미착수`
 - 현재 버전: `0.1.0`
 - Phase 1 최종 검증 commit: `57b2a63ead06d03191d8094e1689b8d2ab3d7764`
 - Phase 1 PR: `#1`
 - Phase 1 merge commit: `b1829a7375704271a21267e1fcf62808147be593`
 - Release baseline tag: `v0.1.0`
-- 최종 QA일: `2026-08-23 (CP2-B)`
+- 최종 QA일: `2026-08-23 (CP2-C)`
 - 실제 API 연결: `아니오`
 - 실제 주문 기능: `비활성 / 비범위`
 - OpenAI API 사용: `아니오`
-- Phase 2 상태: `CP2-A PASS / CP2-B PASS / CP2-C NOT STARTED`
+- Phase 2 상태: `CP2-A PASS / CP2-B PASS / CP2-B P2 hardening PASS / CP2-C PASS / CP2-D NOT STARTED`
 
 ## 완료 상태
 
@@ -36,6 +36,11 @@
 - [x] Phase 2 CP2-B 100-coroutine single-flight, monotonic expiry, generation-aware invalidation
 - [x] Phase 2 CP2-B exact origin·method/path·header/query boundary와 401 1회 replay
 - [x] CP2-B 전체 회귀: backend 251개, frontend 43개, E2E 2개, build·secret·policy PASS
+- [x] Phase 2 CP2-B P2 hardening: public token manager/lease/raw bearer surface 제거, backend 252개
+- [x] Phase 2 CP2-C client×group shared limiter와 7개 callable group exact mapping
+- [x] Phase 2 CP2-C strict rate header telemetry, bounded 429/5xx retry와 safe typed exhaustion/deferred error
+- [x] Phase 2 CP2-C concurrency·cancellation·401/OAuth 429 interaction offline 검증
+- [x] CP2-C 전체 회귀: backend 317개, frontend 43개, E2E 2개, build·secret·policy PASS
 
 ## Phase 1 종료 기준
 
@@ -47,7 +52,7 @@ Merge commit: b1829a7375704271a21267e1fcf62808147be593
 Release baseline tag: v0.1.0
 ```
 
-Phase 2 구현은 진행 중이다. CP2-A 보안 경계와 CP2-B OAuth/token manager/exact HTTP client는 완료했다. CP2-B는 합성 credential과 `httpx.MockTransport`만 사용했으며 실제 token·시장 API 요청은 하지 않았다. rate limiter, 429/5xx retry framework와 live preflight는 각각 CP2-C/CP2-D 범위로 남아 있고 자동으로 시작하지 않는다.
+Phase 2 구현은 진행 중이다. CP2-A 보안 경계, CP2-B OAuth/token manager/exact HTTP client와 P2 hardening, CP2-C rate limiter/retry/error taxonomy를 완료했다. 모든 connector 검증은 합성 credential, `httpx.MockTransport`, fake clock/sleeper/jitter만 사용했으며 실제 token·시장 API 요청은 하지 않았다. CP2-D live preflight는 시작하지 않는다.
 
 ## 알려진 운영 조건
 
@@ -55,4 +60,4 @@ Phase 2 구현은 진행 중이다. CP2-A 보안 경계와 CP2-B OAuth/token man
 - ADR-009는 아직 `PROPOSED`이며 독립 리뷰·승인 대상이다.
 - 모든 표시 데이터는 합성 fixture이고 실제 투자 판단 자료가 아니다.
 - 실제 Toss/OpenDART/SEC/news/macro connector, 계좌와 주문은 구현하지 않았다.
-- Toss connector는 application-owned shared client 구조로 구현됐지만 실제 credential 사용과 live API 검증은 아직 없다.
+- Toss connector는 application-owned shared client와 client×rate-group limiter 구조로 구현됐지만 실제 credential 사용, 실제 rate header와 live API timing 검증은 아직 없다.

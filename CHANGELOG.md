@@ -1,6 +1,45 @@
 # Changelog
 
-## Unreleased — Phase 2 CP2-B — 2026-08-23
+## Unreleased — Phase 2 CP2-C — 2026-08-23
+
+### Added
+
+- 12개 callable method/path를 7개 runtime group에 exact 매핑하는 `rate_limit.py`
+- client×group shared async token bucket과 documented/observed/effective limit 분리
+- 네 rate header만 읽는 strict integer parser와 memory-only missing/invalid/inconsistent diagnostic
+- 총 3회 시도, 단일·누적 30초 상한, 1→2→4초 backoff와 bounded additive jitter timing primitive
+- bounded 429 및 exact `500/502/503/504` retry, safe exhaustion/deferred typed error
+- fake monotonic/sleeper/jitter와 `httpx.MockTransport` 기반 CP2-C backend 테스트 65개
+
+### Changed
+
+- OAuth `/oauth2/token`을 shared `AUTH` limiter와 같은 bounded retry policy에 연결
+- market GET의 401 generation-aware refresh/replay는 1회를 유지하면서 rate retry budget을 분리
+- Toss connector source allowlist를 exact 7개 Python 파일로 고정하고 backend inventory를 252개에서 317개로 확대
+
+### Security
+
+- public token manager/lease/raw bearer surface 없이 token을 connector-private memory에 유지
+- response header 전체를 저장하지 않고 `X-RateLimit-Limit`, `Remaining`, `Reset`, `Retry-After`만 숫자로 관찰
+- provider body/message, Authorization, Cookie, Set-Cookie, credential과 uncontrolled URL을 rate state/error에 보존하지 않음
+- 400/401 규칙 외 auth error/403/404/422/501/contract/transport/boundary error는 retry하지 않음
+- actual credential, actual Toss request, account/order surface와 CP2-D live script를 추가하지 않음
+
+### QA
+
+- provider contract drift `NO`: OpenAPI `3.1.0`, REST API `1.2.14`, canonical SHA-256 `fccf49abd11f37f557bdd349138f4a03c42b829ebd8b5c14ab4907116fb84c7a`
+- implementation commit `e0017a1891b8f7048c5dc97565224749cf287989`
+- Node.js 24.19.0, npm 11.17.0에서 최종 `scripts/test.ps1` exit code 0
+- backend 317/317, frontend 43/43, E2E 2/2, migration, fixture idempotency, OpenAPI, build 2회, secret scan, CP2-C policy scan PASS
+- standard test outbound network 0; retry constants와 무관하게 connector target 140개가 약 1초에 완료
+
+### Limitations
+
+- 실제 OAuth/token, 허용 IP, runtime rate header·Retry-After, provider response/error와 timing은 계속 `[LIVE_UNVERIFIED]`다.
+- CP2-D live preflight는 `NOT STARTED`이며 `scripts/toss-live-preflight.ps1`을 만들지 않았다.
+- CP2-C PASS는 CP2 또는 Phase 2 완료를 의미하지 않는다.
+
+## Phase 2 CP2-B — 2026-08-23
 
 ### Added
 

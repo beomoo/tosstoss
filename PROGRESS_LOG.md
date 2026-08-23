@@ -131,3 +131,38 @@
 - CP2-C: `NOT STARTED`
 - 실제 Toss API 요청: `없음`
 - 실제 credential 사용: `없음`
+
+## 2026-08-23 — Phase 2 CP2-C Rate Limit + Retry + Error Taxonomy
+
+- 시작 branch는 `feature/phase-02-toss`, CP2-C baseline SHA는 `8848af0739651f5cd49a7e791bbd055301599f19`였고 local/origin SHA가 일치했으며 작업트리는 clean이었다. reset, rebase, force push는 사용하지 않았다.
+- application code 변경 전 canonical OpenAPI를 다시 다운로드했다. OpenAPI `3.1.0`, REST API `1.2.14`, SHA-256 `fccf49abd11f37f557bdd349138f4a03c42b829ebd8b5c14ab4907116fb84c7a`, origin `https://openapi.tossinvest.com`, 12개 callable method/path와 group, OAuth endpoint, 429 reference, 네 rate header integer schema, callable 500 error schema가 CP1/CP2 기준과 같아 `PROVIDER_CONTRACT_DRIFT=NO`로 판정했다.
+- `rate_limit.py`에 7개 runtime group과 documented TPS를 고정했다: `AUTH=5`, `STOCK=5`, `STOCK_ALL=1`, `STOCK_TRADING_TREND=10`, `MARKET_INFO=3`, `MARKET_DATA=15`, `MARKET_DATA_CHART=20`. support-only indicator group은 runtime에 활성화하지 않았다.
+- `TossHttpClient` 하나가 모든 group의 `_TossRateLimiter` 하나를 소유한다. group별 독립 lock/state를 가진 monotonic async token bucket을 request 전 통과하며, 같은 group endpoint는 bucket을 공유하고 다른 group은 서로 block하지 않는다.
+- `documented_limit`, 최신 유효 `observed_limit`, 둘 중 작은 `effective_limit`을 분리했다. 낮은 observed limit은 즉시 capacity를 줄이고, 더 큰 provider 값은 documented ceiling을 넘겨 확장하지 않는다.
+- allowlisted telemetry는 `X-RateLimit-Limit`, `X-RateLimit-Remaining`, `X-RateLimit-Reset`, `Retry-After` 네 값뿐이다. Limit은 ASCII integer `1..10000`, Remaining은 `0..10000`이면서 limit 이하, Reset/Retry-After는 integer seconds `0..86400`으로 검증한다. NaN, infinity, sign, decimal, whitespace, 음수와 상한 초과를 거부한다.
+- 정상 payload의 missing/malformed/inconsistent rate header는 성공 자체를 실패로 바꾸지 않고 memory-only `RATE_HEADERS_MISSING`, `RATE_HEADERS_INVALID`, `RATE_HEADERS_INCONSISTENT` diagnostic과 safe numeric snapshot만 남긴다. response headers, body, message, Authorization, Cookie, Set-Cookie는 state/error에 복사하지 않는다.
+- retry 상수는 승인 계획대로 최초 포함 `MAX_TOTAL_ATTEMPTS=3`, `MAX_SINGLE_RETRY_SLEEP_SECONDS=30`, `MAX_CUMULATIVE_RETRY_SLEEP_SECONDS=30`, initial backoff `1s`다. 지수식은 `1→2→4...`이고 base에 `[0, base]` 범위의 additive jitter를 더하며 private deterministic source를 주입할 수 있다.
+- 429는 strict provider error envelope와 exact `rate-limit-exceeded`/`edge-rate-limit-exceeded`를 확인한 뒤 유효한 `Retry-After`를 jitter 없이 우선한다. header가 missing/invalid면 bounded exponential backoff를 사용한다. 30초를 넘거나 누적 상한을 넘는 유효 권고는 짧게 잘라 조기 retry하지 않고 `TossRetryDeferredError`로 반환하며 shared group block state를 보수적으로 유지한다.
+- transient retry status는 exact `{500, 502, 503, 504}`, provider code는 exact `{internal-error, maintenance}`다. 반복 실패는 safe endpoint template/group/status/code/request ID/attempt metadata만 가진 `TossRetryExhaustedError`로 종료한다. 501이나 unknown code는 자동 retry 대상으로 넓히지 않았다.
+- 400/403/404/422, invalid client/access denied, malformed OAuth/provider envelope, malformed JSON/content type, schema mismatch, redirect, response-too-large, boundary error는 retry하지 않는다. `TossTransportError`도 CP2-B 동작을 유지해 connect/read/timeout evidence 없이 retry 대상으로 확대하지 않았다.
+- OAuth POST는 shared `AUTH` limiter와 같은 bounded 429/transient policy를 사용하지만 token manager single-flight lock 안에서만 수행한다. 100 concurrent caller + OAuth 429에서도 HTTP issuance attempt는 budget에 따른 2회, token generation은 1개였다.
+- GET 401은 기존 exact expired/invalid token 규칙과 replay 최대 1회를 유지한다. `GET→401→refresh OAuth 429→AUTH retry→token success→GET replay`에서 token POST 3회(초기 포함), market GET 2회만 발생함을 검증했다.
+- backend inventory는 252개에서 317개로 65개 증가했다. CP2-C connector target 140개는 fake clock/sleeper/jitter와 `httpx.MockTransport`로 약 1초에 완료됐고, 전체 backend 317/317도 통과했다. frontend 43개와 E2E 2개 inventory는 감소하지 않았다.
+- failure/fix 이력: 첫 target run은 기존 24-concurrency 401 test에서 token refill의 부동소수점 경계가 fake clock 해상도보다 작은 wait를 반복해 정체됐다. 실행을 중단하고 token epsilon과 최소 async throttle interval을 추가했으며 해당 회귀와 target 140개가 통과했다.
+- failure/fix 이력: 수동 pytest가 만든 `__pycache__` 때문에 첫 policy scan이, 수동 Ruff/mypy cache 때문에 첫 secret scan이 정상 차단됐다. scanner 예외를 추가하지 않고 exact generated cache만 제거했으며 policy/secret scan을 처음부터 재실행해 통과했다.
+- failure/fix 이력: 첫 전체 `scripts/test.ps1`은 system Node.js 24.15.0 안전 하한에서 application test 전에 정상 차단됐다. 시스템 Node를 바꾸지 않고 기존 공식 portable Node.js 24.19.0/npm 11.17.0을 해당 프로세스 PATH에만 사용해 전체 실행을 다시 시작했다.
+- 최종 문서 포함 `scripts/test.ps1`은 Node.js 24.19.0, npm 11.17.0에서 exit code `0`으로 통과했다. backend 317/317, frontend 43/43, E2E 2/2, migration 왕복, fixture 2차 import `inserted=0`, `updated=0`, `unchanged=13`, OpenAPI drift, production build 2회, secret scan, CP2-C policy scan이 모두 PASS했다.
+- standard test outbound Toss request는 0이었다. 실제 credential, OAuth token, market API, 실제 rate header·Retry-After와 provider timing은 사용·검증하지 않아 `[LIVE_UNVERIFIED]`를 유지한다.
+- CP2-C final implementation SHA: `e0017a1891b8f7048c5dc97565224749cf287989`
+- CP2-D started: `NO`
+
+## 현재 중지 지점 — Phase 2 CP2-C
+
+- Phase 2: `IMPLEMENTATION IN PROGRESS`
+- CP2-A: `PASS`
+- CP2-B: `PASS`
+- CP2-B P2 hardening: `PASS`
+- CP2-C: `PASS`
+- CP2-D: `NOT STARTED`
+- 실제 Toss API 요청: `없음`
+- 실제 credential 사용: `없음`
