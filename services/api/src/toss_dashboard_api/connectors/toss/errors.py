@@ -106,3 +106,62 @@ class TossRateLimitError(TossHttpError):
 
 class TossServerError(TossHttpError):
     pass
+
+
+class TossRetryExhaustedError(TossHttpError):
+    def __init__(
+        self,
+        *,
+        endpoint: str,
+        rate_group: str,
+        status_code: int,
+        provider_code: str | None,
+        request_id: str | None,
+        attempt_count: int,
+        retry_after_seconds: int | None,
+    ) -> None:
+        self.rate_group = rate_group
+        self.attempt_count = attempt_count
+        self.retry_after_seconds = retry_after_seconds
+        super().__init__(
+            endpoint=endpoint,
+            status_code=status_code,
+            provider_code=provider_code,
+            request_id=request_id,
+        )
+        safe_code = provider_code or "unknown"
+        self.args = (
+            f"Toss retry budget was exhausted (endpoint={endpoint}, "
+            f"rate_group={rate_group}, status_code={status_code}, "
+            f"provider_code={safe_code}, attempt_count={attempt_count}).",
+        )
+
+
+class TossRetryDeferredError(TossRateLimitError):
+    def __init__(
+        self,
+        *,
+        endpoint: str,
+        rate_group: str,
+        status_code: int,
+        provider_code: str | None,
+        request_id: str | None,
+        attempt_count: int,
+        retry_after_seconds: int,
+    ) -> None:
+        self.rate_group = rate_group
+        self.attempt_count = attempt_count
+        self.retry_after_seconds = retry_after_seconds
+        super().__init__(
+            endpoint=endpoint,
+            status_code=status_code,
+            provider_code=provider_code,
+            request_id=request_id,
+        )
+        safe_code = provider_code or "unknown"
+        self.args = (
+            f"Toss retry was deferred (endpoint={endpoint}, rate_group={rate_group}, "
+            f"status_code={status_code}, provider_code={safe_code}, "
+            f"attempt_count={attempt_count}, "
+            f"retry_after_seconds={retry_after_seconds}).",
+        )

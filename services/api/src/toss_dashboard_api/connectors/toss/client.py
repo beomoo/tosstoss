@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import math
 import re
 from collections.abc import Callable, Mapping
 from json import JSONDecodeError
@@ -26,6 +27,8 @@ from toss_dashboard_api.connectors.toss.errors import (
     TossRedirectError,
     TossResponseContractError,
     TossResponseTooLargeError,
+    TossRetryDeferredError,
+    TossRetryExhaustedError,
     TossServerError,
     TossTransportError,
 )
@@ -44,6 +47,21 @@ from toss_dashboard_api.connectors.toss.models import (
     TossSymbolEndpoint,
     safe_provider_code,
     safe_request_id,
+)
+from toss_dashboard_api.connectors.toss.rate_limit import (
+    RETRYABLE_RATE_PROVIDER_CODES,
+    RETRYABLE_TRANSIENT_PROVIDER_CODES,
+    RETRYABLE_TRANSIENT_STATUSES,
+    AsyncSleeper,
+    JitterSource,
+    RateHeaderTelemetry,
+    RateLimitSnapshot,
+    RetryDisposition,
+    TossRateLimitGroup,
+    _RateLimitWaitDeferred,
+    _RetryBudget,
+    _TossRateLimiter,
+    rate_group_for,
 )
 
 CONNECT_TIMEOUT_SECONDS = 5.0
@@ -66,9 +84,17 @@ class TossHttpClient:
         transport: httpx.AsyncBaseTransport,
         *,
         monotonic: Callable[[], float] | None = None,
+        sleeper: AsyncSleeper | None = None,
+        jitter: JitterSource | None = None,
     ) -> Self:
         instance = cls.__new__(cls)
-        instance._initialize(settings, transport=transport, monotonic=monotonic)
+        instance._initialize(
+            settings,
+            transport=transport,
+            monotonic=monotonic,
+            sleeper=sleeper,
+            jitter=jitter,
+        )
         return instance
 
     def _initialize(
@@ -77,6 +103,8 @@ class TossHttpClient:
         *,
         transport: httpx.AsyncBaseTransport | None,
         monotonic: Callable[[], float] | None,
+        sleeper: AsyncSleeper | None = None,
+        jitter: JitterSource | None = None,
     ) -> None:
         timeout = httpx.Timeout(
             connect=CONNECT_TIMEOUT_SECONDS,
@@ -93,11 +121,23 @@ class TossHttpClient:
             limits=httpx.Limits(max_connections=20, max_keepalive_connections=10),
             transport=transport,
         )
+        self.__rate_limiter = _TossRateLimiter(
+            monotonic=monotonic,
+            sleeper=sleeper,
+            jitter=jitter,
+        )
         if monotonic is None:
-            self.__token_manager = _build_token_manager(settings, self._http_client)
+            self.__token_manager = _build_token_manager(
+                settings,
+                self._http_client,
+                self.__rate_limiter,
+            )
         else:
             self.__token_manager = _build_token_manager(
-                settings, self._http_client, monotonic=monotonic
+                settings,
+                self._http_client,
+                self.__rate_limiter,
+                monotonic=monotonic,
             )
         self._closed = False
 
@@ -156,6 +196,9 @@ class TossHttpClient:
         if self._closed:
             raise TossLifecycleError
 
+    async def _rate_limit_snapshot_for_test(self, group: TossRateLimitGroup) -> RateLimitSnapshot:
+        return await self.__rate_limiter.snapshot(group)
+
     async def _authenticated_get(
         self,
         endpoint_template: str,
@@ -177,6 +220,50 @@ class TossHttpClient:
         params: Mapping[str, QueryValue],
         lease: _TokenLease,
     ) -> _DecodedResponse:
+        try:
+            group = rate_group_for("GET", endpoint_template)
+        except ValueError:
+            raise TossBoundaryError("unknown-rate-group") from None
+        budget = self.__rate_limiter.new_retry_budget()
+        while True:
+            response = await self._send_get_once(
+                endpoint_template,
+                path,
+                params,
+                lease,
+                group,
+                budget,
+            )
+            if await self._retry_provider_failure(
+                response,
+                endpoint_template,
+                group,
+                budget,
+            ):
+                continue
+            return response
+
+    async def _send_get_once(
+        self,
+        endpoint_template: str,
+        path: str,
+        params: Mapping[str, QueryValue],
+        lease: _TokenLease,
+        group: TossRateLimitGroup,
+        budget: _RetryBudget,
+    ) -> _DecodedResponse:
+        try:
+            await self.__rate_limiter.acquire(group)
+        except _RateLimitWaitDeferred as error:
+            raise TossRetryDeferredError(
+                endpoint=endpoint_template,
+                rate_group=group.value,
+                status_code=429,
+                provider_code=None,
+                request_id=None,
+                attempt_count=budget.attempt_count,
+                retry_after_seconds=math.ceil(error.retry_after_seconds),
+            ) from None
         url = httpx.URL(TOSS_ORIGIN).copy_with(path=path)
         request = httpx.Request(
             "GET",
@@ -197,18 +284,97 @@ class TossHttpClient:
             if 300 <= response.status_code < 400:
                 raise TossRedirectError(endpoint_template, response.status_code)
             payload = await _read_json(response, endpoint_template, MARKET_RESPONSE_MAX_BYTES)
-            return _DecodedResponse(response.status_code, payload)
+            if response.status_code == 429 or response.status_code in RETRYABLE_TRANSIENT_STATUSES:
+                try:
+                    ProviderErrorEnvelope.model_validate(payload)
+                except ValidationError:
+                    raise TossResponseContractError(
+                        endpoint_template, "invalid-error-response"
+                    ) from None
+            rate_headers = await self.__rate_limiter.observe(
+                group,
+                response.headers,
+                status_code=response.status_code,
+            )
+            return _DecodedResponse(response.status_code, payload, rate_headers)
         finally:
             await response.aclose()
             self._http_client.cookies.clear()
 
+    async def _retry_provider_failure(
+        self,
+        response: _DecodedResponse,
+        endpoint: str,
+        group: TossRateLimitGroup,
+        budget: _RetryBudget,
+    ) -> bool:
+        if response.status_code != 429 and response.status_code not in RETRYABLE_TRANSIENT_STATUSES:
+            return False
+        try:
+            envelope = ProviderErrorEnvelope.model_validate(response.payload)
+        except ValidationError:
+            raise TossResponseContractError(endpoint, "invalid-error-response") from None
+        provider_code = envelope.error.code
+        retryable = (
+            response.status_code == 429 and provider_code in RETRYABLE_RATE_PROVIDER_CODES
+        ) or (
+            response.status_code in RETRYABLE_TRANSIENT_STATUSES
+            and provider_code in RETRYABLE_TRANSIENT_PROVIDER_CODES
+        )
+        if not retryable:
+            return False
+
+        retry_after = (
+            response.rate_headers.retry_after_seconds if response.status_code == 429 else None
+        )
+        decision = budget.next_timing(retry_after_seconds=retry_after)
+        safe_code = safe_provider_code(provider_code)
+        request_id = safe_request_id(envelope.error.requestId)
+        if decision.disposition is RetryDisposition.EXHAUSTED:
+            if retry_after is not None:
+                await self.__rate_limiter.block_for(group, retry_after)
+            raise TossRetryExhaustedError(
+                endpoint=endpoint,
+                rate_group=group.value,
+                status_code=response.status_code,
+                provider_code=safe_code,
+                request_id=request_id,
+                attempt_count=budget.attempt_count,
+                retry_after_seconds=retry_after,
+            )
+        if decision.disposition is RetryDisposition.DEFER:
+            if retry_after is None:
+                raise AssertionError("deferred retry requires Retry-After")
+            await self.__rate_limiter.block_for(group, retry_after)
+            raise TossRetryDeferredError(
+                endpoint=endpoint,
+                rate_group=group.value,
+                status_code=response.status_code,
+                provider_code=safe_code,
+                request_id=request_id,
+                attempt_count=budget.attempt_count,
+                retry_after_seconds=retry_after,
+            )
+        delay = decision.delay_seconds
+        if delay is None:
+            raise AssertionError("retry timing requires a delay")
+        budget.record_retry(delay)
+        await self.__rate_limiter.sleep_for_retry(group, delay)
+        return True
+
 
 class _DecodedResponse:
-    __slots__ = ("payload", "status_code")
+    __slots__ = ("payload", "rate_headers", "status_code")
 
-    def __init__(self, status_code: int, payload: object) -> None:
+    def __init__(
+        self,
+        status_code: int,
+        payload: object,
+        rate_headers: RateHeaderTelemetry,
+    ) -> None:
         self.status_code = status_code
         self.payload = payload
+        self.rate_headers = rate_headers
 
 
 def _validated_query(

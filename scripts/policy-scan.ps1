@@ -306,7 +306,8 @@ function Test-IsApprovedConnectorRelativePath {
         "toss/auth.py",
         "toss/client.py",
         "toss/errors.py",
-        "toss/models.py"
+        "toss/models.py",
+        "toss/rate_limit.py"
     ) -ccontains $normalizedPath
 }
 
@@ -1511,6 +1512,7 @@ $expectedBackendTestFiles = @(
     "tests/backend/test_temp_cleanup.py",
     "tests/backend/test_toss_auth.py",
     "tests/backend/test_toss_client.py",
+    "tests/backend/test_toss_rate_limit.py",
     "tests/backend/test_uvicorn_runtime_logging.py"
 )
 $actualBackendTestFiles = @(
@@ -1595,11 +1597,11 @@ $phaseControlFiles = @(
         Where-Object { $_.Name -cne "policy-scan.ps1" }
 )
 $approvedPhaseControlDigest = [string]::Concat(
-    "f482e0f7", "780cc1d3", "67485abd", "4fe2da35",
-    "edcccf4d", "b9be2844", "551192e6", "0d37d410"
+    "69e4a4fd", "fa235896", "8af63e90", "9a5a622a",
+    "57194cb7", "268ac0a4", "073edae3", "e002690f"
 )
 if (
-    $phaseControlFiles.Count -ne 61 -or
+    $phaseControlFiles.Count -ne 62 -or
     (Get-FileSetManifestSha256 -Files $phaseControlFiles) -cne
         $approvedPhaseControlDigest
 ) {
@@ -1987,6 +1989,7 @@ if (
 if (
     -not (Test-IsApprovedConnectorRelativePath -RelativePath "toss/__init__.py") -or
     -not (Test-IsApprovedConnectorRelativePath -RelativePath "toss/auth.py") -or
+    -not (Test-IsApprovedConnectorRelativePath -RelativePath "toss/rate_limit.py") -or
     (Test-IsApprovedConnectorRelativePath -RelativePath "generic_http/client.py") -or
     (Test-IsApprovedConnectorRelativePath -RelativePath "toss/future_transport.py") -or
     (Test-IsApprovedConnectorRelativePath -RelativePath "toss/../openai/client.py")
@@ -2196,4 +2199,4 @@ Assert-NoRawPattern `
     -Message "A public token-manager or raw-token extraction surface was found." `
     -Files $applicationRuntimeSourceFiles
 
-Write-Host "Phase 2 CP2-B scope policy scan passed."
+Write-Host "Phase 2 CP2-C scope policy scan passed."

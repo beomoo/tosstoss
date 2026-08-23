@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import asyncio
 import json
+import math
+import random
 import time
 from collections.abc import Callable
 from enum import StrEnum
@@ -23,6 +25,8 @@ from toss_dashboard_api.connectors.toss.errors import (
     TossRedirectError,
     TossResponseContractError,
     TossResponseTooLargeError,
+    TossRetryDeferredError,
+    TossRetryExhaustedError,
     TossServerError,
     TossTransportError,
 )
@@ -39,10 +43,25 @@ from toss_dashboard_api.connectors.toss.models import (
     safe_provider_code,
     safe_request_id,
 )
+from toss_dashboard_api.connectors.toss.rate_limit import (
+    RETRYABLE_RATE_PROVIDER_CODES,
+    RETRYABLE_TRANSIENT_PROVIDER_CODES,
+    RETRYABLE_TRANSIENT_STATUSES,
+    AsyncSleeper,
+    JitterSource,
+    RateHeaderTelemetry,
+    RetryDisposition,
+    TossRateLimitGroup,
+    _RateLimitWaitDeferred,
+    _RetryBudget,
+    _TossRateLimiter,
+    rate_group_for,
+)
 
 TOKEN_SAFETY_MARGIN_SECONDS = 30.0
 _TOKEN_MANAGER_CONSTRUCTION_KEY = object()
 _TOKEN_REQUEST_USE_KEY = object()
+_DEFAULT_JITTER_SOURCE = random.Random().random
 
 
 class TossCredentialState(StrEnum):
@@ -69,6 +88,20 @@ class _TokenLease:
     __str__ = __repr__
 
 
+class _OAuthAttempt:
+    __slots__ = ("payload", "rate_headers", "status_code")
+
+    def __init__(
+        self,
+        status_code: int,
+        payload: object,
+        rate_headers: RateHeaderTelemetry,
+    ) -> None:
+        self.status_code = status_code
+        self.payload = payload
+        self.rate_headers = rate_headers
+
+
 def credential_state(settings: Settings) -> TossCredentialState:
     has_client_id = settings.toss_client_id is not None
     has_secret = settings.toss_client_secret is not None
@@ -86,6 +119,7 @@ class _TossTokenManager:
         self,
         settings: Settings,
         http_client: httpx.AsyncClient,
+        rate_limiter: _TossRateLimiter,
         *,
         _construction_key: object,
         monotonic: Callable[[], float] = time.monotonic,
@@ -94,6 +128,7 @@ class _TossTokenManager:
             raise TypeError("Token manager construction is connector-internal.")
         self._settings = settings
         self._http_client = http_client
+        self._rate_limiter = rate_limiter
         self._monotonic = monotonic
         self._lock = asyncio.Lock()
         self._lease: _TokenLease | None = None
@@ -158,7 +193,38 @@ class _TossTokenManager:
         return configured_id.get_secret_value(), configured_secret.get_secret_value()
 
     async def _issue_token(self) -> OAuthTokenResponse:
+        group = rate_group_for("POST", TOKEN_PATH)
+        budget = self._rate_limiter.new_retry_budget()
+        while True:
+            attempt = await self._issue_token_once(group, budget)
+            if attempt.status_code == 200:
+                try:
+                    return OAuthTokenResponse.model_validate(attempt.payload)
+                except ValidationError:
+                    raise TossResponseContractError(TOKEN_PATH, "invalid-oauth-response") from None
+            if await self._retry_provider_failure(attempt, group, budget):
+                continue
+            self._raise_oauth_failure(attempt.status_code, attempt.payload)
+            raise AssertionError("OAuth failure handler must raise")
+
+    async def _issue_token_once(
+        self,
+        group: TossRateLimitGroup,
+        budget: _RetryBudget,
+    ) -> _OAuthAttempt:
         client_identifier, credential_value = self._credentials()
+        try:
+            await self._rate_limiter.acquire(group)
+        except _RateLimitWaitDeferred as error:
+            raise TossRetryDeferredError(
+                endpoint=TOKEN_PATH,
+                rate_group=group.value,
+                status_code=429,
+                provider_code=None,
+                request_id=None,
+                attempt_count=budget.attempt_count,
+                retry_after_seconds=math.ceil(error.retry_after_seconds),
+            ) from None
         url = httpx.URL(TOSS_ORIGIN).copy_with(path=TOKEN_PATH)
         request = httpx.Request(
             "POST",
@@ -182,16 +248,82 @@ class _TossTokenManager:
             if 300 <= response.status_code < 400:
                 raise TossRedirectError(TOKEN_PATH, response.status_code)
             payload = await _read_json(response, TOKEN_PATH, OAUTH_RESPONSE_MAX_BYTES)
-            if response.status_code == 200:
+            if response.status_code == 429 or response.status_code in RETRYABLE_TRANSIENT_STATUSES:
                 try:
-                    return OAuthTokenResponse.model_validate(payload)
+                    ProviderErrorEnvelope.model_validate(payload)
                 except ValidationError:
-                    raise TossResponseContractError(TOKEN_PATH, "invalid-oauth-response") from None
-            self._raise_oauth_failure(response.status_code, payload)
-            raise AssertionError("OAuth failure handler must raise")
+                    raise TossResponseContractError(
+                        TOKEN_PATH, "invalid-oauth-error-response"
+                    ) from None
+            rate_headers = await self._rate_limiter.observe(
+                group,
+                response.headers,
+                status_code=response.status_code,
+            )
+            return _OAuthAttempt(response.status_code, payload, rate_headers)
         finally:
             await response.aclose()
             self._http_client.cookies.clear()
+
+    async def _retry_provider_failure(
+        self,
+        attempt: _OAuthAttempt,
+        group: TossRateLimitGroup,
+        budget: _RetryBudget,
+    ) -> bool:
+        if attempt.status_code != 429 and attempt.status_code not in RETRYABLE_TRANSIENT_STATUSES:
+            return False
+        try:
+            envelope = ProviderErrorEnvelope.model_validate(attempt.payload)
+        except ValidationError:
+            raise TossResponseContractError(TOKEN_PATH, "invalid-oauth-error-response") from None
+        provider_code = envelope.error.code
+        retryable = (
+            attempt.status_code == 429 and provider_code in RETRYABLE_RATE_PROVIDER_CODES
+        ) or (
+            attempt.status_code in RETRYABLE_TRANSIENT_STATUSES
+            and provider_code in RETRYABLE_TRANSIENT_PROVIDER_CODES
+        )
+        if not retryable:
+            return False
+
+        retry_after = (
+            attempt.rate_headers.retry_after_seconds if attempt.status_code == 429 else None
+        )
+        decision = budget.next_timing(retry_after_seconds=retry_after)
+        safe_code = safe_provider_code(provider_code)
+        request_id = safe_request_id(envelope.error.requestId)
+        if decision.disposition is RetryDisposition.EXHAUSTED:
+            if retry_after is not None:
+                await self._rate_limiter.block_for(group, retry_after)
+            raise TossRetryExhaustedError(
+                endpoint=TOKEN_PATH,
+                rate_group=group.value,
+                status_code=attempt.status_code,
+                provider_code=safe_code,
+                request_id=request_id,
+                attempt_count=budget.attempt_count,
+                retry_after_seconds=retry_after,
+            )
+        if decision.disposition is RetryDisposition.DEFER:
+            if retry_after is None:
+                raise AssertionError("deferred retry requires Retry-After")
+            await self._rate_limiter.block_for(group, retry_after)
+            raise TossRetryDeferredError(
+                endpoint=TOKEN_PATH,
+                rate_group=group.value,
+                status_code=attempt.status_code,
+                provider_code=safe_code,
+                request_id=request_id,
+                attempt_count=budget.attempt_count,
+                retry_after_seconds=retry_after,
+            )
+        delay = decision.delay_seconds
+        if delay is None:
+            raise AssertionError("retry timing requires a delay")
+        budget.record_retry(delay)
+        await self._rate_limiter.sleep_for_retry(group, delay)
+        return True
 
     @staticmethod
     def _raise_oauth_failure(status_code: int, payload: object) -> None:
@@ -225,12 +357,14 @@ class _TossTokenManager:
 def _build_token_manager(
     settings: Settings,
     http_client: httpx.AsyncClient,
+    rate_limiter: _TossRateLimiter,
     *,
     monotonic: Callable[[], float] = time.monotonic,
 ) -> _TossTokenManager:
     return _TossTokenManager(
         settings,
         http_client,
+        rate_limiter,
         _construction_key=_TOKEN_MANAGER_CONSTRUCTION_KEY,
         monotonic=monotonic,
     )
@@ -245,6 +379,8 @@ class _TokenManagerTestContext:
         transport: httpx.MockTransport,
         *,
         monotonic: Callable[[], float] = time.monotonic,
+        sleeper: AsyncSleeper = asyncio.sleep,
+        jitter: JitterSource = _DEFAULT_JITTER_SOURCE,
     ) -> None:
         if not isinstance(transport, httpx.MockTransport):
             raise TypeError("The token-manager test seam requires MockTransport.")
@@ -254,9 +390,15 @@ class _TokenManagerTestContext:
             verify=True,
             transport=transport,
         )
+        self._rate_limiter = _TossRateLimiter(
+            monotonic=monotonic,
+            sleeper=sleeper,
+            jitter=jitter,
+        )
         self._manager = _build_token_manager(
             settings,
             self._http_client,
+            self._rate_limiter,
             monotonic=monotonic,
         )
 
@@ -274,10 +416,16 @@ def _token_manager_test_seam(
     transport: httpx.MockTransport,
     *,
     monotonic: Callable[[], float] | None = None,
+    sleeper: AsyncSleeper | None = None,
+    jitter: JitterSource | None = None,
 ) -> _TokenManagerTestContext:
-    if monotonic is None:
-        return _TokenManagerTestContext(settings, transport)
-    return _TokenManagerTestContext(settings, transport, monotonic=monotonic)
+    return _TokenManagerTestContext(
+        settings,
+        transport,
+        monotonic=monotonic if monotonic is not None else time.monotonic,
+        sleeper=sleeper if sleeper is not None else asyncio.sleep,
+        jitter=jitter if jitter is not None else _DEFAULT_JITTER_SOURCE,
+    )
 
 
 def _is_json_content_type(value: str | None) -> bool:

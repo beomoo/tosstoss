@@ -18,11 +18,10 @@ from toss_dashboard_api.connectors.toss.errors import (
     TossHttpError,
     TossLifecycleError,
     TossPermissionError,
-    TossRateLimitError,
     TossRedirectError,
     TossResponseContractError,
     TossResponseTooLargeError,
-    TossServerError,
+    TossRetryExhaustedError,
 )
 from toss_dashboard_api.connectors.toss.models import (
     MARKET_RESPONSE_MAX_BYTES,
@@ -33,6 +32,20 @@ from toss_dashboard_api.connectors.toss.models import (
 )
 
 Handler = Callable[[httpx.Request], Awaitable[httpx.Response] | httpx.Response]
+
+
+class InstantTime:
+    def __init__(self) -> None:
+        self.value = 100.0
+        self.sleeps: list[float] = []
+
+    def __call__(self) -> float:
+        return self.value
+
+    async def sleep(self, seconds: float) -> None:
+        self.sleeps.append(seconds)
+        self.value += seconds
+        await asyncio.sleep(0)
 
 
 def run(awaitable: Awaitable[Any]) -> Any:
@@ -73,8 +86,15 @@ def response(status_code: int, payload: object) -> httpx.Response:
     )
 
 
-def client(handler: Handler) -> TossHttpClient:
-    return TossHttpClient._for_test(settings(), httpx.MockTransport(handler))
+def client(handler: Handler, *, time_source: InstantTime | None = None) -> TossHttpClient:
+    instant_time = time_source or InstantTime()
+    return TossHttpClient._for_test(
+        settings(),
+        httpx.MockTransport(handler),
+        monotonic=instant_time,
+        sleeper=instant_time.sleep,
+        jitter=lambda: 0.0,
+    )
 
 
 class SuccessProvider:
@@ -225,6 +245,12 @@ def test_public_api_has_no_arbitrary_method_url_or_header_surface() -> None:
     assert not hasattr(TossHttpClient, "put")
     assert not hasattr(TossHttpClient, "patch")
     assert not hasattr(TossHttpClient, "delete")
+    assert not hasattr(TossHttpClient, "set_rate_limit")
+    assert not hasattr(TossHttpClient, "disable_rate_limit")
+    assert not hasattr(TossHttpClient, "set_retry_count")
+    assert not hasattr(TossHttpClient, "disable_tls")
+    assert not hasattr(TossHttpClient, "set_base_url")
+    assert not hasattr(TossHttpClient, "raw_headers")
     get_parameters = inspect.signature(TossHttpClient.get).parameters
     symbol_parameters = inspect.signature(TossHttpClient.get_symbol).parameters
     assert "url" not in get_parameters
@@ -424,11 +450,11 @@ def test_non_refreshable_401_does_not_reissue() -> None:
     ("status_code", "code", "error_type"),
     [
         (403, "forbidden", TossPermissionError),
-        (429, "rate-limit-exceeded", TossRateLimitError),
-        (500, "internal-error", TossServerError),
+        (429, "rate-limit-exceeded", TossRetryExhaustedError),
+        (500, "internal-error", TossRetryExhaustedError),
     ],
 )
-def test_403_429_and_500_are_typed_without_retry(
+def test_403_is_not_retried_and_retryable_failures_exhaust_safely(
     status_code: int,
     code: str,
     error_type: type[TossHttpError],
@@ -448,7 +474,7 @@ def test_403_429_and_500_are_typed_without_retry(
 
     run(scenario())
     assert provider.token_calls == 1
-    assert provider.get_calls == 1
+    assert provider.get_calls == (1 if status_code == 403 else 3)
 
 
 def test_market_html_response_is_a_content_type_contract_error() -> None:
