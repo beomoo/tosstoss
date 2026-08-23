@@ -145,6 +145,73 @@ Node.js 24.15 이하 사용자는 setup, dev, lint, typecheck, build, test, E2E�
 
 ---
 
+## ADR-010 — Phase 2 Toss connector를 REST 시장 데이터 allowlist로 제한
+
+- 상태: `PROPOSED`
+- 제안일: `2026-08-23`
+
+### 문제
+
+Phase 2부터 실제 외부 HTTP 연결과 OAuth credential을 도입해야 한다. 토스증권 공식 API에는 시장 데이터뿐 아니라 계좌·자산·주문·조건주문과 WebSocket 주문 이벤트도 함께 존재하므로 단순 provider client는 읽기 전용 경계를 약화할 수 있다.
+
+### 제안
+
+- backend만 `https://openapi.tossinvest.com`에 연결한다.
+- `plans/PHASE_02_EXECUTION_PLAN.md`의 12개 REST method/path allowlist만 호출한다.
+- POST는 `/oauth2/token`만 허용한다.
+- `X-Tossinvest-Account`, 계좌·자산·주문·조건주문 endpoint와 WebSocket은 runtime·config·dependency·test helper에 추가하지 않는다.
+- token은 single-flight backend manager의 memory에만 두고 secret redaction과 deny-by-default policy canary를 적용한다.
+- 기존 standard test는 fixture-only·offline을 유지하고 live preflight는 별도 명시적 opt-in으로 분리한다.
+
+### 대안
+
+- 공식 API 전체를 범용 client로 생성: 금지 surface가 넓어져 거부한다.
+- WebSocket 시세까지 Phase 2에 포함: 공식 AsyncAPI는 존재하지만 범위·운영 복잡도가 커져 별도 승인으로 이연한다.
+- 외부 연결을 계속 전면 금지: Phase 2 목표를 달성하지 못한다.
+
+### 영향
+
+Phase 1의 blanket HTTP-client/connector 금지는 CP2에서 exact Toss connector exception으로 바뀐다. 대신 금지 endpoint·header·host canary를 추가해 보안 정책을 완화하지 않는다.
+
+### 마이그레이션·롤백
+
+checkpoint 단위로 connector/config/dependency/policy 변경을 revert하고 fixture-only repository로 복귀한다. token은 메모리에서 폐기하며 수집한 검증 데이터는 자동 삭제하지 않는다.
+
+---
+
+## ADR-011 — date-only Toss 관측을 versioned source contract로 분리
+
+- 상태: `PROPOSED`
+- 제안일: `2026-08-23`
+
+### 문제
+
+Phase 1 `SourceRecord`는 `observed_at`과 `published_at`을 필수 datetime으로 요구한다. Toss 수급 응답 일부는 기준 `date`만 제공하고 publication timestamp를 제공하지 않아, 자정이나 fetch 시각을 대입하면 기존 시간 의미를 위반한다.
+
+### 제안
+
+- 기존 Phase 1 `SourceRecord` v0.1.0과 fixture는 변경하지 않는다.
+- Phase 2에 date-only와 timestamp 관측을 구분하는 versioned provider source contract를 추가한다.
+- `observed_at`과 `observed_date`를 구분하고 최소 하나를 요구한다.
+- 미제공 `published_at`은 null과 구조화된 `NOT_PROVIDED` 사유로 표현한다.
+- 전역 contract version Literal을 무조건 넓히지 않고 새 contract에 명시적 version을 부여한다.
+
+### 대안
+
+- date를 자정 UTC/KST로 변환: 존재하지 않는 시각을 생성하므로 거부한다.
+- `fetched_at`을 `observed_at`으로 복사: 데이터 기준시각과 수집시각을 혼동하므로 거부한다.
+- 기존 SourceRecord 전체를 즉시 breaking migration: Phase 1 회귀 범위가 커서 거부한다.
+
+### 영향
+
+CP3에서 source contract·OpenAPI·fixture·repository test가 추가된다. 기존 Phase 1 계약 테스트와 `contract_version=0.1.0` 응답은 그대로 통과해야 한다.
+
+### 마이그레이션·롤백
+
+신규 provider record만 새 contract를 사용한다. rollback은 신규 publish 중지와 해당 contract 코드 revert이며 기존 Phase 1 row·fixture를 변환하거나 삭제하지 않는다.
+
+---
+
 ## 새 결정 기록 양식
 
 ```md
