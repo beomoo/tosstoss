@@ -191,3 +191,39 @@
 - CP2-D: `NOT STARTED`
 - 실제 Toss API 요청: `없음`
 - 실제 credential 사용: `없음`
+
+## 2026-08-23 — Phase 2 CP2-D1 Safe Live Preflight Tooling + Offline Validation
+
+- 시작 branch는 `feature/phase-02-toss`, `CP2_D1_BASELINE_SHA`는 `7437d8a30a6f2081431efee815ce96da85700f9b`였고 local/origin SHA가 일치했으며 작업트리는 clean이었다. `fe65076021f2cc9b3c8d533c3e844b9b9699d5b9`는 baseline의 ancestor였고 이후 변경은 `STATUS.md`, `CHANGELOG.md`, `PROGRESS_LOG.md`, `KNOWN_ISSUES.md`, `DECISIONS.md`뿐이었다. reset, rebase, force push는 사용하지 않았다.
+- D1 코드 변경 전에 exact `https://openapi.tossinvest.com/openapi-docs/latest/openapi.json`을 redirect·proxy 없이 memory-only로 1회 다운로드했다. OpenAPI `3.1.0`, REST API `1.2.14`, SHA-256 `fccf49abd11f37f557bdd349138f4a03c42b829ebd8b5c14ab4907116fb84c7a`, exact server origin이 승인 기준과 일치했다. 전체 document hash가 동일하므로 OAuth endpoint/schema, 12개 callable method/path와 rate group, rate-limit response/header schema, error envelope, 401/403/429/5xx contract도 byte-identical이며 `PROVIDER_CONTRACT_DRIFT=NO`다.
+- 목적은 actual credential을 쓰기 전에 secret·token·provider body를 노출하거나 계좌·주문을 호출하거나 retry할 수 없는 one-shot live preflight를 offline에서 검증해 `LIVE TOOL IMPLEMENTED / LIVE CALL NOT EXECUTED` 상태를 만드는 것이었다.
+- 추가 파일은 `scripts/toss-live-preflight.ps1`, `scripts/toss_live_preflight_runner.py`, internal-only `services/api/src/toss_dashboard_api/connectors/toss/preflight.py`, `tests/backend/test_toss_preflight.py`다. `scripts/test.ps1`, `scripts/policy-scan.ps1`, `tests/backend/test_no_external_network.py`만 최소 수정했으며 DB, storage, migration, fixture, frontend, scheduler와 public API/route는 변경하지 않았다.
+- live opt-in은 `-Live`, `-ConfirmReadOnly`, exact process environment ACK `TOSS_LIVE_PREFLIGHT_ACK=READ_ONLY_ONE_SHOT`의 3중 gate다. 기본 실행은 `LIVE_NOT_REQUESTED`, `-SelfTest`는 offline synthetic mode이며 둘을 함께 사용할 수 없다.
+- symbol은 non-secret `-Symbol` 또는 `TOSS_PREFLIGHT_SYMBOL`만 사용하고 `^[A-Za-z0-9.\-]+$`, 최대 32자로 제한한다. credential은 D2에서만 기존 server-only `TOSS_CLIENT_ID`/`TOSS_CLIENT_SECRET` process environment에서 읽으며 credential/token CLI parameter와 `.env` loading은 없다. D1 test child에서는 두 credential environment를 빈 값으로 override하고 parent environment를 변경·조회·출력하지 않았다.
+- runtime 순서는 flags → ACK → symbol → canonical contract GET → drift NO → credential 존재 검증 → OAuth → stocks GET → safe summary다. canonical exact origin/path/version/SHA가 다르면 `PROVIDER_CONTRACT_DRIFT=YES`로 중단해 OAuth 0, market 0을 보장하며 expected contract는 자동 갱신하지 않는다.
+- live network budget은 canonical OpenAPI GET 최대 1, OAuth POST 최대 1, `GET /api/v1/stocks` 최대 1이다. preflight OAuth/market retry는 0, 401 token refresh/replay는 0이다. production `TossHttpClient`의 bounded 429/5xx retry, AUTH single-flight와 generation-aware 401 replay는 변경하지 않았다.
+- exact HTTPS origin, TLS verification, `trust_env=False`, redirects disabled, OpenAPI exact path와 stocks endpoint 하나만 허용한다. account/order endpoint, `X-Tossinvest-Account`, arbitrary URL/method/header, public token manager/lease/raw bearer surface는 계속 접근 불가다.
+- live stdout은 fixed `KEY=VALUE` allowlist만 허용하며 credential configured 여부, safe stage/category/status/code와 rate header present/valid 상태만 표현한다. client ID/secret, token, Authorization, provider message/body, raw headers, traceback, private absolute path와 response/evidence file은 출력·저장하지 않는다.
+- `-SelfTest` 결과는 `EXTERNAL_NETWORK_REQUESTS=0`, gate validation, output schema, redaction, one-shot, drift stop 모두 `PASS`였다. default invocation도 `EXTERNAL_NETWORK_REQUESTS=0`, `CREDENTIALS_USED=0`, `LIVE_NOT_REQUESTED`였다.
+- MockTransport로 OAuth/market 성공 exactly 1+1, OAuth 401/403/429/5xx, market 401/429/5xx, contract drift, redirect, rate header complete/missing/invalid, response/token/header redaction과 forbidden surface를 검증했다. backend inventory는 321개에서 357개로 증가했고 production retry 및 CP2-C cumulative-wait 회귀도 함께 통과했다.
+- 실패·수정 이력을 숨기지 않는다. 초기 전체 실행들은 수동 검사에서 생긴 `.ruff_cache`/`.mypy_cache`와 공개 계약 SHA·credential 존재 변수 표현을 secret scanner가 fail-closed로 거부했다. scanner 예외를 추가하지 않고 cache를 저장소 밖 격리 경로로 이동하고 표현을 안전하게 수정했다. 이후 전체 실행은 신규 Python 2개 Ruff format check에서 중단됐고, 포맷 적용 뒤 exact 65-file policy manifest digest가 변경되어 한 번 더 fail-closed했다. exact file set 확인 후 digest를 갱신하고 모든 실패 뒤 전체 suite를 처음부터 재실행했다.
+- 최종 `scripts/test.ps1`은 process-local Node.js 24.19.0에서 exit code `0`으로 통과했다. lint, mypy 48 source, backend 357/357, frontend 43/43, E2E 2/2, migration 왕복, fixture 2차 import `inserted=0`, `updated=0`, `unchanged=13`, OpenAPI drift, production build 2회, secret scan, CP2-D1 policy scan이 모두 PASS했다. standard test outbound provider request는 0이었다.
+- actual credential used: `NO`. actual OAuth request: `NO`. actual market request: `NO`. D1 시작 전 승인된 anonymous canonical contract document GET만 1회 수행했으며 response는 저장하지 않았다.
+- actual OAuth issuance, allowed IP, actual stocks response, actual rate-limit headers, provider timing, natural 429 `Retry-After`, edge/IP behavior는 계속 `[LIVE_UNVERIFIED]`다.
+- CP2-D1 final validated implementation SHA: `7840eee70ea3d4d8be9057904501ba277e68c99a`
+- CP2-D2 started: `NO`
+
+## 현재 중지 지점 — Phase 2 CP2-D1
+
+- Phase 2: `IMPLEMENTATION IN PROGRESS`
+- CP2-A: `PASS`
+- CP2-B: `PASS`
+- CP2-B P2 hardening: `PASS`
+- CP2-C: `PASS`
+- CP2-C P2 cumulative-wait hardening: `PASS`
+- CP2-D1: `PASS`
+- CP2-D2: `NOT STARTED`
+- live verification: `LIVE_UNVERIFIED`
+- 실제 credential 사용: `없음`
+- 실제 OAuth 요청: `없음`
+- 실제 market 요청: `없음`

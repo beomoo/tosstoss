@@ -1,5 +1,40 @@
 # Changelog
 
+## Unreleased — Phase 2 CP2-D1 — 2026-08-23
+
+### Added
+
+- `scripts/toss-live-preflight.ps1`의 safe default, offline `-SelfTest`, `-Live` + `-ConfirmReadOnly` + exact ACK three-way gate
+- exact canonical OpenAPI runtime drift gate와 environment-only credential contract를 실행하는 internal Python runner/helper
+- canonical OpenAPI GET 최대 1회, OAuth POST 최대 1회, `GET /api/v1/stocks` 최대 1회의 one-shot request budget
+- OAuth/market 401·403·429·5xx, redirect, drift, safe output/redaction과 request count를 검증하는 MockTransport backend 테스트 36개
+
+### Changed
+
+- backend inventory를 321개에서 357개로 확대하고 standard `scripts/test.ps1`에 default와 offline SelfTest만 포함
+- Toss connector source allowlist를 internal-only `preflight.py` exact filename까지 확대하고 control-plane manifest digest를 고정
+- production retry/401 refresh 정책은 그대로 유지하면서 live preflight 전용 경로만 retry·refresh·replay 0회로 분리
+
+### Security
+
+- credential은 D2에서만 기존 server-only `TOSS_CLIENT_ID`/`TOSS_CLIENT_SECRET` environment에서 읽고 CLI credential/token parameter와 `.env` loading을 제공하지 않음
+- exact HTTPS origin·OpenAPI path·stocks endpoint만 허용하고 redirect 거부, TLS verification, `trust_env=False`, account/order/account header 금지를 유지
+- PowerShell wrapper는 child stdout을 fixed key allowlist로 다시 필터링하고 provider body/message, raw header map, Authorization, credential, token, traceback과 private path를 출력·저장하지 않음
+- D1 작업과 standard test에서 실제 credential 사용 0, OAuth POST 0, market GET 0; live evidence·DB·fixture·frontend·migration 변경 없음
+
+### QA
+
+- provider contract drift `NO`: OpenAPI `3.1.0`, REST API `1.2.14`, canonical SHA-256 `fccf49abd11f37f557bdd349138f4a03c42b829ebd8b5c14ab4907116fb84c7a`, exact origin 일치
+- CP2-D1 baseline SHA `7437d8a30a6f2081431efee815ce96da85700f9b`, final validated implementation SHA `7840eee70ea3d4d8be9057904501ba277e68c99a`
+- default `EXTERNAL_NETWORK_REQUESTS=0`, SelfTest `EXTERNAL_NETWORK_REQUESTS=0` 및 gate/schema/redaction/one-shot/drift-stop PASS
+- Node.js 24.19.0에서 최종 `scripts/test.ps1` exit code 0: backend 357/357, frontend 43/43, E2E 2/2, migration, fixture idempotency, OpenAPI, build 2회, secret scan, CP2-D1 policy scan PASS
+- D1 시작 전 승인된 anonymous canonical OpenAPI 문서 GET 1회만 수행했고 실제 credential, OAuth와 market business request는 수행하지 않음
+
+### Limitations
+
+- 실제 token issuance, 허용 IP, stocks response, rate-limit headers, provider timing, natural 429 `Retry-After`, edge/IP behavior는 계속 `[LIVE_UNVERIFIED]`다.
+- CP2-D2는 `NOT STARTED`이며 CP2, CP2-D 또는 Phase 2 완료로 간주하지 않는다.
+
 ## Unreleased — Phase 2 CP2-C — 2026-08-23
 
 ### Added

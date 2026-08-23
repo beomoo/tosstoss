@@ -4,7 +4,7 @@
 
 - 상태: `OPEN`
 - 영향: 공개 계약은 2026-08-23 기준 OpenAPI v1.2.14에서 확인했지만 실제 토큰 발급, 허용 IP, runtime rate header·`Retry-After`, 응답/error와 provider timing은 credential을 사용한 실응답으로 확인하지 않았다.
-- 현재 대응: `plans/PHASE_02_EXECUTION_PLAN.md`에 공개 계약과 `[LIVE_UNVERIFIED]`를 분리했다. CP2-B의 OAuth/exact HTTP boundary와 CP2-C의 shared limiter·bounded retry는 합성 credential, MockTransport와 fake time으로 offline 검증했다. 독립 검토 P2에서 발견된 429 Reset acquire wait의 누적 예산 우회도 수정해 deterministic 회귀로 고정했다. 독립 검토·사용자 승인 후 CP2-D의 별도 credential preflight에서만 secret을 출력·저장하지 않고 live 항목을 검증한다.
+- 현재 대응: `plans/PHASE_02_EXECUTION_PLAN.md`에 공개 계약과 `[LIVE_UNVERIFIED]`를 분리했다. CP2-B의 OAuth/exact HTTP boundary와 CP2-C의 shared limiter·bounded retry는 합성 credential, MockTransport와 fake time으로 offline 검증했다. 독립 검토 P2에서 발견된 429 Reset acquire wait의 누적 예산 우회도 수정해 deterministic 회귀로 고정했다. CP2-D1에서 three-way gate, runtime drift 검사, one-shot OAuth/stocks 경로와 fixed safe summary를 구현하고 MockTransport·SelfTest로 검증했다. 실제 credential과 OAuth/market 요청은 사용하지 않았으며, 별도 사용자 승인 후 CP2-D2에서만 live 항목을 검증한다.
 
 ## KI-002 — 무료 미래 컨센서스 데이터의 안정적 출처 미확정
 
