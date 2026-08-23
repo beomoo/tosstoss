@@ -36,9 +36,19 @@
 - 전체 테스트를 중복 실행하지 않고 `secret-scan.ps1`의 승인 lock digest를 실제 추적 파일 SHA-256 `f5cf022dd418c03974095c1f8f703c84648a90edff7edbb22c13fb2a27614a67`로 맞췄으며, 연동된 59개 제어 파일 digest를 `101ee6d95db34955d05c634d6e7d29564f93ea06ba0ff960e9f0a649249912ed`로 갱신했다.
 - 최종 Playwright 화면, setup/dev/test 로그와 기존 sample JSON을 `qa/evidence/phase_01`에 회수했다.
 
+## 2026-08-23 — Phase 1 종료
+
+- Phase 1 독립 검증을 최종 PASS했으며 최종 검증 commit은 `57b2a63ead06d03191d8094e1689b8d2ab3d7764`다.
+- PR #1을 통해 merge commit `b1829a7375704271a21267e1fcf62808147be593`으로 `main`에 병합했다.
+- Phase 1 완료 기준을 annotated tag `v0.1.0`으로 고정했다.
+- Phase 1 feature branch는 merge 포함 여부 확인 후 정리했다.
+- Phase 2 구현은 시작하지 않았으며, 전용 실행계획 작성·검토가 다음 구현 전 게이트다.
+
 ## 현재 중지 지점
 
-- Phase 1 자체 QA 결과와 증빙을 문서화했다.
-- Phase 2는 시작하지 않았다.
-- `main` 병합, 태그, GitHub Release는 수행하지 않았다.
-- 다음 단계는 별도 독립 리뷰와 사용자 승인이다.
+- Phase 1: `COMPLETE`
+- Independent QA: `PASS`
+- PR: `#1`
+- Merge commit: `b1829a7375704271a21267e1fcf62808147be593`
+- Release baseline tag: `v0.1.0`
+- Phase 2: 구현 미착수

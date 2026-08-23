@@ -9,6 +9,7 @@
 - 검토자: `Codex 자체 QA`
 - 범위: 외부 API가 없는 합성 fixture 기반 로컬 읽기 전용 Foundation
 - 결함 집계: `P0 0개 / P1 0개 / P2 0개`
+- 종료 상태: 독립 검증 `PASS`, PR `#1`, merge commit `b1829a7375704271a21267e1fcf62808147be593`, tag `v0.1.0`
 
 ## 2. 실행 환경과 방식
 
@@ -77,7 +78,7 @@
 - Toss/OpenDART/SEC/news/macro, 계좌, 주문, 자동매매, OpenAI API는 Phase 1 비범위다.
 - npm 11.17.0은 `esbuild`와 `unrs-resolver` install script 승인 대기 경고를 출력했으나 설치, typecheck, 두 production build와 E2E는 정상 통과했다. 자동 승인은 수행하지 않았다.
 - Node.js 24.15 이하 Windows 네이티브 TCP 충돌은 최소 버전 제한으로 완화했으며 ADR-009는 아직 `PROPOSED`다.
-- 독립 검증 P2였던 새 최상위 source directory의 policy-scan 우회 가능성은 exact allowlist와 negative canary로 해소했다. 사용자 최종 승인은 아직 대기 중이다.
+- 독립 검증 P2였던 새 최상위 source directory의 policy-scan 우회 가능성은 exact allowlist와 negative canary로 해소했다. 이후 독립 검증 PASS와 사용자 최종 승인을 거쳐 PR #1이 병합됐다.
 
 ## 7. 다음 승인 게이트
 
@@ -86,8 +87,9 @@
 - [x] P2=0
 - [x] Phase 1 기능·계약·빌드·보안·정책 게이트 PASS
 - [x] 상태·변경이력·자체 QA와 증빙 갱신
-- [ ] 별도 독립 리뷰
-- [ ] 사용자 승인
-- [ ] 승인 후에만 `main` 병합·태그·GitHub Release 검토
+- [x] 별도 독립 리뷰 PASS
+- [x] 사용자 승인
+- [x] PR #1 `main` 병합과 `v0.1.0` 태그 생성
+- [ ] GitHub Release는 생성하지 않음
 
 Phase 2는 시작하지 않는다.

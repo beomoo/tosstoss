@@ -19,7 +19,7 @@
 - Windows Node.js 지원 하한을 24.16.0으로 올리고 `.node-version`을 24.19.0으로 고정하는 ADR-009를 `PROPOSED`로 추가
 - 모든 주요 PowerShell 진입점이 정확한 Node/npm 실행 파일과 상속 `NODE_OPTIONS`를 작업 전에 검증하도록 강화
 - 최종 테스트 inventory를 backend 172개, frontend 43개, E2E 2개로 확대·고정
-- 프로젝트 상태를 Phase 1 구현 완료·자체 QA PASS·독립 리뷰 대기로 갱신
+- 프로젝트 상태를 Phase 1 완료·독립 QA PASS로 갱신
 
 ### Fixed
 
@@ -38,6 +38,9 @@
 ### QA
 
 - 구현 기준 commit: `f358fa3f0d1af44d0348bc5ba5c48be7866d7b21`
+- 최종 독립 검증 commit: `57b2a63ead06d03191d8094e1689b8d2ab3d7764`
+- PR #1을 merge commit `b1829a7375704271a21267e1fcf62808147be593`으로 `main`에 병합
+- Phase 1 release baseline annotated tag: `v0.1.0`
 - Node.js 24.19.0, npm 11.17.0에서 setup 2회와 개발 서버 smoke 통과
 - backend pytest 172개, frontend Vitest 43개(10 files), Playwright 2개 통과
 - Ruff/ESLint, mypy 40 files, TypeScript, process cleanup canary 20회 통과
@@ -48,7 +51,7 @@
 
 - 모든 회사·시장·공시·기관 데이터는 합성 fixture이며 실제 투자 데이터가 아님
 - 실제 Toss/OpenDART/SEC/news/macro 연결, 계좌, 주문, 자동매매, OpenAI API는 비범위
-- ADR-009와 Phase 1 전체 결과는 별도 독립 리뷰와 사용자 승인이 필요
+- ADR-009는 계속 `PROPOSED`이며, Phase 2 전용 상세 실행계획은 아직 작성되지 않음
 
 ## 0.1.0-docs — 2026-08-16
 
