@@ -3,8 +3,8 @@
 ## 1. 판정
 
 - 결과: `PASS`
-- 최종 통합 검증 commit: `dd329df68f197bec2ebacfb9d2f19164b57da017`
-- QA snapshot: 위 commit에서 실행한 전체 통합 테스트와 본 문서·최종 `test.txt` 갱신 diff
+- 최종 통합 검증 기준: `18c5f464ed3bf9ea7a41596760f16636b04454e4` + 본 커밋의 policy scope 보강
+- QA snapshot: 위 기준에서 실행한 전체 통합 테스트와 본 문서·최종 `test.txt` 갱신 diff
 - 검토일: `2026-08-23`
 - 검토자: `Codex 자체 QA`
 - 범위: 외부 API가 없는 합성 fixture 기반 로컬 읽기 전용 Foundation
@@ -26,6 +26,7 @@
 | `scripts/setup.ps1` 2회 | PASS | 두 실행 모두 478 packages 설치, 외부 API 자격증명 요구 없음 |
 | `scripts/dev.ps1 -Smoke` | PASS | Web/API 정상, JSON 로그 14줄, 종료 후 3000/8000 listener와 관련 프로세스 0개 |
 | 상속 `NODE_OPTIONS` negative canary | PASS | Node 작업 전에 fail-closed 거부 |
+| 미승인 최상위 source directory negative canary | PASS | `connectors/`, `broker/`, `phase2/`, `experimental/`의 주문/OpenAI/외부 connector 코드 거부 |
 | Ruff format/check와 ESLint | PASS | 67 files formatted, Ruff 오류 0, ESLint warning 0 |
 | mypy와 TypeScript | PASS | mypy 40 source files, Next route typegen과 `tsc --noEmit` 통과 |
 | process cleanup canary | PASS | 20회, 자식 제거·무관 프로세스 보존·owner crash kill-on-close 확인 |
@@ -42,13 +43,15 @@
 
 최종 snapshot에서 `scripts/test.ps1` 전체를 재실행해 exit 0 및 `All Phase 1 checks passed.`를 확인했다. backend, frontend, migration, fixture idempotency, OpenAPI drift, production build, E2E, secret scan과 policy scan이 동일 프로세스 체인의 한 번의 연속 실행 안에서 모두 통과했다.
 
+정책 변경 직후 첫 전체 실행에서는 external connector canary의 의도적인 외부 URL 리터럴이 정책 스크립트 자체의 기존 URL 검사에 잡혔다. canary 문자열을 기존 self-test와 같은 분할 조합 방식으로 수정한 뒤 전체 테스트를 처음부터 다시 실행했다. 최종 증빙 실행은 모든 출력 스트림을 보존한 별도의 연속 실행이며 부분 테스트 결과를 사용하지 않았다.
+
 ## 4. 증빙 파일
 
 | 파일 | 내용 | SHA-256 |
 |---|---|---|
 | `qa/evidence/phase_01/setup.txt` | 최종 setup 2회 | `e2a4ee2194889156af2a18dce594c258958fa2b5938726a6b7a92cec50327962` |
 | `qa/evidence/phase_01/dev-smoke.txt` | 최종 개발 서버 smoke | `3d838aecb5d033b02b2bc032a4929b39f31be8b3208fc8123468283a3cb847f4` |
-| `qa/evidence/phase_01/test.txt` | 최종 snapshot 전체 통합 실행 PASS | `9b1f0ad0d98db050dd09ac3068f60288c03e1302a0625ae8bef8266f80f82a57` |
+| `qa/evidence/phase_01/test.txt` | P2 보강 후 최종 snapshot 전체 통합 실행 PASS | `6d7f391ec4e8171b2df6bfc7adb7e7c438c140f03acc18ebb6ef8b138aed9f32` |
 | `qa/evidence/phase_01/company.png` | 최종 Company 화면 | `d048aee09293b90a990e984b95c0aeffac3870a17502a9b6b7fece3174168d06` |
 | `qa/evidence/phase_01/data-quality.png` | 최종 Data Quality 화면 | `f5e7722b3b95606b8cf354da06fc8bf67943104c011f713d475b7acf879a96ce` |
 | `qa/evidence/phase_01/sample-analysis-packet.json` | 합성 analysis packet | `5478228cd2cf628cada4ba3d909a9ef3049e227193875dbefdc1fe94eb753978` |
@@ -74,7 +77,7 @@
 - Toss/OpenDART/SEC/news/macro, 계좌, 주문, 자동매매, OpenAI API는 Phase 1 비범위다.
 - npm 11.17.0은 `esbuild`와 `unrs-resolver` install script 승인 대기 경고를 출력했으나 설치, typecheck, 두 production build와 E2E는 정상 통과했다. 자동 승인은 수행하지 않았다.
 - Node.js 24.15 이하 Windows 네이티브 TCP 충돌은 최소 버전 제한으로 완화했으며 ADR-009는 아직 `PROPOSED`다.
-- 독립 검증에서 지적된 최종 전체 통합 실행 증거 공백은 이번 연속 실행 PASS로 해소했다. 사용자 최종 승인은 아직 대기 중이다.
+- 독립 검증 P2였던 새 최상위 source directory의 policy-scan 우회 가능성은 exact allowlist와 negative canary로 해소했다. 사용자 최종 승인은 아직 대기 중이다.
 
 ## 7. 다음 승인 게이트
 

@@ -2,6 +2,103 @@
 
 $repoRoot = Get-RepoRoot
 Assert-NoProjectPythonBytecode
+
+$approvedTopLevelDirectories = @(
+    "apps",
+    "contracts",
+    "docs",
+    "fixtures",
+    "plans",
+    "prompts",
+    "qa",
+    "scripts",
+    "services",
+    "templates",
+    "tests"
+)
+
+function Assert-ApprovedTopLevelPolicyScope {
+    param([Parameter(Mandatory = $true)][string[]] $RelativePaths)
+
+    foreach ($relativePath in $RelativePaths) {
+        $normalizedPath = $relativePath.Replace("\", "/")
+        if (
+            [string]::IsNullOrWhiteSpace($normalizedPath) -or
+            [System.IO.Path]::IsPathRooted($normalizedPath) -or
+            $normalizedPath.StartsWith("/", [System.StringComparison]::Ordinal) -or
+            @($normalizedPath.Split("/") | Where-Object { $_ -in @("", ".", "..") }).Count -gt 0
+        ) {
+            throw "Git reported an unsafe tracked path: $relativePath"
+        }
+
+        $segments = @($normalizedPath.Split("/"))
+        if ($segments.Count -eq 1) {
+            continue
+        }
+
+        $topLevelDirectory = $segments[0]
+        if ($approvedTopLevelDirectories -cnotcontains $topLevelDirectory) {
+            throw "An unapproved top-level directory is outside the Phase 1 policy scope: $topLevelDirectory"
+        }
+    }
+}
+
+$trackedRelativePaths = @(& git -C $repoRoot -c core.quotepath=false ls-files)
+if ($LASTEXITCODE -ne 0 -or $trackedRelativePaths.Count -eq 0) {
+    throw "Unable to enumerate Git-tracked files for the Phase 1 policy scope."
+}
+Assert-ApprovedTopLevelPolicyScope -RelativePaths $trackedRelativePaths
+
+$unexpectedTopLevelSourceCanaries = @(
+    [pscustomobject]@{
+        RelativePath = [string]::Concat("connec", "tors/order_client.py")
+        Content = [string]::Concat('broker.place_', 'order(symbol="TEST", quantity=1)')
+    },
+    [pscustomobject]@{
+        RelativePath = [string]::Concat("bro", "ker/openai_client.ts")
+        Content = [string]::Concat(
+            'const client = new Open',
+            'AI({ apiKey: process.env.OPENAI_API_KEY });'
+        )
+    },
+    [pscustomobject]@{
+        RelativePath = [string]::Concat("phase", "2/external_connector.py")
+        Content = [string]::Concat('httpx.get("ht', 'tps://api.example.com/data")')
+    },
+    [pscustomobject]@{
+        RelativePath = [string]::Concat("experi", "mental/trading.js")
+        Content = [string]::Concat('execute', 'Trade({ side: "buy" });')
+    }
+)
+foreach ($canary in $unexpectedTopLevelSourceCanaries) {
+    $canaryRepository = New-TaskTempDirectory
+    try {
+        $canaryPath = Join-Path $canaryRepository $canary.RelativePath
+        [System.IO.Directory]::CreateDirectory(
+            [System.IO.Path]::GetDirectoryName($canaryPath)
+        ) | Out-Null
+        [System.IO.File]::WriteAllText($canaryPath, $canary.Content)
+        if ((Get-Content -LiteralPath $canaryPath -Raw) -cne $canary.Content) {
+            throw "Unable to construct the unexpected top-level source canary."
+        }
+
+        $canaryRejected = $false
+        try {
+            Assert-ApprovedTopLevelPolicyScope `
+                -RelativePaths @($canary.RelativePath)
+        }
+        catch {
+            $canaryRejected = $true
+        }
+        if (-not $canaryRejected) {
+            throw "The Phase 1 policy accepted an unexpected top-level source canary: $($canary.RelativePath)"
+        }
+    }
+    finally {
+        Remove-TaskTempDirectory -Path $canaryRepository
+    }
+}
+
 $scopedRoots = @(
     (Join-Path $repoRoot "services\api"),
     (Join-Path $repoRoot "apps\web"),
