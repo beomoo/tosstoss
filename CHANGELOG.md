@@ -1,6 +1,44 @@
 # Changelog
 
-## Unreleased — Phase 2 CP2-A — 2026-08-23
+## Unreleased — Phase 2 CP2-B — 2026-08-23
+
+### Added
+
+- strict OAuth token/error 모델과 backend application-owned single token manager
+- memory-only token lease, monotonic expiry, bounded safety margin, explicit·generation-aware invalidation
+- exact Toss origin과 enum 기반 11개 market GET path만 노출하는 `httpx.AsyncClient` transport
+- streaming response ceiling(OAuth 64 KiB, market JSON 32 MiB), content-type/JSON/redirect 안전 검사
+- CP2-B auth·boundary·integration·concurrency 테스트 75개
+
+### Changed
+
+- Toss connector source allowlist를 CP2-B의 exact 6개 Python 파일로 발전
+- backend inventory를 176개에서 251개로 확대하고 통합 gate 기대값을 갱신
+- ADR-010은 `PROPOSED`를 유지하면서 CP2-A/CP2-B 구현 진행 메모를 추가
+
+### Security
+
+- `trust_env=False`, `follow_redirects=False`, TLS verification 고정과 connect/read/write/pool timeout을 적용
+- 외부 arbitrary URL/method/header API 없이 POST는 내부 `/oauth2/token` 하나로 제한
+- symbol traversal/scheme injection과 raw query string, unknown query key/value를 fail closed
+- market GET Authorization을 transport 내부에서만 구성하고 token POST·query·Cookie에 전달하지 않음
+- 401 `expired-token`/`invalid-token`만 generation-aware invalidate 후 최대 한 번 재발급·replay
+- provider body/message, credential, token을 exception/log/raw/DB/QA evidence에 저장하지 않음
+
+### QA
+
+- provider contract drift `NO`: REST API `1.2.14`, canonical SHA-256 `fccf49abd11f37f557bdd349138f4a03c42b829ebd8b5c14ab4907116fb84c7a`
+- implementation commit `6a823edc6b3e02cf1c06778f26045f7c535066ed`
+- Node.js 24.19.0, npm 11.17.0에서 최종 `scripts/test.ps1` exit code 0
+- backend 251/251, frontend 43/43, E2E 2/2, migration, fixture idempotency, OpenAPI, build 2회, secret scan, CP2-B policy scan PASS
+- standard test outbound network 0; 모든 Toss connector test는 합성 credential과 `httpx.MockTransport` 사용
+
+### Limitations
+
+- 실제 credential, token endpoint, market endpoint는 호출하지 않아 live OAuth·허용 IP·response/rate header는 계속 `[LIVE_UNVERIFIED]`다.
+- CP2-C rate limiter·429/5xx retry와 CP2-D live preflight는 시작하지 않았다.
+
+## Phase 2 CP2-A — 2026-08-23
 
 ### Added
 

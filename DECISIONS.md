@@ -177,6 +177,12 @@ Phase 1의 blanket HTTP-client/connector 금지는 CP2에서 exact Toss connecto
 
 checkpoint 단위로 connector/config/dependency/policy 변경을 revert하고 fixture-only repository로 복귀한다. token은 메모리에서 폐기하며 수집한 검증 데이터는 자동 삭제하지 않는다.
 
+### 구현 진행 메모 — 2026-08-23
+
+- CP2-A의 dependency/config/policy 경계와 CP2-B의 OAuth token manager/exact-boundary HTTP client까지 구현·검증했다.
+- CP2-B는 synthetic credential과 `httpx.MockTransport`만 사용했고 실제 provider API 호출이나 token 저장은 하지 않았다.
+- CP2-C rate limiter·retry와 CP2-D live preflight가 남아 있으므로 ADR 상태는 `PROPOSED`를 유지하며 CP2 전체 구현 또는 승인으로 간주하지 않는다.
+
 ---
 
 ## ADR-011 — date-only Toss 관측을 versioned source contract로 분리
