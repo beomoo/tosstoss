@@ -300,10 +300,14 @@ function Test-IsApprovedConnectorRelativePath {
     if (@($segments | Where-Object { $_ -in @("", ".", "..") }).Count -gt 0) {
         return $false
     }
-    return (
-        $normalizedPath -ceq "__init__.py" -or
-        $normalizedPath.StartsWith("toss/", [System.StringComparison]::Ordinal)
-    )
+    return @(
+        "__init__.py",
+        "toss/__init__.py",
+        "toss/auth.py",
+        "toss/client.py",
+        "toss/errors.py",
+        "toss/models.py"
+    ) -ccontains $normalizedPath
 }
 
 function Assert-OnlyApprovedConnectorSources {
@@ -1505,6 +1509,8 @@ $expectedBackendTestFiles = @(
     "tests/backend/test_repositories.py",
     "tests/backend/test_settings_security.py",
     "tests/backend/test_temp_cleanup.py",
+    "tests/backend/test_toss_auth.py",
+    "tests/backend/test_toss_client.py",
     "tests/backend/test_uvicorn_runtime_logging.py"
 )
 $actualBackendTestFiles = @(
@@ -1589,11 +1595,11 @@ $phaseControlFiles = @(
         Where-Object { $_.Name -cne "policy-scan.ps1" }
 )
 $approvedPhaseControlDigest = [string]::Concat(
-    "55c24390", "6fdbc581", "1bfe38c6", "1905144a",
-    "ec8b1f5c", "f7245dae", "5b2c0aae", "dc4f36e5"
+    "d9745e35", "a4d864fb", "e0faa69f", "77b79651",
+    "d2578b04", "7f442f35", "0b635d90", "321e5550"
 )
 if (
-    $phaseControlFiles.Count -ne 59 -or
+    $phaseControlFiles.Count -ne 61 -or
     (Get-FileSetManifestSha256 -Files $phaseControlFiles) -cne
         $approvedPhaseControlDigest
 ) {
@@ -1968,7 +1974,9 @@ if (
 }
 if (
     -not (Test-IsApprovedConnectorRelativePath -RelativePath "toss/__init__.py") -or
+    -not (Test-IsApprovedConnectorRelativePath -RelativePath "toss/auth.py") -or
     (Test-IsApprovedConnectorRelativePath -RelativePath "generic_http/client.py") -or
+    (Test-IsApprovedConnectorRelativePath -RelativePath "toss/future_transport.py") -or
     (Test-IsApprovedConnectorRelativePath -RelativePath "toss/../openai/client.py")
 ) {
     throw "The exact Toss connector namespace policy accepted a generic connector canary."
@@ -2159,4 +2167,4 @@ Assert-NoPattern `
     -Message "The prohibited Toss account header was found in runtime source." `
     -Files $runtimeSourceFiles
 
-Write-Host "Phase 2 CP2-A scope policy scan passed."
+Write-Host "Phase 2 CP2-B scope policy scan passed."

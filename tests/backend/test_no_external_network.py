@@ -31,19 +31,26 @@ def test_backend_external_http_client_imports_are_confined_to_toss_connector() -
     assert violations == []
 
 
-def test_only_empty_toss_connector_namespace_is_present_in_cp2_a() -> None:
+def test_only_exact_cp2_b_toss_connector_files_are_present() -> None:
     connector_files = {
         path.relative_to(CONNECTOR_ROOT).as_posix()
         for path in CONNECTOR_ROOT.rglob("*")
-        if path.is_file()
+        if path.is_file() and path.suffix == ".py"
     }
     connector_directories = {
         path.relative_to(CONNECTOR_ROOT).as_posix()
         for path in CONNECTOR_ROOT.rglob("*")
-        if path.is_dir()
+        if path.is_dir() and path.name != "__pycache__"
     }
     assert connector_directories == {"toss"}
-    assert connector_files == {"__init__.py", "toss/__init__.py"}
+    assert connector_files == {
+        "__init__.py",
+        "toss/__init__.py",
+        "toss/auth.py",
+        "toss/client.py",
+        "toss/errors.py",
+        "toss/models.py",
+    }
 
 
 def test_no_account_or_order_route_exists() -> None:
