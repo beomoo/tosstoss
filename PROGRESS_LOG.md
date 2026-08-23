@@ -52,3 +52,30 @@
 - Merge commit: `b1829a7375704271a21267e1fcf62808147be593`
 - Release baseline tag: `v0.1.0`
 - Phase 2: 구현 미착수
+
+## 2026-08-23 — Phase 2 CP2-A 보안 경계 구현
+
+- 시작 branch는 `feature/phase-02-toss`, baseline SHA는 `e2c0db5e007aca4ed10c0037554ba1ee6eb5a389`였고 작업트리는 clean이었다.
+- 목적은 실제 Toss 요청을 만들지 않고, 향후 읽기 전용 Toss connector만 좁게 허용하면서 다른 외부 HTTP·provider·계좌·주문 surface를 계속 fail-closed로 유지하는 것이었다.
+- 코드 변경 전 공식 canonical OpenAPI를 재확인했다. REST API version `1.2.14`, SHA-256 `fccf49abd11f37f557bdd349138f4a03c42b829ebd8b5c14ab4907116fb84c7a`, server origin, 12개 callable method/path, OAuth schema, 9개 rate group이 CP1 기준과 같아 `PROVIDER_CONTRACT_DRIFT=NO`로 판정했다.
+- `connectors/toss` namespace scaffold만 추가했고 OAuth, token manager, HTTP request, retry, rate limiter, live preflight는 구현하지 않았다.
+- `httpx==0.28.1`을 개발 전용 항목에서 exact runtime dependency로 승격했다. `requirements.in`과 hash-pinned `requirements.lock`에는 이미 같은 direct dependency가 있어 lock bytes와 승인 SHA-256 `77c659d879ecc4ed595e790b1af3b747353c6494a85d1ec821bdf0ac0a1b552d`는 바뀌지 않았다. 설치된 metadata의 Python 요구사항은 `>=3.8`이고 저장소 Python `>=3.13.1,<3.14`와 호환된다.
+- optional server-only `TOSS_CLIENT_ID`, `TOSS_CLIENT_SECRET` 설정을 secret-aware type으로 추가하고, 누락·빈 값 startup과 repr·validation error·structured log 비노출을 검증했다. `.env.example`에는 빈 이름만 추가했으며 실제 credential과 `.env` 파일은 만들지 않았다.
+- policy scan에 exact Toss origin, 12개 callable endpoint/rate metadata, Toss namespace 전용 `httpx` import, frontend 직접 접근 금지, 계좌·주문 endpoint, account header, generic connector, `NEXT_PUBLIC_TOSS_*`, OpenAI 금지 카나리를 추가했다.
+- secret scan에 Toss secret assignment, generic client secret assignment, Authorization Bearer 합성 카나리를 추가했고 `.env.local`, `.env.development.local` ignore 검증을 보강했다.
+- 수정 파일은 `.env.example`, `pyproject.toml`, `config.py`, `logging_config.py`, connector namespace 2개, policy/secret/test 스크립트, backend 보안 테스트 3개와 Phase 2 실행계획이다. DB migration, fixture, frontend application source는 변경하지 않았다.
+- 테스트 inventory는 backend `176`개, frontend `43`개, E2E `2`개로 증가·유지했다.
+- 최종 `scripts/test.ps1`은 Node.js `24.19.0`, npm `11.17.0`에서 exit code `0`으로 통과했다. backend 176/176, frontend 43/43, E2E 2/2, migration 왕복, fixture 2차 import `inserted=0`, `updated=0`, `unchanged=13`, OpenAPI drift, production build 2회, secret scan, policy scan이 모두 PASS했다.
+- 시도 이력과 실패 지점을 숨기지 않는다. 첫 실행은 시스템 Node.js `24.15.0` 안전 하한에서 정상 차단됐고, 다음 실행은 Ruff 포맷 2개 파일에서 중단됐다. 이후 저장소 내부에 둔 검증용 ZIP/캐시를 secret scan이 거부해 저장소 밖으로 이동했고, 합성 credential test 2줄도 secret scanner가 거부해 예외 추가 없이 canary 구성 방식을 수정했다. 한 통합 실행에서 기존 E2E local RSC prefetch 검사 race가 1회 발생했으나 무변경 단독 재실행과 최종 전체 실행에서 모두 2/2 PASS했다.
+- 미해결 항목은 CP2-B OAuth/token/HTTP client, CP2-C rate/retry/error taxonomy, CP2-D live preflight와 최종 CP2 acceptance다. CP2-A 범위의 P0/P1 결함은 없다. E2E prefetch timing 1회 관찰은 후속 회귀에서 모니터링한다.
+- 마지막 정상 baseline SHA: `e2c0db5e007aca4ed10c0037554ba1ee6eb5a389`
+- CP2-A final validated implementation SHA: `e1bca561998d745bb357dc8c92f835926886e770`
+- CP2-B 시작 여부: `NO`
+
+## 현재 중지 지점 — Phase 2 CP2-A
+
+- Phase 2: `IMPLEMENTATION IN PROGRESS`
+- CP2-A: `PASS`
+- CP2-B: `NOT STARTED`
+- 실제 Toss API 요청: `없음`
+- 실제 credential 사용: `없음`

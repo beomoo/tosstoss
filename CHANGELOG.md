@@ -1,5 +1,40 @@
 # Changelog
 
+## Unreleased — Phase 2 CP2-A — 2026-08-23
+
+### Added
+
+- 실제 transport 없이 `services/api/src/toss_dashboard_api/connectors/toss` 전용 namespace scaffold
+- optional server-only `TOSS_CLIENT_ID`, `TOSS_CLIENT_SECRET` secret-aware 설정과 빈 `.env.example` 항목
+- exact Toss origin·12개 callable endpoint/rate metadata·connector 경로 정책 데이터
+- HTTP import, frontend direct Toss, 계좌·주문 endpoint, account header, generic connector와 공개 credential 환경변수 negative canary
+
+### Changed
+
+- `httpx==0.28.1`을 exact runtime dependency로 승격하고 source/runtime 위치·version·lock hash 검증을 강화
+- backend test inventory를 172개에서 176개로 확대
+- CP2의 범위를 바꾸지 않고 CP2-A부터 CP2-D까지의 실행 순서를 계획에 명시
+
+### Security
+
+- `httpx` import 허용 가능 위치를 Toss backend connector namespace 하나로 제한
+- `Authorization`, Bearer, client ID/secret, access token, cookie, set-cookie redaction 보강
+- Toss/client secret assignment와 Authorization Bearer 합성 카나리를 secret scan에서 거부
+- `.env`, `.env.local`, `.env.*.local`과 동등한 ignore 규칙을 검증하고 실제 credential·`.env` 파일을 추가하지 않음
+- 계좌·보유·주문·구매가능금액·매도가능수량·수수료·조건주문 surface와 `X-Tossinvest-Account`를 runtime에서 계속 금지
+
+### QA
+
+- provider contract drift `NO`: REST API `1.2.14`, canonical SHA-256 `fccf49abd11f37f557bdd349138f4a03c42b829ebd8b5c14ab4907116fb84c7a`
+- Node.js 24.19.0, npm 11.17.0에서 통합 `scripts/test.ps1` exit code 0
+- backend 176/176, frontend 43/43, E2E 2/2, migration, fixture idempotency, OpenAPI drift, build 2회, secret scan, policy scan PASS
+- validated implementation commit: `e1bca561998d745bb357dc8c92f835926886e770`
+
+### Limitations
+
+- CP2-A는 CP2 전체 완료가 아니다. OAuth/token manager, HTTP request, rate limit/retry, live preflight는 CP2-B 이후 범위이며 시작하지 않았다.
+- `requirements.in`과 `requirements.lock`은 baseline부터 `httpx==0.28.1`과 승인 hash를 포함해 파일 내용 변경이 필요하지 않았다.
+
 ## 0.1.0 — 2026-08-22
 
 ### Added
