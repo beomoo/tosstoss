@@ -3,7 +3,7 @@ Phase 1 scope policy scan passed.
 No broken requirements found.
 Python runtime offline network guard verified.
 Native Node runtime and offline network guards verified.
-toss-invest-dashboard@0.1.0 C:\Users\beomoo\Documents\ChatGPT\토스증권 자동화 매매\toss_phase1_verify_98369cb2
+toss-invest-dashboard@0.1.0 C:\Users\beomoo\Documents\ChatGPT\토스증권 자동화 매매\toss_invest_dashboard_codex_docs_v0.1
 └─┬ @toss-dashboard/web@0.1.0 -> .\apps\web
   ├── @playwright/test@1.57.0
   ├── @testing-library/jest-dom@6.9.1
@@ -42,7 +42,7 @@ Test inventory verified: backend=172, frontend=43, e2e=2
 ........................................................................ [ 41%]
 ........................................................................ [ 83%]
 ............................                                             [100%]
-172 passed in 13.57s
+172 passed in 12.88s
 INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
 INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
 INFO  [alembic.runtime.migration] Running upgrade  -> 0001_phase_01, Phase 1 SQLite metadata foundation.
@@ -58,19 +58,19 @@ Migration repeat/downgrade/re-upgrade test passed.
 INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
 INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
 INFO  [alembic.runtime.migration] Running upgrade  -> 0001_phase_01, Phase 1 SQLite metadata foundation.
-{"first": {"fixture_version": "0.1.0", "inserted": 13, "manifest_digest": "sha256:b22e919d59cfbdda7a0c4d5e330c7ad5231c0bf01c38f2474264f08ea6ace57b", "unchanged": 0, "updated": 0}, "second": {"fixture_version": "0.1.0", "inserted": 0, "manifest_digest": "sha256:b22e919d59cfbdda7a0c4d5e330c7ad5231c0bf01c38f2474264f08ea6ace57b", "unchanged": 13, "updated": 0}, "verification": {"canonical_digest": "sha256:fab635f721ae4b2b0b2f4b02a10ceb63e3fbd76400dc249d422142e3e1e4793e", "primary_keys": {"data_quality_statuses": ["[\"quality_kr_filing\"]", "[\"quality_kr_market\"]", "[\"quality_us_financial\"]", "[\"quality_us_holding\"]"], "fixture_import_runs": ["[1]"], "issuers": ["[\"issuer_kr_synthetic\"]", "[\"issuer_us_synthetic\"]"], "securities": ["[\"security_kr_synthetic_common\"]", "[\"security_us_synthetic_common\"]"], "source_records": ["[\"source_fixture_financial\"]", "[\"source_fixture_market\"]", "[\"source_kr_filing_amended\"]", "[\"source_kr_filing_original\"]", "[\"source_us_holding\"]"]}, "row_counts": {"data_quality_statuses": 4, "fixture_import_runs": 1, "issuers": 2, "securities": 2, "source_records": 5}}}
+{"first": {"fixture_version": "0.1.0", "inserted": 13, "manifest_digest": "sha256:b22e919d59cfbdda7a0c4d5e330c7ad5231c0bf01c38f2474264f08ea6ace57b", "unchanged": 0, "updated": 0}, "second": {"fixture_version": "0.1.0", "inserted": 0, "manifest_digest": "sha256:b22e919d59cfbdda7a0c4d5e330c7ad5231c0bf01c38f2474264f08ea6ace57b", "unchanged": 13, "updated": 0}, "verification": {"canonical_digest": "sha256:65bea76af74e0bcda9860c090de8468802f488f0932ffc69acd4ae4e85d3c7d9", "primary_keys": {"data_quality_statuses": ["[\"quality_kr_filing\"]", "[\"quality_kr_market\"]", "[\"quality_us_financial\"]", "[\"quality_us_holding\"]"], "fixture_import_runs": ["[1]"], "issuers": ["[\"issuer_kr_synthetic\"]", "[\"issuer_us_synthetic\"]"], "securities": ["[\"security_kr_synthetic_common\"]", "[\"security_us_synthetic_common\"]"], "source_records": ["[\"source_fixture_financial\"]", "[\"source_fixture_market\"]", "[\"source_kr_filing_amended\"]", "[\"source_kr_filing_original\"]", "[\"source_us_holding\"]"]}, "row_counts": {"data_quality_statuses": 4, "fixture_import_runs": 1, "issuers": 2, "securities": 2, "source_records": 5}}}
 
 > @toss-dashboard/web@0.1.0 test
 > vitest run
 
 
- RUN  v4.1.10 C:/Users/beomoo/Documents/ChatGPT/토스증권 자동화 매매/toss_phase1_verify_98369cb2/apps/web
+ RUN  v4.1.10 C:/Users/beomoo/Documents/ChatGPT/토스증권 자동화 매매/toss_invest_dashboard_codex_docs_v0.1/apps/web
 
 
  Test Files  10 passed (10)
       Tests  43 passed (43)
-   Start at  22:35:54
-   Duration  4.38s (transform 529ms, setup 1.42s, import 1.55s, tests 2.53s, environment 9.95s)
+   Start at  11:38:51
+   Duration  3.64s (transform 541ms, setup 1.55s, import 1.41s, tests 1.85s, environment 8.64s)
 
 
 > @toss-dashboard/web@0.1.0 check:api
@@ -83,15 +83,15 @@ Native Node runtime and offline network guards verified.
 > next build
 
 ▲ Next.js 16.3.1 (Turbopack)
-✓ Running next.config.ts took 37ms
+✓ Running next.config.ts took 32ms
 
   Creating an optimized production build ...
-✓ Compiled successfully in 11.1s
+✓ Compiled successfully in 11.2s
   Running TypeScript ...
-  Finished TypeScript in 3.8s ...
+  Finished TypeScript in 3.0s ...
   Collecting page data using 5 workers ...
   Generating static pages using 5 workers (0/1) ...
-✓ Generating static pages using 5 workers (1/1) in 91ms
+✓ Generating static pages using 5 workers (1/1) in 87ms
   Finalizing page optimization ...
 
 Route (app)
@@ -109,15 +109,15 @@ Native Node runtime and offline network guards verified.
 > next build
 
 ▲ Next.js 16.3.1 (Turbopack)
-✓ Running next.config.ts took 36ms
+✓ Running next.config.ts took 31ms
 
   Creating an optimized production build ...
-✓ Compiled successfully in 3.7s
+✓ Compiled successfully in 3.1s
   Running TypeScript ...
-  Finished TypeScript in 3.6s ...
+  Finished TypeScript in 2.8s ...
   Collecting page data using 5 workers ...
   Generating static pages using 5 workers (0/1) ...
-✓ Generating static pages using 5 workers (1/1) in 91ms
+✓ Generating static pages using 5 workers (1/1) in 78ms
   Finalizing page optimization ...
 
 Route (app)
@@ -137,10 +137,10 @@ Native Node runtime and offline network guards verified.
 
 Running 2 tests using 1 worker
 
-  ok 1 [chromium] › tests\e2e\phase-01.spec.ts:488:5 › Phase 1 합성 Company와 모든 issuer의 Data Quality 화면 (6.4s)
-  ok 2 [chromium] › tests\e2e\phase-01.spec.ts:539:5 › 알 수 없는 issuer는 안전한 not-found 화면 (5.5s)
+  ok 1 [chromium] › tests\e2e\phase-01.spec.ts:488:5 › Phase 1 합성 Company와 모든 issuer의 Data Quality 화면 (7.5s)
+  ok 2 [chromium] › tests\e2e\phase-01.spec.ts:539:5 › 알 수 없는 issuer는 안전한 not-found 화면 (909ms)
 
-  2 passed (24.2s)
+  2 passed (18.4s)
 
 To open last HTML report run:
 
@@ -149,18 +149,11 @@ To open last HTML report run:
 [WebServer] INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
 [WebServer] INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
 [WebServer] INFO  [alembic.runtime.migration] Running upgrade  -> 0001_phase_01, Phase 1 SQLite metadata foundation.
-(node:7204) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(node:16400) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
 (Use `node --trace-warnings ...` to show where the warning was created)
-(node:7204) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(node:16400) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
 (Use `node --trace-warnings ...` to show where the warning was created)
-Exception: C:\Users\beomoo\Documents\ChatGPT\토스증권 자동화 매매\toss_phase1_verify_98369cb2\scripts\secret-scan.ps1:339
-Line |
- 339 |          throw "package-lock.json does not match its approved immutabl …
-     |          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-     | package-lock.json does not match its approved immutable digest.
-Exception: C:\Users\beomoo\Documents\ChatGPT\토스증권 자동화 매매\toss_phase1_verify_98369cb2\scripts\common.ps1:187
-Line |
- 187 |              throw "Command failed with exit code $($exitCode): $FileP …
-     |              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-     | Command failed with exit code 1: pwsh -NoProfile -ExecutionPolicy Bypass -File
-     | C:\Users\beomoo\Documents\ChatGPT\토스증권 자동화 매매\toss_phase1_verify_98369cb2\scripts\secret-scan.ps1
+Validated narrow generated-hash exceptions: 2147
+Secret scan passed.
+Phase 1 scope policy scan passed.
+All Phase 1 checks passed.
