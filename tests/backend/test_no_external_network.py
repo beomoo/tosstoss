@@ -5,6 +5,8 @@ from pathlib import Path
 import pytest
 from pytest_socket import SocketConnectBlockedError
 
+from toss_dashboard_api.connectors.toss import auth as toss_auth
+from toss_dashboard_api.connectors.toss.client import TossHttpClient
 from toss_dashboard_api.repositories.fixture import FixtureRepository
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -57,6 +59,14 @@ def test_no_account_or_order_route_exists() -> None:
     route_names = {path.name for path in (API_ROOT / "routes").glob("*.py")}
     assert "account.py" not in route_names
     assert "orders.py" not in route_names
+
+
+def test_application_runtime_has_no_token_manager_or_raw_token_surface() -> None:
+    assert "token_manager" not in vars(TossHttpClient)
+    assert "TokenLease" not in vars(toss_auth)
+    assert "TossTokenManager" not in vars(toss_auth)
+    runtime_types = [value for value in vars(toss_auth).values() if isinstance(value, type)]
+    assert all("_authorization_value" not in vars(runtime_type) for runtime_type in runtime_types)
 
 
 def test_fixture_loading_does_not_open_a_network_connection(

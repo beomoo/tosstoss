@@ -300,20 +300,18 @@ def test_redirect_is_not_followed() -> None:
     assert calls == 2
 
 
-def test_client_context_manager_closes_resources_and_token_manager() -> None:
+def test_client_context_manager_closes_resources() -> None:
     provider = SuccessProvider()
     connector = client(provider)
 
     async def scenario() -> None:
         async with connector:
-            await connector.token_manager.get_token()
+            await connector.get(TossStaticEndpoint.STOCKS)
             assert connector.is_closed is False
         assert connector.is_closed is True
         assert connector._http_client.is_closed is True
         with pytest.raises(TossLifecycleError):
             await connector.get(TossStaticEndpoint.STOCKS)
-        with pytest.raises(TossLifecycleError):
-            await connector.token_manager.get_token()
         await connector.aclose()
 
     run(scenario())
@@ -594,8 +592,6 @@ def test_late_previous_generation_401_does_not_invalidate_the_new_token() -> Non
                 connector.get(TossStaticEndpoint.STOCKS),
             )
             assert results == [{"result": []}, {"result": []}]
-            current = await connector.token_manager.get_token()
-            assert current.generation == 2
 
     run(scenario())
     assert token_calls == 2

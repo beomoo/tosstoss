@@ -112,8 +112,8 @@ function Assert-PhaseOneTestInventory {
             )
     )
     $backendText = $backendCollection -join [Environment]::NewLine
-    if ($backendText -notmatch '(?m)^251 tests collected in ') {
-        throw "Backend test inventory is not exactly 251 collected tests."
+    if ($backendText -notmatch '(?m)^252 tests collected in ') {
+        throw "Backend test inventory is not exactly 252 collected tests."
     }
 
     $frontendCollection = @(
@@ -157,7 +157,7 @@ function Assert-PhaseOneTestInventory {
         throw "Playwright test inventory is not exactly 2 tests in 1 file."
     }
 
-    Write-Host "Test inventory verified: backend=251, frontend=43, e2e=2"
+    Write-Host "Test inventory verified: backend=252, frontend=43, e2e=2"
 }
 
 function Clear-StaleBackendTestDirectories {

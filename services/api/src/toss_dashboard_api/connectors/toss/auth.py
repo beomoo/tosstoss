@@ -42,6 +42,7 @@ from toss_dashboard_api.connectors.toss.models import (
 
 TOKEN_SAFETY_MARGIN_SECONDS = 30.0
 _TOKEN_MANAGER_CONSTRUCTION_KEY = object()
+_TOKEN_REQUEST_USE_KEY = object()
 
 
 class TossCredentialState(StrEnum):
@@ -50,18 +51,20 @@ class TossCredentialState(StrEnum):
     COMPLETE = "complete"
 
 
-class TokenLease:
+class _TokenLease:
     __slots__ = ("__token", "generation")
 
     def __init__(self, token: SecretStr, generation: int) -> None:
         self.__token = token
         self.generation = generation
 
-    def _authorization_value(self) -> str:
-        return self.__token.get_secret_value()
+    def _authorize_request(self, request: httpx.Request, *, _use_key: object) -> None:
+        if _use_key is not _TOKEN_REQUEST_USE_KEY:
+            raise TypeError("Token leases are connector-internal.")
+        request.headers["Authorization"] = "Bearer " + self.__token.get_secret_value()
 
     def __repr__(self) -> str:
-        return f"TokenLease(generation={self.generation})"
+        return f"_TokenLease(generation={self.generation})"
 
     __str__ = __repr__
 
@@ -76,7 +79,7 @@ def credential_state(settings: Settings) -> TossCredentialState:
     return TossCredentialState.UNAVAILABLE
 
 
-class TossTokenManager:
+class _TossTokenManager:
     """Async single-flight, memory-only OAuth token manager."""
 
     def __init__(
@@ -88,17 +91,17 @@ class TossTokenManager:
         monotonic: Callable[[], float] = time.monotonic,
     ) -> None:
         if _construction_key is not _TOKEN_MANAGER_CONSTRUCTION_KEY:
-            raise TypeError("TossTokenManager is owned by TossHttpClient.")
+            raise TypeError("Token manager construction is connector-internal.")
         self._settings = settings
         self._http_client = http_client
         self._monotonic = monotonic
         self._lock = asyncio.Lock()
-        self._lease: TokenLease | None = None
+        self._lease: _TokenLease | None = None
         self._expires_at = 0.0
         self._generation = 0
         self._closed = False
 
-    async def get_token(self) -> TokenLease:
+    async def get_token(self) -> _TokenLease:
         self._ensure_open()
         lease = self._valid_cached_lease()
         if lease is not None:
@@ -110,7 +113,7 @@ class TossTokenManager:
                 return lease
             token = await self._issue_token()
             self._generation += 1
-            lease = TokenLease(token.access_token, self._generation)
+            lease = _TokenLease(token.access_token, self._generation)
             margin = min(TOKEN_SAFETY_MARGIN_SECONDS, token.expires_in * 0.1)
             self._expires_at = self._monotonic() + token.expires_in - margin
             self._lease = lease
@@ -139,7 +142,7 @@ class TossTokenManager:
         if self._closed:
             raise TossLifecycleError
 
-    def _valid_cached_lease(self) -> TokenLease | None:
+    def _valid_cached_lease(self) -> _TokenLease | None:
         if self._lease is not None and self._monotonic() < self._expires_at:
             return self._lease
         return None
@@ -224,13 +227,57 @@ def _build_token_manager(
     http_client: httpx.AsyncClient,
     *,
     monotonic: Callable[[], float] = time.monotonic,
-) -> TossTokenManager:
-    return TossTokenManager(
+) -> _TossTokenManager:
+    return _TossTokenManager(
         settings,
         http_client,
         _construction_key=_TOKEN_MANAGER_CONSTRUCTION_KEY,
         monotonic=monotonic,
     )
+
+
+class _TokenManagerTestContext:
+    """Own the auth-only transport used by token-manager unit tests."""
+
+    def __init__(
+        self,
+        settings: Settings,
+        transport: httpx.MockTransport,
+        *,
+        monotonic: Callable[[], float] = time.monotonic,
+    ) -> None:
+        if not isinstance(transport, httpx.MockTransport):
+            raise TypeError("The token-manager test seam requires MockTransport.")
+        self._http_client = httpx.AsyncClient(
+            follow_redirects=False,
+            trust_env=False,
+            verify=True,
+            transport=transport,
+        )
+        self._manager = _build_token_manager(
+            settings,
+            self._http_client,
+            monotonic=monotonic,
+        )
+
+    async def __aenter__(self) -> _TossTokenManager:
+        return self._manager
+
+    async def __aexit__(self, *_args: object) -> None:
+        await self._manager.aclose()
+        self._http_client.cookies.clear()
+        await self._http_client.aclose()
+
+
+def _token_manager_test_seam(
+    settings: Settings,
+    transport: httpx.MockTransport,
+    *,
+    monotonic: Callable[[], float] | None = None,
+) -> _TokenManagerTestContext:
+    if monotonic is None:
+        return _TokenManagerTestContext(settings, transport)
+    return _TokenManagerTestContext(settings, transport, monotonic=monotonic)
 
 
 def _is_json_content_type(value: str | None) -> bool:

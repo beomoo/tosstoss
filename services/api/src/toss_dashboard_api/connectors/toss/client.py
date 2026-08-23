@@ -11,9 +11,9 @@ from pydantic import ValidationError
 
 from toss_dashboard_api.config import Settings
 from toss_dashboard_api.connectors.toss.auth import (
-    TokenLease,
-    TossTokenManager,
+    _TOKEN_REQUEST_USE_KEY,
     _build_token_manager,
+    _TokenLease,
 )
 from toss_dashboard_api.connectors.toss.errors import (
     TossAuthenticationError,
@@ -94,16 +94,12 @@ class TossHttpClient:
             transport=transport,
         )
         if monotonic is None:
-            self._token_manager = _build_token_manager(settings, self._http_client)
+            self.__token_manager = _build_token_manager(settings, self._http_client)
         else:
-            self._token_manager = _build_token_manager(
+            self.__token_manager = _build_token_manager(
                 settings, self._http_client, monotonic=monotonic
             )
         self._closed = False
-
-    @property
-    def token_manager(self) -> TossTokenManager:
-        return self._token_manager
 
     @property
     def origin(self) -> str:
@@ -124,7 +120,7 @@ class TossHttpClient:
         if self._closed:
             return
         self._closed = True
-        await self._token_manager.aclose()
+        await self.__token_manager.aclose()
         self._http_client.cookies.clear()
         await self._http_client.aclose()
 
@@ -166,11 +162,11 @@ class TossHttpClient:
         path: str,
         params: Mapping[str, QueryValue],
     ) -> dict[str, object]:
-        lease = await self._token_manager.get_token()
+        lease = await self.__token_manager.get_token()
         response = await self._send_get(endpoint_template, path, params, lease)
         if _is_refreshable_auth_error(response):
-            await self._token_manager.invalidate_if_current(lease.generation)
-            lease = await self._token_manager.get_token()
+            await self.__token_manager.invalidate_if_current(lease.generation)
+            lease = await self.__token_manager.get_token()
             response = await self._send_get(endpoint_template, path, params, lease)
         return _result_or_error(response, endpoint_template)
 
@@ -179,7 +175,7 @@ class TossHttpClient:
         endpoint_template: str,
         path: str,
         params: Mapping[str, QueryValue],
-        lease: TokenLease,
+        lease: _TokenLease,
     ) -> _DecodedResponse:
         url = httpx.URL(TOSS_ORIGIN).copy_with(path=path)
         request = httpx.Request(
@@ -188,10 +184,10 @@ class TossHttpClient:
             params=dict(params),
             headers={
                 "Accept": JSON_MEDIA_TYPE,
-                "Authorization": f"Bearer {lease._authorization_value()}",
                 "User-Agent": USER_AGENT,
             },
         )
+        lease._authorize_request(request, _use_key=_TOKEN_REQUEST_USE_KEY)
         _assert_request_boundary(request)
         try:
             response = await self._http_client.send(request, stream=True)

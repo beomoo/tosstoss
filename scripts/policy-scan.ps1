@@ -1595,8 +1595,8 @@ $phaseControlFiles = @(
         Where-Object { $_.Name -cne "policy-scan.ps1" }
 )
 $approvedPhaseControlDigest = [string]::Concat(
-    "d9745e35", "a4d864fb", "e0faa69f", "77b79651",
-    "d2578b04", "7f442f35", "0b635d90", "321e5550"
+    "f482e0f7", "780cc1d3", "67485abd", "4fe2da35",
+    "edcccf4d", "b9be2844", "551192e6", "0d37d410"
 )
 if (
     $phaseControlFiles.Count -ne 61 -or
@@ -1699,6 +1699,18 @@ $prohibitedExecutionPattern = '(?i)(["'']/api/["'']\s*\+\s*["''](?:orders?|accou
 $prohibitedTossSurfacePattern = '(?i)/(?:api/v1/)?(?:accounts|holdings|orders|buying-power|sellable-quantity|commissions|conditional-orders)(?=[/?#"''`\s]|$)'
 $prohibitedTossAccountHeaderPattern = '(?i)\bX-' +
     [regex]::Escape([string]::Concat("Tossinvest-", "Account")) + '\b'
+$prohibitedTossTokenExposurePattern = @'
+(?ix)
+(?:
+    \.\s*token_manager\b
+  |
+    \bdef\s+token_manager\s*\(
+  |
+    \b(?:TokenLease|TossTokenManager)\b
+  |
+    _authorization_value\s*\(
+)
+'@
 $nextPublicEnvironmentPattern = '(?i)\bNEXT_PUBLIC_[A-Z0-9_]+'
 $httpxImportPattern = @'
 (?imx)
@@ -2000,6 +2012,19 @@ Assert-PatternRejectsCanary `
     -Pattern $prohibitedTossAccountHeaderPattern `
     -Content ([string]::Concat("X-Tossinvest-", "Account: synthetic")) `
     -Message "The Toss surface policy accepted an account header canary."
+$tokenExposureCanaries = @(
+    [string]::Concat("connector.token_", "manager.get_token()"),
+    [string]::Concat("def token_", "manager(self): return self._manager"),
+    [string]::Concat("class Token", "Lease: pass"),
+    [string]::Concat("class TossToken", "Manager: pass"),
+    [string]::Concat("lease._authorization_", "value()")
+)
+foreach ($canary in $tokenExposureCanaries) {
+    Assert-RawPatternRejectsCanary `
+        -Pattern $prohibitedTossTokenExposurePattern `
+        -Content $canary `
+        -Message "The Toss token-boundary policy accepted an application exposure canary."
+}
 Assert-PatternRejectsCanary `
     -Pattern $nextPublicEnvironmentPattern `
     -Content ([string]::Concat("NEXT_", "PUBLIC_TOSS_CLIENT_SECRET=synthetic")) `
@@ -2166,5 +2191,9 @@ Assert-NoPattern `
     -Pattern $prohibitedTossAccountHeaderPattern `
     -Message "The prohibited Toss account header was found in runtime source." `
     -Files $runtimeSourceFiles
+Assert-NoRawPattern `
+    -Pattern $prohibitedTossTokenExposurePattern `
+    -Message "A public token-manager or raw-token extraction surface was found." `
+    -Files $applicationRuntimeSourceFiles
 
 Write-Host "Phase 2 CP2-B scope policy scan passed."
