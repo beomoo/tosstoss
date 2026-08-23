@@ -327,10 +327,10 @@ function Add-ValidatedPackageLockExceptions {
         throw "package-lock.json is missing from the secret-scan scope."
     }
     $approvedPackageLockSha256 = [string]::Concat(
-        "71abcfc0", "28cbb5e4",
-        "74c35f2c", "1d3e1aab",
-        "1152e61b", "87850709",
-        "a808b4b4", "f3280f92"
+        "f5cf022d", "d418c039",
+        "74095c1f", "8f703c84",
+        "648a90ed", "ff7edbb2",
+        "2c13fb2a", "27614a67"
     )
     $actualPackageLockSha256 = (
         Get-FileHash -LiteralPath $Path -Algorithm SHA256
