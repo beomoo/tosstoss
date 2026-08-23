@@ -8,10 +8,14 @@ from datetime import UTC, datetime
 from typing import Any
 
 SENSITIVE_KEY = re.compile(
-    r"authorization|cookie|secret|token|api[_-]?key|password|account", re.IGNORECASE
+    r"authorization|cookie|secret|token|api[_-]?key|client[_-]?id|password|account",
+    re.IGNORECASE,
 )
 SENSITIVE_VALUE = re.compile(
-    r"(?i)(bearer\s+\S+|sk-(?:proj-)?[A-Za-z0-9_-]{8,}|canary[-_ ]?secret\S*|"
+    r"(?i)(bearer\s+\S+|"
+    r"(?:authorization|cookie|set-cookie|client[_-]?(?:id|secret)|"
+    r"toss_client_(?:id|secret)|access_token)\s*[:=]\s*[^\s,;}]+|"
+    r"sk-(?:proj-)?[A-Za-z0-9_-]{8,}|canary[-_ ]?secret\S*|"
     r"gh[pousr]_[A-Za-z0-9]{20,}|AKIA[0-9A-Z]{16}|AIza[A-Za-z0-9_-]{20,}|"
     r"xox[baprs]-[A-Za-z0-9-]{10,}|"
     r"eyJ[A-Za-z0-9_-]{5,}\.eyJ[A-Za-z0-9_-]{5,}\.[A-Za-z0-9_-]{5,})"

@@ -9,10 +9,12 @@ from toss_dashboard_api.repositories.fixture import FixtureRepository
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 API_ROOT = PROJECT_ROOT / "services" / "api" / "src" / "toss_dashboard_api"
+CONNECTOR_ROOT = API_ROOT / "connectors"
+TOSS_CONNECTOR_ROOT = CONNECTOR_ROOT / "toss"
 
 
-def test_backend_has_no_external_http_client_imports() -> None:
-    prohibited = {"requests", "httpx", "aiohttp", "urllib3", "openai"}
+def test_backend_external_http_client_imports_are_confined_to_toss_connector() -> None:
+    prohibited_everywhere = {"requests", "aiohttp", "urllib3", "openai"}
     violations: list[str] = []
     for path in API_ROOT.rglob("*.py"):
         tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
@@ -22,13 +24,29 @@ def test_backend_has_no_external_http_client_imports() -> None:
                 names = [alias.name.split(".")[0] for alias in node.names]
             elif isinstance(node, ast.ImportFrom) and node.module:
                 names = [node.module.split(".")[0]]
-            if prohibited.intersection(names):
+            has_prohibited_import = bool(prohibited_everywhere.intersection(names))
+            has_misplaced_httpx = "httpx" in names and not path.is_relative_to(TOSS_CONNECTOR_ROOT)
+            if has_prohibited_import or has_misplaced_httpx:
                 violations.append(str(path.relative_to(PROJECT_ROOT)))
     assert violations == []
 
 
-def test_no_connector_or_account_route_exists() -> None:
-    assert not (API_ROOT / "connectors").exists()
+def test_only_empty_toss_connector_namespace_is_present_in_cp2_a() -> None:
+    connector_files = {
+        path.relative_to(CONNECTOR_ROOT).as_posix()
+        for path in CONNECTOR_ROOT.rglob("*")
+        if path.is_file()
+    }
+    connector_directories = {
+        path.relative_to(CONNECTOR_ROOT).as_posix()
+        for path in CONNECTOR_ROOT.rglob("*")
+        if path.is_dir()
+    }
+    assert connector_directories == {"toss"}
+    assert connector_files == {"__init__.py", "toss/__init__.py"}
+
+
+def test_no_account_or_order_route_exists() -> None:
     route_names = {path.name for path in (API_ROOT / "routes").glob("*.py")}
     assert "account.py" not in route_names
     assert "orders.py" not in route_names

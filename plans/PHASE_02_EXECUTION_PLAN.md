@@ -394,6 +394,15 @@ CP3 전에 versioned provider source contract를 추가한다.
 
 ### CP2 — Auth + Toss HTTP client + rate limiter + offline/live boundary
 
+CP2의 범위와 최종 acceptance는 유지하되 구현·검증 순서는 다음 네 단계로 나눈다.
+
+1. **CP2-A — Security Boundary + Dependency + Config + Policy**
+2. **CP2-B — OAuth Token Manager + Toss HTTP Client**
+3. **CP2-C — Rate Limit + Retry + Error Taxonomy**
+4. **CP2-D — Live Preflight + Full Regression QA**
+
+CP2-A의 통과는 CP2 전체 통과가 아니며, 아래 기존 완료 조건은 CP2-D까지 모두 검증한 뒤에만 충족한 것으로 판정한다.
+
 - 구현 파일:
   - `services/api/src/toss_dashboard_api/connectors/toss/auth.py`
   - `services/api/src/toss_dashboard_api/connectors/toss/client.py`

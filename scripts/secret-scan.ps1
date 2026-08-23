@@ -39,7 +39,7 @@ $playwrightResultsRoot = [System.IO.Path]::GetFullPath(
     (Join-Path $webRoot "test-results")
 )
 $playwrightArtifactRoots = @($playwrightReportRoot, $playwrightResultsRoot)
-$sensitivePattern = '(?i)(sk-(?:(?:live|proj|svcacct)[_-][a-z0-9_-]{20,}|[a-z0-9]{32,})|github_pat_[a-z0-9_]{20,}|gh[pousr]_[a-z0-9]{20,}|glpat-[a-z0-9_-]{20,}|AKIA[0-9A-Z]{16}|AIza[0-9A-Za-z_-]{30,}|xox[baprs]-[A-Za-z0-9-]{20,}|-----BEGIN [A-Z ]*PRIVATE KEY-----|Bearer\s+[A-Za-z0-9._-]{20,}|eyJ[A-Za-z0-9_-]{16,}\.[A-Za-z0-9_-]{16,}\.[A-Za-z0-9_-]{10,})'
+$sensitivePattern = '(?i)(sk-(?:(?:live|proj|svcacct)[_-][a-z0-9_-]{20,}|[a-z0-9]{32,})|github_pat_[a-z0-9_]{20,}|gh[pousr]_[a-z0-9]{20,}|glpat-[a-z0-9_-]{20,}|AKIA[0-9A-Z]{16}|AIza[0-9A-Za-z_-]{30,}|xox[baprs]-[A-Za-z0-9-]{20,}|-----BEGIN [A-Z ]*PRIVATE KEY-----|Bearer\s+[A-Za-z0-9._-]{20,}|eyJ[A-Za-z0-9_-]{16,}\.[A-Za-z0-9_-]{16,}\.[A-Za-z0-9_-]{10,}|(?:TOSS_CLIENT_SECRET|client_secret)\s*=\s*["'']?(?=[A-Za-z0-9._~+/\-]{12,})(?=[A-Za-z0-9._~+/\-]*[0-9.+/~\-])[A-Za-z0-9._~+/\-]+)'
 $script:AllowedArtifactSecretHashes = @{}
 $inlineAllowlistFilter = "detect_secrets.filters.allowlist.is_line_allowlisted"
 $invalidFileFilter = "detect_secrets.filters.common.is_invalid_file"
@@ -1758,6 +1758,35 @@ try {
     Add-SentinelUnitFixtureExceptions
     $nextEncryption = Add-NextEncryptionKeyExceptions
 
+    $providerSecretCanaries = @(
+        [string]::Concat(
+            "TOSS_CLIENT_",
+            "SECRET=synthetic-credential-value-123"
+        ),
+        [string]::Concat(
+            "client_",
+            "secret=synthetic-provider-secret-456"
+        ),
+        [string]::Concat(
+            "Authorization: Bearer ",
+            "syntheticBearerToken1234567890"
+        )
+    )
+    foreach ($canary in $providerSecretCanaries) {
+        $canaryRejected = $false
+        try {
+            Assert-NoHighConfidenceSecretInBytes `
+                -Bytes ([System.Text.Encoding]::UTF8.GetBytes($canary)) `
+                -SourceLabel "synthetic provider credential canary"
+        }
+        catch {
+            $canaryRejected = $true
+        }
+        if (-not $canaryRejected) {
+            throw "The secret scan accepted a synthetic provider credential canary."
+        }
+    }
+
     $entropyCanaryPath = Join-Path $tempDirectory "--only-allowlisted"
     $entropyCanaryBytes = [byte[]]::new(48)
     [System.Security.Cryptography.RandomNumberGenerator]::Fill($entropyCanaryBytes)
@@ -2119,7 +2148,13 @@ try {
         throw "The Next.js server-reference encryption key leaked outside its manifests."
     }
 
-    foreach ($ignoreProbe in @(".env", "apps/web/.env.local", "services/api/.env")) {
+    foreach ($ignoreProbe in @(
+        ".env",
+        ".env.local",
+        ".env.development.local",
+        "apps/web/.env.local",
+        "services/api/.env"
+    )) {
         Push-Location -LiteralPath $repoRoot
         try {
             $ignored = @(& git check-ignore --no-index $ignoreProbe 2>$null)

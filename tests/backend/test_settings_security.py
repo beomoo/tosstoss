@@ -14,6 +14,8 @@ def test_safe_defaults_are_fail_closed() -> None:
     assert settings.dry_run is True
     assert settings.openai_api_enabled is False
     assert settings.allow_account_endpoints is False
+    assert settings.toss_client_id is None
+    assert settings.toss_client_secret is None
     assert settings.api_host == "127.0.0.1"
     assert settings.database_url == "sqlite:///./var/dashboard.db"
 
@@ -44,6 +46,32 @@ def test_remote_database_is_rejected() -> None:
 def test_fixture_path_can_be_explicit(workspace_tmp_path: Path) -> None:
     settings = Settings(fixture_dir=workspace_tmp_path)
     assert settings.fixture_dir == workspace_tmp_path
+
+
+def test_toss_credentials_are_optional_secret_values_and_blank_means_absent() -> None:
+    credential_canary = "synthetic-" + "credential-value"
+    settings = Settings(
+        toss_client_id=credential_canary,
+        toss_client_secret=credential_canary,
+    )
+
+    assert settings.toss_client_id is not None
+    assert settings.toss_client_secret is not None
+    assert settings.toss_client_id.get_secret_value() == credential_canary
+    assert settings.toss_client_secret.get_secret_value() == credential_canary
+    assert credential_canary not in repr(settings)
+    assert credential_canary not in str(settings.model_dump())
+    assert Settings(TOSS_CLIENT_ID="", TOSS_CLIENT_SECRET="").toss_client_secret is None
+
+
+def test_toss_credentials_do_not_leak_from_validation_errors() -> None:
+    credential_canary = "synthetic-" + "validation-value"
+
+    with pytest.raises(ValidationError) as captured:
+        Settings(toss_client_secret=credential_canary, local_only=False)
+
+    assert credential_canary not in str(captured.value)
+    assert credential_canary not in repr(captured.value)
 
 
 def test_database_engine_creates_the_sqlite_parent(workspace_tmp_path: Path) -> None:

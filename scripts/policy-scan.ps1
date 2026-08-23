@@ -271,6 +271,60 @@ $applicationRuntimeSourceFiles = @(
 if ($applicationRuntimeSourceFiles.Count -eq 0) {
     throw "The application runtime policy source scope is empty."
 }
+$connectorRoot = [System.IO.Path]::GetFullPath(
+    (Join-Path $repoRoot "services\api\src\toss_dashboard_api\connectors")
+)
+$tossConnectorRoot = [System.IO.Path]::GetFullPath((Join-Path $connectorRoot "toss"))
+$connectorRootPrefix = $connectorRoot.TrimEnd(
+    [System.IO.Path]::DirectorySeparatorChar
+) + [System.IO.Path]::DirectorySeparatorChar
+$tossConnectorRootPrefix = $tossConnectorRoot.TrimEnd(
+    [System.IO.Path]::DirectorySeparatorChar
+) + [System.IO.Path]::DirectorySeparatorChar
+
+function Test-IsTossConnectorSourcePath {
+    param([Parameter(Mandatory = $true)][string] $Path)
+
+    $fullPath = [System.IO.Path]::GetFullPath($Path)
+    return $fullPath.StartsWith(
+        $tossConnectorRootPrefix,
+        [System.StringComparison]::OrdinalIgnoreCase
+    )
+}
+
+function Test-IsApprovedConnectorRelativePath {
+    param([Parameter(Mandatory = $true)][string] $RelativePath)
+
+    $normalizedPath = $RelativePath.Replace("\", "/")
+    $segments = @($normalizedPath.Split("/"))
+    if (@($segments | Where-Object { $_ -in @("", ".", "..") }).Count -gt 0) {
+        return $false
+    }
+    return (
+        $normalizedPath -ceq "__init__.py" -or
+        $normalizedPath.StartsWith("toss/", [System.StringComparison]::Ordinal)
+    )
+}
+
+function Assert-OnlyApprovedConnectorSources {
+    param([Parameter(Mandatory = $true)][System.IO.FileInfo[]] $Files)
+
+    foreach ($file in $Files) {
+        $fullPath = [System.IO.Path]::GetFullPath($file.FullName)
+        if (-not $fullPath.StartsWith(
+                $connectorRootPrefix,
+                [System.StringComparison]::OrdinalIgnoreCase
+            )) {
+            continue
+        }
+        $relativePath = [System.IO.Path]::GetRelativePath($connectorRoot, $fullPath)
+        if (-not (Test-IsApprovedConnectorRelativePath -RelativePath $relativePath)) {
+            throw "An application connector outside the exact Toss namespace was found: $relativePath"
+        }
+    }
+}
+
+Assert-OnlyApprovedConnectorSources -Files $applicationRuntimeSourceFiles
 $runtimeScopeCanaries = @(
     @{
         Path = Join-Path $repoRoot "services\api\src\test\provider.py"
@@ -1066,16 +1120,20 @@ from packaging.utils import canonicalize_name
 if sys.flags.isolated != 1 or not sys.dont_write_bytecode:
     raise RuntimeError("The dependency reader requires isolated, bytecode-free Python.")
 document = tomllib.loads(pathlib.Path(sys.argv[1]).read_text(encoding="utf-8"))
-requirements = list(document.get("build-system", {}).get("requires", []))
+requirements = [
+    ("build", value)
+    for value in document.get("build-system", {}).get("requires", [])
+]
 project = document.get("project", {})
-requirements.extend(project.get("dependencies", []))
-for values in project.get("optional-dependencies", {}).values():
-    requirements.extend(values)
+requirements.extend(("runtime", value) for value in project.get("dependencies", []))
+for group, values in project.get("optional-dependencies", {}).items():
+    requirements.extend((f"optional:{group}", value) for value in values)
 records = []
-for value in requirements:
+for section, value in requirements:
     requirement = Requirement(value)
     records.append({
         "name": canonicalize_name(requirement.name),
+        "section": section,
         "specifier": str(requirement.specifier),
         "url": requirement.url,
         "extras": sorted(requirement.extras),
@@ -1140,10 +1198,56 @@ foreach ($record in $pythonDependencyRecords) {
         throw "A Python dependency uses an unapproved specifier, URL, extra, or marker."
     }
 }
+$httpxDependencyRecords = @(
+    $pythonDependencyRecords | Where-Object { [string] $_.name -ceq "httpx" }
+)
+if (
+    $httpxDependencyRecords.Count -ne 1 -or
+    [string] $httpxDependencyRecords[0].section -cne "runtime"
+) {
+    throw "httpx must be an exact direct runtime dependency for the Toss connector."
+}
 Assert-DependencyAllowlist `
     -Path $pyprojectPath `
     -Names $pythonDependencyNames `
     -Allowed $allowedPythonDependencies
+
+$requirementsInPath = Join-Path $repoRoot "requirements.in"
+if (-not (Test-Path -LiteralPath $requirementsInPath -PathType Leaf)) {
+    throw "requirements.in is missing."
+}
+$requirementsInRecords = @(
+    Get-Content -LiteralPath $requirementsInPath |
+        Where-Object {
+            -not [string]::IsNullOrWhiteSpace($_) -and $_ -notmatch '^\s*#'
+        } |
+        ForEach-Object {
+            if ($_ -cnotmatch '^([A-Za-z0-9_.-]+)(==[^\s]+)$') {
+                throw "requirements.in contains a non-exact or unparsed dependency."
+            }
+            [pscustomobject]@{
+                name = $Matches[1].ToLowerInvariant().Replace("_", "-").Replace(".", "-")
+                specifier = $Matches[2]
+            }
+        }
+)
+$requirementsInNames = @($requirementsInRecords | ForEach-Object { [string] $_.name })
+$uniqueRequirementsInNames = New-OrdinalIgnoreCaseSet -Values $requirementsInNames
+if (
+    $requirementsInNames.Count -ne $uniqueRequirementsInNames.Count -or
+    -not $allowedPythonDependencies.SetEquals([string[]] $requirementsInNames)
+) {
+    throw "requirements.in does not match the exact direct dependency allowlist."
+}
+foreach ($record in $requirementsInRecords) {
+    if (
+        -not $allowedPythonSpecifiers.Contains([string] $record.name) -or
+        [string] $record.specifier -cne
+            [string] $allowedPythonSpecifiers[[string] $record.name]
+    ) {
+        throw "requirements.in contains a dependency with an unapproved exact version."
+    }
+}
 
 $requirementsLockPath = Join-Path $repoRoot "requirements.lock"
 if (-not (Test-Path -LiteralPath $requirementsLockPath -PathType Leaf)) {
@@ -1328,8 +1432,8 @@ $approvedTestConfigurationDigests = @(
     [pscustomobject]@{
         Path = Join-Path $repoRoot "pyproject.toml"
         Sha256 = [string]::Concat(
-            "11197c96", "e7316942", "e1cbb72d", "763fd01a",
-            "8b763599", "f82a578d", "9f21675e", "df11351c"
+            "f3475a0d", "c0e1b12c", "7277c4ec", "0a2d931f",
+            "eb39008c", "b0603fad", "5dfcb01e", "d676381f"
         )
     },
     [pscustomobject]@{
@@ -1485,8 +1589,8 @@ $phaseControlFiles = @(
         Where-Object { $_.Name -cne "policy-scan.ps1" }
 )
 $approvedPhaseControlDigest = [string]::Concat(
-    "101ee6d9", "5db34955", "d05c634d", "6e7d2956",
-    "4f93ea06", "ba0ff960", "e9f0a649", "249912ed"
+    "55c24390", "6fdbc581", "1bfe38c6", "1905144a",
+    "ec8b1f5c", "f7245dae", "5b2c0aae", "dc4f36e5"
 )
 if (
     $phaseControlFiles.Count -ne 59 -or
@@ -1512,6 +1616,63 @@ $testPolicyFiles = @(
 )
 
 $nonLocalUrlPattern = '(?i)(?:(?:https?|wss?)://(?!(?:127\.0\.0\.1|localhost)(?=[:/"''`\s]|$))(?:[a-z0-9]|\[)|["''`](?:https?|wss?):?["''`]\s*\+\s*["''`](?::?//)|["''`]//(?!(?:127\.0\.0\.1|localhost)(?=[:/"''`\s]|$))(?:[a-z0-9]|\[)|\burl\s*\(\s*//(?!(?:127\.0\.0\.1|localhost)(?=[:/\s\)]|$))(?:[a-z0-9]|\[)|\b(?:src|href|action|poster)\s*=\s*//(?!(?:127\.0\.0\.1|localhost)(?=[:/\s>]|$))(?:[a-z0-9]|\[))'
+$approvedTossOrigin = [string]::Concat("http", "s://openapi.tossinvest.com")
+$approvedTossOriginPattern = [regex]::Escape($approvedTossOrigin) +
+    '(?=(?:[/?#]|[\s"''`\),;\]\}]|$))'
+
+function Get-NormalizedConstantStringContent {
+    param([Parameter(Mandatory = $true)][string] $Content)
+
+    $normalized = [regex]::Replace(
+        $Content,
+        '["''`]\s*\+\s*["''`]',
+        ""
+    )
+    return [regex]::Replace(
+        $normalized,
+        '["''`]\s+(?:[rRuUbBfF]{0,2})?["''`]',
+        ""
+    )
+}
+
+function Assert-ExternalUrlTextAllowed {
+    param(
+        [Parameter(Mandatory = $true)][string] $Path,
+        [Parameter(Mandatory = $true)][string] $Content
+    )
+
+    foreach ($candidate in @(
+        $Content,
+        (Get-NormalizedConstantStringContent -Content $Content)
+    )) {
+        $inspected = $candidate
+        if (Test-IsTossConnectorSourcePath -Path $Path) {
+            $inspected = [regex]::Replace(
+                $inspected,
+                $approvedTossOriginPattern,
+                "http://127.0.0.1",
+                [System.Text.RegularExpressions.RegexOptions]::IgnoreCase
+            )
+        }
+        if ($inspected -match $nonLocalUrlPattern) {
+            throw "An unapproved external URL was found in runtime source: $Path"
+        }
+    }
+}
+
+function Assert-NoUnapprovedExternalUrls {
+    param([Parameter(Mandatory = $true)][System.IO.FileInfo[]] $Files)
+
+    if (-not $Files -or $Files.Count -eq 0) {
+        throw "External URL policy received an empty file scope."
+    }
+    foreach ($file in $Files) {
+        Assert-ExternalUrlTextAllowed `
+            -Path $file.FullName `
+            -Content ([string] (Get-Content -LiteralPath $file.FullName -Raw))
+    }
+}
+
 $nonLocalBindPattern = '(?ix)(?:--host(?:name)?["'']?\s*(?:,\s*|=\s*|\s+)["'']?(?!127\.0\.0\.1(?=["''\s,\)]|$))[^\s"'',\)]+|\bhost(?:name)?\s*(?::|=(?!=))\s*["'']?(?!127\.0\.0\.1(?=["''\s,\}\)]|$))[^\s"'',\}\)]+|\blisten\s*\(\s*(?:[0-9]+\s*,\s*)?["'']?(?!127\.0\.0\.1(?=["''\s,\)]|$))[A-Za-z0-9:*\.\[\]-]+|(?<![0-9])(?!(?:127\.0\.0\.1)(?![0-9]))(?:25[0-5]|2[0-4][0-9]|1?[0-9]{1,2})(?:\.(?:25[0-5]|2[0-4][0-9]|1?[0-9]{1,2})){3}(?![0-9])|(?:allow_origins|cors_origins)\s*=\s*[\[\(]\s*["'']\*["'']|allow_origin_regex\s*=\s*(?:r|u|f|fr|rf)?["'']\.\*["''])'
 $wildcardAccessPattern = @'
 (?ixs)
@@ -1528,7 +1689,58 @@ $wildcardAccessPattern = @'
     (?:r|u|f|fr|rf)?["']\s*\^?\.\*\$?\s*["']\s*\)?
 )
 '@
-$prohibitedExecutionPattern = '(?i)(["'']/api/["'']\s*\+\s*["''](?:orders?|accounts?|brokerage|trades?)|/(?:api/)?[A-Za-z0-9_/-]*(?:orders?|accounts?|brokerage|trades?)\b|\b(?:execute|place|submit|send|create|buy|sell)[_-](?:trade|order)(?:[_-][a-z0-9]+)*\b|\b(?:execute|place|submit|send|create|buy|sell)(?-i:Trade|Order)\b|\bgetattr\s*\(\s*(?:broker(?:age)?|orders?|trades?|accounts?|order[_-]?(?:client|service|api|sdk)|trade[_-]?(?:client|service|api|sdk))\b|\b(?:broker(?:age)?|orders?|trades?|accounts?|order[_-]?(?:client|service|api|sdk)|trade[_-]?(?:client|service|api|sdk))\s*\[\s*(?:["''$]|[A-Za-z])|\b(?:broker(?:age)?|orders?|trades?|accounts?|order[_-]?(?:client|service|api|sdk)|trade[_-]?(?:client|service|api|sdk))(?:\s*\??\.\s*[a-z_][a-z0-9_]*){0,2}\s*\??\.\s*(?:create|place|submit|send|execute|buy|sell)\b)'
+$prohibitedExecutionPattern = '(?i)(["'']/api/["'']\s*\+\s*["''](?:orders?|accounts?|brokerage)|/(?:api/)?[A-Za-z0-9_/-]*(?:orders?|accounts?|brokerage)\b|\b(?:execute|place|submit|send|create|buy|sell)[_-](?:trade|order)(?:[_-][a-z0-9]+)*\b|\b(?:execute|place|submit|send|create|buy|sell)(?-i:Trade|Order)\b|\bgetattr\s*\(\s*(?:broker(?:age)?|orders?|trades?|accounts?|order[_-]?(?:client|service|api|sdk)|trade[_-]?(?:client|service|api|sdk))\b|\b(?:broker(?:age)?|orders?|trades?|accounts?|order[_-]?(?:client|service|api|sdk)|trade[_-]?(?:client|service|api|sdk))\s*\[\s*(?:["''$]|[A-Za-z])|\b(?:broker(?:age)?|orders?|trades?|accounts?|order[_-]?(?:client|service|api|sdk)|trade[_-]?(?:client|service|api|sdk))(?:\s*\??\.\s*[a-z_][a-z0-9_]*){0,2}\s*\??\.\s*(?:create|place|submit|send|execute|buy|sell)\b)'
+$prohibitedTossSurfacePattern = '(?i)/(?:api/v1/)?(?:accounts|holdings|orders|buying-power|sellable-quantity|commissions|conditional-orders)(?=[/?#"''`\s]|$)'
+$prohibitedTossAccountHeaderPattern = '(?i)\bX-' +
+    [regex]::Escape([string]::Concat("Tossinvest-", "Account")) + '\b'
+$nextPublicEnvironmentPattern = '(?i)\bNEXT_PUBLIC_[A-Z0-9_]+'
+$httpxImportPattern = @'
+(?imx)
+(?:
+    ^\s*from\s+httpx(?:\.|\s+import\b)
+  |
+    ^\s*import\s+[^\r\n#]*\bhttpx\b
+  |
+    \b(?:from\s*|require\s*\(\s*|import\s*(?:\(\s*)?)["']httpx(?:/[^"']*)?["']
+)
+'@
+$otherExternalHttpClientImportPattern = @'
+(?imx)
+(?:
+    ^\s*from\s+(?:requests|aiohttp|urllib3)(?:\.|\s+import\b)
+  |
+    ^\s*import\s+[^\r\n#]*\b(?:requests|aiohttp|urllib3)\b
+  |
+    \b(?:from\s*|require\s*\(\s*|import\s*(?:\(\s*)?)["']
+        (?:axios|node-fetch|undici|requests|aiohttp|urllib3)(?:/[^"']*)?["']
+)
+'@
+$approvedTossCallableEndpoints = [ordered]@{
+    "POST /oauth2/token" = "AUTH:5"
+    "GET /api/v1/stocks" = "STOCK:5"
+    "GET /api/v1/stocks/all" = "STOCK_ALL:1"
+    "GET /api/v1/prices" = "MARKET_DATA:15"
+    "GET /api/v1/candles" = "MARKET_DATA_CHART:20"
+    "GET /api/v1/stocks/{symbol}/investor-trading" = "STOCK_TRADING_TREND:10"
+    "GET /api/v1/stocks/{symbol}/program-trades" = "STOCK_TRADING_TREND:10"
+    "GET /api/v1/stocks/{symbol}/short-selling" = "STOCK_TRADING_TREND:10"
+    "GET /api/v1/stocks/{symbol}/credit-trades" = "STOCK_TRADING_TREND:10"
+    "GET /api/v1/stocks/{symbol}/securities-lending" = "STOCK_TRADING_TREND:10"
+    "GET /api/v1/market-calendar/KR" = "MARKET_INFO:3"
+    "GET /api/v1/market-calendar/US" = "MARKET_INFO:3"
+}
+if ($approvedTossCallableEndpoints.Count -ne 12) {
+    throw "The Toss callable endpoint policy must contain exactly 12 method/path entries."
+}
+
+function Test-IsApprovedTossCallableEndpoint {
+    param(
+        [Parameter(Mandatory = $true)][string] $Method,
+        [Parameter(Mandatory = $true)][string] $Path
+    )
+
+    return @($approvedTossCallableEndpoints.Keys) -ccontains "$Method $Path"
+}
 $prohibitedProviderRuntimePattern = @'
 (?imx)
 (?:
@@ -1709,6 +1921,95 @@ foreach ($canary in $normalizedUrlCanaries) {
         -Content $canary `
         -Message "The normalized URL policy accepted a split external URL canary."
 }
+$tossPolicyPath = Join-Path $tossConnectorRoot "future_transport.py"
+Assert-ExternalUrlTextAllowed `
+    -Path $tossPolicyPath `
+    -Content ([string]::Concat('BASE_URL = "http', 's://openapi.tossinvest.com"'))
+$tossUrlBoundaryCanaries = @(
+    [pscustomobject]@{
+        Path = Join-Path $repoRoot "apps\web\src\future-provider.ts"
+        Content = [string]::Concat('fetch("http', 's://openapi.tossinvest.com/api/v1/stocks")')
+    },
+    [pscustomobject]@{
+        Path = $tossPolicyPath
+        Content = [string]::Concat('BASE_URL = "http', 's://evil.example"')
+    },
+    [pscustomobject]@{
+        Path = $tossPolicyPath
+        Content = [string]::Concat('BASE_URL = "http', '://openapi.tossinvest.com"')
+    },
+    [pscustomobject]@{
+        Path = $tossPolicyPath
+        Content = [string]::Concat('BASE_URL = "http', 's://user:password@openapi.tossinvest.com"')
+    },
+    [pscustomobject]@{
+        Path = $tossPolicyPath
+        Content = [string]::Concat('BASE_URL = "http', 's://openapi.tossinvest.com.evil.example"')
+    }
+)
+foreach ($canary in $tossUrlBoundaryCanaries) {
+    Assert-PolicyCanaryRejected `
+        -Action {
+            Assert-ExternalUrlTextAllowed -Path $canary.Path -Content $canary.Content
+        } `
+        -Message "The exact Toss origin policy accepted a host, scheme, credential, or frontend bypass canary."
+}
+$httpxImportCanary = [string]::Concat("import http", "x")
+Assert-RawPatternRejectsCanary `
+    -Pattern $httpxImportPattern `
+    -Content $httpxImportCanary `
+    -Message "The external HTTP import policy accepted an httpx canary."
+if (
+    -not (Test-IsTossConnectorSourcePath -Path $tossPolicyPath) -or
+    (Test-IsTossConnectorSourcePath `
+        -Path (Join-Path $repoRoot "services\api\src\toss_dashboard_api\services\provider.py"))
+) {
+    throw "The Toss HTTP import path classifier is not exact."
+}
+if (
+    -not (Test-IsApprovedConnectorRelativePath -RelativePath "toss/__init__.py") -or
+    (Test-IsApprovedConnectorRelativePath -RelativePath "generic_http/client.py") -or
+    (Test-IsApprovedConnectorRelativePath -RelativePath "toss/../openai/client.py")
+) {
+    throw "The exact Toss connector namespace policy accepted a generic connector canary."
+}
+$forbiddenTossSurfaceCanaries = @(
+    [string]::Concat('path = "/', 'orders"'),
+    [string]::Concat('path = "/', 'accounts"'),
+    [string]::Concat('path = "/api/v1/', 'holdings"'),
+    [string]::Concat('path = "/api/v1/', 'buying-power"'),
+    [string]::Concat('path = "/api/v1/', 'sellable-quantity"'),
+    [string]::Concat('path = "/api/v1/', 'commissions"'),
+    [string]::Concat('path = "/api/v1/', 'conditional-orders"')
+)
+foreach ($canary in $forbiddenTossSurfaceCanaries) {
+    Assert-PatternRejectsCanary `
+        -Pattern $prohibitedTossSurfacePattern `
+        -Content $canary `
+        -Message "The Toss surface policy accepted a prohibited account or order endpoint canary."
+}
+Assert-PatternRejectsCanary `
+    -Pattern $prohibitedTossAccountHeaderPattern `
+    -Content ([string]::Concat("X-Tossinvest-", "Account: synthetic")) `
+    -Message "The Toss surface policy accepted an account header canary."
+Assert-PatternRejectsCanary `
+    -Pattern $nextPublicEnvironmentPattern `
+    -Content ([string]::Concat("NEXT_", "PUBLIC_TOSS_CLIENT_SECRET=synthetic")) `
+    -Message "The browser environment policy accepted a Toss secret canary."
+foreach ($endpoint in $approvedTossCallableEndpoints.Keys) {
+    $parts = ([string] $endpoint).Split(" ", 2)
+    if (-not (Test-IsApprovedTossCallableEndpoint -Method $parts[0] -Path $parts[1])) {
+        throw "The Toss callable endpoint policy rejected its own exact allowlist."
+    }
+}
+$forbiddenOrderPathCanary = [string]::Concat("/api/v1/", "orders")
+if (
+    (Test-IsApprovedTossCallableEndpoint -Method "GET" -Path $forbiddenOrderPathCanary) -or
+    (Test-IsApprovedTossCallableEndpoint -Method "POST" -Path "/api/v1/stocks") -or
+    (Test-IsApprovedTossCallableEndpoint -Method "get" -Path "/api/v1/stocks")
+) {
+    throw "The Toss callable endpoint policy accepted a forbidden method/path canary."
+}
 $executionCanaries = @(
     [string]::Concat("'/api/' + '", "orders'"),
     [string]::Concat("create_", "order_request"),
@@ -1800,14 +2101,7 @@ if ($allowedPythonDependencies.Contains($prohibitedPythonCanary)) {
     throw "Policy self-test found a prohibited dependency in the allowlist."
 }
 
-Assert-NoPattern `
-    -Pattern $nonLocalUrlPattern `
-    -Message "A non-local URL was found in Phase 1 runtime source." `
-    -Files $runtimeSourceFiles
-Assert-NoConstantStringConcatenationPattern `
-    -Pattern $nonLocalUrlPattern `
-    -Message "A constant-concatenated non-local URL was found in Phase 1 source." `
-    -Files $runtimeSourceFiles
+Assert-NoUnapprovedExternalUrls -Files $runtimeSourceFiles
 Assert-NoPattern `
     -Pattern $remoteIntegrationPattern `
     -Message "A remote font, analytics, or telemetry integration was found."
@@ -1819,6 +2113,19 @@ Assert-NoRawPattern `
     -Pattern $prohibitedApplicationEscapePattern `
     -Message "A low-level process, native-network, or unmediated browser escape was found." `
     -Files $applicationRuntimeSourceFiles
+$httpxForbiddenRuntimeSourceFiles = @(
+    $runtimeSourceFiles | Where-Object {
+        -not (Test-IsTossConnectorSourcePath -Path $_.FullName)
+    }
+)
+Assert-NoRawPattern `
+    -Pattern $httpxImportPattern `
+    -Message "httpx may only be imported from the exact Toss connector namespace." `
+    -Files $httpxForbiddenRuntimeSourceFiles
+Assert-NoRawPattern `
+    -Pattern $otherExternalHttpClientImportPattern `
+    -Message "An unapproved external HTTP client import was found." `
+    -Files $runtimeSourceFiles
 Assert-NoRawPattern `
     -Pattern $disabledTestPattern `
     -Message "A skipped, focused, todo, fixme, or xfail test was found." `
@@ -1828,8 +2135,8 @@ Assert-NoRawPattern `
     -Message "A false-green test configuration was found." `
     -Files $testPolicyFiles
 Assert-NoPattern `
-    -Pattern '(?i)\bNEXT_PUBLIC_[A-Z0-9_]+' `
-    -Message "A NEXT_PUBLIC variable was found in Phase 1 runtime source." `
+    -Pattern $nextPublicEnvironmentPattern `
+    -Message "A NEXT_PUBLIC variable was found in runtime source." `
     -Files $runtimeSourceFiles
 Assert-NoPattern `
     -Pattern $nonLocalBindPattern `
@@ -1843,5 +2150,13 @@ Assert-NoPattern `
     -Pattern $prohibitedExecutionPattern `
     -Message "A prohibited order, account, brokerage, or trade execution path was found." `
     -Files $runtimeSourceFiles
+Assert-NoPattern `
+    -Pattern $prohibitedTossSurfacePattern `
+    -Message "A prohibited Toss account or order endpoint surface was found." `
+    -Files $runtimeSourceFiles
+Assert-NoPattern `
+    -Pattern $prohibitedTossAccountHeaderPattern `
+    -Message "The prohibited Toss account header was found in runtime source." `
+    -Files $runtimeSourceFiles
 
-Write-Host "Phase 1 scope policy scan passed."
+Write-Host "Phase 2 CP2-A scope policy scan passed."

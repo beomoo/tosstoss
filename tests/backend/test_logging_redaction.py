@@ -25,12 +25,48 @@ def test_recursive_redaction_masks_sensitive_keys_and_values() -> None:
     payload = {
         "Authorization": "Bearer canary-secret-value",
         "nested": {"api_" + "key": "not-for-output"},
+        "client_" + "id": "synthetic-client-identifier",
+        "set-" + "cookie": "synthetic-browser-session",
         "message": "request used sk-proj-abcdefghijk",
     }
     rendered = json.dumps(redact(payload))
     assert "canary-secret-value" not in rendered
     assert "not-for-output" not in rendered
     assert "sk-proj-abcdefghijk" not in rendered
+    assert "synthetic-client-identifier" not in rendered
+    assert "synthetic-browser-session" not in rendered
+    assert REDACTED in rendered
+
+
+def test_structured_log_redacts_future_toss_auth_and_cookie_assignments() -> None:
+    formatter = JsonFormatter()
+    sensitive_values = [
+        "synthetic-client-identifier",
+        "synthetic-client-secret",
+        "synthetic-access-token",
+        "synthetic-cookie-value",
+    ]
+    message = " ".join(
+        [
+            f"client_id={sensitive_values[0]}",
+            f"client_secret={sensitive_values[1]}",
+            f"access_token={sensitive_values[2]}",
+            f"Set-Cookie={sensitive_values[3]}",
+        ]
+    )
+    record = logging.LogRecord(
+        name="test",
+        level=logging.INFO,
+        pathname=__file__,
+        lineno=1,
+        msg=message,
+        args=(),
+        exc_info=None,
+    )
+
+    rendered = formatter.format(record)
+
+    assert all(value not in rendered for value in sensitive_values)
     assert REDACTED in rendered
 
 

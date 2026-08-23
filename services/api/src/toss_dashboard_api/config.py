@@ -3,22 +3,31 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Annotated, Self
 
-from pydantic import Field, field_validator, model_validator
+from pydantic import Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 PROJECT_ROOT = Path(__file__).resolve().parents[4]
 
 
 class Settings(BaseSettings):
-    """Fail-closed Phase 1 settings. No provider credentials are accepted."""
+    """Fail-closed local settings with optional server-only provider credentials."""
 
-    model_config = SettingsConfigDict(extra="ignore", case_sensitive=True, populate_by_name=True)
+    model_config = SettingsConfigDict(
+        extra="ignore",
+        case_sensitive=True,
+        populate_by_name=True,
+        hide_input_in_errors=True,
+    )
 
     app_env: Annotated[str, Field(validation_alias="APP_ENV")] = "development"
     local_only: Annotated[bool, Field(validation_alias="LOCAL_ONLY")] = True
     trading_enabled: Annotated[bool, Field(validation_alias="TRADING_ENABLED")] = False
     dry_run: Annotated[bool, Field(validation_alias="DRY_RUN")] = True
     openai_api_enabled: Annotated[bool, Field(validation_alias="OPENAI_API_ENABLED")] = False
+    toss_client_id: Annotated[SecretStr | None, Field(validation_alias="TOSS_CLIENT_ID")] = None
+    toss_client_secret: Annotated[
+        SecretStr | None, Field(validation_alias="TOSS_CLIENT_SECRET")
+    ] = None
     allow_account_endpoints: Annotated[bool, Field(validation_alias="ALLOW_ACCOUNT_ENDPOINTS")] = (
         False
     )
@@ -34,6 +43,13 @@ class Settings(BaseSettings):
         "http://127.0.0.1:3000",
         "http://localhost:3000",
     )
+
+    @field_validator("toss_client_id", "toss_client_secret", mode="before")
+    @classmethod
+    def empty_provider_credential_is_absent(cls, value: object) -> object:
+        if isinstance(value, str) and not value.strip():
+            return None
+        return value
 
     @field_validator("database_url")
     @classmethod
