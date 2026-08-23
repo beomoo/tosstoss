@@ -162,15 +162,17 @@ def summary(result: Any) -> dict[str, str]:
 def test_runtime_approved_contract_is_exact_and_not_auto_updated() -> None:
     assert APPROVED_OPENAPI_VERSION == "3.1.0"
     assert APPROVED_REST_VERSION == "1.2.14"
-    assert APPROVED_CONTRACT_SHA256 == (
-        "fccf49ab"
-        "d11f37f5"
-        "57bdd349"
-        "138f4a03"
-        "c42b829e"
-        "bd8b5c14"
-        "ab490711"
-        "6fb84c7a"
+    assert APPROVED_CONTRACT_SHA256 == "".join(
+        (
+            "fccf49ab",
+            "d11f37f5",
+            "57bdd349",
+            "138f4a03",
+            "c42b829e",
+            "bd8b5c14",
+            "ab490711",
+            "6fb84c7a",
+        )
     )
     assert TOSS_ORIGIN == "https://openapi.tossinvest.com"
     assert CANONICAL_OPENAPI_PATH == "/openapi-docs/latest/openapi.json"

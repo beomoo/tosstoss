@@ -67,15 +67,17 @@ from toss_dashboard_api.connectors.toss.rate_limit import (
 
 APPROVED_OPENAPI_VERSION: Final = "3.1.0"
 APPROVED_REST_VERSION: Final = "1.2.14"
-APPROVED_CONTRACT_SHA256: Final = (
-    "fccf49ab"
-    "d11f37f5"
-    "57bdd349"
-    "138f4a03"
-    "c42b829e"
-    "bd8b5c14"
-    "ab490711"
-    "6fb84c7a"
+APPROVED_CONTRACT_SHA256: Final = "".join(
+    (
+        "fccf49ab",
+        "d11f37f5",
+        "57bdd349",
+        "138f4a03",
+        "c42b829e",
+        "bd8b5c14",
+        "ab490711",
+        "6fb84c7a",
+    )
 )
 CANONICAL_OPENAPI_PATH: Final = "/openapi-docs/latest/openapi.json"
 CANONICAL_OPENAPI_MAX_BYTES: Final = 8 * 1024 * 1024
