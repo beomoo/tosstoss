@@ -1,0 +1,24 @@
+[
+  {
+    "contract_version": "0.1.0",
+    "missing_reasons": {"cik": "NOT_APPLICABLE"},
+    "normalized_content_hash": "sha256:7384409eb8445b9e45da8ed575a4d3393c3b8dd77bb23bf280d15eb3fb273a66",
+    "issuer_id": "issuer_kr_synthetic",
+    "legal_name": "새봄전력 연구용 주식회사",
+    "display_name": "새봄전력 (합성)",
+    "jurisdiction": "KR",
+    "corp_code": "90000001",
+    "cik": null
+  },
+  {
+    "contract_version": "0.1.0",
+    "missing_reasons": {"corp_code": "NOT_APPLICABLE"},
+    "normalized_content_hash": "sha256:fac0906d88add18e83198a5a7339d19b92170590bb4f19bbe162fa89cb846b03",
+    "issuer_id": "issuer_us_synthetic",
+    "legal_name": "Northstar Fixture Systems Inc.",
+    "display_name": "Northstar Fixture (Synthetic)",
+    "jurisdiction": "US",
+    "corp_code": null,
+    "cik": "9999999999"
+  }
+]

@@ -1,0 +1,38 @@
+[
+  {
+    "contract_version": "0.1.0",
+    "missing_reasons": {"cusip": "NOT_APPLICABLE", "isin": "UNRESOLVED", "figi": "UNRESOLVED", "valid_from": "NOT_PROVIDED", "valid_to": "NOT_APPLICABLE"},
+    "normalized_content_hash": "sha256:12339040d74732dfb895a4bd00b753a105386ef1dc6db772f8544bfca3b59821",
+    "security_id": "security_kr_synthetic_common",
+    "issuer_id": "issuer_kr_synthetic",
+    "market": "KR",
+    "exchange": "KOSPI_TEST",
+    "ticker": "KRFIX1",
+    "share_class": "COMMON",
+    "currency": "KRW",
+    "cusip": null,
+    "isin": null,
+    "figi": null,
+    "mapping_status": "VERIFIED",
+    "valid_from": null,
+    "valid_to": null
+  },
+  {
+    "contract_version": "0.1.0",
+    "missing_reasons": {"isin": "UNRESOLVED", "figi": "UNRESOLVED", "valid_from": "NOT_PROVIDED", "valid_to": "NOT_APPLICABLE"},
+    "normalized_content_hash": "sha256:09f1ae0bced417e040999e1cb2f33624cb1d9a6f51212e49a8037497e7f51cb2",
+    "security_id": "security_us_synthetic_common",
+    "issuer_id": "issuer_us_synthetic",
+    "market": "US",
+    "exchange": "NASDAQ_TEST",
+    "ticker": "USFXZZ",
+    "share_class": "COMMON",
+    "currency": "USD",
+    "cusip": "999999999",
+    "isin": null,
+    "figi": null,
+    "mapping_status": "VERIFIED",
+    "valid_from": null,
+    "valid_to": null
+  }
+]

@@ -1,0 +1,6 @@
+[
+  {
+    "contract_version": "0.1.0", "missing_reasons": {"estimated_trade_effect": "UNAVAILABLE"}, "normalized_content_hash": "sha256:c2a5e7e1a650217a339cb5fc5a32014fcdce2bd29d147ac955fb3a5565aef175",
+    "holding_change_id": "holding_change_us_synthetic_2026q2", "manager_id": "manager_us_synthetic", "security_id": "security_us_synthetic_common", "previous_period": "2026-03-31", "current_period": "2026-06-30", "previous_shares": "800000", "current_shares": "1000000", "shares_delta": "200000", "shares_delta_pct": "0.25", "weight_delta": "0.004", "rank_delta": -12, "change_class": "ADD", "estimated_trade_effect": null, "confidence": "0.90", "limitations": ["ACTUAL_TRADE_DATE_UNKNOWN", "SYNTHETIC_SAMPLE_ONLY"], "result_status": "SAMPLE_RESULT"
+  }
+]

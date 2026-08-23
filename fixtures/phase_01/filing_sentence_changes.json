@@ -1,0 +1,6 @@
+[
+  {
+    "contract_version": "0.1.0", "missing_reasons": {}, "normalized_content_hash": "sha256:ce60a90a797cabd174dfbd61a1f7af32123891471fad514233090196143fdec8",
+    "change_id": "change_kr_synthetic_target", "issuer_id": "issuer_kr_synthetic", "previous_filing_id": "filing_kr_synthetic_original", "current_filing_id": "filing_kr_synthetic_amended", "section_key": "SYNTHETIC_BUSINESS_OVERVIEW", "primary_change_type": "NUMBER_CHANGED", "change_types": ["NUMBER_CHANGED", "TONE_DOWN"], "previous_sentence": "합성 시험 설비의 목표 수량은 120대입니다.", "current_sentence": "합성 시험 설비의 목표 수량은 90대이며 일정 변동 가능성이 있습니다.", "semantic_similarity": "0.72", "confidence": "0.88", "rule_hits": ["SYNTHETIC_NUMBER_CHANGE", "SYNTHETIC_CERTAINTY_REDUCED"], "review_status": "UNREVIEWED", "human_review_required": true, "result_status": "SAMPLE_RESULT"
+  }
+]

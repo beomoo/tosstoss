@@ -1,0 +1,183 @@
+from enum import StrEnum
+
+
+class DataMode(StrEnum):
+    FIXTURE = "FIXTURE"
+
+
+class MissingReason(StrEnum):
+    NOT_PROVIDED = "NOT_PROVIDED"
+    NOT_APPLICABLE = "NOT_APPLICABLE"
+    UNAVAILABLE = "UNAVAILABLE"
+    UNRESOLVED = "UNRESOLVED"
+    PARSE_ERROR = "PARSE_ERROR"
+    WITHHELD = "WITHHELD"
+
+
+class AvailabilityStatus(StrEnum):
+    AVAILABLE = "AVAILABLE"
+    DEGRADED = "DEGRADED"
+    ERROR = "ERROR"
+    UNAVAILABLE = "UNAVAILABLE"
+
+
+class FreshnessStatus(StrEnum):
+    FRESH = "FRESH"
+    STALE = "STALE"
+    EXPIRED = "EXPIRED"
+    UNKNOWN = "UNKNOWN"
+
+
+class FinalityStatus(StrEnum):
+    PRELIMINARY = "PRELIMINARY"
+    FINAL = "FINAL"
+    REVISED = "REVISED"
+    UNKNOWN = "UNKNOWN"
+
+
+class RevisionStatus(StrEnum):
+    ORIGINAL = "ORIGINAL"
+    AMENDED = "AMENDED"
+    SUPERSEDED = "SUPERSEDED"
+    MERGED = "MERGED"
+
+
+class Market(StrEnum):
+    KR = "KR"
+    US = "US"
+
+
+class Jurisdiction(StrEnum):
+    KR = "KR"
+    US = "US"
+
+
+class Currency(StrEnum):
+    KRW = "KRW"
+    USD = "USD"
+
+
+class ShareClass(StrEnum):
+    COMMON = "COMMON"
+
+
+class MappingStatus(StrEnum):
+    VERIFIED = "VERIFIED"
+    UNRESOLVED = "UNRESOLVED"
+
+
+class SourceSystem(StrEnum):
+    FIXTURE_KR_REGULATOR = "FIXTURE_KR_REGULATOR"
+    FIXTURE_US_REGULATOR = "FIXTURE_US_REGULATOR"
+    FIXTURE_MARKET = "FIXTURE_MARKET"
+
+
+class SourceType(StrEnum):
+    FILING = "FILING"
+    MARKET_DATA = "MARKET_DATA"
+    FINANCIAL = "FINANCIAL"
+    HOLDING = "HOLDING"
+
+
+class AdjustmentStatus(StrEnum):
+    RAW = "RAW"
+
+
+class Participant(StrEnum):
+    INDIVIDUAL = "INDIVIDUAL"
+    FOREIGN = "FOREIGN"
+    INSTITUTION = "INSTITUTION"
+
+
+class ReportType(StrEnum):
+    QUARTERLY = "QUARTERLY"
+
+
+class StatementType(StrEnum):
+    INCOME_STATEMENT = "INCOME_STATEMENT"
+
+
+class Consolidation(StrEnum):
+    CONSOLIDATED = "CONSOLIDATED"
+    SEPARATE = "SEPARATE"
+
+
+class ManagerType(StrEnum):
+    ACTIVE_ASSET_MANAGER = "ACTIVE_ASSET_MANAGER"
+
+
+class ReportingStructure(StrEnum):
+    DIRECT = "DIRECT"
+
+
+class HoldingChangeClass(StrEnum):
+    NEW = "NEW"
+    AGGRESSIVE_ADD = "AGGRESSIVE_ADD"
+    ADD = "ADD"
+    HOLD = "HOLD"
+    TRIM = "TRIM"
+    AGGRESSIVE_REDUCE = "AGGRESSIVE_REDUCE"
+    EXIT = "EXIT"
+    PERSISTENT_BUILD = "PERSISTENT_BUILD"
+    PERSISTENT_DISTRIBUTION = "PERSISTENT_DISTRIBUTION"
+    SECTOR_ROTATION_IN = "SECTOR_ROTATION_IN"
+    SECTOR_ROTATION_OUT = "SECTOR_ROTATION_OUT"
+
+
+class FilingFormType(StrEnum):
+    QUARTERLY_REPORT = "QUARTERLY_REPORT"
+
+
+class FilingChangeType(StrEnum):
+    ADDED = "ADDED"
+    REMOVED = "REMOVED"
+    MODIFIED = "MODIFIED"
+    MOVED = "MOVED"
+    NUMBER_CHANGED = "NUMBER_CHANGED"
+    TONE_UP = "TONE_UP"
+    TONE_DOWN = "TONE_DOWN"
+    UNCERTAINTY_UP = "UNCERTAINTY_UP"
+    UNCERTAINTY_DOWN = "UNCERTAINTY_DOWN"
+    RISK_ADDED = "RISK_ADDED"
+    RISK_REMOVED = "RISK_REMOVED"
+
+
+class ReviewStatus(StrEnum):
+    UNREVIEWED = "UNREVIEWED"
+    REVIEWED = "REVIEWED"
+
+
+class SampleResult(StrEnum):
+    SAMPLE_RESULT = "SAMPLE_RESULT"
+
+
+class Scenario(StrEnum):
+    BEAR = "BEAR"
+    BASE = "BASE"
+    BULL = "BULL"
+
+
+class ValuationMethod(StrEnum):
+    PER = "PER"
+
+
+class AssumptionSource(StrEnum):
+    USER_ASSUMPTION = "USER_ASSUMPTION"
+
+
+class EvidenceBasis(StrEnum):
+    DIRECT_SOURCE = "DIRECT_SOURCE"
+    CALCULATED = "CALCULATED"
+    STRUCTURAL_INFERENCE = "STRUCTURAL_INFERENCE"
+
+
+class VerificationStatus(StrEnum):
+    LATEST_VERIFIED = "LATEST_VERIFIED"
+    UNCONFIRMED = "UNCONFIRMED"
+    NOT_CHECKED = "NOT_CHECKED"
+
+
+class EvidenceDirection(StrEnum):
+    SUPPORTING = "SUPPORTING"
+    CONTRADICTING = "CONTRADICTING"
+    NEUTRAL = "NEUTRAL"

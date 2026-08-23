@@ -1,0 +1,134 @@
+Python 3.13.1
+Requirement already satisfied: alembic==1.16.5 in c:\users\beomoo\documents\chatgpt\토스증권 자동화 매매\toss_phase1_verify_98369cb2\.venv\lib\site-packages (from -r C:\Users\beomoo\Documents\ChatGPT\토스증권 자동화 매매\toss_phase1_verify_98369cb2\requirements.lock (line 7)) (1.16.5)
+Requirement already satisfied: annotated-types==0.8.0 in c:\users\beomoo\documents\chatgpt\토스증권 자동화 매매\toss_phase1_verify_98369cb2\.venv\lib\site-packages (from -r C:\Users\beomoo\Documents\ChatGPT\토스증권 자동화 매매\toss_phase1_verify_98369cb2\requirements.lock (line 11)) (0.8.0)
+Requirement already satisfied: anyio==4.14.2 in c:\users\beomoo\documents\chatgpt\토스증권 자동화 매매\toss_phase1_verify_98369cb2\.venv\lib\site-packages (from -r C:\Users\beomoo\Documents\ChatGPT\토스증권 자동화 매매\toss_phase1_verify_98369cb2\requirements.lock (line 15)) (4.14.2)
+Requirement already satisfied: certifi==2026.7.22 in c:\users\beomoo\documents\chatgpt\토스증권 자동화 매매\toss_phase1_verify_98369cb2\.venv\lib\site-packages (from -r C:\Users\beomoo\Documents\ChatGPT\토스증권 자동화 매매\toss_phase1_verify_98369cb2\requirements.lock (line 21)) (2026.7.22)
+Requirement already satisfied: charset-normalizer==3.5.1 in c:\users\beomoo\documents\chatgpt\토스증권 자동화 매매\toss_phase1_verify_98369cb2\.venv\lib\site-packages (from -r C:\Users\beomoo\Documents\ChatGPT\토스증권 자동화 매매\toss_phase1_verify_98369cb2\requirements.lock (line 28)) (3.5.1)
+Requirement already satisfied: click==8.4.2 in c:\users\beomoo\documents\chatgpt\토스증권 자동화 매매\toss_phase1_verify_98369cb2\.venv\lib\site-packages (from -r C:\Users\beomoo\Documents\ChatGPT\토스증권 자동화 매매\toss_phase1_verify_98369cb2\requirements.lock (line 202)) (8.4.2)
+Requirement already satisfied: colorama==0.4.6 in c:\users\beomoo\documents\chatgpt\토스증권 자동화 매매\toss_phase1_verify_98369cb2\.venv\lib\site-packages (from -r C:\Users\beomoo\Documents\ChatGPT\토스증권 자동화 매매\toss_phase1_verify_98369cb2\requirements.lock (line 206)) (0.4.6)
+Requirement already satisfied: detect-secrets==1.5.0 in c:\users\beomoo\documents\chatgpt\토스증권 자동화 매매\toss_phase1_verify_98369cb2\.venv\lib\site-packages (from -r C:\Users\beomoo\Documents\ChatGPT\토스증권 자동화 매매\toss_phase1_verify_98369cb2\requirements.lock (line 212)) (1.5.0)
+Requirement already satisfied: fastapi==0.116.1 in c:\users\beomoo\documents\chatgpt\토스증권 자동화 매매\toss_phase1_verify_98369cb2\.venv\lib\site-packages (from -r C:\Users\beomoo\Documents\ChatGPT\토스증권 자동화 매매\toss_phase1_verify_98369cb2\requirements.lock (line 216)) (0.116.1)
+Requirement already satisfied: greenlet==3.5.5 in c:\users\beomoo\documents\chatgpt\토스증권 자동화 매매\toss_phase1_verify_98369cb2\.venv\lib\site-packages (from -r C:\Users\beomoo\Documents\ChatGPT\토스증권 자동화 매매\toss_phase1_verify_98369cb2\requirements.lock (line 220)) (3.5.5)
+Requirement already satisfied: h11==0.16.0 in c:\users\beomoo\documents\chatgpt\토스증권 자동화 매매\toss_phase1_verify_98369cb2\.venv\lib\site-packages (from -r C:\Users\beomoo\Documents\ChatGPT\토스증권 자동화 매매\toss_phase1_verify_98369cb2\requirements.lock (line 301)) (0.16.0)
+Requirement already satisfied: httpcore==1.0.9 in c:\users\beomoo\documents\chatgpt\토스증권 자동화 매매\toss_phase1_verify_98369cb2\.venv\lib\site-packages (from -r C:\Users\beomoo\Documents\ChatGPT\토스증권 자동화 매매\toss_phase1_verify_98369cb2\requirements.lock (line 307)) (1.0.9)
+Requirement already satisfied: httpx==0.28.1 in c:\users\beomoo\documents\chatgpt\토스증권 자동화 매매\toss_phase1_verify_98369cb2\.venv\lib\site-packages (from -r C:\Users\beomoo\Documents\ChatGPT\토스증권 자동화 매매\toss_phase1_verify_98369cb2\requirements.lock (line 311)) (0.28.1)
+Requirement already satisfied: idna==3.18 in c:\users\beomoo\documents\chatgpt\토스증권 자동화 매매\toss_phase1_verify_98369cb2\.venv\lib\site-packages (from -r C:\Users\beomoo\Documents\ChatGPT\토스증권 자동화 매매\toss_phase1_verify_98369cb2\requirements.lock (line 315)) (3.18)
+Requirement already satisfied: iniconfig==2.3.0 in c:\users\beomoo\documents\chatgpt\토스증권 자동화 매매\toss_phase1_verify_98369cb2\.venv\lib\site-packages (from -r C:\Users\beomoo\Documents\ChatGPT\토스증권 자동화 매매\toss_phase1_verify_98369cb2\requirements.lock (line 322)) (2.3.0)
+Requirement already satisfied: mako==1.4.1 in c:\users\beomoo\documents\chatgpt\토스증권 자동화 매매\toss_phase1_verify_98369cb2\.venv\lib\site-packages (from -r C:\Users\beomoo\Documents\ChatGPT\토스증권 자동화 매매\toss_phase1_verify_98369cb2\requirements.lock (line 326)) (1.4.1)
+Requirement already satisfied: markupsafe==3.0.3 in c:\users\beomoo\documents\chatgpt\토스증권 자동화 매매\toss_phase1_verify_98369cb2\.venv\lib\site-packages (from -r C:\Users\beomoo\Documents\ChatGPT\토스증권 자동화 매매\toss_phase1_verify_98369cb2\requirements.lock (line 330)) (3.0.3)
+Requirement already satisfied: mypy==1.17.1 in c:\users\beomoo\documents\chatgpt\토스증권 자동화 매매\toss_phase1_verify_98369cb2\.venv\lib\site-packages (from -r C:\Users\beomoo\Documents\ChatGPT\토스증권 자동화 매매\toss_phase1_verify_98369cb2\requirements.lock (line 421)) (1.17.1)
+Requirement already satisfied: mypy-extensions==1.1.0 in c:\users\beomoo\documents\chatgpt\토스증권 자동화 매매\toss_phase1_verify_98369cb2\.venv\lib\site-packages (from -r C:\Users\beomoo\Documents\ChatGPT\토스증권 자동화 매매\toss_phase1_verify_98369cb2\requirements.lock (line 461)) (1.1.0)
+Requirement already satisfied: packaging==26.3 in c:\users\beomoo\documents\chatgpt\토스증권 자동화 매매\toss_phase1_verify_98369cb2\.venv\lib\site-packages (from -r C:\Users\beomoo\Documents\ChatGPT\토스증권 자동화 매매\toss_phase1_verify_98369cb2\requirements.lock (line 465)) (26.3)
+Requirement already satisfied: pathspec==1.1.1 in c:\users\beomoo\documents\chatgpt\토스증권 자동화 매매\toss_phase1_verify_98369cb2\.venv\lib\site-packages (from -r C:\Users\beomoo\Documents\ChatGPT\토스증권 자동화 매매\toss_phase1_verify_98369cb2\requirements.lock (line 469)) (1.1.1)
+Requirement already satisfied: pluggy==1.6.0 in c:\users\beomoo\documents\chatgpt\토스증권 자동화 매매\toss_phase1_verify_98369cb2\.venv\lib\site-packages (from -r C:\Users\beomoo\Documents\ChatGPT\토스증권 자동화 매매\toss_phase1_verify_98369cb2\requirements.lock (line 473)) (1.6.0)
+Requirement already satisfied: pydantic==2.11.7 in c:\users\beomoo\documents\chatgpt\토스증권 자동화 매매\toss_phase1_verify_98369cb2\.venv\lib\site-packages (from -r C:\Users\beomoo\Documents\ChatGPT\토스증권 자동화 매매\toss_phase1_verify_98369cb2\requirements.lock (line 477)) (2.11.7)
+Requirement already satisfied: pydantic-core==2.33.2 in c:\users\beomoo\documents\chatgpt\토스증권 자동화 매매\toss_phase1_verify_98369cb2\.venv\lib\site-packages (from -r C:\Users\beomoo\Documents\ChatGPT\토스증권 자동화 매매\toss_phase1_verify_98369cb2\requirements.lock (line 484)) (2.33.2)
+Requirement already satisfied: pydantic-settings==2.10.1 in c:\users\beomoo\documents\chatgpt\토스증권 자동화 매매\toss_phase1_verify_98369cb2\.venv\lib\site-packages (from -r C:\Users\beomoo\Documents\ChatGPT\토스증권 자동화 매매\toss_phase1_verify_98369cb2\requirements.lock (line 585)) (2.10.1)
+Requirement already satisfied: pygments==2.20.0 in c:\users\beomoo\documents\chatgpt\토스증권 자동화 매매\toss_phase1_verify_98369cb2\.venv\lib\site-packages (from -r C:\Users\beomoo\Documents\ChatGPT\토스증권 자동화 매매\toss_phase1_verify_98369cb2\requirements.lock (line 589)) (2.20.0)
+Requirement already satisfied: pytest==8.4.1 in c:\users\beomoo\documents\chatgpt\토스증권 자동화 매매\toss_phase1_verify_98369cb2\.venv\lib\site-packages (from -r C:\Users\beomoo\Documents\ChatGPT\토스증권 자동화 매매\toss_phase1_verify_98369cb2\requirements.lock (line 593)) (8.4.1)
+Requirement already satisfied: pytest-socket==0.7.0 in c:\users\beomoo\documents\chatgpt\토스증권 자동화 매매\toss_phase1_verify_98369cb2\.venv\lib\site-packages (from -r C:\Users\beomoo\Documents\ChatGPT\토스증권 자동화 매매\toss_phase1_verify_98369cb2\requirements.lock (line 599)) (0.7.0)
+Requirement already satisfied: python-dotenv==1.2.2 in c:\users\beomoo\documents\chatgpt\토스증권 자동화 매매\toss_phase1_verify_98369cb2\.venv\lib\site-packages (from -r C:\Users\beomoo\Documents\ChatGPT\토스증권 자동화 매매\toss_phase1_verify_98369cb2\requirements.lock (line 603)) (1.2.2)
+Requirement already satisfied: pyyaml==6.0.3 in c:\users\beomoo\documents\chatgpt\토스증권 자동화 매매\toss_phase1_verify_98369cb2\.venv\lib\site-packages (from -r C:\Users\beomoo\Documents\ChatGPT\토스증권 자동화 매매\toss_phase1_verify_98369cb2\requirements.lock (line 607)) (6.0.3)
+Requirement already satisfied: requests==2.34.2 in c:\users\beomoo\documents\chatgpt\토스증권 자동화 매매\toss_phase1_verify_98369cb2\.venv\lib\site-packages (from -r C:\Users\beomoo\Documents\ChatGPT\토스증권 자동화 매매\toss_phase1_verify_98369cb2\requirements.lock (line 682)) (2.34.2)
+Requirement already satisfied: ruff==0.12.11 in c:\users\beomoo\documents\chatgpt\토스증권 자동화 매매\toss_phase1_verify_98369cb2\.venv\lib\site-packages (from -r C:\Users\beomoo\Documents\ChatGPT\토스증권 자동화 매매\toss_phase1_verify_98369cb2\requirements.lock (line 686)) (0.12.11)
+Requirement already satisfied: sqlalchemy==2.0.43 in c:\users\beomoo\documents\chatgpt\토스증권 자동화 매매\toss_phase1_verify_98369cb2\.venv\lib\site-packages (from -r C:\Users\beomoo\Documents\ChatGPT\토스증권 자동화 매매\toss_phase1_verify_98369cb2\requirements.lock (line 707)) (2.0.43)
+Requirement already satisfied: starlette==0.47.3 in c:\users\beomoo\documents\chatgpt\토스증권 자동화 매매\toss_phase1_verify_98369cb2\.venv\lib\site-packages (from -r C:\Users\beomoo\Documents\ChatGPT\토스증권 자동화 매매\toss_phase1_verify_98369cb2\requirements.lock (line 768)) (0.47.3)
+Requirement already satisfied: typing-extensions==4.14.1 in c:\users\beomoo\documents\chatgpt\토스증권 자동화 매매\toss_phase1_verify_98369cb2\.venv\lib\site-packages (from -r C:\Users\beomoo\Documents\ChatGPT\토스증권 자동화 매매\toss_phase1_verify_98369cb2\requirements.lock (line 772)) (4.14.1)
+Requirement already satisfied: typing-inspection==0.4.2 in c:\users\beomoo\documents\chatgpt\토스증권 자동화 매매\toss_phase1_verify_98369cb2\.venv\lib\site-packages (from -r C:\Users\beomoo\Documents\ChatGPT\토스증권 자동화 매매\toss_phase1_verify_98369cb2\requirements.lock (line 784)) (0.4.2)
+Requirement already satisfied: tzdata==2025.2 in c:\users\beomoo\documents\chatgpt\토스증권 자동화 매매\toss_phase1_verify_98369cb2\.venv\lib\site-packages (from -r C:\Users\beomoo\Documents\ChatGPT\토스증권 자동화 매매\toss_phase1_verify_98369cb2\requirements.lock (line 790)) (2025.2)
+Requirement already satisfied: urllib3==2.7.0 in c:\users\beomoo\documents\chatgpt\토스증권 자동화 매매\toss_phase1_verify_98369cb2\.venv\lib\site-packages (from -r C:\Users\beomoo\Documents\ChatGPT\토스증권 자동화 매매\toss_phase1_verify_98369cb2\requirements.lock (line 794)) (2.7.0)
+Requirement already satisfied: uvicorn==0.35.0 in c:\users\beomoo\documents\chatgpt\토스증권 자동화 매매\toss_phase1_verify_98369cb2\.venv\lib\site-packages (from -r C:\Users\beomoo\Documents\ChatGPT\토스증권 자동화 매매\toss_phase1_verify_98369cb2\requirements.lock (line 798)) (0.35.0)
+Requirement already satisfied: setuptools==80.9.0 in c:\users\beomoo\documents\chatgpt\토스증권 자동화 매매\toss_phase1_verify_98369cb2\.venv\lib\site-packages (from -r C:\Users\beomoo\Documents\ChatGPT\토스증권 자동화 매매\toss_phase1_verify_98369cb2\requirements.lock (line 804)) (80.9.0)
+Obtaining file:///C:/Users/beomoo/Documents/ChatGPT/%ED%86%A0%EC%8A%A4%EC%A6%9D%EA%B6%8C%20%EC%9E%90%EB%8F%99%ED%99%94%20%EB%A7%A4%EB%A7%A4/toss_phase1_verify_98369cb2
+  Checking if build backend supports build_editable: started
+  Checking if build backend supports build_editable: finished with status 'done'
+  Preparing editable metadata (pyproject.toml): started
+  Preparing editable metadata (pyproject.toml): finished with status 'done'
+Building wheels for collected packages: toss-invest-dashboard
+  Building editable for toss-invest-dashboard (pyproject.toml): started
+  Building editable for toss-invest-dashboard (pyproject.toml): finished with status 'done'
+  Created wheel for toss-invest-dashboard: filename=toss_invest_dashboard-0.1.0-0.editable-py3-none-any.whl size=1692 sha256=034005146bb22cfb238441db38ace23a883b08f11e4bf36d3be8346bbcdeb74d
+  Stored in directory: C:\Users\beomoo\Documents\ChatGPT\토스증권 자동화 매매\toss_phase1_verify_98369cb2\var\tmp\pip-ephem-wheel-cache-kh8i0oqy\wheels\95\30\05\2e4fdadb65ebf2e2a5686ead259c48352e6644156b7ec66000
+Successfully built toss-invest-dashboard
+Installing collected packages: toss-invest-dashboard
+  Attempting uninstall: toss-invest-dashboard
+    Found existing installation: toss-invest-dashboard 0.1.0
+    Uninstalling toss-invest-dashboard-0.1.0:
+      Successfully uninstalled toss-invest-dashboard-0.1.0
+Successfully installed toss-invest-dashboard-0.1.0
+npm warn deprecated whatwg-encoding@3.1.1: Use @exodus/bytes instead for a more spec-conformant and faster implementation
+
+added 478 packages in 41s
+npm warn allow-scripts 2 packages have install scripts not yet covered by allowScripts:
+npm warn allow-scripts   esbuild@0.28.2 (postinstall: node install.js)
+npm warn allow-scripts   unrs-resolver@1.12.2 (postinstall: node postinstall.js)
+npm warn allow-scripts
+npm warn allow-scripts Run `npm approve-scripts --allow-scripts-pending` to review, or `npm approve-scripts <pkg>` to allow.
+Setup completed. No external API credentials were requested.
+Python 3.13.1
+Requirement already satisfied: alembic==1.16.5 in c:\users\beomoo\documents\chatgpt\토스증권 자동화 매매\toss_phase1_verify_98369cb2\.venv\lib\site-packages (from -r C:\Users\beomoo\Documents\ChatGPT\토스증권 자동화 매매\toss_phase1_verify_98369cb2\requirements.lock (line 7)) (1.16.5)
+Requirement already satisfied: annotated-types==0.8.0 in c:\users\beomoo\documents\chatgpt\토스증권 자동화 매매\toss_phase1_verify_98369cb2\.venv\lib\site-packages (from -r C:\Users\beomoo\Documents\ChatGPT\토스증권 자동화 매매\toss_phase1_verify_98369cb2\requirements.lock (line 11)) (0.8.0)
+Requirement already satisfied: anyio==4.14.2 in c:\users\beomoo\documents\chatgpt\토스증권 자동화 매매\toss_phase1_verify_98369cb2\.venv\lib\site-packages (from -r C:\Users\beomoo\Documents\ChatGPT\토스증권 자동화 매매\toss_phase1_verify_98369cb2\requirements.lock (line 15)) (4.14.2)
+Requirement already satisfied: certifi==2026.7.22 in c:\users\beomoo\documents\chatgpt\토스증권 자동화 매매\toss_phase1_verify_98369cb2\.venv\lib\site-packages (from -r C:\Users\beomoo\Documents\ChatGPT\토스증권 자동화 매매\toss_phase1_verify_98369cb2\requirements.lock (line 21)) (2026.7.22)
+Requirement already satisfied: charset-normalizer==3.5.1 in c:\users\beomoo\documents\chatgpt\토스증권 자동화 매매\toss_phase1_verify_98369cb2\.venv\lib\site-packages (from -r C:\Users\beomoo\Documents\ChatGPT\토스증권 자동화 매매\toss_phase1_verify_98369cb2\requirements.lock (line 28)) (3.5.1)
+Requirement already satisfied: click==8.4.2 in c:\users\beomoo\documents\chatgpt\토스증권 자동화 매매\toss_phase1_verify_98369cb2\.venv\lib\site-packages (from -r C:\Users\beomoo\Documents\ChatGPT\토스증권 자동화 매매\toss_phase1_verify_98369cb2\requirements.lock (line 202)) (8.4.2)
+Requirement already satisfied: colorama==0.4.6 in c:\users\beomoo\documents\chatgpt\토스증권 자동화 매매\toss_phase1_verify_98369cb2\.venv\lib\site-packages (from -r C:\Users\beomoo\Documents\ChatGPT\토스증권 자동화 매매\toss_phase1_verify_98369cb2\requirements.lock (line 206)) (0.4.6)
+Requirement already satisfied: detect-secrets==1.5.0 in c:\users\beomoo\documents\chatgpt\토스증권 자동화 매매\toss_phase1_verify_98369cb2\.venv\lib\site-packages (from -r C:\Users\beomoo\Documents\ChatGPT\토스증권 자동화 매매\toss_phase1_verify_98369cb2\requirements.lock (line 212)) (1.5.0)
+Requirement already satisfied: fastapi==0.116.1 in c:\users\beomoo\documents\chatgpt\토스증권 자동화 매매\toss_phase1_verify_98369cb2\.venv\lib\site-packages (from -r C:\Users\beomoo\Documents\ChatGPT\토스증권 자동화 매매\toss_phase1_verify_98369cb2\requirements.lock (line 216)) (0.116.1)
+Requirement already satisfied: greenlet==3.5.5 in c:\users\beomoo\documents\chatgpt\토스증권 자동화 매매\toss_phase1_verify_98369cb2\.venv\lib\site-packages (from -r C:\Users\beomoo\Documents\ChatGPT\토스증권 자동화 매매\toss_phase1_verify_98369cb2\requirements.lock (line 220)) (3.5.5)
+Requirement already satisfied: h11==0.16.0 in c:\users\beomoo\documents\chatgpt\토스증권 자동화 매매\toss_phase1_verify_98369cb2\.venv\lib\site-packages (from -r C:\Users\beomoo\Documents\ChatGPT\토스증권 자동화 매매\toss_phase1_verify_98369cb2\requirements.lock (line 301)) (0.16.0)
+Requirement already satisfied: httpcore==1.0.9 in c:\users\beomoo\documents\chatgpt\토스증권 자동화 매매\toss_phase1_verify_98369cb2\.venv\lib\site-packages (from -r C:\Users\beomoo\Documents\ChatGPT\토스증권 자동화 매매\toss_phase1_verify_98369cb2\requirements.lock (line 307)) (1.0.9)
+Requirement already satisfied: httpx==0.28.1 in c:\users\beomoo\documents\chatgpt\토스증권 자동화 매매\toss_phase1_verify_98369cb2\.venv\lib\site-packages (from -r C:\Users\beomoo\Documents\ChatGPT\토스증권 자동화 매매\toss_phase1_verify_98369cb2\requirements.lock (line 311)) (0.28.1)
+Requirement already satisfied: idna==3.18 in c:\users\beomoo\documents\chatgpt\토스증권 자동화 매매\toss_phase1_verify_98369cb2\.venv\lib\site-packages (from -r C:\Users\beomoo\Documents\ChatGPT\토스증권 자동화 매매\toss_phase1_verify_98369cb2\requirements.lock (line 315)) (3.18)
+Requirement already satisfied: iniconfig==2.3.0 in c:\users\beomoo\documents\chatgpt\토스증권 자동화 매매\toss_phase1_verify_98369cb2\.venv\lib\site-packages (from -r C:\Users\beomoo\Documents\ChatGPT\토스증권 자동화 매매\toss_phase1_verify_98369cb2\requirements.lock (line 322)) (2.3.0)
+Requirement already satisfied: mako==1.4.1 in c:\users\beomoo\documents\chatgpt\토스증권 자동화 매매\toss_phase1_verify_98369cb2\.venv\lib\site-packages (from -r C:\Users\beomoo\Documents\ChatGPT\토스증권 자동화 매매\toss_phase1_verify_98369cb2\requirements.lock (line 326)) (1.4.1)
+Requirement already satisfied: markupsafe==3.0.3 in c:\users\beomoo\documents\chatgpt\토스증권 자동화 매매\toss_phase1_verify_98369cb2\.venv\lib\site-packages (from -r C:\Users\beomoo\Documents\ChatGPT\토스증권 자동화 매매\toss_phase1_verify_98369cb2\requirements.lock (line 330)) (3.0.3)
+Requirement already satisfied: mypy==1.17.1 in c:\users\beomoo\documents\chatgpt\토스증권 자동화 매매\toss_phase1_verify_98369cb2\.venv\lib\site-packages (from -r C:\Users\beomoo\Documents\ChatGPT\토스증권 자동화 매매\toss_phase1_verify_98369cb2\requirements.lock (line 421)) (1.17.1)
+Requirement already satisfied: mypy-extensions==1.1.0 in c:\users\beomoo\documents\chatgpt\토스증권 자동화 매매\toss_phase1_verify_98369cb2\.venv\lib\site-packages (from -r C:\Users\beomoo\Documents\ChatGPT\토스증권 자동화 매매\toss_phase1_verify_98369cb2\requirements.lock (line 461)) (1.1.0)
+Requirement already satisfied: packaging==26.3 in c:\users\beomoo\documents\chatgpt\토스증권 자동화 매매\toss_phase1_verify_98369cb2\.venv\lib\site-packages (from -r C:\Users\beomoo\Documents\ChatGPT\토스증권 자동화 매매\toss_phase1_verify_98369cb2\requirements.lock (line 465)) (26.3)
+Requirement already satisfied: pathspec==1.1.1 in c:\users\beomoo\documents\chatgpt\토스증권 자동화 매매\toss_phase1_verify_98369cb2\.venv\lib\site-packages (from -r C:\Users\beomoo\Documents\ChatGPT\토스증권 자동화 매매\toss_phase1_verify_98369cb2\requirements.lock (line 469)) (1.1.1)
+Requirement already satisfied: pluggy==1.6.0 in c:\users\beomoo\documents\chatgpt\토스증권 자동화 매매\toss_phase1_verify_98369cb2\.venv\lib\site-packages (from -r C:\Users\beomoo\Documents\ChatGPT\토스증권 자동화 매매\toss_phase1_verify_98369cb2\requirements.lock (line 473)) (1.6.0)
+Requirement already satisfied: pydantic==2.11.7 in c:\users\beomoo\documents\chatgpt\토스증권 자동화 매매\toss_phase1_verify_98369cb2\.venv\lib\site-packages (from -r C:\Users\beomoo\Documents\ChatGPT\토스증권 자동화 매매\toss_phase1_verify_98369cb2\requirements.lock (line 477)) (2.11.7)
+Requirement already satisfied: pydantic-core==2.33.2 in c:\users\beomoo\documents\chatgpt\토스증권 자동화 매매\toss_phase1_verify_98369cb2\.venv\lib\site-packages (from -r C:\Users\beomoo\Documents\ChatGPT\토스증권 자동화 매매\toss_phase1_verify_98369cb2\requirements.lock (line 484)) (2.33.2)
+Requirement already satisfied: pydantic-settings==2.10.1 in c:\users\beomoo\documents\chatgpt\토스증권 자동화 매매\toss_phase1_verify_98369cb2\.venv\lib\site-packages (from -r C:\Users\beomoo\Documents\ChatGPT\토스증권 자동화 매매\toss_phase1_verify_98369cb2\requirements.lock (line 585)) (2.10.1)
+Requirement already satisfied: pygments==2.20.0 in c:\users\beomoo\documents\chatgpt\토스증권 자동화 매매\toss_phase1_verify_98369cb2\.venv\lib\site-packages (from -r C:\Users\beomoo\Documents\ChatGPT\토스증권 자동화 매매\toss_phase1_verify_98369cb2\requirements.lock (line 589)) (2.20.0)
+Requirement already satisfied: pytest==8.4.1 in c:\users\beomoo\documents\chatgpt\토스증권 자동화 매매\toss_phase1_verify_98369cb2\.venv\lib\site-packages (from -r C:\Users\beomoo\Documents\ChatGPT\토스증권 자동화 매매\toss_phase1_verify_98369cb2\requirements.lock (line 593)) (8.4.1)
+Requirement already satisfied: pytest-socket==0.7.0 in c:\users\beomoo\documents\chatgpt\토스증권 자동화 매매\toss_phase1_verify_98369cb2\.venv\lib\site-packages (from -r C:\Users\beomoo\Documents\ChatGPT\토스증권 자동화 매매\toss_phase1_verify_98369cb2\requirements.lock (line 599)) (0.7.0)
+Requirement already satisfied: python-dotenv==1.2.2 in c:\users\beomoo\documents\chatgpt\토스증권 자동화 매매\toss_phase1_verify_98369cb2\.venv\lib\site-packages (from -r C:\Users\beomoo\Documents\ChatGPT\토스증권 자동화 매매\toss_phase1_verify_98369cb2\requirements.lock (line 603)) (1.2.2)
+Requirement already satisfied: pyyaml==6.0.3 in c:\users\beomoo\documents\chatgpt\토스증권 자동화 매매\toss_phase1_verify_98369cb2\.venv\lib\site-packages (from -r C:\Users\beomoo\Documents\ChatGPT\토스증권 자동화 매매\toss_phase1_verify_98369cb2\requirements.lock (line 607)) (6.0.3)
+Requirement already satisfied: requests==2.34.2 in c:\users\beomoo\documents\chatgpt\토스증권 자동화 매매\toss_phase1_verify_98369cb2\.venv\lib\site-packages (from -r C:\Users\beomoo\Documents\ChatGPT\토스증권 자동화 매매\toss_phase1_verify_98369cb2\requirements.lock (line 682)) (2.34.2)
+Requirement already satisfied: ruff==0.12.11 in c:\users\beomoo\documents\chatgpt\토스증권 자동화 매매\toss_phase1_verify_98369cb2\.venv\lib\site-packages (from -r C:\Users\beomoo\Documents\ChatGPT\토스증권 자동화 매매\toss_phase1_verify_98369cb2\requirements.lock (line 686)) (0.12.11)
+Requirement already satisfied: sqlalchemy==2.0.43 in c:\users\beomoo\documents\chatgpt\토스증권 자동화 매매\toss_phase1_verify_98369cb2\.venv\lib\site-packages (from -r C:\Users\beomoo\Documents\ChatGPT\토스증권 자동화 매매\toss_phase1_verify_98369cb2\requirements.lock (line 707)) (2.0.43)
+Requirement already satisfied: starlette==0.47.3 in c:\users\beomoo\documents\chatgpt\토스증권 자동화 매매\toss_phase1_verify_98369cb2\.venv\lib\site-packages (from -r C:\Users\beomoo\Documents\ChatGPT\토스증권 자동화 매매\toss_phase1_verify_98369cb2\requirements.lock (line 768)) (0.47.3)
+Requirement already satisfied: typing-extensions==4.14.1 in c:\users\beomoo\documents\chatgpt\토스증권 자동화 매매\toss_phase1_verify_98369cb2\.venv\lib\site-packages (from -r C:\Users\beomoo\Documents\ChatGPT\토스증권 자동화 매매\toss_phase1_verify_98369cb2\requirements.lock (line 772)) (4.14.1)
+Requirement already satisfied: typing-inspection==0.4.2 in c:\users\beomoo\documents\chatgpt\토스증권 자동화 매매\toss_phase1_verify_98369cb2\.venv\lib\site-packages (from -r C:\Users\beomoo\Documents\ChatGPT\토스증권 자동화 매매\toss_phase1_verify_98369cb2\requirements.lock (line 784)) (0.4.2)
+Requirement already satisfied: tzdata==2025.2 in c:\users\beomoo\documents\chatgpt\토스증권 자동화 매매\toss_phase1_verify_98369cb2\.venv\lib\site-packages (from -r C:\Users\beomoo\Documents\ChatGPT\토스증권 자동화 매매\toss_phase1_verify_98369cb2\requirements.lock (line 790)) (2025.2)
+Requirement already satisfied: urllib3==2.7.0 in c:\users\beomoo\documents\chatgpt\토스증권 자동화 매매\toss_phase1_verify_98369cb2\.venv\lib\site-packages (from -r C:\Users\beomoo\Documents\ChatGPT\토스증권 자동화 매매\toss_phase1_verify_98369cb2\requirements.lock (line 794)) (2.7.0)
+Requirement already satisfied: uvicorn==0.35.0 in c:\users\beomoo\documents\chatgpt\토스증권 자동화 매매\toss_phase1_verify_98369cb2\.venv\lib\site-packages (from -r C:\Users\beomoo\Documents\ChatGPT\토스증권 자동화 매매\toss_phase1_verify_98369cb2\requirements.lock (line 798)) (0.35.0)
+Requirement already satisfied: setuptools==80.9.0 in c:\users\beomoo\documents\chatgpt\토스증권 자동화 매매\toss_phase1_verify_98369cb2\.venv\lib\site-packages (from -r C:\Users\beomoo\Documents\ChatGPT\토스증권 자동화 매매\toss_phase1_verify_98369cb2\requirements.lock (line 804)) (80.9.0)
+Obtaining file:///C:/Users/beomoo/Documents/ChatGPT/%ED%86%A0%EC%8A%A4%EC%A6%9D%EA%B6%8C%20%EC%9E%90%EB%8F%99%ED%99%94%20%EB%A7%A4%EB%A7%A4/toss_phase1_verify_98369cb2
+  Checking if build backend supports build_editable: started
+  Checking if build backend supports build_editable: finished with status 'done'
+  Preparing editable metadata (pyproject.toml): started
+  Preparing editable metadata (pyproject.toml): finished with status 'done'
+Building wheels for collected packages: toss-invest-dashboard
+  Building editable for toss-invest-dashboard (pyproject.toml): started
+  Building editable for toss-invest-dashboard (pyproject.toml): finished with status 'done'
+  Created wheel for toss-invest-dashboard: filename=toss_invest_dashboard-0.1.0-0.editable-py3-none-any.whl size=1692 sha256=48744048b434dc2641eb322747b03fc5f90226dcaa40c6435bbc15ffba47b8d6
+  Stored in directory: C:\Users\beomoo\Documents\ChatGPT\토스증권 자동화 매매\toss_phase1_verify_98369cb2\var\tmp\pip-ephem-wheel-cache-8vmkaikl\wheels\95\30\05\2e4fdadb65ebf2e2a5686ead259c48352e6644156b7ec66000
+Successfully built toss-invest-dashboard
+Installing collected packages: toss-invest-dashboard
+  Attempting uninstall: toss-invest-dashboard
+    Found existing installation: toss-invest-dashboard 0.1.0
+    Uninstalling toss-invest-dashboard-0.1.0:
+      Successfully uninstalled toss-invest-dashboard-0.1.0
+Successfully installed toss-invest-dashboard-0.1.0
+npm warn deprecated whatwg-encoding@3.1.1: Use @exodus/bytes instead for a more spec-conformant and faster implementation
+
+added 478 packages in 40s
+npm warn allow-scripts 2 packages have install scripts not yet covered by allowScripts:
+npm warn allow-scripts   esbuild@0.28.2 (postinstall: node install.js)
+npm warn allow-scripts   unrs-resolver@1.12.2 (postinstall: node postinstall.js)
+npm warn allow-scripts
+npm warn allow-scripts Run `npm approve-scripts --allow-scripts-pending` to review, or `npm approve-scripts <pkg>` to allow.
+Setup completed. No external API credentials were requested.

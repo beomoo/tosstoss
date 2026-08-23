@@ -1,0 +1,22 @@
+[
+  {
+    "contract_version": "0.1.0", "missing_reasons": {}, "normalized_content_hash": "sha256:5ede7c476ca7cbca65a3bf738810f066d740a7ab353de18a7667bbc31996da17",
+    "price_bar_id": "price_kr_20260813", "security_id": "security_kr_synthetic_common", "interval": "1d", "bar_start": "2026-08-13T00:00:00+09:00", "exchange_trade_date": "2026-08-13",
+    "open": "100000.00", "high": "103000.00", "low": "99000.00", "close": "102000.00", "volume": "1234567", "currency": "KRW", "adjustment_status": "RAW", "source_record_id": "source_fixture_market", "freshness_status": "FRESH", "finality_status": "FINAL", "revision_status": "ORIGINAL"
+  },
+  {
+    "contract_version": "0.1.0", "missing_reasons": {}, "normalized_content_hash": "sha256:e5b5b72a2250bff200f1928404c746660f362af040b89f9b5290bce32ab4fd69",
+    "price_bar_id": "price_kr_20260814", "security_id": "security_kr_synthetic_common", "interval": "1d", "bar_start": "2026-08-14T00:00:00+09:00", "exchange_trade_date": "2026-08-14",
+    "open": "102000.00", "high": "105500.00", "low": "101500.00", "close": "104000.00", "volume": "999999999999999999999999.000100", "currency": "KRW", "adjustment_status": "RAW", "source_record_id": "source_fixture_market", "freshness_status": "FRESH", "finality_status": "FINAL", "revision_status": "ORIGINAL"
+  },
+  {
+    "contract_version": "0.1.0", "missing_reasons": {}, "normalized_content_hash": "sha256:2c1786cda2cbc908ac2e75dc39616ab8cf9ae656c2584fb66b874246e204e65a",
+    "price_bar_id": "price_us_20260813", "security_id": "security_us_synthetic_common", "interval": "1d", "bar_start": "2026-08-13T09:30:00-04:00", "exchange_trade_date": "2026-08-13",
+    "open": "50.1250", "high": "52.5000", "low": "49.8750", "close": "51.7500", "volume": "876543", "currency": "USD", "adjustment_status": "RAW", "source_record_id": "source_fixture_market", "freshness_status": "FRESH", "finality_status": "FINAL", "revision_status": "ORIGINAL"
+  },
+  {
+    "contract_version": "0.1.0", "missing_reasons": {}, "normalized_content_hash": "sha256:3aaa72e5cc3b8e8b9e1b249be32c65d21ff1734051edccfd74db94367ed89ea8",
+    "price_bar_id": "price_us_20260814", "security_id": "security_us_synthetic_common", "interval": "1d", "bar_start": "2026-08-14T09:30:00-04:00", "exchange_trade_date": "2026-08-14",
+    "open": "51.7500", "high": "53.0000", "low": "50.5000", "close": "52.2500", "volume": "900001", "currency": "USD", "adjustment_status": "RAW", "source_record_id": "source_fixture_market", "freshness_status": "FRESH", "finality_status": "FINAL", "revision_status": "ORIGINAL"
+  }
+]

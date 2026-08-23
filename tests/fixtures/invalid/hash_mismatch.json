@@ -1,0 +1,5 @@
+{
+  "record_id": "hash_mismatch_sample",
+  "declared_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "canonical_payload": {"synthetic": true}
+}

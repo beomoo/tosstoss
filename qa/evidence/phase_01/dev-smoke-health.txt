@@ -1,0 +1,1 @@
+{"health":{"contract_version":"0.1.0","missing_reasons":{},"service":"toss-dashboard-api","version":"0.1.0","data_mode":"FIXTURE","status":"ok"},"web_status":200,"listeners":[{"LocalAddress":"127.0.0.1","LocalPort":8000,"OwningProcess":13852},{"LocalAddress":"127.0.0.1","LocalPort":3000,"OwningProcess":17668}]}

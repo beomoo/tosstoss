@@ -1,0 +1,12 @@
+Native Node runtime and offline network guards verified.
+INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade  -> 0001_phase_01, Phase 1 SQLite metadata foundation.
+INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+{"first": {"fixture_version": "0.1.0", "inserted": 13, "manifest_digest": "sha256:b22e919d59cfbdda7a0c4d5e330c7ad5231c0bf01c38f2474264f08ea6ace57b", "unchanged": 0, "updated": 0}}
+Web: http://127.0.0.1:3000
+API: http://127.0.0.1:8000/health
+Logs: C:\Users\beomoo\Documents\ChatGPT\토스증권 자동화 매매\toss_phase1_verify_98369cb2\var\logs
+API JSON log lines verified: 14
+Development smoke passed; stopping owned process trees.

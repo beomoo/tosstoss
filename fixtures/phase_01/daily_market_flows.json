@@ -1,0 +1,14 @@
+[
+  {
+    "contract_version": "0.1.0", "missing_reasons": {}, "normalized_content_hash": "sha256:98302c18fb35a2fe7bbe8c95e5fd9af450a9d2d91725dd9b6c86fd076fae5e10",
+    "market_flow_id": "flow_kr_20260814_individual", "security_id": "security_kr_synthetic_common", "trade_date": "2026-08-14", "participant": "INDIVIDUAL", "net_quantity": "-12000", "net_value": "-1248000000", "currency": "KRW", "provisional": false, "source_record_id": "source_fixture_market", "freshness_status": "FRESH", "finality_status": "FINAL", "revision_status": "ORIGINAL"
+  },
+  {
+    "contract_version": "0.1.0", "missing_reasons": {}, "normalized_content_hash": "sha256:e9c72874d8198bbb55c7ede0ef4cba60f62b5dccd3f71cf6714cf8fd8ad082d7",
+    "market_flow_id": "flow_kr_20260814_foreign", "security_id": "security_kr_synthetic_common", "trade_date": "2026-08-14", "participant": "FOREIGN", "net_quantity": "7000", "net_value": "728000000", "currency": "KRW", "provisional": false, "source_record_id": "source_fixture_market", "freshness_status": "FRESH", "finality_status": "FINAL", "revision_status": "ORIGINAL"
+  },
+  {
+    "contract_version": "0.1.0", "missing_reasons": {"net_value": "UNAVAILABLE"}, "normalized_content_hash": "sha256:ebcbc7fd61ca6421722a947ce5eddb25e5b7b17c1078f514f19c3c88b5f0f6bd",
+    "market_flow_id": "flow_kr_20260814_institution", "security_id": "security_kr_synthetic_common", "trade_date": "2026-08-14", "participant": "INSTITUTION", "net_quantity": "5000", "net_value": null, "currency": "KRW", "provisional": true, "source_record_id": "source_fixture_market", "freshness_status": "STALE", "finality_status": "PRELIMINARY", "revision_status": "ORIGINAL"
+  }
+]

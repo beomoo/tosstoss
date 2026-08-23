@@ -1,0 +1,4 @@
+[
+  {"source_record_id": "source_cycle_a", "supersedes_id": "source_cycle_b"},
+  {"source_record_id": "source_cycle_b", "supersedes_id": "source_cycle_a"}
+]
