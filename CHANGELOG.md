@@ -10,12 +10,15 @@
 - 총 3회 시도, 단일·누적 30초 상한, 1→2→4초 backoff와 bounded additive jitter timing primitive
 - bounded 429 및 exact `500/502/503/504` retry, safe exhaustion/deferred typed error
 - fake monotonic/sleeper/jitter와 `httpx.MockTransport` 기반 CP2-C backend 테스트 65개
+- 429 Reset acquire wait와 backoff의 통합 누적 ceiling을 검증하는 deterministic backend 회귀 4개
 
 ### Changed
 
 - OAuth `/oauth2/token`을 shared `AUTH` limiter와 같은 bounded retry policy에 연결
 - market GET의 401 generation-aware refresh/replay는 1회를 유지하면서 rate retry budget을 분리
 - Toss connector source allowlist를 exact 7개 Python 파일로 고정하고 backend inventory를 252개에서 317개로 확대
+- 독립 검토 P2 수정으로 429 이후 재시도의 limiter acquire wait를 같은 operation `_RetryBudget`에 포함하고 backend inventory를 321개로 확대
+- missing/invalid `Retry-After`에서 유효한 Reset이 잔여 single/cumulative budget을 넘으면 대기를 자르지 않고 즉시 safe deferred error로 종료
 
 ### Security
 
@@ -29,9 +32,10 @@
 
 - provider contract drift `NO`: OpenAPI `3.1.0`, REST API `1.2.14`, canonical SHA-256 `fccf49abd11f37f557bdd349138f4a03c42b829ebd8b5c14ab4907116fb84c7a`
 - implementation commit `e0017a1891b8f7048c5dc97565224749cf287989`
+- P2 cumulative-wait hardening implementation commit `fe65076021f2cc9b3c8d533c3e844b9b9699d5b9`
 - Node.js 24.19.0, npm 11.17.0에서 최종 `scripts/test.ps1` exit code 0
-- backend 317/317, frontend 43/43, E2E 2/2, migration, fixture idempotency, OpenAPI, build 2회, secret scan, CP2-C policy scan PASS
-- standard test outbound network 0; retry constants와 무관하게 connector target 140개가 약 1초에 완료
+- backend 321/321, frontend 43/43, E2E 2/2, migration, fixture idempotency, OpenAPI, build 2회, secret scan, CP2-C policy scan PASS
+- standard test outbound network 0; retry constants와 무관하게 connector target 144개가 약 1초에 완료
 
 ### Limitations
 

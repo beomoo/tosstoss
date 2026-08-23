@@ -166,3 +166,28 @@
 - CP2-D: `NOT STARTED`
 - 실제 Toss API 요청: `없음`
 - 실제 credential 사용: `없음`
+
+## 2026-08-23 — Phase 2 CP2-C 독립 검토 P2 cumulative-wait hardening
+
+- 시작 branch는 `feature/phase-02-toss`, baseline/local/origin SHA는 `e60872e28c30502b9cb5477922c34f1ce05d6827`이었고 작업트리는 clean이었다. reset, rebase, force push는 사용하지 않았다.
+- 독립 검토에서 429의 `X-RateLimit-Remaining=0`과 유효한 `X-RateLimit-Reset`이 만든 다음 시도 `_TossRateLimiter.acquire()` 대기가 `_RetryBudget.cumulative_sleep_seconds`에 포함되지 않는 P2 1건을 확인했다. 이 때문에 missing/invalid `Retry-After`가 반복되면 backoff 1초+2초만 기록하면서 Reset block으로 실제 fake/production 요청 경로가 누적 30초 ceiling을 우회할 수 있었다.
+- 최초 정상 요청의 선제적 local throttling은 기존대로 retry budget과 분리했다. 429 이후 재시도 시도의 limiter acquire에는 같은 operation budget을 전달해 실제 acquire wait를 backoff/Retry-After wait와 함께 기록한다.
+- missing/invalid `Retry-After`에서 `Remaining=0`과 유효한 Reset이 있으면 Reset 전체가 현재 잔여 single/cumulative budget 안인지 retry 결정 시 먼저 검사한다. 초과하면 짧게 잘라 sleep하거나 premature retry하지 않고 shared block state를 보존한 `TossRetryDeferredError`로 즉시 종료한다. 동시 상태 변화로 acquire 시점 block이 늘어난 경우도 같은 ceiling 검사로 fail closed한다.
+- deterministic 회귀 4개를 추가했다: `429 + missing Retry-After + Reset=30` 반복, OAuth 429의 invalid `Retry-After + Reset=31`, 누적 ceiling 정확히 직전/직후, fake sleeper 총합이 `MAX_CUMULATIVE_RETRY_SLEEP_SECONDS=30` 이하임을 검증한다. connector target은 140개에서 144개, backend inventory는 317개에서 321개로 증가했다.
+- 수정 중 실패/은폐 이력은 없다. target connector `144/144`, mypy 47 source, 전체 backend `321/321`, CP2-C policy scan이 통과했다. 수동 검사 생성 캐시는 scanner 예외 없이 exact generated directory만 정리했다.
+- 최종 `scripts/test.ps1`은 Node.js 24.19.0, npm 11.17.0에서 exit code `0`으로 통과했다. backend 321/321, frontend 43/43, E2E 2/2, migration 왕복, fixture 2차 import `inserted=0`, `updated=0`, `unchanged=13`, OpenAPI drift, production build 2회, secret scan, CP2-C policy scan이 모두 PASS했다.
+- standard test outbound Toss request는 0이었다. 실제 credential, OAuth token, market API, 실제 rate header·Retry-After·Reset과 provider timing은 사용·검증하지 않아 `[LIVE_UNVERIFIED]`를 유지한다.
+- CP2-C P2 hardening final implementation SHA: `fe65076021f2cc9b3c8d533c3e844b9b9699d5b9`
+- CP2-D started: `NO`
+
+## 현재 중지 지점 — Phase 2 CP2-C P2 hardening
+
+- Phase 2: `IMPLEMENTATION IN PROGRESS`
+- CP2-A: `PASS`
+- CP2-B: `PASS`
+- CP2-B P2 hardening: `PASS`
+- CP2-C: `PASS`
+- CP2-C P2 cumulative-wait hardening: `PASS`
+- CP2-D: `NOT STARTED`
+- 실제 Toss API 요청: `없음`
+- 실제 credential 사용: `없음`

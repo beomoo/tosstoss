@@ -7,7 +7,7 @@
 - Phase 1 PR: `#1`
 - Phase 1 merge commit: `b1829a7375704271a21267e1fcf62808147be593`
 - Release baseline tag: `v0.1.0`
-- 최종 QA일: `2026-08-23 (CP2-C)`
+- 최종 QA일: `2026-08-23 (CP2-C P2 cumulative-wait hardening)`
 - 실제 API 연결: `아니오`
 - 실제 주문 기능: `비활성 / 비범위`
 - OpenAI API 사용: `아니오`
@@ -40,7 +40,8 @@
 - [x] Phase 2 CP2-C client×group shared limiter와 7개 callable group exact mapping
 - [x] Phase 2 CP2-C strict rate header telemetry, bounded 429/5xx retry와 safe typed exhaustion/deferred error
 - [x] Phase 2 CP2-C concurrency·cancellation·401/OAuth 429 interaction offline 검증
-- [x] CP2-C 전체 회귀: backend 317개, frontend 43개, E2E 2개, build·secret·policy PASS
+- [x] CP2-C 독립 검토 P2 수정: 429 이후 Reset acquire wait와 backoff를 operation별 누적 30초 예산으로 통합
+- [x] CP2-C P2 수정 전체 회귀: backend 321개, frontend 43개, E2E 2개, build·secret·policy PASS
 
 ## Phase 1 종료 기준
 

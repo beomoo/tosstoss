@@ -184,6 +184,7 @@ checkpoint 단위로 connector/config/dependency/policy 변경을 revert하고 f
 - retry policy는 승인 계획대로 최초 포함 최대 3회, 단일·누적 retry sleep 30초, 1초 기준 지수 backoff와 bounded additive jitter다. 유효한 `Retry-After`가 30초를 넘으면 짧게 잘라 재시도하지 않고 deferred error를 반환한다.
 - 429의 exact rate-limit code와 `500/502/503/504`의 `internal-error`/`maintenance`만 자동 retry한다. 401 replay는 기존 최대 1회이며 transport error는 evidence 없이 retry 대상으로 넓히지 않았다.
 - synthetic credential, `httpx.MockTransport`, fake time만 사용했고 실제 provider API 호출이나 token/rate telemetry 저장은 하지 않았다.
+- 독립 검토 P2 후 429로 시작된 재시도에서는 backoff와 다음 limiter acquire의 Reset block을 하나의 operation 누적 30초 ceiling으로 계산한다. 정상 최초 요청의 선제적 local throttling은 retry budget과 분리하되, Reset이 잔여 single/cumulative budget을 넘으면 짧게 잘라 재시도하지 않고 safe deferred error로 종료한다.
 - CP2-D live preflight가 남아 있으므로 ADR 상태는 `PROPOSED`를 유지하며 CP2 전체 구현 또는 승인으로 간주하지 않는다.
 
 ---
