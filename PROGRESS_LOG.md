@@ -85,8 +85,8 @@
 - 시작 branch는 `feature/phase-02-toss`, rollback base는 `aa779cac5839dad260a2001eaea6661fd9bbe216`이었고 작업트리는 clean이었다. reset, rebase, force push, cherry-pick은 사용하지 않았다.
 - application code 변경 전 canonical OpenAPI를 새로 확인했다. OpenAPI `3.1.0`, REST API `1.2.14`, SHA-256 `fccf49abd11f37f557bdd349138f4a03c42b829ebd8b5c14ab4907116fb84c7a`, exact origin, OAuth/error schema, 12개 callable endpoint와 rate metadata가 승인 기준과 동일해 `PROVIDER_CONTRACT_DRIFT=NO`로 판정했다.
 - `auth.py`, `client.py`, `errors.py`, `models.py`를 추가하고 Toss package export를 갱신했다. dependency, DB migration, fixture, frontend application source와 public route는 변경하지 않았다.
-- application-owned `TossHttpClient` 하나가 `TossTokenManager` 하나를 소유한다. token/monotonic expiry는 process memory에만 두고 startup/import에서 발급하지 않으며 credential 누락·partial 상태는 실제 issuance 시 structured error로 fail closed한다.
-- token 응답은 extra-forbid strict model로 `access_token`, exact `Bearer`, positive strict integer `expires_in`을 검증한다. token은 `SecretStr`/safe `TokenLease`로 감싸 repr·error·log·DB·raw·QA evidence에 노출하지 않는다.
+- application-owned `TossHttpClient` 하나가 connector-private token manager 하나를 소유한다. token/monotonic expiry는 process memory에만 두고 startup/import에서 발급하지 않으며 credential 누락·partial 상태는 실제 issuance 시 structured error로 fail closed한다.
+- token 응답은 extra-forbid strict model로 `access_token`, exact `Bearer`, positive strict integer `expires_in`을 검증한다. token은 `SecretStr`/private lease로 감싸 repr·error·log·DB·raw·QA evidence에 노출하지 않는다.
 - 100 concurrent `get_token()`에서 OAuth POST 1회, issuance 실패 후 lock release, cancellation 후 재호출, short TTL bounded margin, expiry 재발급, explicit/generation-aware invalidation을 deterministic하게 검증했다.
 - HTTP transport는 `https://openapi.tossinvest.com`과 11개 enum market GET path만 외부 API로 노출한다. POST는 내부 `/oauth2/token` 하나뿐이며 raw URL/method/query string/header override API가 없다.
 - `trust_env=False`, redirects disabled, TLS verification enabled, connect/write/pool 5초·read 10초 timeout, OAuth 64 KiB·market JSON 32 MiB streaming ceiling을 고정했다. token POST에는 Bearer를 넣지 않고 market GET에만 내부 Authorization을 구성한다.
@@ -95,7 +95,7 @@
 - 실패·수정 이력: 첫 통합 실행은 수동 Ruff 실행이 만든 `.ruff_cache`를 secret scan이 거부해 exit 1이었다. cache를 제거한 두 번째 통합 실행은 수동 mypy의 `.mypy_cache`와 합성 credential 표현을 secret scan이 거부해 exit 1이었다. 스캐너 예외를 추가하지 않고 cache 제거, 합성 값 분할과 안전한 변수명으로 수정했으며 독립 secret scan PASS 후 전체 회귀를 처음부터 다시 실행했다.
 - 최종 `scripts/test.ps1`은 Node.js 24.19.0, npm 11.17.0에서 exit code `0`으로 통과했다. backend 251/251, frontend 43/43, E2E 2/2, migration 왕복, fixture 2차 import `inserted=0`, `updated=0`, `unchanged=13`, OpenAPI drift, production build 2회, secret scan, CP2-B policy scan이 모두 PASS했다.
 - standard test outbound network는 0이었다. 모든 connector test는 synthetic credential과 `httpx.MockTransport`만 사용했으며 실제 Toss token/market 요청과 실제 credential 사용은 없었다.
-- CP2-B 범위 P0/P1/P2 결함은 없다. live OAuth, 허용 IP, 실제 response/rate header는 `[LIVE_UNVERIFIED]`로 남는다.
+- 초기 종료 시 CP2-B 범위 P0/P1/P2 결함이 없다고 기록했으나, 후속 독립 검토에서 아래 P2 token-boundary 노출 1건이 발견·수정됐다. live OAuth, 허용 IP, 실제 response/rate header는 `[LIVE_UNVERIFIED]`로 남는다.
 - CP2-B rollback base: `aa779cac5839dad260a2001eaea6661fd9bbe216`
 - CP2-B validated implementation SHA: `6a823edc6b3e02cf1c06778f26045f7c535066ed`
 - rollback 필요: `NO`; revert commit: `없음`
@@ -106,6 +106,28 @@
 - Phase 2: `IMPLEMENTATION IN PROGRESS`
 - CP2-A: `PASS`
 - CP2-B: `PASS`
+- CP2-C: `NOT STARTED`
+- 실제 Toss API 요청: `없음`
+- 실제 credential 사용: `없음`
+
+## 2026-08-23 — Phase 2 CP2-B P2 token-boundary 보안 하드닝
+
+- 독립 검토에서 `TossHttpClient.token_manager` public property를 통해 application caller가 token manager와 lease에 접근하고, lease의 raw Authorization value extraction 메서드까지 호출할 수 있는 P2 1건을 발견했다.
+- public `token_manager` accessor를 제거하고 manager field를 `TossHttpClient`의 name-mangled private implementation으로 바꿨다. token manager와 lease 타입도 connector-private 타입으로 축소했다.
+- raw bearer token을 반환하는 메서드를 삭제했다. private lease는 connector-internal capability key가 있을 때 transport request에 Authorization을 직접 적용하고 raw token이나 header value를 반환하지 않는다.
+- token manager 단위 테스트는 production client accessor 대신 `auth.py`의 `MockTransport` 전용 internal test seam을 사용하도록 전환했다. 100 concurrency single-flight, monotonic expiry, explicit/generation-aware invalidation, 동시·지연 401 replay의 검증 의미는 유지했다.
+- application runtime에 `.token_manager`, public token manager/lease 타입, raw extraction 메서드가 다시 나타나면 실패하는 backend negative test와 policy canary를 추가했다. backend inventory는 252개가 됐다.
+- 첫 전체 실행은 backend 252/252, frontend 43/43, migration/fixture/OpenAPI, build 2회, E2E 2/2까지 통과한 뒤 secret scan의 index/working-tree 동일성 전제에서 정상 차단됐다. 변경을 stage하고 전체 `scripts/test.ps1`을 처음부터 재실행했다.
+- 최종 전체 실행은 Node.js 24.19.0, npm 11.17.0에서 exit code `0`이었다. backend 252/252, frontend 43/43, E2E 2/2, migration 왕복, fixture idempotency, OpenAPI drift, production build 2회, secret scan, CP2-B policy scan이 모두 PASS했다.
+- CP2-C rate limiter/retry는 시작하거나 구현하지 않았다. 실제 Toss 요청과 실제 credential 사용도 없었다.
+- CP2-B P2 security hardening final validated implementation SHA: `94488f7caccd747b47d7d9f1d6546840dfb14b4b`
+- CP2-C started: `NO`
+
+## 현재 중지 지점 — Phase 2 CP2-B P2 hardening
+
+- Phase 2: `IMPLEMENTATION IN PROGRESS`
+- CP2-B: `PASS`
+- CP2-B P2 hardening: `PASS`
 - CP2-C: `NOT STARTED`
 - 실제 Toss API 요청: `없음`
 - 실제 credential 사용: `없음`
