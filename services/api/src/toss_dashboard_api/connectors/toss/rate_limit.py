@@ -241,7 +241,12 @@ class _RetryBudget:
         self.attempt_count = 1
         self.cumulative_sleep_seconds = 0.0
 
-    def next_timing(self, *, retry_after_seconds: int | None) -> RetryTimingDecision:
+    def next_timing(
+        self,
+        *,
+        retry_after_seconds: int | None,
+        reset_seconds: int | None = None,
+    ) -> RetryTimingDecision:
         if self.attempt_count >= MAX_TOTAL_ATTEMPTS:
             return RetryTimingDecision(RetryDisposition.EXHAUSTED, None)
 
@@ -254,6 +259,9 @@ class _RetryBudget:
                 return RetryTimingDecision(RetryDisposition.DEFER, delay)
             return RetryTimingDecision(RetryDisposition.RETRY, delay)
 
+        if reset_seconds is not None and not self.can_wait(float(reset_seconds)):
+            return RetryTimingDecision(RetryDisposition.DEFER, float(reset_seconds))
+
         retry_ordinal = self.attempt_count
         base_delay = INITIAL_BACKOFF_SECONDS * (2 ** (retry_ordinal - 1))
         delay = min(
@@ -265,7 +273,19 @@ class _RetryBudget:
         return RetryTimingDecision(RetryDisposition.RETRY, delay)
 
     def record_retry(self, delay_seconds: float) -> None:
+        self.record_wait(delay_seconds)
         self.attempt_count += 1
+
+    def can_wait(self, delay_seconds: float) -> bool:
+        return (
+            math.isfinite(delay_seconds)
+            and 0.0 <= delay_seconds <= MAX_SINGLE_RETRY_SLEEP_SECONDS
+            and self.cumulative_sleep_seconds + delay_seconds <= MAX_CUMULATIVE_RETRY_SLEEP_SECONDS
+        )
+
+    def record_wait(self, delay_seconds: float) -> None:
+        if not self.can_wait(delay_seconds):
+            raise ValueError("retry-related wait exceeds the connector ceiling")
         self.cumulative_sleep_seconds += delay_seconds
 
 
@@ -337,7 +357,12 @@ class _TossRateLimiter:
     def new_retry_budget(self) -> _RetryBudget:
         return _RetryBudget(self._jitter)
 
-    async def acquire(self, group: TossRateLimitGroup) -> None:
+    async def acquire(
+        self,
+        group: TossRateLimitGroup,
+        *,
+        retry_budget: _RetryBudget | None = None,
+    ) -> None:
         bucket = self._bucket(group)
         while True:
             async with bucket.lock:
@@ -356,7 +381,11 @@ class _TossRateLimiter:
                         (1.0 - bucket.state.tokens) / bucket.state.effective_limit,
                         MIN_THROTTLE_SLEEP_SECONDS,
                     )
+                if retry_budget is not None and not retry_budget.can_wait(delay):
+                    raise _RateLimitWaitDeferred(delay)
             await self._sleeper(delay)
+            if retry_budget is not None:
+                retry_budget.record_wait(delay)
 
     async def observe(
         self,

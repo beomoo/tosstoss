@@ -34,6 +34,7 @@ from toss_dashboard_api.connectors.toss.rate_limit import (
     RateHeaderDiagnostic,
     RetryDisposition,
     TossRateLimitGroup,
+    _RateLimitWaitDeferred,
     _RetryBudget,
     _TossRateLimiter,
     parse_rate_headers,
@@ -502,6 +503,97 @@ def test_excessive_retry_after_returns_deferred_without_sleep_or_retry() -> None
     run(scenario())
     assert get_calls == 1
     assert clock.sleeps == []
+
+
+def test_429_reset_wait_and_backoff_share_one_cumulative_budget() -> None:
+    get_calls = 0
+    clock = FakeTime()
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal get_calls
+        if request.url.path == TOKEN_PATH:
+            return response(200, token_payload())
+        get_calls += 1
+        return response(
+            429,
+            error_payload("rate-limit-exceeded"),
+            rate_headers=headers(remaining="0", reset="30"),
+        )
+
+    async def scenario() -> None:
+        connector, _clock = client(handler, clock)
+        async with connector:
+            with pytest.raises(TossRetryDeferredError) as captured:
+                await connector.get(TossStaticEndpoint.STOCKS)
+            assert captured.value.attempt_count == 2
+            assert captured.value.retry_after_seconds == 30
+
+    run(scenario())
+    assert get_calls == 2
+    assert clock.sleeps == [1.0, 29.0]
+    assert sum(clock.sleeps) == MAX_CUMULATIVE_RETRY_SLEEP_SECONDS
+
+
+def test_oauth_invalid_retry_after_and_reset_above_remaining_budget_defers() -> None:
+    token_calls = 0
+    clock = FakeTime()
+
+    def handler(_request: httpx.Request) -> httpx.Response:
+        nonlocal token_calls
+        token_calls += 1
+        return response(
+            429,
+            error_payload("rate-limit-exceeded"),
+            rate_headers=headers(remaining="0", reset="31", retry_after="invalid"),
+        )
+
+    async def scenario() -> None:
+        async with _token_manager_test_seam(
+            settings(),
+            httpx.MockTransport(handler),
+            monotonic=clock,
+            sleeper=clock.sleep,
+            jitter=lambda: 0.0,
+        ) as manager:
+            with pytest.raises(TossRetryDeferredError) as captured:
+                await manager.get_token()
+            assert captured.value.attempt_count == 1
+            assert captured.value.retry_after_seconds == 31
+
+    run(scenario())
+    assert token_calls == 1
+    assert clock.sleeps == []
+    assert sum(clock.sleeps) <= MAX_CUMULATIVE_RETRY_SLEEP_SECONDS
+
+
+@pytest.mark.parametrize(
+    ("reset_seconds", "should_defer"),
+    [("1", False), ("2", True)],
+)
+def test_retry_acquire_wait_honors_cumulative_boundary(
+    reset_seconds: str,
+    should_defer: bool,
+) -> None:
+    clock = FakeTime()
+    limiter = _TossRateLimiter(monotonic=clock, sleeper=clock.sleep, jitter=lambda: 0.0)
+    budget = _RetryBudget(lambda: 0.0)
+    budget.record_retry(29.0)
+
+    async def scenario() -> None:
+        await limiter.observe(
+            TossRateLimitGroup.STOCK,
+            headers(remaining="0", reset=reset_seconds),
+            status_code=429,
+        )
+        if should_defer:
+            with pytest.raises(_RateLimitWaitDeferred):
+                await limiter.acquire(TossRateLimitGroup.STOCK, retry_budget=budget)
+        else:
+            await limiter.acquire(TossRateLimitGroup.STOCK, retry_budget=budget)
+
+    run(scenario())
+    assert budget.cumulative_sleep_seconds <= MAX_CUMULATIVE_RETRY_SLEEP_SECONDS
+    assert sum(clock.sleeps) <= 1.0
 
 
 @pytest.mark.parametrize("provider_code", ["internal-error", "maintenance"])

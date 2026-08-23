@@ -253,7 +253,10 @@ class TossHttpClient:
         budget: _RetryBudget,
     ) -> _DecodedResponse:
         try:
-            await self.__rate_limiter.acquire(group)
+            await self.__rate_limiter.acquire(
+                group,
+                retry_budget=budget if budget.attempt_count > 1 else None,
+            )
         except _RateLimitWaitDeferred as error:
             raise TossRetryDeferredError(
                 endpoint=endpoint_template,
@@ -327,7 +330,15 @@ class TossHttpClient:
         retry_after = (
             response.rate_headers.retry_after_seconds if response.status_code == 429 else None
         )
-        decision = budget.next_timing(retry_after_seconds=retry_after)
+        reset_seconds = (
+            response.rate_headers.reset_seconds
+            if response.status_code == 429 and response.rate_headers.remaining == 0
+            else None
+        )
+        decision = budget.next_timing(
+            retry_after_seconds=retry_after,
+            reset_seconds=reset_seconds,
+        )
         safe_code = safe_provider_code(provider_code)
         request_id = safe_request_id(envelope.error.requestId)
         if decision.disposition is RetryDisposition.EXHAUSTED:
@@ -343,9 +354,11 @@ class TossHttpClient:
                 retry_after_seconds=retry_after,
             )
         if decision.disposition is RetryDisposition.DEFER:
-            if retry_after is None:
-                raise AssertionError("deferred retry requires Retry-After")
-            await self.__rate_limiter.block_for(group, retry_after)
+            deferred_seconds = decision.delay_seconds
+            if deferred_seconds is None:
+                raise AssertionError("deferred retry requires a safe delay")
+            safe_deferred_seconds = math.ceil(deferred_seconds)
+            await self.__rate_limiter.block_for(group, deferred_seconds)
             raise TossRetryDeferredError(
                 endpoint=endpoint,
                 rate_group=group.value,
@@ -353,7 +366,7 @@ class TossHttpClient:
                 provider_code=safe_code,
                 request_id=request_id,
                 attempt_count=budget.attempt_count,
-                retry_after_seconds=retry_after,
+                retry_after_seconds=safe_deferred_seconds,
             )
         delay = decision.delay_seconds
         if delay is None:

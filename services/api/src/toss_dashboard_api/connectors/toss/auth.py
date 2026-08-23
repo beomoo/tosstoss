@@ -214,7 +214,10 @@ class _TossTokenManager:
     ) -> _OAuthAttempt:
         client_identifier, credential_value = self._credentials()
         try:
-            await self._rate_limiter.acquire(group)
+            await self._rate_limiter.acquire(
+                group,
+                retry_budget=budget if budget.attempt_count > 1 else None,
+            )
         except _RateLimitWaitDeferred as error:
             raise TossRetryDeferredError(
                 endpoint=TOKEN_PATH,
@@ -290,7 +293,15 @@ class _TossTokenManager:
         retry_after = (
             attempt.rate_headers.retry_after_seconds if attempt.status_code == 429 else None
         )
-        decision = budget.next_timing(retry_after_seconds=retry_after)
+        reset_seconds = (
+            attempt.rate_headers.reset_seconds
+            if attempt.status_code == 429 and attempt.rate_headers.remaining == 0
+            else None
+        )
+        decision = budget.next_timing(
+            retry_after_seconds=retry_after,
+            reset_seconds=reset_seconds,
+        )
         safe_code = safe_provider_code(provider_code)
         request_id = safe_request_id(envelope.error.requestId)
         if decision.disposition is RetryDisposition.EXHAUSTED:
@@ -306,9 +317,11 @@ class _TossTokenManager:
                 retry_after_seconds=retry_after,
             )
         if decision.disposition is RetryDisposition.DEFER:
-            if retry_after is None:
-                raise AssertionError("deferred retry requires Retry-After")
-            await self._rate_limiter.block_for(group, retry_after)
+            deferred_seconds = decision.delay_seconds
+            if deferred_seconds is None:
+                raise AssertionError("deferred retry requires a safe delay")
+            safe_deferred_seconds = math.ceil(deferred_seconds)
+            await self._rate_limiter.block_for(group, deferred_seconds)
             raise TossRetryDeferredError(
                 endpoint=TOKEN_PATH,
                 rate_group=group.value,
@@ -316,7 +329,7 @@ class _TossTokenManager:
                 provider_code=safe_code,
                 request_id=request_id,
                 attempt_count=budget.attempt_count,
-                retry_after_seconds=retry_after,
+                retry_after_seconds=safe_deferred_seconds,
             )
         delay = decision.delay_seconds
         if delay is None:
