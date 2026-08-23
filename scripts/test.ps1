@@ -1,5 +1,10 @@
 . (Join-Path $PSScriptRoot "common.ps1")
 
+$powerShellVersion = [System.Version]::Parse($PSVersionTable.PSVersion.ToString())
+if ($powerShellVersion -lt [System.Version]"7.4.0") {
+    throw "PowerShell 7.4 or newer is required. Found $powerShellVersion."
+}
+
 $nodePath = Assert-PhaseNodeRuntime
 $npmPath = Get-PhaseNpmCommandPath
 $startupNodeOptions = Get-Item -LiteralPath Env:NODE_OPTIONS -ErrorAction SilentlyContinue
@@ -102,6 +107,97 @@ function Invoke-CapturedChecked {
     return $output
 }
 
+function Get-VitestInventoryFromUtf8Capture {
+    param(
+        [Parameter(Mandatory = $true)][string] $FilePath,
+        [Parameter(Mandatory = $true)][string[]] $ArgumentList,
+        [string] $WorkingDirectory = (Get-RepoRoot)
+    )
+
+    $captureId = [System.Guid]::NewGuid().ToString("N")
+    $temporaryRoot = [System.IO.Path]::GetTempPath()
+    $stdoutPath = Join-Path $temporaryRoot "tosstoss-vitest-$captureId.stdout.json"
+    $stderrPath = Join-Path $temporaryRoot "tosstoss-vitest-$captureId.stderr.txt"
+    $strictUtf8 = [System.Text.UTF8Encoding]::new($false, $true)
+
+    try {
+        Push-Location -LiteralPath $WorkingDirectory
+        try {
+            & $FilePath @ArgumentList 1> $stdoutPath 2> $stderrPath
+            $exitCode = $LASTEXITCODE
+        }
+        finally {
+            Pop-Location
+        }
+
+        $stderrBytes = [System.IO.File]::ReadAllBytes($stderrPath)
+        if ($exitCode -ne 0) {
+            throw "Vitest inventory command failed with exit code $exitCode. stderr bytes: $($stderrBytes.Length)."
+        }
+        if ($stderrBytes.Length -ne 0) {
+            throw "Vitest inventory command emitted unexpected stderr."
+        }
+
+        $stdoutBytes = [System.IO.File]::ReadAllBytes($stdoutPath)
+        try {
+            $jsonText = $strictUtf8.GetString($stdoutBytes)
+        }
+        catch [System.Text.DecoderFallbackException] {
+            throw "Vitest inventory stdout is not valid UTF-8."
+        }
+        $roundTripBytes = $strictUtf8.GetBytes($jsonText)
+        if (-not [System.Linq.Enumerable]::SequenceEqual($stdoutBytes, $roundTripBytes)) {
+            throw "Vitest inventory stdout did not round-trip as UTF-8."
+        }
+
+        try {
+            $document = [System.Text.Json.JsonDocument]::Parse($jsonText)
+        }
+        catch [System.Text.Json.JsonException] {
+            throw "Vitest did not emit a valid JSON test inventory."
+        }
+        try {
+            if ($document.RootElement.ValueKind -ne [System.Text.Json.JsonValueKind]::Array) {
+                throw "Vitest JSON test inventory root is not an array."
+            }
+
+            $tests = @()
+            foreach ($item in $document.RootElement.EnumerateArray()) {
+                if ($item.ValueKind -ne [System.Text.Json.JsonValueKind]::Object) {
+                    throw "Vitest JSON test inventory contains a non-object item."
+                }
+                try {
+                    $nameProperty = $item.GetProperty("name")
+                    $fileProperty = $item.GetProperty("file")
+                }
+                catch [System.Collections.Generic.KeyNotFoundException] {
+                    throw "Vitest JSON test inventory contains an item without name or file."
+                }
+                if (
+                    $nameProperty.ValueKind -ne [System.Text.Json.JsonValueKind]::String -or
+                    $fileProperty.ValueKind -ne [System.Text.Json.JsonValueKind]::String -or
+                    [string]::IsNullOrWhiteSpace($nameProperty.GetString()) -or
+                    [string]::IsNullOrWhiteSpace($fileProperty.GetString())
+                ) {
+                    throw "Vitest JSON test inventory contains an item without a non-empty name and file."
+                }
+                $tests += [pscustomobject]@{
+                    Name = $nameProperty.GetString()
+                    File = $fileProperty.GetString()
+                }
+            }
+            return $tests
+        }
+        finally {
+            $document.Dispose()
+        }
+    }
+    finally {
+        Remove-Item -LiteralPath $stdoutPath -Force -ErrorAction SilentlyContinue
+        Remove-Item -LiteralPath $stderrPath -Force -ErrorAction SilentlyContinue
+    }
+}
+
 function Assert-PhaseOneTestInventory {
     $backendCollection = @(
         Invoke-CapturedChecked `
@@ -116,32 +212,19 @@ function Assert-PhaseOneTestInventory {
         throw "Backend test inventory is not exactly 357 collected tests."
     }
 
-    $frontendCollection = @(
-        Invoke-CapturedChecked `
+    $frontendTests = @(
+        Get-VitestInventoryFromUtf8Capture `
             -FilePath $npmPath `
             -ArgumentList @(
                 "exec", "--workspace", "apps/web", "--",
                 "vitest", "list", "--json"
             )
     )
-    try {
-        $frontendTests = @(
-            ($frontendCollection -join [Environment]::NewLine) |
-                ConvertFrom-Json -ErrorAction Stop
-        )
-    }
-    catch {
-        throw "Vitest did not emit a valid JSON test inventory."
-    }
     if (
         $frontendTests.Count -ne 43 -or
-        @($frontendTests | Where-Object {
-            $_ -isnot [pscustomobject] -or
-            [string]::IsNullOrWhiteSpace([string] $_.name) -or
-            [string]::IsNullOrWhiteSpace([string] $_.file)
-        }).Count -gt 0
+        @($frontendTests | Where-Object { $_.Name -match '[가-힣]' }).Count -eq 0
     ) {
-        throw "Frontend test inventory is not exactly 43 named tests."
+        throw "Frontend test inventory is not exactly 43 named tests including UTF-8 Korean names."
     }
 
     $e2eCollection = @(
