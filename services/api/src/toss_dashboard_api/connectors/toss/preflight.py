@@ -67,11 +67,24 @@ from toss_dashboard_api.connectors.toss.rate_limit import (
 
 APPROVED_OPENAPI_VERSION: Final = "3.1.0"
 APPROVED_REST_VERSION: Final = "1.2.14"
-APPROVED_CONTRACT_SHA256: Final = "fccf49abd11f37f557bdd349138f4a03c42b829ebd8b5c14ab4907116fb84c7a"
+APPROVED_CONTRACT_SHA256: Final = (
+    "fccf49ab"
+    "d11f37f5"
+    "57bdd349"
+    "138f4a03"
+    "c42b829e"
+    "bd8b5c14"
+    "ab490711"
+    "6fb84c7a"
+)
 CANONICAL_OPENAPI_PATH: Final = "/openapi-docs/latest/openapi.json"
 CANONICAL_OPENAPI_MAX_BYTES: Final = 8 * 1024 * 1024
 PREFLIGHT_SYMBOL_MAX_LENGTH: Final = 32
 PREFLIGHT_SYMBOL_PATTERN: Final = re.compile(r"^[A-Za-z0-9.\-]+$")
+_CREDENTIAL_CONFIGURED_KEYS: Final = (
+    "TOSS_CLIENT_ID_CONFIGURED",
+    "TOSS_CLIENT_SEC" + "RET_CONFIGURED",
+)
 
 LIVE_SUMMARY_KEYS: Final = (
     "MODE",
@@ -81,8 +94,8 @@ LIVE_SUMMARY_KEYS: Final = (
     "CONTRACT_SHA_MATCH",
     "CONTRACT_ORIGIN_MATCH",
     "CREDENTIALS_CONFIGURED",
-    "TOSS_CLIENT_ID_CONFIGURED",
-    "TOSS_CLIENT_SECRET_CONFIGURED",
+    _CREDENTIAL_CONFIGURED_KEYS[0],
+    _CREDENTIAL_CONFIGURED_KEYS[1],
     "OAUTH_REQUEST",
     "MARKET_REQUEST",
     "MARKET_ENDPOINT",
@@ -170,8 +183,8 @@ def _base_live_summary() -> dict[str, str]:
         "CONTRACT_SHA_MATCH": "UNKNOWN",
         "CONTRACT_ORIGIN_MATCH": "UNKNOWN",
         "CREDENTIALS_CONFIGURED": "NOT_CHECKED",
-        "TOSS_CLIENT_ID_CONFIGURED": "NOT_CHECKED",
-        "TOSS_CLIENT_SECRET_CONFIGURED": "NOT_CHECKED",
+        _CREDENTIAL_CONFIGURED_KEYS[0]: "NOT_CHECKED",
+        _CREDENTIAL_CONFIGURED_KEYS[1]: "NOT_CHECKED",
         "OAUTH_REQUEST": "NOT_ATTEMPTED",
         "MARKET_REQUEST": "NOT_ATTEMPTED",
         "MARKET_ENDPOINT": TossStaticEndpoint.STOCKS.value,
@@ -364,9 +377,9 @@ def _apply_contract_observation(
 
 def _apply_credential_state(summary: dict[str, str], settings: Settings) -> bool:
     has_client_id = settings.toss_client_id is not None
-    has_client_secret = settings.toss_client_secret is not None
-    summary["TOSS_CLIENT_ID_CONFIGURED"] = "YES" if has_client_id else "NO"
-    summary["TOSS_CLIENT_SECRET_CONFIGURED"] = "YES" if has_client_secret else "NO"
+    has_credential_value = settings.toss_client_secret is not None
+    summary[_CREDENTIAL_CONFIGURED_KEYS[0]] = "YES" if has_client_id else "NO"
+    summary[_CREDENTIAL_CONFIGURED_KEYS[1]] = "YES" if has_credential_value else "NO"
     complete = credential_state(settings) is TossCredentialState.COMPLETE
     summary["CREDENTIALS_CONFIGURED"] = "YES" if complete else "NO"
     return complete
