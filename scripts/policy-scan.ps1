@@ -307,6 +307,7 @@ function Test-IsApprovedConnectorRelativePath {
         "toss/client.py",
         "toss/errors.py",
         "toss/models.py",
+        "toss/preflight.py",
         "toss/rate_limit.py"
     ) -ccontains $normalizedPath
 }
@@ -1512,6 +1513,7 @@ $expectedBackendTestFiles = @(
     "tests/backend/test_temp_cleanup.py",
     "tests/backend/test_toss_auth.py",
     "tests/backend/test_toss_client.py",
+    "tests/backend/test_toss_preflight.py",
     "tests/backend/test_toss_rate_limit.py",
     "tests/backend/test_uvicorn_runtime_logging.py"
 )
@@ -1597,11 +1599,11 @@ $phaseControlFiles = @(
         Where-Object { $_.Name -cne "policy-scan.ps1" }
 )
 $approvedPhaseControlDigest = [string]::Concat(
-    "05ce3170", "0891d150", "505ceac8", "6b625225",
-    "faef1774", "a9e44ce9", "99d9c6d6", "d1275adf"
+    "0ed20806", "a217f86b", "13dabaaf", "2056ed36",
+    "181b4f44", "76ce7152", "dc6f2af2", "afb3ae7d"
 )
 if (
-    $phaseControlFiles.Count -ne 62 -or
+    $phaseControlFiles.Count -ne 65 -or
     (Get-FileSetManifestSha256 -Files $phaseControlFiles) -cne
         $approvedPhaseControlDigest
 ) {
@@ -1989,12 +1991,161 @@ if (
 if (
     -not (Test-IsApprovedConnectorRelativePath -RelativePath "toss/__init__.py") -or
     -not (Test-IsApprovedConnectorRelativePath -RelativePath "toss/auth.py") -or
+    -not (Test-IsApprovedConnectorRelativePath -RelativePath "toss/preflight.py") -or
     -not (Test-IsApprovedConnectorRelativePath -RelativePath "toss/rate_limit.py") -or
     (Test-IsApprovedConnectorRelativePath -RelativePath "generic_http/client.py") -or
     (Test-IsApprovedConnectorRelativePath -RelativePath "toss/future_transport.py") -or
     (Test-IsApprovedConnectorRelativePath -RelativePath "toss/../openai/client.py")
 ) {
     throw "The exact Toss connector namespace policy accepted a generic connector canary."
+}
+$livePreflightScriptPath = Join-Path $repoRoot "scripts\toss-live-preflight.ps1"
+$livePreflightRunnerPath = Join-Path $repoRoot "scripts\toss_live_preflight_runner.py"
+$livePreflightSourcePath = Join-Path $tossConnectorRoot "preflight.py"
+foreach ($requiredPreflightFile in @(
+    $livePreflightScriptPath,
+    $livePreflightRunnerPath,
+    $livePreflightSourcePath
+)) {
+    if (-not (Test-Path -LiteralPath $requiredPreflightFile -PathType Leaf)) {
+        throw "A required CP2-D1 preflight file is missing."
+    }
+    Assert-SafeMutableRepositoryFile -Path $requiredPreflightFile
+}
+
+$preflightParseTokens = $null
+$preflightParseErrors = $null
+$preflightScriptAst = [System.Management.Automation.Language.Parser]::ParseFile(
+    $livePreflightScriptPath,
+    [ref] $preflightParseTokens,
+    [ref] $preflightParseErrors
+)
+if ($preflightParseErrors.Count -ne 0 -or $null -eq $preflightScriptAst.ParamBlock) {
+    throw "The CP2-D1 PowerShell entrypoint has an invalid parameter contract."
+}
+$actualPreflightParameterNames = @(
+    $preflightScriptAst.ParamBlock.Parameters | ForEach-Object {
+        $_.Name.VariablePath.UserPath
+    }
+)
+$expectedPreflightParameterNames = @("Live", "ConfirmReadOnly", "SelfTest", "Symbol")
+$actualPreflightParameterSet = [System.Collections.Generic.HashSet[string]]::new(
+    [System.StringComparer]::Ordinal
+)
+$expectedPreflightParameterSet = [System.Collections.Generic.HashSet[string]]::new(
+    [System.StringComparer]::Ordinal
+)
+foreach ($parameterName in $actualPreflightParameterNames) {
+    $null = $actualPreflightParameterSet.Add($parameterName)
+}
+foreach ($parameterName in $expectedPreflightParameterNames) {
+    $null = $expectedPreflightParameterSet.Add($parameterName)
+}
+if (
+    $actualPreflightParameterSet.Count -ne $actualPreflightParameterNames.Count -or
+    -not $actualPreflightParameterSet.SetEquals($expectedPreflightParameterSet)
+) {
+    throw "The CP2-D1 PowerShell entrypoint parameter set is not exact."
+}
+
+function Test-IsForbiddenPreflightCredentialParameter {
+    param([Parameter(Mandatory = $true)][string] $Name)
+
+    return @(
+        "ClientId",
+        "ClientSecret",
+        "Token",
+        "Authorization",
+        "ApiKey",
+        "Secret"
+    ) -ccontains $Name
+}
+
+foreach ($credentialParameterCanary in @(
+    [string]::Concat("Client", "Id"),
+    [string]::Concat("Client", "Secret"),
+    [string]::Concat("Author", "ization"),
+    [string]::Concat("Api", "Key")
+)) {
+    if (-not (Test-IsForbiddenPreflightCredentialParameter -Name $credentialParameterCanary)) {
+        throw "The CP2-D1 credential-parameter policy missed a synthetic canary."
+    }
+}
+if (@($actualPreflightParameterNames | Where-Object {
+    Test-IsForbiddenPreflightCredentialParameter -Name $_
+}).Count -ne 0) {
+    throw "The CP2-D1 entrypoint accepts a credential or token parameter."
+}
+
+$preflightScriptContent = [string] (Get-Content -LiteralPath $livePreflightScriptPath -Raw)
+$preflightRunnerContent = [string] (Get-Content -LiteralPath $livePreflightRunnerPath -Raw)
+$preflightSourceContent = [string] (Get-Content -LiteralPath $livePreflightSourcePath -Raw)
+$runnerOptionMatches = [regex]::Matches(
+    $preflightRunnerContent,
+    'add_argument\(\s*"(?<option>--[a-z0-9-]+)"'
+)
+$actualRunnerOptions = @($runnerOptionMatches | ForEach-Object {
+    $_.Groups["option"].Value
+})
+$expectedRunnerOptions = @("--live", "--confirm-read-only", "--self-test", "--symbol")
+$actualRunnerOptionSet = [System.Collections.Generic.HashSet[string]]::new(
+    [System.StringComparer]::Ordinal
+)
+$expectedRunnerOptionSet = [System.Collections.Generic.HashSet[string]]::new(
+    [System.StringComparer]::Ordinal
+)
+foreach ($runnerOption in $actualRunnerOptions) {
+    $null = $actualRunnerOptionSet.Add($runnerOption)
+}
+foreach ($runnerOption in $expectedRunnerOptions) {
+    $null = $expectedRunnerOptionSet.Add($runnerOption)
+}
+if (
+    $actualRunnerOptionSet.Count -ne $actualRunnerOptions.Count -or
+    -not $actualRunnerOptionSet.SetEquals($expectedRunnerOptionSet)
+) {
+    throw "The CP2-D1 Python runner argument set is not exact."
+}
+
+$preflightCombinedContent = [string]::Join(
+    "`n",
+    @($preflightScriptContent, $preflightRunnerContent, $preflightSourceContent)
+)
+$prohibitedPreflightPersistencePattern = '(?i)(?:Start-Transcript|Out-File|Set-Content|' +
+    'Add-Content|Export-Csv|Export-Clixml|\.write_(?:text|bytes)\s*\(|' +
+    '\bopen\s*\([^\)]*,\s*["''](?:a|w|x|\+))'
+if ($preflightCombinedContent -match '(?i)(?:^|[\/])\.env(?:[\s"''`/\\]|$)') {
+    throw "The CP2-D1 live preflight contains prohibited .env loading."
+}
+if ($preflightCombinedContent -match $prohibitedPreflightPersistencePattern) {
+    throw "The CP2-D1 live preflight contains a provider-evidence persistence surface."
+}
+foreach ($requiredPreflightContract in @(
+    "READ_ONLY_ONE_SHOT",
+    "TOSS_LIVE_PREFLIGHT_ACK",
+    "TOSS_PREFLIGHT_SYMBOL"
+)) {
+    if ($preflightCombinedContent -cnotmatch [regex]::Escape($requiredPreflightContract)) {
+        throw "The CP2-D1 live preflight is missing a fixed gate contract."
+    }
+}
+
+$preflightImportPattern = '(?m)^\s*(?:from|import)\s+' +
+    'toss_dashboard_api\.connectors\.toss\.preflight\b'
+$unexpectedPreflightImporters = @(
+    $applicationRuntimeSourceFiles | Where-Object {
+        $_.FullName -cne [System.IO.Path]::GetFullPath($livePreflightSourcePath) -and
+        ([string] (Get-Content -LiteralPath $_.FullName -Raw)) -match $preflightImportPattern
+    }
+)
+if ($unexpectedPreflightImporters.Count -ne 0) {
+    throw "The CP2-D1 internal helper was imported by public application runtime source."
+}
+$tossInitContent = [string] (Get-Content -LiteralPath (
+    Join-Path $tossConnectorRoot "__init__.py"
+) -Raw)
+if ($tossInitContent -match '(?i)\bpreflight\b') {
+    throw "The CP2-D1 internal helper was exported from the Toss package."
 }
 $forbiddenTossSurfaceCanaries = @(
     [string]::Concat('path = "/', 'orders"'),
@@ -2199,4 +2350,4 @@ Assert-NoRawPattern `
     -Message "A public token-manager or raw-token extraction surface was found." `
     -Files $applicationRuntimeSourceFiles
 
-Write-Host "Phase 2 CP2-C scope policy scan passed."
+Write-Host "Phase 2 CP2-D1 scope policy scan passed."

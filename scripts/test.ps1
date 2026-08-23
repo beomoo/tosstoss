@@ -112,8 +112,8 @@ function Assert-PhaseOneTestInventory {
             )
     )
     $backendText = $backendCollection -join [Environment]::NewLine
-    if ($backendText -notmatch '(?m)^321 tests collected in ') {
-        throw "Backend test inventory is not exactly 321 collected tests."
+    if ($backendText -notmatch '(?m)^357 tests collected in ') {
+        throw "Backend test inventory is not exactly 357 collected tests."
     }
 
     $frontendCollection = @(
@@ -157,7 +157,7 @@ function Assert-PhaseOneTestInventory {
         throw "Playwright test inventory is not exactly 2 tests in 1 file."
     }
 
-    Write-Host "Test inventory verified: backend=321, frontend=43, e2e=2"
+    Write-Host "Test inventory verified: backend=357, frontend=43, e2e=2"
 }
 
 function Clear-StaleBackendTestDirectories {
@@ -262,6 +262,8 @@ Invoke-PhaseScript -Name "typecheck.ps1"
 Invoke-PhaseScript `
     -Name "process-cleanup-canary.ps1" `
     -ArgumentList @("-Iterations", "20")
+Invoke-PhaseScript -Name "toss-live-preflight.ps1"
+Invoke-PhaseScript -Name "toss-live-preflight.ps1" -ArgumentList @("-SelfTest")
 Assert-PhaseOneTestInventory
 Invoke-Checked -FilePath $python -ArgumentList @(
     $pytestArguments + @("tests/backend", "-q")

@@ -33,7 +33,7 @@ def test_backend_external_http_client_imports_are_confined_to_toss_connector() -
     assert violations == []
 
 
-def test_only_exact_cp2_c_toss_connector_files_are_present() -> None:
+def test_only_exact_cp2_d1_toss_connector_files_are_present() -> None:
     connector_files = {
         path.relative_to(CONNECTOR_ROOT).as_posix()
         for path in CONNECTOR_ROOT.rglob("*")
@@ -52,6 +52,7 @@ def test_only_exact_cp2_c_toss_connector_files_are_present() -> None:
         "toss/client.py",
         "toss/errors.py",
         "toss/models.py",
+        "toss/preflight.py",
         "toss/rate_limit.py",
     }
 
