@@ -1,9 +1,10 @@
 # Phase 2 CP3-A — Security Master + Current Price 계획·계약
 
-- 문서 상태: `IMPLEMENTED — AWAITING GPT INDEPENDENT REVIEW`
-- 작성일: `2026-08-24` (`Asia/Seoul`)
+- 문서 상태: `REVISED AFTER INDEPENDENT REVIEW — AWAITING GPT RE-REVIEW`
+- 작성일: `2026-08-24`, 독립검증 보완일: `2026-08-25` (`Asia/Seoul`)
 - 기준 브랜치: `feature/phase-02-toss`
 - 시작 commit: `6bd5d2ae9c26f02f2cd4bd75a474633a9082fa16`
+- 독립검증 보완 시작 commit: `386a0b2fe7bd18ed4b662eb2695ff85cc2a08cd3`
 - checkpoint 경계: `CP3-A documentation/contract only`
 - 후속 상태: `CP3-B NOT STARTED`
 
@@ -29,6 +30,8 @@
 - `[LIVE_VERIFIED]` canonical provider contract drift 없음, OpenAPI `3.1.0`, provider REST `1.2.14`, actual OAuth issuance, credential acceptance, allowed-IP 실행 경로, `GET /api/v1/stocks`, 성공 응답의 Limit/Remaining/Reset rate header만 확인됐다.
 - `[LIVE_UNVERIFIED]` `/api/v1/stocks/all`, `/api/v1/prices`, 전체 market/enum/null/freshness semantics, natural 429와 actual 429/5xx는 확인되지 않았다.
 - `[PROPOSED_REPO_CONTRACT]` CP3-A는 Security Master와 Current Price의 endpoint 역할, identity, lifecycle, source trace, idempotency, additive migration, offline acceptance를 계약화한다. application, test, fixture, migration, dependency, runtime config, route 또는 collection job은 만들지 않는다.
+- `[CURRENT_REPO_FACT]` 독립검증 결과는 `CHANGES REQUIRED`, P0 0/P1 2였고 CP3-B는 승인되지 않았다. P1-01은 canonical mapping 전제의 순환 의존, P1-02는 최초 allocation 뒤 identifier enrichment reconciliation 부재다.
+- `[PROPOSED_REPO_CONTRACT]` 이번 revision은 provider-scoped price storage와 canonical current-price view를 분리하고, 최초 allocation 전 continuity-first reconciliation을 수행하도록 두 P1만 보완한다.
 
 ## B. Phase 1 계약과의 호환성
 
@@ -45,7 +48,7 @@
 
 | 충돌 | 영향 | disposition |
 |---|---|---|
-| `[CURRENT_REPO_FACT]` `docs/04` SecurityMaster 예시는 `corp_code=null`, `cik=null`, `mapping_status=VERIFIED`지만 실제 `Issuer` validator는 jurisdiction별 regulatory ID를 강제 | Toss만으로 canonical issuer를 만들면 거짓 ID 또는 validation 실패 | `[PROPOSED_REPO_CONTRACT]` provider staging identity에서 `mapping_status=UNRESOLVED`, explicit missing reason을 사용하고 canonical row publish 금지 |
+| `[CURRENT_REPO_FACT]` `docs/04` SecurityMaster 예시는 `corp_code=null`, `cik=null`, `mapping_status=VERIFIED`지만 실제 `Issuer` validator는 jurisdiction별 regulatory ID를 강제 | Toss만으로 canonical issuer를 만들면 거짓 ID 또는 validation 실패; canonical mapping을 price storage의 필수조건으로 두면 Phase 2가 Phase 3/4에 순환 의존 | `[PROPOSED_REPO_CONTRACT]` provider staging identity에서 `mapping_status=UNRESOLVED`, explicit missing reason을 사용한다. valid provider identity의 provider-scoped price는 저장할 수 있지만 canonical Security/company price publish는 verified mapping 전까지 금지한다. |
 | `[CURRENT_REPO_FACT]` `Security.exchange` required이나 현재 CP3 근거에는 Toss exchange semantics가 확정돼 있지 않음 | 임의 exchange 생성 위험 | `[PROPOSED_REPO_CONTRACT]` exchange가 검증될 때까지 staging 유지 |
 | `[CURRENT_REPO_FACT]` `SourceRecord` 관측/발표 시각 required, `[OFFICIAL_DOC_CONTRACT]` price timestamp nullable | fetch 시각을 관측시각으로 위조할 위험 | `[PROPOSED_REPO_CONTRACT]` ADR-011 revised provider source contract 사용 |
 | `[CURRENT_REPO_FACT]` Phase 1 source unique key는 revision 불가 | timestamp suffix로 멱등성을 회피할 위험 | `[PROPOSED_REPO_CONTRACT]` 신규 provider source-version table과 latest pointer로 분리 |
@@ -71,8 +74,10 @@
 
 - `[OFFICIAL_DOC_CONTRACT]` `symbols` 1~200개와 `symbol`, nullable `timestamp`, Decimal string `lastPrice`, `currency`를 사용한다.
 - `[LIVE_UNVERIFIED]` endpoint body, timestamp-null 빈도와 의미, 가격/currency semantics는 실제 확인하지 않았다.
-- `[PROPOSED_REPO_CONTRACT]` canonical `security_id`로 성공적으로 mapping되고 lifecycle/currency가 eligible인 security만 요청한다.
-- `[PROPOSED_REPO_CONTRACT]` unresolved, quarantined, collision 또는 stale-mapping security에는 normalized current price와 latest pointer를 publish하지 않는다.
+- `[PROPOSED_REPO_CONTRACT]` discovery/detail 검증을 통과한 valid provider identity 중 lifecycle/currency가 price-eligible이고 collision/quarantine 상태가 아닌 identity만 요청한다. canonical `security_id` 존재는 provider-scoped 요청·저장의 필수조건이 아니다.
+- `[PROPOSED_REPO_CONTRACT]` canonical mapping이 `UNRESOLVED`여도 `provider_security_identity_id`에 귀속된 `ProviderPriceSnapshot`과 provider-scoped latest state는 저장할 수 있다.
+- `[PROPOSED_REPO_CONTRACT]` canonical current-price view는 `security_id` linkage가 `VERIFIED`일 때만 생성·노출한다. unresolved provider price를 canonical company price, issuer-level analysis, OpenDART/SEC/13F 결합 또는 canonical Security API의 verified price로 표현하지 않는다.
+- `[PROPOSED_REPO_CONTRACT]` quarantined, collision, stale provider identity에는 provider-scoped normalized snapshot/latest도 publish하지 않는다.
 
 fallback endpoint, symbol 변환 규칙, exchange inference 또는 추가 endpoint는 추측하지 않는다. 기존 exact callable allowlist도 확대하지 않는다.
 
@@ -109,7 +114,7 @@ fallback endpoint, symbol 변환 규칙, exchange inference 또는 추가 endpoi
 7. currency가 market expectation과 일치
 8. identifier collision 없음
 
-`ELIGIBLE_FOR_MAPPING`은 canonical mapping `VERIFIED`와 다르며 price publish 권한을 주지 않는다.
+`ELIGIBLE_FOR_MAPPING`은 canonical mapping `VERIFIED`와 다르다. 이것만으로 canonical current-price publish 권한을 주지는 않지만, 별도 `PROVIDER_PRICE_ELIGIBLE` 검증에서 valid identity, supported lifecycle/type/common-share, currency 일치와 collision/quarantine 부재를 모두 확인하면 provider-scoped price 요청·저장은 허용할 수 있다.
 
 ## E. issuer/security/provider identifier
 
@@ -133,37 +138,50 @@ fallback endpoint, symbol 변환 규칙, exchange inference 또는 추가 endpoi
 - `[PROPOSED_REPO_CONTRACT]` ADR-012에 따라 `provider_security_identity`와 canonical `Issuer`/`Security`를 분리한다.
 - `[PROPOSED_REPO_CONTRACT]` staging row는 nullable `issuer_id`/`security_id`, `mapping_status=UNRESOLVED`, `missing_reasons.issuer_id=UNRESOLVED`, 필요 시 `missing_reasons.security_id=UNRESOLVED`를 가진다.
 - `[PROPOSED_REPO_CONTRACT]` OpenDART corp_code 또는 SEC CIK와 instrument mapping이 승인될 때만 canonical mapping event를 만들 수 있다.
+- `[PROPOSED_REPO_CONTRACT]` provider identity의 유효성과 canonical mapping 상태는 독립 축이다. valid·non-collision·non-quarantine provider identity는 canonical linkage 없이 provider-scoped price를 소유할 수 있다. 이후 승인된 mapping은 nullable `security_id` linkage만 추가하며 provider identity 또는 price history를 rekey하지 않는다.
 
-### E.3 exact ID/allocation algorithm
+### E.3 exact continuity-first reconciliation and ID allocation algorithm
 
 문자열은 UTF-8, separator `|`, Unicode NFC, provider symbol의 case는 원문을 보존하되 provider가 명시한 canonical case만 사용한다. 임의 upper/lower 변환은 하지 않는다.
 
-1. `canonical_request_id = "treq_" + sha256(method|path_template|canonical_query)`의 64 lowercase hex.
-2. 최초 staging anchor 우선순위:
-   - unique·valid ISIN이 있으면 `toss-identity-v1|market|ISIN|isin`;
-   - 아니면 non-null list date가 있으면 `toss-identity-v1|market|SYMBOL_LIST_DATE|symbol|listDate`;
-   - 둘 다 없으면 raw history에서 정렬상 최초 valid observation의 `toss-identity-v1|market|FIRST_SEEN_RAW|symbol|raw_content_hash`.
-3. `provider_security_identity_id = "tpsi_" + SHA-256(anchor)` 전체 64 lowercase hex.
-4. 같은 anchor는 항상 같은 ID를 반환한다. full digest ID가 다른 anchor와 충돌하면 suffix나 현재 시각을 붙이지 않고 collection을 `BLOCKED_COLLISION`으로 중단한다.
-5. allocation registry는 anchor, full digest, first source version과 mapping history를 보존한다. deterministic rebuild는 append-only raw/source manifest를 `(fetched_at, source_version_id)`로 정렬하고 동일 우선순위를 적용한다. 최초 승인 mapping event가 있으면 그 event가 anchor 선택보다 우선한다.
-6. 기존 Phase 1 `issuer_id`/`security_id`는 grandfathered ID로 그대로 둔다.
-7. 신규 canonical issuer는 승인된 regulatory anchor만 허용한다: `issuer-v1|KR|CORP_CODE|corp_code` 또는 `issuer-v1|US|CIK|cik`; `issuer_id = "issuer_" + SHA-256(anchor)`.
-8. 신규 canonical security는 승인된 mapping event의 immutable anchor `security-v1|issuer_id|instrument_identifier_kind|instrument_identifier`로 `security_id = "sec_" + SHA-256(anchor)`를 만든다. ISIN이 후일 변경돼도 ID를 재발급하지 않고 identifier history/revision을 추가한다.
-9. canonical anchor collision, duplicate active ISIN 또는 서로 다른 issuer 후보는 자동 병합하지 않고 `UNRESOLVED_COLLISION`으로 격리한다.
+1. `canonical_request_id = "treq_" + sha256(method|path_template|canonical_query)`의 64 lowercase hex를 계산하고 신규 observation과 source version을 보존한다.
+2. anchor 우선순위를 적용하기 전에 같은 provider/market의 active identity와 append-only `provider_identifier_history`에서 continuity 후보를 검색한다. evidence는 exact active symbol interval, unique valid ISIN history, exact listDate history, lifecycle interval과 source lineage이며 name-only 유사성은 evidence가 아니다.
+3. 서로 모순되지 않는 continuity evidence가 기존 identity 하나만 deterministic하게 가리키면 그 `provider_security_identity_id`를 재사용한다.
+4. 후속 ISIN/listDate/symbol은 기존 identity의 identifier history에 source version, `valid_from`, revision reason을 가진 enrichment/revision으로 추가한다. 기존 immutable allocation anchor와 ID는 변경하지 않는다.
+5. continuity evidence가 둘 이상의 기존 identity를 가리키거나 신규 identifier가 다른 active identity의 unique identifier와 충돌하면 자동 merge, 임의 winner 선택과 새 identity 생성을 모두 금지한다. observation을 `UNRESOLVED_COLLISION`으로 표시하고 관련 identity/price publish를 `QUARANTINE`한다.
+6. 기존 continuity evidence가 전혀 없을 때만 최초 allocation을 수행한다. 최초 anchor 우선순위는 다음과 같다.
+   - unique·valid ISIN: `toss-identity-v1|market|ISIN|isin`;
+   - ISIN이 없고 non-null list date가 있으면: `toss-identity-v1|market|SYMBOL_LIST_DATE|symbol|listDate`;
+   - 둘 다 없으면 최초 valid raw/source observation: `toss-identity-v1|market|FIRST_SEEN_RAW|symbol|raw_content_hash`.
+7. `provider_security_identity_id = "tpsi_" + SHA-256(anchor)` 전체 64 lowercase hex다. 같은 최초 anchor는 항상 같은 ID를 반환한다. full digest가 다른 anchor와 충돌하면 suffix나 현재 시각을 붙이지 않고 `BLOCKED_COLLISION`으로 중단한다.
+8. 최초 allocation 뒤 더 높은 우선순위 identifier가 나타나도 anchor migration/rekey/ID 재발급을 금지한다. allocation registry는 original anchor, full digest, first source version, enrichment와 mapping history를 영구 보존한다.
+9. deterministic rebuild는 append-only raw/source manifest를 `(fetched_at, source_version_id)`로 stable sort한 뒤 각 observation에 위 continuity-first algorithm을 순서대로 replay한다. 기존 approved mapping event도 linkage evidence로 replay하되 provider ID나 allocation anchor를 대체하지 않는다.
+10. approved canonical mapping event는 nullable `issuer_id`/`security_id` linkage와 `mapping_status=VERIFIED`만 추가한다. provider identity와 기존 provider price history ID/hash를 변경하거나 rekey하지 않는다.
+11. 기존 Phase 1 `issuer_id`/`security_id`는 grandfathered ID로 그대로 둔다.
+12. 신규 canonical issuer는 승인된 regulatory anchor만 허용한다: `issuer-v1|KR|CORP_CODE|corp_code` 또는 `issuer-v1|US|CIK|cik`; `issuer_id = "issuer_" + SHA-256(anchor)`.
+13. 신규 canonical security는 승인된 mapping event의 immutable anchor `security-v1|issuer_id|instrument_identifier_kind|instrument_identifier`로 `security_id = "sec_" + SHA-256(anchor)`를 만든다. ISIN이 후일 변경돼도 ID를 재발급하지 않고 identifier history/revision을 추가한다.
+14. canonical anchor collision, duplicate active ISIN 또는 서로 다른 issuer 후보는 자동 병합하지 않고 `UNRESOLVED_COLLISION`으로 격리한다.
 
-- `[PROPOSED_REPO_CONTRACT]` 위 알고리즘은 CP3-B 구현 제안이며 독립 검토 전 확정이 아니다.
+- `[PROPOSED_REPO_CONTRACT]` 위 알고리즘은 P1-02 보완 proposal이며 재검토와 사용자 승인 전 runtime 계약으로 확정되지 않는다.
 - `[USER_DECISION_REQUIRED]` 신규 canonical ID algorithm과 promotion authority를 승인해야 CP3-C mapping 구현을 시작할 수 있다.
 
 ### E.4 identifier history cases
 
 | case | required behavior |
 |---|---|
+| ISIN null → valid ISIN 등장 | exact symbol/lifecycle continuity가 기존 identity 하나를 가리키면 같은 ID 유지, ISIN enrichment history 추가, anchor/rekey/new identity 0 |
+| listDate null → valid listDate 등장 | exact continuity가 하나이면 같은 ID 유지, listDate enrichment history 추가, anchor/rekey 0 |
+| ISIN/listDate 둘 다 null → 이후 둘 다 등장 | 기존 first-seen identity를 먼저 찾고 두 identifier를 같은 identity history에 추가; 최초 priority 재적용·새 ID 생성 금지 |
+| 동일 symbol + identifier enrichment | active interval과 다른 evidence가 모순되지 않고 후보 하나이면 기존 ID 재사용 |
+| enrichment가 다른 active identity와 충돌 | 자동 merge/new identity/winner 선택 0; `UNRESOLVED_COLLISION` + 관련 price `QUARANTINE` |
 | symbol 변경 + 같은 verified ISIN | 기존 provider identity/internal ID 유지, old symbol `valid_to`, new symbol `valid_from`, mapping review event |
 | 같은 symbol + ISIN 변경 | 자동 overwrite 금지; share/class/corporate-action evidence 전까지 신규 candidate 또는 collision quarantine |
 | symbol 재사용 | old lifecycle close 후 별도 staging identity; old ID 부활 금지 |
 | ISIN missing | explicit `NOT_PROVIDED`; name-only promotion 금지 |
 | ISIN change | old value history 보존, source revision과 mapping review 필수 |
 | ISIN collision | 모든 관련 candidate quarantine; 하나를 임의 winner로 선택 금지 |
+| ISIN correction | 기존 값과 correction evidence를 모두 history로 보존; unique continuity가 하나일 때만 같은 ID 유지, 다른 active identity와 충돌하면 quarantine |
+| duplicate active ISIN | 관련 active identity 모두 `UNRESOLVED_COLLISION`; 자동 merge와 canonical/provider price publish 금지 |
 | market change | 동일 symbol이어도 별도 provider identifier validity; canonical merge는 승인 evidence 필요 |
 | share-class change | in-place class overwrite 금지; 새 security 후보로 처리 |
 | delisting/relisting | old validity close와 new observation 분리; 같은 ID 재사용은 verified continuity evidence가 있을 때만 |
@@ -192,57 +210,71 @@ fallback endpoint, symbol 변환 규칙, exchange inference 또는 추가 endpoi
 
 ## G. Current Price 계약
 
-### G.1 `PriceSnapshot` field contract
+### G.1 `ProviderPriceSnapshot` field contract
+
+`ProviderPriceSnapshot`은 Toss가 직접 식별한 provider instrument의 provider-scoped normalized price다. canonical `Issuer`/`Security`와 별도 identity를 가지며 Phase 2에서 Phase 3 OpenDART corp_code 또는 Phase 4 SEC CIK 없이 저장할 수 있다.
 
 | field | type/rule |
 |---|---|
 | `price_snapshot_id` | deterministic `SafeId`; semantic key + normalized hash로 생성 |
-| `security_id` | verified canonical security ID; unresolved이면 normalized publish 금지 |
+| `provider_security_identity_id` | required immutable provider identity ID; valid·non-collision·non-quarantine identity만 허용 |
 | `provider_symbol` | source spelling을 보존한 provider-scoped identifier |
 | `last_price` | canonical non-exponent Decimal JSON string; binary float/JSON number 금지 |
 | `currency` | provider response exact value를 보존하고 internal exact enum과 별도 검증 |
 | `provider_timestamp` | nullable aware provider timestamp; normalized value는 UTC |
 | `fetched_at` | required aware UTC response-complete time |
-| `source_record_id` | 신규 provider source-version record ID |
+| `source_version_id` | required immutable provider source-version record ID |
 | `raw_content_hash` | exact response raw bytes SHA-256 |
 | `normalized_content_hash` | 아래 semantic field set의 canonical SHA-256 |
-| `contract_version` | provider price contract 전용 version; 전역 v0.1.0 Literal과 분리 |
+| `provider_contract_version` | provider price contract 전용 version; 전역 v0.1.0 Literal과 분리 |
 | `freshness_status` | `FRESH|STALE|EXPIRED|UNKNOWN`; timestamp null이면 반드시 `UNKNOWN` |
 | `availability_status` | `AVAILABLE|DEGRADED|ERROR|UNAVAILABLE` |
 | `revision_status` | `ORIGINAL|AMENDED|SUPERSEDED`; duplicate는 신규 revision이 아님 |
+| `security_id` | optional canonical linkage; 없으면 null이며 가짜 ID 생성 금지 |
+| `canonical_mapping_status` | optional linkage state `UNRESOLVED|VERIFIED`; `security_id=null`이면 `VERIFIED` 금지 |
 
-### G.2 Decimal rules
+### G.2 canonical current-price view
+
+- canonical current-price view는 `ProviderPriceSnapshot`을 복사·rekey한 별도 history가 아니라 verified linkage를 통해 조회하는 projection이다.
+- `security_id`가 non-null이고 `canonical_mapping_status=VERIFIED`이며 provider snapshot 자체가 publish-eligible일 때만 생성·노출한다.
+- mapping이 `UNRESOLVED`이면 provider-scoped storage/latest는 가능하지만 canonical view row/count, canonical Security API price, issuer/company analysis 연결은 모두 0이다.
+- 후속 approved mapping은 linkage만 추가한다. 기존 `provider_security_identity_id`, `price_snapshot_id`, source/hash/revision chain과 historical rows를 변경하지 않는다.
+- mapping 취소·충돌 시 canonical projection을 중지하되 provider source/history를 삭제하지 않는다.
+
+### G.3 Decimal rules
 
 - 허용 grammar: `0` 또는 `[1-9][0-9]*(\.[0-9]+)?`; leading plus, leading zero, exponent, NaN, Infinity, whitespace, JSON number와 binary float를 거부한다.
-- `last_price > 0`일 때만 active common security의 current/latest publish 후보가 된다.
+- `last_price > 0`일 때만 active common provider identity의 provider-scoped current/latest publish 후보가 된다. canonical view에는 별도 verified mapping 조건이 추가된다.
 - exact string `0`은 missing으로 바꾸지 않지만 `NON_POSITIVE_PRICE` quality flag와 `DEGRADED` quarantine으로 처리해 latest pointer를 갱신하지 않는다.
 - 음수와 `-0`은 contract error로 reject한다.
 - 규모 상한을 binary float로 두지 않는다. storage length/Decimal precision 한계는 CP3-D1 test에서 explicit arbitrary-precision boundary로 정한다.
 
-### G.3 timestamp/null/freshness/availability
+### G.4 timestamp/null/freshness/availability
 
 | input state | availability | freshness | normalized/latest behavior |
 |---|---|---|---|
-| mapped, positive price, currency match, aware timestamp | `AVAILABLE` | CP3-D2 전 기본 `UNKNOWN`; 승인된 policy만 FRESH/STALE/EXPIRED 계산 | snapshot normalize 가능, latest atomic compare 가능 |
+| valid provider identity, positive price, currency match, aware timestamp | `AVAILABLE` | CP3-D2 전 기본 `UNKNOWN`; 승인된 policy만 FRESH/STALE/EXPIRED 계산 | provider snapshot normalize와 provider latest atomic compare 가능; canonical view는 verified linkage 필요 |
 | timestamp null, positive price | `DEGRADED` | `UNKNOWN` | `missing_reasons.provider_timestamp=NOT_PROVIDED`; snapshot audit/normalize 가능, user-facing latest pointer 갱신 금지 |
-| price missing/null | `UNAVAILABLE` | `UNKNOWN` | 0 대체 금지, PriceSnapshot 생성 금지, source/audit error만 기록 |
+| price missing/null | `UNAVAILABLE` | `UNKNOWN` | 0 대체 금지, ProviderPriceSnapshot 생성 금지, source/audit error만 기록 |
 | currency mismatch/unknown | `DEGRADED` | `UNKNOWN` | raw/source 보존, normalized current publish와 latest 갱신 금지 |
-| unresolved/unknown symbol | `UNAVAILABLE` | `UNKNOWN` | canonical security 가격 생성 금지 |
+| valid provider identity + canonical mapping unresolved | provider price 조건에 따름 | provider timestamp 조건에 따름 | provider snapshot/latest 가능; canonical view와 issuer/company analysis 0 |
+| unknown provider symbol, identity collision/quarantine | `UNAVAILABLE` | `UNKNOWN` | provider snapshot/latest와 canonical view 모두 금지 |
 | schema error | `ERROR` | `UNKNOWN` | raw 보존, LKG/latest 유지 |
 
 - `[OFFICIAL_DOC_CONTRACT]` provider `timestamp`는 null일 수 있고 `lastPrice`는 Decimal string 후보다.
 - `[PROPOSED_REPO_CONTRACT]` `fetched_at`을 `observed_at`으로 복사하거나 timestamp null에 임의 date를 생성하지 않는다.
 - `[USER_DECISION_REQUIRED]` FRESH/STALE/EXPIRED threshold와 market-calendar policy는 CP3-D2의 별도 live evidence 및 독립 승인 없이는 활성화하지 않는다.
 
-### G.4 duplicate/revision/latest/history
+### G.5 duplicate/revision/latest/history
 
 - timestamp가 있으면 semantic key는 `(provider, provider_identity_id, provider_timestamp)`다.
 - timestamp가 없으면 semantic key는 `(provider, provider_identity_id, source_version_id)`다. `fetched_at`을 자연키로 사용하지 않는다.
 - `price_snapshot_id = "price_" + SHA-256("price-v1|" + semantic_key + "|" + normalized_content_hash)`.
 - 같은 semantic key + 같은 normalized hash는 duplicate이며 새 normalized row/revision/latest write를 만들지 않는다. audit attempt는 남길 수 있다.
 - 같은 semantic key + 다른 normalized hash는 new revision이다. 이전 snapshot을 보존하고 `supersedes_id`를 연결한다.
-- current/latest state와 historical series는 분리한다. CP3에는 SQLite latest row 또는 pointer만 허용하며 누적 가격 history는 CP4 Parquet/DuckDB 범위다.
+- current/latest state와 historical series는 분리한다. CP3에는 SQLite provider-scoped latest row 또는 pointer만 허용하며 canonical current-price는 verified mapping projection으로 제공한다. 누적 가격 history는 CP4 Parquet/DuckDB 범위다.
 - 신규 오류, stale observation 또는 quarantined revision이 과거 정상 snapshot을 삭제하거나 latest pointer를 뒤로 이동시키지 못한다.
+- canonical mapping linkage의 추가·취소는 provider snapshot normalized hash/revision을 바꾸지 않는다. mapping event는 별도 identity/history로 보존한다.
 
 ## H. raw → normalized → storage 추적성
 
@@ -255,7 +287,7 @@ fallback endpoint, symbol 변환 규칙, exchange inference 또는 추가 endpoi
 | raw response payload | 받은 bytes와 status | canonical request ID + HTTP status + raw bytes hash |
 | source version record | provider contract 아래의 immutable source version | raw response ID + provider contract version; revision link 별도 |
 | normalized record | 한 entity/snapshot semantic version | dataset natural key + normalized semantic hash |
-| latest-state pointer | dataset/entity별 last known-good | unique `(dataset, canonical entity ID)`; atomic conditional update |
+| latest-state pointer | dataset/provider entity별 last known-good | provider price는 unique `(dataset, provider_security_identity_id)`; canonical view는 verified linkage projection; atomic conditional update |
 | audit event | attempt outcome와 count/status | attempt ID 참조; raw/body/secret 없음 |
 
 ### H.2 raw manifest 최소 필드
@@ -291,15 +323,15 @@ raw bytes는 temp file에 쓰고 가능한 범위에서 flush/fsync한 뒤 같�
 
 ### I.2 hash field set
 
-`normalized_content_hash`에 포함:
+provider instrument와 `ProviderPriceSnapshot`의 `normalized_content_hash`에 포함:
 
 - provider price/source contract version
 - dataset name
-- provider identity ID와 canonical security ID(있는 경우)
+- provider identity ID
 - provider symbol/market/security type/common/status/list/delist/ISIN 등 해당 normalized semantic fields
 - price value, currency, provider timestamp
 - explicit missing reasons
-- mapping/lifecycle/revision semantic state
+- provider lifecycle/revision semantic state
 - parser/normalizer policy version
 
 제외:
@@ -310,6 +342,7 @@ raw bytes는 temp file에 쓰고 가능한 범위에서 flush/fsync한 뒤 같�
 - latest pointer ID
 - 현재 시각에 따라 변하는 calculated freshness
 - log/request correlation ID
+- nullable canonical `security_id`, canonical mapping status/event/evidence; 이것들은 별도 mapping record/hash에 포함하며 provider price history를 rekey하지 않음
 
 canonical JSON은 UTF-8, object key 정렬, insignificant whitespace 없음, Decimal string 보존, aware datetime UTC `Z`, NaN/Infinity 금지다. 비결정적 field 때문에 동일 semantic data의 hash가 달라지면 test 실패다.
 
@@ -344,7 +377,7 @@ canonical JSON은 UTF-8, object key 정렬, insignificant whitespace 없음, Dec
 
 - `[CURRENT_REPO_FACT]` 기존 `SourceRecord` v0.1.0은 그대로 유지한다.
 - `[PROPOSED_REPO_CONTRACT]` 새 source contract는 별도 class/table/OpenAPI exposure 정책을 갖고 기존 fixture/API response를 바꾸지 않는다.
-- `[USER_DECISION_REQUIRED]` ADR-011은 `PROPOSED — REVISED FOR CP3-A / AWAITING INDEPENDENT REVIEW`이며 승인 전 CP3-B 구현을 시작하지 않는다.
+- `[USER_DECISION_REQUIRED]` ADR-011은 `PROPOSED — INDEPENDENT REVIEW P1-NOT-BLOCKING / AWAITING USER APPROVAL`이며 승인 전 CP3-B 구현을 시작하지 않는다.
 
 ## K. DB migration/rollback
 
@@ -361,13 +394,14 @@ migration 후보명은 `0002_phase_02_cp3_foundation`이다. 이번 checkpoint�
 | `canonical_requests` | deterministic secret-free request identity |
 | `provider_source_versions` | raw/source version, hash, contract, supersession |
 | `audit_events` | attempt/source/normalization publish audit |
-| `current_price_latest` | verified security별 current snapshot payload 또는 latest pointer 하나 |
+| `provider_current_price_latest` | valid provider identity별 current snapshot payload 또는 latest pointer 하나; canonical mapping nullable |
+| canonical current-price view | 별도 history table이 아닌 verified provider→security linkage projection 후보 |
 
 ### K.2 constraints and rollback
 
 - `0001_phase_01`에서 forward upgrade하고 기존 Phase 1 fixture row와 FK를 byte/semantic 보존한다.
 - 신규 FK는 provider source/version과 staging/mapping/latest 사이에만 추가하고 기존 table destructive rebuild를 하지 않는다.
-- anchor digest, provider identity history validity, source version unique, latest `(dataset, security_id)` unique를 명시한다.
+- anchor digest, provider identity history validity, source version unique, provider latest `(dataset, provider_security_identity_id)` unique를 명시한다. canonical linkage unique/validity는 mapping table에서 별도 검증한다.
 - corp_code/CIK fake backfill, 기존 fixture 변환, 기존 `0001` 수정, SQLite 가격 history 누적을 금지한다.
 - migration acceptance는 disposable DB에서 `upgrade → downgrade → re-upgrade`를 실행한다. production DB destructive downgrade는 금지한다.
 - migration 중 실패하면 transaction rollback, unpublished manifest, LKG pointer를 유지한다.
@@ -392,7 +426,8 @@ migration 후보명은 `0002_phase_02_cp3_foundation`이다. 이번 checkpoint�
 ### CP3-D1 — Current Price Offline
 
 - `/prices` DTO/fixture, 최대 200-symbol chunking
-- Decimal/currency/timestamp-null/source trace/latest-state/idempotency/revision
+- provider identity 기준 `ProviderPriceSnapshot`, nullable canonical linkage와 verified-only canonical current-price view
+- Decimal/currency/timestamp-null/source trace/provider latest-state/idempotency/revision
 - full offline regression
 
 ### CP3-D2 — Separately Approved Minimal Live Verification
@@ -465,7 +500,7 @@ migration 후보명은 `0002_phase_02_cp3_foundation`이다. 이번 checkpoint�
 | D-P05 | offset normalization | valid non-UTC offset timestamp | exact UTC conversion, raw offset 보존 | P1 | expected instant equality assert |
 | D-P06 | timestamp null | positive price + null timestamp | DEGRADED/UNKNOWN + reason, latest unchanged | P1 | fetched_at 복사 부재 assert |
 | D-P07 | currency mismatch | KR+USD 또는 US+KRW | quarantine, publish 금지 | P0 | existing LKG unchanged |
-| D-P08 | unknown symbol | response symbol not requested/mapped | reject/quarantine | P0 | synthetic security creation zero |
+| D-P08 | unknown provider symbol | response symbol not requested/provider-mapped | reject/quarantine | P0 | synthetic provider/canonical security creation zero |
 | D-P09 | exact duplicate | same request + same payload/hash | one source/normalized version, audit optional | P1 | row counts before/after exact |
 | D-P10 | changed revision | same semantic key + changed price/hash | new revision + supersedes, prior preserved | P1 | both versions queryable |
 | D-P11 | 200 chunk 경계 | 201 eligible symbols | batches 200+1, no loss/duplication | P1 | exact symbol multiset compare |
@@ -498,6 +533,20 @@ migration 후보명은 `0002_phase_02_cp3_foundation`이다. 이번 checkpoint�
 | FG-06 | empty collection 금지 | required nonempty fixtures | zero records이면 fail | P1 | explicit minimum counts |
 | FG-07 | unknown default 금지 | unseen enum | reject/quarantine | P0 | default branch coverage와 row count zero |
 
+### M.7 independent-review P1 regression acceptance
+
+아래 일곱 case는 CP3-B/C/D 구현 시 삭제·완화할 수 없는 P0 acceptance다.
+
+| ID | 목적 | 입력 | 기대 결과 | severity | false-green 방지 |
+|---|---|---|---|---|---|
+| IR-A | canonical mapping 없는 provider price | valid provider identity, `security_id=null`, `mapping_status=UNRESOLVED`, positive valid Toss price | `ProviderPriceSnapshot`과 provider latest 저장 가능; canonical current-price publish 0; issuer/company analysis link 0 | P0 | provider snapshot count 1과 canonical view/issuer link count 0을 동시에 assert |
+| IR-B | verified mapping promotion의 ID 보존 | 기존 provider price history + 후속 approved canonical mapping | 기존 provider identity/price/source/hash/revision ID 유지; `security_id` linkage만 추가; historical rekey 0 | P0 | mapping 전후 모든 provider/history primary key와 hash set exact equality |
+| IR-C | fake regulatory ID 방지와 provider storage 분리 | Toss symbol만 있고 corp_code/CIK 없음 | corp_code/CIK 생성 0; valid provider identity 기준 price 저장 가능 | P0 | regulatory column null/row count 0과 provider snapshot count 1을 함께 assert |
+| IR-D | ISIN enrichment continuity | first `symbol=A, ISIN=null`; second `symbol=A, ISIN=valid` | 같은 `provider_security_identity_id`; identifier history 추가; new identity 0 | P0 | identity count/ID exact equality와 new ISIN history source link assert |
+| IR-E | listDate enrichment continuity | first `symbol=A, listDate=null`; second same symbol + valid listDate | 같은 provider identity; listDate history 추가; anchor/rekey 0 | P0 | allocation anchor digest before/after exact equality와 identity count assert |
+| IR-F | enrichment collision fail closed | existing identity A/B; 신규 ISIN evidence가 둘과 충돌 | auto merge 0; new identity 0; `UNRESOLVED_COLLISION`/`QUARANTINE`; 관련 latest 갱신 0 | P0 | merge/new/latest counts 0과 두 original identity/history 보존 assert |
+| IR-G | enrichment 포함 deterministic rebuild | 동일 raw/source history를 clean DB에서 처음부터 replay | 최종 provider identity ID, immutable anchor와 identifier history가 원 실행과 동일 | P0 | 원 실행/rebuild의 ordered canonical dump와 hash set byte-for-byte compare; current clock 제외 |
+
 ## N. 비범위와 보안
 
 CP3-A 및 후속 별도 승인 전 계속 금지:
@@ -517,21 +566,21 @@ CP3-A 및 후속 별도 승인 전 계속 금지:
 
 | decision | 상태 | conservative default |
 |---|---|---|
-| ADR-011 nullable provider source time | `[USER_DECISION_REQUIRED]` revised PROPOSED | 기존 SourceRecord 유지, provider normalized publish 시작 금지 |
-| ADR-012 provider staging identity | `[USER_DECISION_REQUIRED]` PROPOSED | canonical Issuer/Security 자동 생성 금지 |
+| ADR-011 nullable provider source time | `[USER_DECISION_REQUIRED]` `PROPOSED — INDEPENDENT REVIEW P1-NOT-BLOCKING / AWAITING USER APPROVAL` | 기존 SourceRecord 유지, provider source contract 구현 시작 금지 |
+| ADR-012 provider staging identity | `[USER_DECISION_REQUIRED]` `PROPOSED — REVISED AFTER INDEPENDENT REVIEW / AWAITING RE-REVIEW` | valid provider identity price만 provider scope에 허용; canonical Issuer/Security 자동 생성·canonical price publish 금지 |
 | exact provider securityType enum mapping | `[LIVE_UNVERIFIED]` + independent evidence required | unknown 전부 quarantine |
-| 신규 canonical ID/promotion authority | `[USER_DECISION_REQUIRED]` | staging UNRESOLVED 유지 |
+| continuity-first provider ID와 canonical promotion authority | `[USER_DECISION_REQUIRED]` | existing identity 우선 재사용; collision quarantine; staging UNRESOLVED 유지 |
 | exchange mapping | `[LIVE_UNVERIFIED]` | exchange 추정 금지, canonical promotion 금지 |
 | timestamp-null current publication | `[PROPOSED_REPO_CONTRACT]` | DEGRADED/UNKNOWN, latest pointer 갱신 금지 |
 | freshness thresholds | `[USER_DECISION_REQUIRED]` after minimal live evidence | 항상 UNKNOWN |
-| SQLite current payload vs pointer | `[USER_DECISION_REQUIRED]` CP3-B schema review | history 금지, 최소 latest pointer 우선 |
+| SQLite provider current payload vs pointer | `[USER_DECISION_REQUIRED]` CP3-B schema review | provider identity 기준 history 금지, 최소 latest pointer 우선; canonical은 verified linkage view |
 
 ## checkpoint 판정
 
 - CP1: `PASS`
 - CP2: `COMPLETE`
-- CP3-A: `IMPLEMENTED — AWAITING GPT INDEPENDENT REVIEW`
+- CP3-A: `REVISED AFTER INDEPENDENT REVIEW — AWAITING GPT RE-REVIEW`
 - CP3-B: `NOT STARTED`
 - Phase 2: `IMPLEMENTATION IN PROGRESS`
 
-CP3-A는 application implementation 0, fixture/test/migration/dependency 변경 0, actual credential/API usage 0을 전제로 한다. 독립 검토와 사용자 승인 전에는 이 문서의 제안을 `ACCEPTED`, `PASS` 또는 runtime contract로 표시하지 않는다.
+CP3-A는 application implementation 0, fixture/test/migration/dependency 변경 0, actual credential/API usage 0을 전제로 한다. 재검토와 사용자 승인 전에는 이 문서의 제안을 `ACCEPTED`, `PASS` 또는 runtime contract로 표시하지 않으며 다음 checkpoint 자동 진행은 `PROHIBITED`다.

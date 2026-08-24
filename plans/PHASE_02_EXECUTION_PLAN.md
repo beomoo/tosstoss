@@ -1,9 +1,9 @@
 # Phase 2 토스증권 읽기 전용 데이터 실행계획
 
 - 계획 상태: `PHASE 2 IMPLEMENTATION IN PROGRESS`
-- Current checkpoint: `CP3-A IMPLEMENTED — AWAITING GPT INDEPENDENT REVIEW`
+- Current checkpoint: `CP3-A REVISED AFTER INDEPENDENT REVIEW — AWAITING GPT RE-REVIEW`
 - 최초 작성·공식 문서 조사일: `2026-08-23` (`Asia/Seoul`)
-- 현재 상태 갱신일: `2026-08-24` (`Asia/Seoul`)
+- 현재 상태 갱신일: `2026-08-25` (`Asia/Seoul`)
 - 기준 브랜치: `feature/phase-02-toss`
 - CP3-A 시작 commit: `6bd5d2ae9c26f02f2cd4bd75a474633a9082fa16`
 - Remote main/merge-base: `353159da45cfbe3a7f444bf476ce86fa9aece17c`
@@ -17,11 +17,11 @@
 - Phase 1: `COMPLETE`, release baseline `v0.1.0`
 - CP1: `PASS`
 - CP2: `COMPLETE`
-- CP3-A: `IMPLEMENTED — AWAITING GPT INDEPENDENT REVIEW`
+- CP3-A: `REVISED AFTER INDEPENDENT REVIEW — AWAITING GPT RE-REVIEW`
 - CP3-B: `NOT STARTED`
 - Phase 2: `IMPLEMENTATION IN PROGRESS`
 
-CP3-A는 `plans/PHASE_02_CP3_A_CONTRACT.md`를 중심으로 Security Master와 Current Price의 계획·계약만 작성하는 documentation checkpoint다. application, test, fixture, migration, dependency, runtime config, API route와 collection job은 변경하지 않는다. 독립 검토와 사용자 승인 전에는 CP3-A를 `PASS`, `APPROVED` 또는 `COMPLETE`로 표시하지 않고 CP3-B를 시작하지 않는다.
+CP3-A는 `plans/PHASE_02_CP3_A_CONTRACT.md`를 중심으로 Security Master와 Current Price의 계획·계약만 작성하는 documentation checkpoint다. 첫 독립검증은 `CHANGES REQUIRED`(P0 0/P1 2)였고 provider-scoped price/canonical view 분리와 immutable provider identity reconciliation을 보완했다. application, test, fixture, migration, dependency, runtime config, API route와 collection job은 변경하지 않는다. GPT 재검토와 사용자 승인 전에는 CP3-A를 `PASS`, `APPROVED` 또는 `COMPLETE`로 표시하지 않고 CP3-B를 시작하지 않는다.
 
 ## Original CP1 investigation baseline
 
@@ -42,7 +42,7 @@ CP3-A는 `plans/PHASE_02_CP3_A_CONTRACT.md`를 중심으로 Security Master와 C
 
 ## Current checkpoint status
 
-CP3-A는 기존 Phase 1 계약을 breaking 변경하지 않고 provider staging identity, nullable provider source time, raw/source revision, current latest pointer와 additive migration 승인안을 정의한다. ADR-011 revised proposal과 ADR-012 proposal은 모두 독립 검토·사용자 결정을 기다린다. CP3-B/C/D의 application work는 아직 시작하지 않았다.
+CP3-A는 기존 Phase 1 계약을 breaking 변경하지 않고 provider staging identity, nullable provider source time, raw/source revision, provider-scoped current latest와 additive migration 승인안을 정의한다. valid provider identity의 price storage는 canonical issuer/security mapping과 분리하고 canonical current-price view만 verified linkage를 요구한다. identity allocation은 continuity-first reconciliation 뒤 신규 anchor를 선택하며 enrichment가 ID를 rekey하지 않는다. ADR-011은 사용자 승인을, revised ADR-012는 GPT 재검토와 사용자 결정을 기다린다. CP3-B/C/D의 application work는 아직 시작하지 않았다.
 
 ## Historical checkpoint record
 
@@ -55,7 +55,7 @@ CP3-A는 기존 Phase 1 계약을 breaking 변경하지 않고 provider staging 
 | CP2-D1 | `PASS` | safe live preflight tooling의 offline validation |
 | CP2-D2 | `PASS` | 승인된 actual OAuth/stocks one-shot 최소 검증 |
 | CP2 | `COMPLETE` | final integrated QA; Phase 2 전체 완료 아님 |
-| CP3-A | `IMPLEMENTED — AWAITING GPT INDEPENDENT REVIEW` | 문서·계약만; application implementation 0 |
+| CP3-A | `REVISED AFTER INDEPENDENT REVIEW — AWAITING GPT RE-REVIEW` | P1-01/P1-02 문서 보완만; application implementation 0 |
 | CP3-B | `NOT STARTED` | 자동 진입 금지 |
 
 ## 0. 근거 분류
@@ -397,8 +397,8 @@ Phase 1 테스트 삭제, skip, xfail, inventory 감소는 허용하지 않는�
 
 - 기존 `Issuer` / `Security` 분리를 유지
 - `SourceSystem.TOSS_OPEN_API`와 필요한 source type을 명시적으로 추가
-- 종목 master는 `market + symbol + securityType + isCommonShare`를 외부 자연키 후보로 사용하되 내부 `security_id`와 분리
-- 현재가는 새 `PriceSnapshot` 계약, candles는 확장된 `PriceBar`, 수급은 dataset별 normalized contract로 분리
+- 종목 master는 provider identifier history를 continuity-first로 reconciliation하고 최초 allocation 뒤 immutable `provider_security_identity_id`를 사용한다. 신규 anchor는 continuity evidence가 0일 때만 ISIN → symbol+listDate → symbol+first-seen raw evidence 순으로 선택하며, enrichment는 rekey하지 않는다.
+- 현재가는 provider identity 기준 `ProviderPriceSnapshot`과 provider latest를 사용하고 nullable canonical `security_id` linkage와 분리한다. canonical current-price view는 verified linkage에서만 노출한다. candles는 확장된 `PriceBar`, 수급은 dataset별 normalized contract로 분리한다.
 - provider의 camelCase field 이름·원문 enum은 raw에 보존하고 normalizer가 내부 enum으로 명시적으로 매핑
 - unknown enum은 임의 매핑하지 않고 record reject + raw 보존
 - 모든 normalized row에 `source_record_id`, normalized hash, contract version, freshness/finality/revision을 유지
@@ -422,10 +422,10 @@ CP3-B 승인 후 versioned provider source contract를 추가하는 방안을 �
 
 ### 11.4 Analytics
 
-- SQLite: security master, source metadata, job/audit/data-quality와 latest-state pointer
+- SQLite: provider/canonical security master linkage, source metadata, job/audit/data-quality와 provider identity 기준 latest-state pointer
 - Parquet: price/candle/flow append-versioned 시계열
 - DuckDB: Parquet query adapter; provider credential·token·raw auth response 저장 금지
-- partition 후보: `dataset/market/security_id/year/month`; 최종 파일명은 payload/version hash 포함
+- partition 후보: canonical mapping 전에는 `dataset/market/provider_security_identity_id/year/month`, verified canonical projection은 linkage metadata를 사용한다. 최종 파일명은 payload/version hash 포함
 - 수정 수집은 기존 파일 덮어쓰기보다 새 version + manifest pointer 갱신
 - partially written partition은 publish하지 않음
 
@@ -493,8 +493,9 @@ CP2-A의 통과는 CP2 전체 통과가 아니며, 아래 기존 완료 조건�
 - 변경 범위: `plans/PHASE_02_CP3_A_CONTRACT.md`와 승인된 상태/ADR/known-issue 문서만
 - application/test/fixture/migration/dependency/runtime config/API route/connector 변경: 0
 - actual credential/API usage: 0
-- 계약 범위: endpoint 역할, universe, provider staging identity, lifecycle, PriceSnapshot, nullable source time, raw/source/hash/idempotency, additive migration과 acceptance
-- 상태: `IMPLEMENTED — AWAITING GPT INDEPENDENT REVIEW`
+- 계약 범위: endpoint 역할, universe, provider staging identity, lifecycle, ProviderPriceSnapshot/canonical current-price view, nullable source time, raw/source/hash/idempotency, additive migration과 acceptance
+- 독립검증 보완: P1-01 provider price를 nullable canonical linkage와 분리; P1-02 continuity-first reconciliation과 enrichment/no-rekey/collision algorithm 및 P0 acceptance 추가
+- 상태: `REVISED AFTER INDEPENDENT REVIEW — AWAITING GPT RE-REVIEW`
 - 완료 표현 금지: 독립 검토·사용자 승인 전 `PASS`, `APPROVED`, `COMPLETE` 금지
 - rollback: documentation commit revert; application/data 영향 없음
 
@@ -504,7 +505,7 @@ CP2-A의 통과는 CP2 전체 통과가 아니며, 아래 기존 완료 조건�
 - exact enum contract, additive `0002_phase_02_cp3_foundation` migration, raw manifest/source metadata, repository interface
 - offline fixture/test only; application collection job와 live API 없음
 - Phase 1 SourceRecord/Issuer/Security v0.1.0, fixture/API/OpenAPI와 `0001` 변경 금지
-- 시작 조건: CP3-A 독립 검토와 사용자 승인, ADR-011/ADR-012 disposition 확정
+- 시작 조건: CP3-A GPT 재검토와 사용자 승인, ADR-011/ADR-012 disposition 확정
 
 ### CP3-C — Security Master
 
@@ -517,7 +518,8 @@ CP2-A의 통과는 CP2 전체 통과가 아니며, 아래 기존 완료 조건�
 ### CP3-D1 — Current Price Offline
 
 - `/prices` DTO/fixture, 최대 200-symbol chunking, strict Decimal/currency/timestamp-null 계약
-- raw/source trace, latest-state, duplicate/revision, last known-good 보존
+- valid provider identity 기준 ProviderPriceSnapshot, nullable canonical linkage와 verified-only canonical view
+- raw/source trace, provider latest-state, duplicate/revision, last known-good 보존
 - price history SQLite 누적 금지; CP4 Parquet/DuckDB 범위 유지
 - full offline regression
 - 시작 조건: CP3-C 승인
@@ -586,10 +588,10 @@ CP2-A의 통과는 CP2 전체 통과가 아니며, 아래 기존 완료 조건�
 |---|---|
 | CP1 | 공식 source hash·version, 17개 endpoint 조사, 12개 callable allowlist, 9개 rate group, 미확인·문서 충돌 기록, application diff 0 |
 | CP2 | single backend token manager, single-flight, memory-only, exact host/path, bounded retry, offline PASS, 계좌·주문 fail-closed |
-| CP3-A | Security Master/Current Price 계획·계약, ADR-011 revised/ADR-012 proposed, application diff 0, independent review 대기 |
+| CP3-A | Security Master/Current Price 계획·계약, ADR-011 proposed/ADR-012 revised proposed, P1-01/P1-02 보완, application diff 0, GPT 재검토 대기 |
 | CP3-B | versioned provider contract, additive migration, raw/source trace와 offline acceptance |
 | CP3-C | KR/US master strict normalize, staging/canonical stable mapping, lifecycle/collision/idempotency |
-| CP3-D1 | current price offline Decimal/time/null/currency/source/latest/idempotency/revision |
+| CP3-D1 | provider-scoped current price offline Decimal/time/null/currency/source/latest/idempotency/revision와 verified-only canonical view |
 | CP3-D2 | 별도 승인된 최소 live schema/header/timestamp 대조; secret/body/raw header persistence 0 |
 | CP3-D3 | full regression, migration, idempotency, build/E2E/secret/policy/false-green와 P0/P1 0 |
 | CP4 | 1m·1d candles, durable Parquet/DuckDB, atomic publish, paging·adjustment·timezone·OHLC 검증 |
@@ -689,7 +691,7 @@ checkpoint 완료를 다음 checkpoint 완료로 대신하지 않는다. live �
 ### KI-P2-06 — Toss issuer identity conflict
 
 - Toss stock detail에는 Phase 1 `Issuer`가 요구하는 KR corp_code/US CIK가 없고 exchange semantics도 현재 미확인이다.
-- 해결: Toss symbol/ticker를 regulatory ID로 위조하지 않고 ADR-012의 provider staging identity를 사용한다. 승인 전 canonical Issuer/Security 자동 생성과 price publish를 시작하지 않는다.
+- 해결: Toss symbol/ticker를 regulatory ID로 위조하지 않고 ADR-012의 provider staging identity를 사용한다. valid identity의 provider-scoped price storage는 canonical mapping 없이 허용하되 canonical Issuer/Security 자동 생성, canonical price view와 issuer/company analysis 연결은 verified mapping 전 금지한다. allocation은 기존 continuity를 먼저 찾고 identifier enrichment로 rekey하지 않는다.
 
 ### KI-P2-07 — source revision/natural key conflict
 
@@ -719,4 +721,4 @@ Phase 2 완료 선언에는 모두 필요하다.
 
 ## 최종 판정
 
-CP1은 `PASS`, CP2는 `COMPLETE`다. CP3-A 계획·계약 문서는 구현됐지만 상태는 `IMPLEMENTED — AWAITING GPT INDEPENDENT REVIEW`이며 `PASS`, `APPROVED`, `COMPLETE`가 아니다. ADR-010은 `ACCEPTED`, ADR-011 revised proposal과 ADR-012 proposal은 승인되지 않았다. CP3-B는 `NOT STARTED`이고 독립 검토와 사용자 승인 전 자동으로 시작하지 않는다. Phase 2 전체는 `IMPLEMENTATION IN PROGRESS`다.
+CP1은 `PASS`, CP2는 `COMPLETE`다. CP3-A는 독립검증 P1-01/P1-02에 맞춰 계획·계약을 보완했으며 상태는 `REVISED AFTER INDEPENDENT REVIEW — AWAITING GPT RE-REVIEW`다. `PASS`, `APPROVED`, `COMPLETE`가 아니다. ADR-010은 `ACCEPTED`, ADR-011 proposal과 revised ADR-012 proposal은 승인되지 않았다. CP3-B는 `NOT STARTED`이고 재검토와 사용자 승인 전 자동 진행은 `PROHIBITED`다. Phase 2 전체는 `IMPLEMENTATION IN PROGRESS`다.

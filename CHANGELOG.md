@@ -1,5 +1,27 @@
 # Changelog
 
+## Unreleased — Phase 2 CP3-A Independent Review Fix — 2026-08-25
+
+### Changed
+
+- independent review `CHANGES REQUIRED`의 P1-01을 반영해 valid provider identity 기준 `ProviderPriceSnapshot`/latest storage와 verified-only canonical current-price view를 분리했다. nullable `security_id` linkage 때문에 Phase 2 provider-scoped 목표가 Phase 3 OpenDART/Phase 4 SEC regulatory mapping에 순환 의존하지 않는다.
+- P1-02를 반영해 신규 anchor allocation 전에 active identity/history continuity를 검색하고, 단일 후보 재사용, identifier enrichment, collision quarantine, evidence 0일 때만 최초 anchor 선택, 후속 rekey 금지와 deterministic replay 규칙을 추가했다.
+- provider price without canonical mapping, verified mapping promotion, fake regulatory ID prevention, ISIN/listDate enrichment, enrichment collision과 deterministic rebuild를 P0 문서 acceptance로 추가했다.
+- ADR-011은 `PROPOSED — INDEPENDENT REVIEW P1-NOT-BLOCKING / AWAITING USER APPROVAL`, ADR-012는 `PROPOSED — REVISED AFTER INDEPENDENT REVIEW / AWAITING RE-REVIEW`로 유지했다. Codex가 어느 ADR도 새로 승인하지 않았다.
+- 상태를 `CP3-A REVISED AFTER INDEPENDENT REVIEW — AWAITING GPT RE-REVIEW / CP3-B NOT STARTED`로 갱신하고 자동 checkpoint 진행을 금지했다.
+
+### Security and Scope
+
+- documentation/contract-only 보완이며 application/test/fixture/migration/dependency/runtime config/API route/connector 변경 0
+- actual credential 사용 0, actual Toss API 호출 0, account/order/WebSocket 변경 0
+- CP3-B implementation, PR/main merge/tag/release 0
+
+### Review
+
+- independent review result: P0 0 / P1 2 / CP3-B not authorized
+- 이 보완은 두 P1의 재검토를 요청하며 CP3-A 승인 또는 다음 checkpoint 승인을 선언하지 않는다.
+- staged eight-file documentation set의 첫 full `scripts/test.ps1`은 exit 0이었다: backend 357/357, frontend 43/43, E2E 2/2, migration repeat/downgrade/re-upgrade, fixture second import `inserted=0`/`updated=0`/`unchanged=13`, OpenAPI, production build 2회, secret scan과 initial/final policy scan PASS.
+
 ## Unreleased — Phase 2 CP3-A Contract Checkpoint — 2026-08-24
 
 ### Added

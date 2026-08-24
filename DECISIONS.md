@@ -197,9 +197,10 @@ checkpoint 단위로 connector/config/dependency/policy 변경을 revert하고 f
 
 ## ADR-011 — date-only Toss 관측을 versioned source contract로 분리
 
-- 상태: `PROPOSED — REVISED FOR CP3-A / AWAITING INDEPENDENT REVIEW`
+- 상태: `PROPOSED — INDEPENDENT REVIEW P1-NOT-BLOCKING / AWAITING USER APPROVAL`
 - 제안일: `2026-08-23`
 - 수정 제안일: `2026-08-24`
+- 독립검증일: `2026-08-25` — 방향상 blocker 없음; Codex가 `ACCEPTED`로 전환하지 않음
 
 ### 문제
 
@@ -237,12 +238,15 @@ Phase 1 `SourceRecord`는 `observed_at`과 `published_at`을 필수 datetime으�
 
 ## ADR-012 — Toss provider security identity와 canonical issuer/security mapping 분리
 
-- 상태: `PROPOSED — AWAITING INDEPENDENT REVIEW`
+- 상태: `PROPOSED — REVISED AFTER INDEPENDENT REVIEW / AWAITING RE-REVIEW`
 - 제안일: `2026-08-24`
+- 독립검증 보완일: `2026-08-25`
 
 ### 문제
 
 Phase 1 `Issuer`는 KR corp_code 또는 US CIK를 요구하고 `Security`는 issuer와 exchange를 요구한다. Toss stock response에는 corp_code/CIK가 없고 현재 저장소 근거만으로 exchange semantics도 확정할 수 없다. Toss symbol, ticker, 종목명 또는 synthetic regulatory identifier로 빈칸을 채우면 잘못된 issuer merge와 VERIFIED mapping을 만들 수 있다.
+
+첫 독립검증은 두 P1을 확인했다. P1-01은 verified canonical mapping을 Current Price 저장의 필수조건으로 둬 Phase 2가 Phase 3 OpenDART/Phase 4 SEC regulatory mapping에 순환 의존한다는 점이다. P1-02는 최초 observation 뒤 ISIN/listDate가 보강될 때 anchor 우선순위를 다시 적용하면 immutable이어야 할 동일 instrument에 새 provider identity가 생길 수 있다는 점이다.
 
 ### 제안
 
@@ -250,10 +254,17 @@ Phase 1 `Issuer`는 KR corp_code 또는 US CIK를 요구하고 `Security`는 iss
 - Toss symbol은 provider-scoped identifier history로만 저장한다.
 - staging row는 `mapping_status=UNRESOLVED`, nullable canonical IDs와 explicit missing reason을 사용한다.
 - internal provider identity, issuer, security ID는 외부 field와 분리하고 한번 발급되면 symbol/ISIN/provider field 변경으로 교체하지 않는다.
-- exact deterministic anchor/hash/collision/rebuild/promotion 규칙은 `plans/PHASE_02_CP3_A_CONTRACT.md` E절을 따른다.
+- valid·non-collision·non-quarantine provider identity는 canonical `security_id`가 null이고 mapping이 `UNRESOLVED`여도 provider-scoped `ProviderPriceSnapshot`과 latest state를 소유할 수 있다.
+- canonical current-price view와 canonical Security API/issuer/company analysis 연결은 `security_id` linkage가 `VERIFIED`일 때만 허용한다. unresolved provider price를 canonical company price로 표현하지 않는다.
+- 신규 observation은 최초 anchor 선택 전에 active identity와 provider identifier history에서 continuity 후보를 검색한다. deterministic 후보가 정확히 하나면 기존 ID를 재사용하고 ISIN/listDate/symbol을 enrichment/revision history로 추가한다.
+- continuity 후보가 둘 이상이거나 enrichment가 다른 active identity와 충돌하면 auto merge/new identity/winner 선택을 금지하고 `UNRESOLVED_COLLISION`/`QUARANTINE`한다.
+- continuity evidence가 0일 때만 최초 anchor를 unique valid ISIN → symbol+listDate → symbol+first-seen raw evidence 순으로 선택한다. 최초 allocation 뒤 더 강한 identifier가 생겨도 anchor migration/rekey를 금지한다.
+- deterministic rebuild는 raw/source history를 stable order로 replay하며 같은 continuity-first 결과, provider identity ID와 identifier history를 재현해야 한다.
+- approved canonical mapping event는 linkage만 추가하고 provider identity, allocation anchor, provider price/history ID/hash를 변경하지 않는다.
+- exact deterministic anchor/hash/collision/rebuild/promotion 규칙은 `plans/PHASE_02_CP3_A_CONTRACT.md` E/G절을 따른다.
 - 이름 일치, symbol/ticker, 단독 ISIN으로 issuer를 자동 병합하지 않는다.
 - approved OpenDART corp_code/SEC CIK와 instrument evidence가 있을 때만 canonical mapping event를 만들 수 있다.
-- unresolved/quarantined/collision security에는 normalized price와 latest pointer를 publish하지 않는다.
+- quarantined/collision provider identity에는 provider snapshot/latest와 canonical view 모두 publish하지 않는다.
 
 ### 대안
 
@@ -263,11 +274,11 @@ Phase 1 `Issuer`는 KR corp_code 또는 US CIK를 요구하고 `Security`는 iss
 
 ### 영향
 
-승인되면 CP3-B에 additive staging/source/mapping schema와 repository interface가, CP3-C에 offline security master normalization이 필요하다. 기존 Phase 1 Issuer/Security v0.1.0, fixture IDs와 public API는 변경하지 않는다. CP3-D current price는 verified canonical mapping만 소비한다.
+승인되면 CP3-B에 additive staging/source/mapping/provider-latest schema와 repository interface가, CP3-C에 offline security master normalization이 필요하다. CP3-D current price는 valid provider identity를 소비해 provider-scoped snapshot/latest를 만들고, verified canonical linkage가 있을 때만 canonical current-price view를 제공한다. 따라서 Phase 2 provider-scoped Security Master + Current Price 목표는 Phase 3/4 regulatory mapping 없이 완료 가능하다. 기존 Phase 1 Issuer/Security v0.1.0, fixture IDs와 public API는 변경하지 않는다.
 
 ### 마이그레이션·롤백
 
-후보 `0002_phase_02_cp3_foundation`은 신규 table/FK/unique constraint만 추가한다. `0001` 수정, 기존 table destructive rebuild, corp_code/CIK fake backfill, 기존 fixture 변환과 SQLite 가격 history 누적을 금지한다. downgrade는 disposable DB에서만 검증하며 실제 raw/history를 자동 삭제하지 않는다.
+후보 `0002_phase_02_cp3_foundation`은 신규 table/FK/unique constraint만 추가한다. provider latest의 key는 `provider_security_identity_id`이고 canonical linkage는 nullable mapping table에서 분리한다. `0001` 수정, 기존 table destructive rebuild, corp_code/CIK fake backfill, 기존 fixture 변환과 SQLite 가격 history 누적을 금지한다. downgrade는 disposable DB에서만 검증하며 실제 raw/history를 자동 삭제하지 않는다.
 
 ---
 

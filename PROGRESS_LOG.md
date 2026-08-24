@@ -281,3 +281,23 @@
 - ADR-012: `PROPOSED — AWAITING INDEPENDENT REVIEW`
 - application implementation: `0`
 - actual credential/API usage: `0`
+
+## 2026-08-25 — Phase 2 CP3-A independent-review P1 contract fix
+
+- 시작 preflight에서 `feature/phase-02-toss` local/origin SHA `386a0b2fe7bd18ed4b662eb2695ff85cc2a08cd3`, remote main/merge-base `353159da45cfbe3a7f444bf476ce86fa9aece17c`와 clean working tree를 확인했다.
+- 첫 GPT independent review 결과는 `CHANGES REQUIRED`, P0 0/P1 2였고 CP3-B는 승인되지 않았다.
+- P1-01 보완: valid·non-collision·non-quarantine `provider_security_identity_id`를 required identity로 하는 `ProviderPriceSnapshot`과 provider latest를 정의했다. `security_id`와 canonical mapping은 nullable linkage이며, verified mapping이 없어도 provider-scoped storage는 가능하지만 canonical current-price view와 issuer/company analysis 연결은 금지한다.
+- P1-02 보완: observation마다 anchor priority를 재적용하지 않고 existing active identity/history continuity를 먼저 검색한다. deterministic single candidate는 immutable ID를 재사용하고 새 ISIN/listDate를 history에 추가한다. 다중 후보/active collision은 new identity·auto merge 없이 `UNRESOLVED_COLLISION`/`QUARANTINE`하며 continuity evidence 0일 때만 최초 anchor를 할당한다.
+- mapping promotion은 provider identity, anchor와 기존 price/source/hash/revision history를 rekey하지 않고 nullable canonical linkage만 추가한다.
+- 두 P1을 직접 검증할 P0 acceptance 7건과 false-green count/ID/hash assertion을 문서화했다. 실제 test code는 작성하지 않았다.
+- ADR-010 `ACCEPTED`는 유지했다. ADR-011은 `PROPOSED — INDEPENDENT REVIEW P1-NOT-BLOCKING / AWAITING USER APPROVAL`, ADR-012는 `PROPOSED — REVISED AFTER INDEPENDENT REVIEW / AWAITING RE-REVIEW`이며 Codex가 승인하지 않았다.
+- application/test/fixture/migration/dependency/runtime config/API route/connector 변경, actual credential 사용과 actual Toss API 호출은 모두 0이다.
+- 허용 문서 8개를 stage한 첫 full `scripts/test.ps1`은 exit 0이었다. exact inventory backend 357/frontend 43/E2E 2를 유지했고 357/357, 43/43, 2/2 PASS, migration repeat/downgrade/re-upgrade, fixture second import `inserted=0`/`updated=0`/`unchanged=13`, OpenAPI, production build 2회, secret scan과 initial/final policy scan이 모두 PASS했다. offline Toss default/SelfTest external request와 credential usage는 0이었다.
+
+## 현재 중지 지점 — Phase 2 CP3-A independent-review fix
+
+- Phase 2: `IMPLEMENTATION IN PROGRESS`
+- CP2: `COMPLETE`
+- CP3-A: `REVISED AFTER INDEPENDENT REVIEW — AWAITING GPT RE-REVIEW`
+- CP3-B: `NOT STARTED`
+- automatic checkpoint progression: `PROHIBITED`
