@@ -147,14 +147,15 @@ Node.js 24.15 이하 사용자는 setup, dev, lint, typecheck, build, test, E2E�
 
 ## ADR-010 — Phase 2 Toss connector를 REST 시장 데이터 allowlist로 제한
 
-- 상태: `PROPOSED`
+- 상태: `ACCEPTED`
 - 제안일: `2026-08-23`
+- 결정일: `2026-08-24`
 
 ### 문제
 
 Phase 2부터 실제 외부 HTTP 연결과 OAuth credential을 도입해야 한다. 토스증권 공식 API에는 시장 데이터뿐 아니라 계좌·자산·주문·조건주문과 WebSocket 주문 이벤트도 함께 존재하므로 단순 provider client는 읽기 전용 경계를 약화할 수 있다.
 
-### 제안
+### 결정
 
 - backend만 `https://openapi.tossinvest.com`에 연결한다.
 - `plans/PHASE_02_EXECUTION_PLAN.md`의 12개 REST method/path allowlist만 호출한다.
@@ -162,6 +163,7 @@ Phase 2부터 실제 외부 HTTP 연결과 OAuth credential을 도입해야 한�
 - `X-Tossinvest-Account`, 계좌·자산·주문·조건주문 endpoint와 WebSocket은 runtime·config·dependency·test helper에 추가하지 않는다.
 - token은 single-flight backend manager의 memory에만 두고 secret redaction과 deny-by-default policy canary를 적용한다.
 - 기존 standard test는 fixture-only·offline을 유지하고 live preflight는 별도 명시적 opt-in으로 분리한다.
+- production retry는 exact provider 429와 `500/502/503/504`의 승인 code에만 적용한다. 유효한 `Retry-After`는 jitter 없이 우선하고, missing/invalid일 때만 bounded exponential backoff와 additive jitter를 사용한다. transport error는 live evidence 없이 추측해 retry하지 않는다.
 
 ### 대안
 
@@ -177,7 +179,7 @@ Phase 1의 blanket HTTP-client/connector 금지는 CP2에서 exact Toss connecto
 
 checkpoint 단위로 connector/config/dependency/policy 변경을 revert하고 fixture-only repository로 복귀한다. token은 메모리에서 폐기하며 수집한 검증 데이터는 자동 삭제하지 않는다.
 
-### 구현 진행 메모 — 2026-08-23
+### 구현·검증 기록 — 2026-08-23~24
 
 - CP2-A의 dependency/config/policy 경계, CP2-B의 OAuth token manager/exact-boundary HTTP client와 P2 token hardening, CP2-C의 rate limiter·retry·error taxonomy, CP2-D1 safe live preflight tooling의 offline validation까지 구현·검증했다.
 - CP2-C는 client×group shared token bucket, 7개 callable group, documented/observed/effective limit, strict allowlisted rate telemetry를 사용한다.
@@ -186,7 +188,10 @@ checkpoint 단위로 connector/config/dependency/policy 변경을 revert하고 f
 - synthetic credential, `httpx.MockTransport`, fake time만 사용했고 실제 provider API 호출이나 token/rate telemetry 저장은 하지 않았다.
 - 독립 검토 P2 후 429로 시작된 재시도에서는 backoff와 다음 limiter acquire의 Reset block을 하나의 operation 누적 30초 ceiling으로 계산한다. 정상 최초 요청의 선제적 local throttling은 retry budget과 분리하되, Reset이 잔여 single/cumulative budget을 넘으면 짧게 잘라 재시도하지 않고 safe deferred error로 종료한다.
 - CP2-D1은 default·SelfTest network 0, three-way opt-in, runtime canonical contract drift, environment-only credential, OAuth/stocks one-shot, safe fixed summary를 internal-only 경계로 고정했다. production retry는 변경하지 않았고 D1에서는 actual credential/OAuth/market request를 사용하지 않았다.
-- CP2-D2 actual credential live preflight가 남아 있으므로 ADR 상태는 `PROPOSED`를 유지하며 CP2-D 또는 CP2 전체 구현·승인으로 간주하지 않는다.
+- CP2-D2 사용자 독립 one-shot에서 provider drift `NO`, actual OAuth와 `GET /api/v1/stocks` `PASS`, allowed-IP 실행 경로와 성공 응답의 Limit/Remaining/Reset header 유효성을 확인했다. credential 값, token, body와 raw header 값은 저장하지 않았다.
+- natural 429 `Retry-After`, actual 429/5xx, production retry timing과 나머지 market endpoint는 계속 `[LIVE_UNVERIFIED]`다.
+- Vitest UTF-8 byte-safe exact inventory 보강 commit `411749e171a717b3060973cb7b127fb94f592bab` 이후 사용자 ASCII-only 환경의 전체 regression이 backend 357/357, frontend 43/43, E2E 2/2와 모든 build·security gate에서 exit 0이었다.
+- CP2 final integrated QA 결과는 P0 0, P1 0, unresolved functional P2 0, 명시적 deferred environment P2 1이다. 따라서 ADR-010과 CP2를 `ACCEPTED`/`COMPLETE`로 닫되 Phase 2 전체 완료나 CP3 시작으로 확대하지 않는다.
 
 ---
 

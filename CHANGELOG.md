@@ -1,5 +1,30 @@
 # Changelog
 
+## Unreleased — Phase 2 CP2 Final Closeout — 2026-08-24
+
+### Changed
+
+- CP2-A~D final integrated QA를 완료하고 상태를 `CP2 COMPLETE / Phase 2 IMPLEMENTATION IN PROGRESS / CP3 NOT STARTED`로 갱신
+- ADR-010을 `ACCEPTED`로 전환하고 exact REST allowlist, memory-only token, bounded retry, offline/live 분리 결정을 확정
+- actual live 검증과 미검증 범위를 분리해 OAuth·stocks·성공 rate header만 `[LIVE_VERIFIED]`로 재분류
+- Windows non-ASCII repository parent path의 setuptools editable build 실패를 `P2 DEFERRED / ENVIRONMENT CONSTRAINT`로 기록
+
+### QA
+
+- CP2-D2 사용자 독립 one-shot: provider drift `NO`, OpenAPI `3.1.0`, provider `1.2.14`, actual OAuth와 `GET /api/v1/stocks` PASS, allowed-IP 실행 경로와 Limit/Remaining/Reset header 유효성 PASS
+- natural 429를 유도하지 않아 `Retry-After`는 `[LIVE_UNVERIFIED]` 유지; actual 429/5xx, production retry timing과 다른 market endpoint도 미검증 유지
+- Vitest UTF-8 byte-safe exact 43 inventory 구현 commit `411749e171a717b3060973cb7b127fb94f592bab`
+- ASCII-only 사용자 QA 환경 PowerShell 7.6.5, Python 3.13.15, Node 24.19.0, npm 11.17.0에서 backend 357/357, frontend 43/43, E2E 2/2, migration, fixture idempotency, OpenAPI, production build, secret scan, initial/final policy scan과 exit 0 확인
+
+### Security
+
+- closeout에서 live API를 재호출하거나 credential을 재사용·요청하지 않았고, actual credential 값·token·body·raw header 값을 문서·Git·QA evidence에 기록하지 않음
+- P0 0, P1 0, unresolved functional P2 0; Windows path portability P2 1건은 workaround와 함께 명시적으로 이월
+
+### Limitations
+
+- CP2 완료는 Phase 2 완료가 아니다. CP3 이후 security master/current price, normalization, storage, freshness와 나머지 endpoint 구현은 시작하지 않았다.
+
 ## Unreleased — Phase 2 CP2-D1 — 2026-08-23
 
 ### Added

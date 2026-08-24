@@ -227,3 +227,29 @@
 - 실제 credential 사용: `없음`
 - 실제 OAuth 요청: `없음`
 - 실제 market 요청: `없음`
+
+## 2026-08-24 — Phase 2 CP2 final integrated QA와 closeout
+
+- 시작 branch는 `feature/phase-02-toss`, baseline/local/origin SHA는 `411749e171a717b3060973cb7b127fb94f592bab`이었고 작업트리는 clean이었다. 이 closeout에서는 application·test·migration을 수정하지 않고 문서와 final integrated QA만 수행했다.
+- CP2-A의 Toss-only dependency/config/secret 경계와 account/order 금지, CP2-B의 single process token manager·memory-only lease·single-flight·monotonic expiry·exact host/method/path·401 replay 최대 1회·public raw bearer surface 부재를 코드·negative test·policy로 재검토했다.
+- CP2-C의 exact 7 runtime rate group, documented/observed/effective limit, strict rate header telemetry, bounded 429/5xx retry, 누적 30초 ceiling, Reset acquire wait budget hardening과 transport error 무추측 retry 금지를 재검토했다.
+- CP2-D1의 three-way opt-in, runtime provider drift gate, environment-only credential, contract/OAuth/stocks 각 최대 1회, preflight retry·refresh·replay 0, fixed safe output과 secret/body/raw-header persistence 0을 재검토했다.
+- 사용자 독립 CP2-D2 one-shot의 safe fixed summary에서 provider contract drift `NO`, OpenAPI `3.1.0`, provider `1.2.14`, exact hash/origin 일치, actual OAuth와 `GET /api/v1/stocks` PASS, allowed-IP 실행 경로와 성공 응답의 Limit/Remaining/Reset header 유효성을 확인했다. closeout에서는 live API를 다시 실행하거나 credential을 요청·사용하지 않았다.
+- natural 429를 고의로 유도하지 않았으므로 `Retry-After`, actual 429/5xx, production retry timing, 나머지 market endpoint와 CP3 이후 data semantics/freshness는 `[LIVE_UNVERIFIED]`로 유지했다.
+- Vitest native stdout의 환경 의존 문자열 캡처를 stdout/stderr 별도 임시 파일, strict UTF-8 byte round-trip, JSON root array, exact 43개 non-empty named object와 한국어 test name 검증으로 교체한 implementation commit은 `411749e171a717b3060973cb7b127fb94f592bab`이다.
+- 사용자 독립 최종 QA는 ASCII-only 경로 `C:\Users\beomoo\Documents\ChatGPT\tosstoss`, PowerShell 7.6.5, Python 3.13.15, Node 24.19.0, npm 11.17.0에서 `scripts/setup.ps1`과 `scripts/test.ps1` exit 0이었다. backend 357/357, frontend 43/43, E2E 2/2, migration, fixture idempotency, OpenAPI, production build, secret scan과 initial/final policy scan이 모두 PASS했다. D1 default와 SelfTest outbound network는 각각 0이었다.
+- 이전 non-ASCII parent path에서 Python 3.13.15 + setuptools editable install의 경로 손상과 wheel build 실패가 관찰됐지만, 동일 commit의 ASCII-only clean clone에서 setup/full regression이 통과했다. 이를 Toss runtime/business defect가 아닌 `P2 DEFERRED / ENVIRONMENT CONSTRAINT`로 이월했다.
+- QA 중 Codex 특정 direct process host의 Windows Python asyncio access violation 이력이 있었지만 일반 사용자 PowerShell 7.6.5, project `.venv`, exact cancellation regression과 ASCII-only clean clone 전체 회귀가 통과해 token-manager product defect로 판정하지 않았다.
+- final defect 분류는 P0 0, P1 0, unresolved functional P2 0, deferred environment P2 1이다. ADR-010을 `ACCEPTED`로 변경하고 CP2를 `COMPLETE`로 닫았다.
+
+## 현재 중지 지점 — Phase 2 CP2 closeout
+
+- Phase 2: `IMPLEMENTATION IN PROGRESS`
+- CP2-A: `PASS`
+- CP2-B: `PASS`
+- CP2-C: `PASS`
+- CP2-D1: `PASS`
+- CP2-D2: `PASS`
+- CP2: `COMPLETE`
+- CP3: `NOT STARTED`
+- Phase 2: `NOT COMPLETE`

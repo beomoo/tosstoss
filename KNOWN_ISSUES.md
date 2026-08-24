@@ -1,10 +1,11 @@
 # Known Issues and Open Questions
 
-## KI-001 — 토스증권 실제 API 세부 계약 미검증
+## KI-001 — 토스증권 실제 API 세부 계약 부분 검증
 
-- 상태: `OPEN`
-- 영향: 공개 계약은 2026-08-23 기준 OpenAPI v1.2.14에서 확인했지만 실제 토큰 발급, 허용 IP, runtime rate header·`Retry-After`, 응답/error와 provider timing은 credential을 사용한 실응답으로 확인하지 않았다.
-- 현재 대응: `plans/PHASE_02_EXECUTION_PLAN.md`에 공개 계약과 `[LIVE_UNVERIFIED]`를 분리했다. CP2-B의 OAuth/exact HTTP boundary와 CP2-C의 shared limiter·bounded retry는 합성 credential, MockTransport와 fake time으로 offline 검증했다. 독립 검토 P2에서 발견된 429 Reset acquire wait의 누적 예산 우회도 수정해 deterministic 회귀로 고정했다. CP2-D1에서 three-way gate, runtime drift 검사, one-shot OAuth/stocks 경로와 fixed safe summary를 구현하고 MockTransport·SelfTest로 검증했다. 실제 credential과 OAuth/market 요청은 사용하지 않았으며, 별도 사용자 승인 후 CP2-D2에서만 live 항목을 검증한다.
+- 상태: `OPEN — PARTIALLY LIVE VERIFIED`
+- `[LIVE_VERIFIED]`: 2026-08-24 사용자 독립 CP2-D2 one-shot에서 canonical provider contract(OpenAPI `3.1.0`, provider `1.2.14`, origin/hash 일치), actual OAuth token issuance와 credential acceptance, allowed-IP 실행 경로, actual `GET /api/v1/stocks` 구조, 성공 응답의 `X-RateLimit-Limit`·`Remaining`·`Reset` 유효성을 safe fixed summary로 확인했다.
+- `[LIVE_UNVERIFIED]`: natural 429 `Retry-After`, actual 429/5xx behavior, production retry timing, 나머지 Phase 2 market endpoint, CP3 이후 데이터 semantics/freshness. natural 429를 고의로 유도하지 않았으므로 `Retry-After`를 verified로 올리지 않는다.
+- 현재 대응: CP2-B/C의 exact boundary·single-flight·bounded retry와 cumulative-wait ceiling은 MockTransport/fake time 회귀로 유지한다. live 미검증 항목은 해당 후속 checkpoint에서 최소 요청으로 별도 검증하며 credential 값, token, body와 raw header 값은 QA evidence에 저장하지 않는다.
 
 ## KI-002 — 무료 미래 컨센서스 데이터의 안정적 출처 미확정
 
@@ -57,3 +58,10 @@
 - 상태: `OPEN`
 - 영향: 필수 `observed_at`·`published_at`에 date-only 기준일이나 fetch 시각을 대입하면 기준일과 수집일을 혼동한다.
 - 현재 대응: ADR-011과 Phase 2 계획에서 기존 v0.1.0을 유지하는 versioned provider source contract를 제안했다. CP3 전에 승인되지 않으면 date-only normalized publish를 시작하지 않는다.
+
+## KI-010 — Windows non-ASCII 개발·QA 저장소 경로의 editable install 실패
+
+- 상태: `P2 DEFERRED — ENVIRONMENT CONSTRAINT`
+- 관찰: Windows의 non-ASCII parent path에서 Python 3.13.15 + setuptools editable install 중 경로가 손상되어 wheel build가 실패했다. 동일 commit을 ASCII-only 경로 `C:\Users\beomoo\Documents\ChatGPT\tosstoss`에 clean clone한 뒤 `scripts/setup.ps1`과 전체 `scripts/test.ps1`이 통과했다.
+- 영향: 현재 Windows 개발·QA repository path는 ASCII-only 사용을 권장하며, 재현 가능한 setup portability 제약이다. Toss runtime·OAuth·rate-limit·business logic에 영향을 준 증거는 없다.
+- 현재 대응: ASCII-only clone path를 사용한다. CP2 completion blocker나 unresolved functional defect로 보지 않고, 향후 setup portability hardening 후보로 이월한다.

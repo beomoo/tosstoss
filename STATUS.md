@@ -1,17 +1,17 @@
 # Project Status
 
-- 프로젝트 상태: `PHASE 2 IMPLEMENTATION IN PROGRESS — CP2-A/CP2-B/CP2-C/CP2-D1 PASS`
-- 현재 Phase: `Phase 2 — safe live preflight tooling offline 검증 완료 / CP2-D2 미착수`
+- 프로젝트 상태: `PHASE 2 IMPLEMENTATION IN PROGRESS — CP2 COMPLETE / CP3 NOT STARTED`
+- 현재 Phase: `Phase 2 — CP2 final integrated QA 완료 / CP3 미착수`
 - 현재 버전: `0.1.0`
 - Phase 1 최종 검증 commit: `57b2a63ead06d03191d8094e1689b8d2ab3d7764`
 - Phase 1 PR: `#1`
 - Phase 1 merge commit: `b1829a7375704271a21267e1fcf62808147be593`
 - Release baseline tag: `v0.1.0`
-- 최종 QA일: `2026-08-23 (CP2-D1 offline validation)`
-- 실제 API 연결: `아니오`
+- 최종 QA일: `2026-08-24 (CP2 final integrated QA)`
+- 실제 API 연결: `CP2-D2 one-shot PASS — OAuth + GET /api/v1/stocks만 검증`
 - 실제 주문 기능: `비활성 / 비범위`
 - OpenAI API 사용: `아니오`
-- Phase 2 상태: `CP2-A PASS / CP2-B PASS / CP2-B P2 hardening PASS / CP2-C PASS / CP2-D1 PASS / CP2-D2 NOT STARTED / LIVE_UNVERIFIED`
+- Phase 2 상태: `CP1 PASS / CP2 COMPLETE / CP2-D2 PASS / CP3 NOT STARTED`
 
 ## 완료 상태
 
@@ -44,6 +44,9 @@
 - [x] CP2-C P2 수정 전체 회귀: backend 321개, frontend 43개, E2E 2개, build·secret·policy PASS
 - [x] CP2-D1 three-way opt-in, runtime contract drift gate, one-shot OAuth/stocks preflight tooling
 - [x] CP2-D1 MockTransport·SelfTest·redaction 검증과 전체 회귀: backend 357개, frontend 43개, E2E 2개, build·secret·policy PASS
+- [x] CP2-D2 actual OAuth와 `GET /api/v1/stocks` one-shot PASS, allowed-IP 실행 경로와 성공 응답 Limit/Remaining/Reset header 검증
+- [x] Vitest stdout/stderr 분리, strict UTF-8 byte-safe JSON array와 한국어 test name을 포함한 exact 43 inventory gate
+- [x] CP2 final integrated QA: P0 0 / P1 0 / unresolved functional P2 0 / deferred environment P2 1
 
 ## Phase 1 종료 기준
 
@@ -55,12 +58,14 @@ Merge commit: b1829a7375704271a21267e1fcf62808147be593
 Release baseline tag: v0.1.0
 ```
 
-Phase 2 구현은 진행 중이다. CP2-A 보안 경계, CP2-B OAuth/token manager/exact HTTP client와 P2 hardening, CP2-C rate limiter/retry/error taxonomy, CP2-D1 safe live preflight tooling의 offline validation을 완료했다. D1 preflight 구현 검증은 빈 child credential 환경, 합성 credential, `httpx.MockTransport`, fake clock/sleeper/jitter만 사용했으며 실제 OAuth·시장 API 요청은 하지 않았다. CP2-D2 actual credential live preflight는 시작하지 않았다.
+Phase 2 구현은 계속 진행 중이며 CP2만 완료했다. CP2-A 보안 경계, CP2-B OAuth/token manager/exact HTTP client와 token-boundary hardening, CP2-C rate limiter/retry/error taxonomy와 cumulative-wait hardening, CP2-D1 safe preflight offline validation, CP2-D2 actual one-shot을 final integrated QA로 닫았다. 사용자 독립 실행의 safe fixed summary에서 provider contract drift 없음, OpenAPI `3.1.0`, provider version `1.2.14`, actual OAuth와 `GET /api/v1/stocks` 성공, allowed-IP 실행 경로와 성공 응답의 Limit/Remaining/Reset header 유효성을 확인했다. credential 값, token, body와 raw header 값은 기록하지 않았다.
+
+`[LIVE_VERIFIED]` 범위는 canonical provider contract, actual OAuth token issuance와 credential acceptance, allowed-IP 실행 경로, actual `GET /api/v1/stocks` 구조, 성공 응답의 Limit/Remaining/Reset header다. natural 429 `Retry-After`, actual 429/5xx, production retry timing, 나머지 Phase 2 market endpoint, CP3 이후 데이터 semantics/freshness는 계속 `[LIVE_UNVERIFIED]`다. Phase 2 전체 완료나 CP3 시작을 의미하지 않는다.
 
 ## 알려진 운영 조건
 
 - Node.js 지원 범위는 24.16 이상 25 미만이며 QA 기준은 24.19.0이다.
 - ADR-009는 아직 `PROPOSED`이며 독립 리뷰·승인 대상이다.
 - 모든 표시 데이터는 합성 fixture이고 실제 투자 판단 자료가 아니다.
-- 실제 Toss/OpenDART/SEC/news/macro connector, 계좌와 주문은 구현하지 않았다.
-- Toss connector는 application-owned shared client와 client×rate-group limiter 구조이고 D1 one-shot preflight tooling까지 구현됐지만 실제 credential, 실제 OAuth/stocks 응답, 허용 IP, 실제 rate header와 live API timing은 여전히 `LIVE_UNVERIFIED`다.
+- Toss market connector는 CP2 범위에서 구현됐지만 실제 데이터 수집·정규화·저장·화면 연결은 CP3 이후 범위다. OpenDART/SEC/news/macro, 계좌와 주문은 구현하지 않았다.
+- Windows 개발·QA 저장소는 현재 ASCII-only parent path를 사용한다. non-ASCII parent path의 setuptools editable build 실패는 `P2 DEFERRED / ENVIRONMENT CONSTRAINT`이며 CP2 business logic 결함으로 분류하지 않는다.
