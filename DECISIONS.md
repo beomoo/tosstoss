@@ -197,34 +197,77 @@ checkpoint 단위로 connector/config/dependency/policy 변경을 revert하고 f
 
 ## ADR-011 — date-only Toss 관측을 versioned source contract로 분리
 
-- 상태: `PROPOSED`
+- 상태: `PROPOSED — REVISED FOR CP3-A / AWAITING INDEPENDENT REVIEW`
 - 제안일: `2026-08-23`
+- 수정 제안일: `2026-08-24`
 
 ### 문제
 
-Phase 1 `SourceRecord`는 `observed_at`과 `published_at`을 필수 datetime으로 요구한다. Toss 수급 응답 일부는 기준 `date`만 제공하고 publication timestamp를 제공하지 않아, 자정이나 fetch 시각을 대입하면 기존 시간 의미를 위반한다.
+Phase 1 `SourceRecord`는 `observed_at`과 `published_at`을 필수 datetime으로 요구한다. Toss 수급 응답 일부는 기준 `date`만 제공하고 publication timestamp를 제공하지 않는다. 또한 공식 `/prices` 계약은 정상 응답에서도 `timestamp=null`을 허용한다. 기존 제안의 “`observed_at`과 `observed_date` 중 최소 하나” 규칙은 이 정상적인 time-unknown 상태를 표현하지 못한다. 자정, 현재 date 또는 fetch 시각을 대입하면 기존 시간 의미를 위반한다.
 
 ### 제안
 
 - 기존 Phase 1 `SourceRecord` v0.1.0과 fixture는 변경하지 않는다.
 - Phase 2에 date-only와 timestamp 관측을 구분하는 versioned provider source contract를 추가한다.
-- `observed_at`과 `observed_date`를 구분하고 최소 하나를 요구한다.
-- 미제공 `published_at`은 null과 구조화된 `NOT_PROVIDED` 사유로 표현한다.
-- 전역 contract version Literal을 무조건 넓히지 않고 새 contract에 명시적 version을 부여한다.
+- `observed_at`과 `observed_date`는 각각 nullable이다.
+- 둘 다 null인 상태를 허용하되 각 null field에 structured missing reason을 요구한다.
+- 둘 다 값이 있으면 dataset별 contract가 해당 조합을 명시적으로 허용하는지 검증한다.
+- `published_at`은 nullable이고 null이면 structured missing reason이 필수다.
+- `fetched_at`은 required aware UTC이며 관측 또는 발표 시각을 대신하지 않는다.
+- current price의 provider timestamp가 null이면 availability `DEGRADED`, freshness `UNKNOWN`으로 두고 current/latest publish를 막는 보수적 default를 제안한다.
+- 전역 `ContractVersion = Literal["0.1.0"]`을 무조건 확장하지 않고 새 provider source contract에 독립 version을 부여한다.
+- 신규 provider source version은 기존 `source_records` natural key를 timestamp suffix로 우회하지 않고 additive table에서 revision을 표현한다.
 
 ### 대안
 
 - date를 자정 UTC/KST로 변환: 존재하지 않는 시각을 생성하므로 거부한다.
 - `fetched_at`을 `observed_at`으로 복사: 데이터 기준시각과 수집시각을 혼동하므로 거부한다.
+- timestamp null인 price를 0 또는 현재 date로 대체: provider 사실을 위조하므로 거부한다.
 - 기존 SourceRecord 전체를 즉시 breaking migration: Phase 1 회귀 범위가 커서 거부한다.
 
 ### 영향
 
-CP3에서 source contract·OpenAPI·fixture·repository test가 추가된다. 기존 Phase 1 계약 테스트와 `contract_version=0.1.0` 응답은 그대로 통과해야 한다.
+독립 검토와 사용자 승인 뒤 CP3-B에서 source contract·additive migration·fixture·repository test가 추가될 수 있다. 기존 Phase 1 계약 테스트, fixture/API/OpenAPI와 `contract_version=0.1.0` 응답은 그대로 통과해야 한다. CP3-A에서는 문서 외 구현을 하지 않는다.
 
 ### 마이그레이션·롤백
 
-신규 provider record만 새 contract를 사용한다. rollback은 신규 publish 중지와 해당 contract 코드 revert이며 기존 Phase 1 row·fixture를 변환하거나 삭제하지 않는다.
+신규 provider record만 새 contract를 사용한다. rollback은 신규 publish 중지, last known-good pointer 유지와 해당 additive contract/migration의 disposable-DB 검증 후 revert다. 기존 Phase 1 row·fixture와 raw/history를 변환하거나 삭제하지 않는다.
+
+---
+
+## ADR-012 — Toss provider security identity와 canonical issuer/security mapping 분리
+
+- 상태: `PROPOSED — AWAITING INDEPENDENT REVIEW`
+- 제안일: `2026-08-24`
+
+### 문제
+
+Phase 1 `Issuer`는 KR corp_code 또는 US CIK를 요구하고 `Security`는 issuer와 exchange를 요구한다. Toss stock response에는 corp_code/CIK가 없고 현재 저장소 근거만으로 exchange semantics도 확정할 수 없다. Toss symbol, ticker, 종목명 또는 synthetic regulatory identifier로 빈칸을 채우면 잘못된 issuer merge와 VERIFIED mapping을 만들 수 있다.
+
+### 제안
+
+- canonical `Issuer`/`Security` 이전에 provider-scoped `provider_security_identity` staging 계층을 둔다.
+- Toss symbol은 provider-scoped identifier history로만 저장한다.
+- staging row는 `mapping_status=UNRESOLVED`, nullable canonical IDs와 explicit missing reason을 사용한다.
+- internal provider identity, issuer, security ID는 외부 field와 분리하고 한번 발급되면 symbol/ISIN/provider field 변경으로 교체하지 않는다.
+- exact deterministic anchor/hash/collision/rebuild/promotion 규칙은 `plans/PHASE_02_CP3_A_CONTRACT.md` E절을 따른다.
+- 이름 일치, symbol/ticker, 단독 ISIN으로 issuer를 자동 병합하지 않는다.
+- approved OpenDART corp_code/SEC CIK와 instrument evidence가 있을 때만 canonical mapping event를 만들 수 있다.
+- unresolved/quarantined/collision security에는 normalized price와 latest pointer를 publish하지 않는다.
+
+### 대안
+
+1. provider-scoped provisional issuer: regulatory identity가 없는 가짜 issuer와 잘못된 name merge 가능성이 커서 거부한다.
+2. canonical Security 이전 provider staging identity: 사실과 mapping 상태를 분리하므로 권고한다.
+3. 기존 Issuer 계약 breaking 완화: Phase 1 fixture/API/OpenAPI 회귀와 거짓 VERIFIED row 위험 때문에 기본 거부한다.
+
+### 영향
+
+승인되면 CP3-B에 additive staging/source/mapping schema와 repository interface가, CP3-C에 offline security master normalization이 필요하다. 기존 Phase 1 Issuer/Security v0.1.0, fixture IDs와 public API는 변경하지 않는다. CP3-D current price는 verified canonical mapping만 소비한다.
+
+### 마이그레이션·롤백
+
+후보 `0002_phase_02_cp3_foundation`은 신규 table/FK/unique constraint만 추가한다. `0001` 수정, 기존 table destructive rebuild, corp_code/CIK fake backfill, 기존 fixture 변환과 SQLite 가격 history 누적을 금지한다. downgrade는 disposable DB에서만 검증하며 실제 raw/history를 자동 삭제하지 않는다.
 
 ---
 

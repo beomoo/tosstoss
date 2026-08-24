@@ -56,8 +56,20 @@
 ## KI-009 — Phase 1 SourceRecord와 date-only 시장 데이터의 시간 의미 차이
 
 - 상태: `OPEN`
-- 영향: 필수 `observed_at`·`published_at`에 date-only 기준일이나 fetch 시각을 대입하면 기준일과 수집일을 혼동한다.
-- 현재 대응: ADR-011과 Phase 2 계획에서 기존 v0.1.0을 유지하는 versioned provider source contract를 제안했다. CP3 전에 승인되지 않으면 date-only normalized publish를 시작하지 않는다.
+- 영향: 필수 `observed_at`·`published_at`에 date-only 기준일이나 fetch 시각을 대입하면 기준일과 수집일을 혼동한다. 기존 ADR-011의 “observed time/date 중 최소 하나”도 공식 `/prices timestamp=null` 상태를 표현하지 못한다.
+- 현재 대응: ADR-011을 `PROPOSED — REVISED FOR CP3-A / AWAITING INDEPENDENT REVIEW`로 수정했다. 기존 v0.1.0은 유지하고 신규 provider contract에서 observed time/date 둘 다 null + structured reason을 허용한다. 승인 전 CP3-B source contract 구현과 normalized publish를 시작하지 않는다.
+
+## KI-011 — Toss issuer/security identity와 Phase 1 regulatory ID 충돌
+
+- 상태: `OPEN — ADR-012 PROPOSED`
+- 영향: Toss stock response에는 Phase 1 `Issuer`가 KR/US별로 요구하는 corp_code/CIK가 없다. Toss symbol/ticker/name 또는 synthetic ID로 채우면 잘못된 issuer merge, share-class 혼동과 P0 mapping 오류가 생긴다. 현재 근거로 exchange도 확정할 수 없다.
+- 현재 대응: ADR-012에서 canonical Issuer/Security 이전 provider staging identity를 제안했다. symbol은 provider-scoped history로, canonical IDs는 nullable `UNRESOLVED`와 explicit reason으로 분리한다. 독립 검토와 사용자 승인 전 canonical 자동 생성, VERIFIED mapping과 price publish를 금지한다.
+
+## KI-012 — 반복 price/revision과 기존 source record natural key 충돌
+
+- 상태: `OPEN — CP3-B CONTRACT PROPOSED`
+- 영향: 기존 `source_records(source_system, source_type, external_id)` unique는 같은 request의 반복 price snapshot과 same-key payload revision을 모두 보존할 수 없다. external ID에 현재 시각을 붙이면 멱등성을 우회하고 deterministic rebuild가 깨진다.
+- 현재 대응: 기존 table/0001은 유지하고 additive provider source-version table, raw/normalized hash, supersession과 latest pointer를 제안했다. exact schema는 CP3-A 독립 검토와 사용자 승인 뒤 CP3-B에서만 구현할 수 있다.
 
 ## KI-010 — Windows non-ASCII 개발·QA 저장소 경로의 editable install 실패
 

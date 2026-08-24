@@ -1,5 +1,38 @@
 # Changelog
 
+## Unreleased — Phase 2 CP3-A Contract Checkpoint — 2026-08-24
+
+### Added
+
+- `plans/PHASE_02_CP3_A_CONTRACT.md`에 Security Master와 Current Price의 endpoint 역할, KR/US universe, provider staging identity, lifecycle, PriceSnapshot, source trace, hash/idempotency/revision, additive migration과 CP3-B/C/D acceptance 계약 추가
+- ADR-012 `Toss provider security identity와 canonical issuer/security mapping 분리`를 `PROPOSED — AWAITING INDEPENDENT REVIEW`로 추가
+
+### Changed
+
+- Phase 2 실행계획을 현재 `CP1 PASS / CP2 COMPLETE / CP3-A IMPLEMENTED — AWAITING GPT INDEPENDENT REVIEW / CP3-B NOT STARTED` 상태로 정합화하면서 CP1 당시 조사 baseline과 현재 live verification matrix를 분리
+- ADR-011을 `/prices timestamp=null`까지 표현하는 nullable observed time/date와 structured missing reason 계약으로 수정하되 `PROPOSED — REVISED FOR CP3-A / AWAITING INDEPENDENT REVIEW` 유지
+- actual OAuth/stocks/success rate header만 `[LIVE_VERIFIED]`, `/stocks/all`, `/prices`, natural 429/5xx와 CP3 semantics/freshness는 `[LIVE_UNVERIFIED]`로 유지
+- issuer identity, timestamp-null source semantics와 기존 source-record natural-key/revision 충돌을 Known Issues에 추가·갱신
+
+### Security
+
+- CP3-A는 문서·계약 checkpoint로 application/test/fixture/migration/dependency/runtime config/API route/connector 변경 0
+- actual credential 조회·사용 0, actual Toss API 호출 0, account/order/WebSocket 변경 0, secret artifact 0
+- CP3-B/C/D application implementation, PR/main merge/tag/release를 수행하지 않음
+
+### QA
+
+- current environment: PowerShell 7.6.4(최소 7.4.0 이상, previous final QA reference 7.6.5와의 accepted variance), Python 3.13.15, Node 24.19.0, npm 11.17.0, ASCII-only path
+- 최종 staged documentation 기준 `scripts/test.ps1` exit code 0: backend 357/357, frontend 43/43, E2E 2/2, migration repeat/downgrade/re-upgrade, fixture 2차 import `inserted=0`/`updated=0`/`unchanged=13`, OpenAPI check, production build 2회, secret scan, initial/final policy scan PASS
+- Toss preflight default와 SelfTest는 각각 external network requests 0이었고 default credential usage도 0
+- 실패 이력 1: 첫 full run은 pre-existing orphaned workspace dev listeners가 3000/8000을 점유해 E2E 시작에서 exit 1이었다. 동일 repository command line을 확인한 exact process tree만 종료하고 포트 availability를 검증했다.
+- 실패 이력 2: 두 번째 full run은 E2E 2/2 뒤 unstaged documentation 때문에 secret scan의 index/working-tree equality gate에서 exit 1이었다. scanner 예외를 추가하지 않고 허용 문서 7개만 stage한 뒤 전체 suite를 처음부터 재실행했다.
+
+### Limitations
+
+- CP3-A는 `PASS`, `APPROVED` 또는 `COMPLETE`가 아니다. ADR-011/ADR-012와 exact provider enum/identity/migration 결정은 GPT independent review와 사용자 승인을 기다린다.
+- CP3-B는 `NOT STARTED`이며 자동으로 진행하지 않는다.
+
 ## Unreleased — Phase 2 CP2 Final Closeout — 2026-08-24
 
 ### Changed

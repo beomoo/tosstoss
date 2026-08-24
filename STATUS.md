@@ -1,17 +1,17 @@
 # Project Status
 
-- 프로젝트 상태: `PHASE 2 IMPLEMENTATION IN PROGRESS — CP2 COMPLETE / CP3 NOT STARTED`
-- 현재 Phase: `Phase 2 — CP2 final integrated QA 완료 / CP3 미착수`
+- 프로젝트 상태: `PHASE 2 IMPLEMENTATION IN PROGRESS — CP2 COMPLETE / CP3-A IMPLEMENTED — AWAITING GPT INDEPENDENT REVIEW / CP3-B NOT STARTED`
+- 현재 Phase: `Phase 2 — CP3-A Security Master + Current Price documentation/contract checkpoint`
 - 현재 버전: `0.1.0`
 - Phase 1 최종 검증 commit: `57b2a63ead06d03191d8094e1689b8d2ab3d7764`
 - Phase 1 PR: `#1`
 - Phase 1 merge commit: `b1829a7375704271a21267e1fcf62808147be593`
 - Release baseline tag: `v0.1.0`
-- 최종 QA일: `2026-08-24 (CP2 final integrated QA)`
+- 최종 QA일: `2026-08-24 (CP3-A documentation + full offline regression)`
 - 실제 API 연결: `CP2-D2 one-shot PASS — OAuth + GET /api/v1/stocks만 검증`
 - 실제 주문 기능: `비활성 / 비범위`
 - OpenAI API 사용: `아니오`
-- Phase 2 상태: `CP1 PASS / CP2 COMPLETE / CP2-D2 PASS / CP3 NOT STARTED`
+- Phase 2 상태: `CP1 PASS / CP2 COMPLETE / CP3-A IMPLEMENTED — AWAITING GPT INDEPENDENT REVIEW / CP3-B NOT STARTED`
 
 ## 완료 상태
 
@@ -47,6 +47,11 @@
 - [x] CP2-D2 actual OAuth와 `GET /api/v1/stocks` one-shot PASS, allowed-IP 실행 경로와 성공 응답 Limit/Remaining/Reset header 검증
 - [x] Vitest stdout/stderr 분리, strict UTF-8 byte-safe JSON array와 한국어 test name을 포함한 exact 43 inventory gate
 - [x] CP2 final integrated QA: P0 0 / P1 0 / unresolved functional P2 0 / deferred environment P2 1
+- [x] CP3-A Security Master + Current Price 계획·계약 문서 작성
+- [x] ADR-011 nullable source-time proposal 수정 및 ADR-012 provider staging identity proposal 추가
+- [x] CP3-A application/test/fixture/migration/dependency/runtime/API route 변경 0
+- [ ] CP3-A GPT independent review 및 사용자 승인
+- [ ] CP3-B Contract Foundation + additive migration 시작 승인
 
 ## Phase 1 종료 기준
 
@@ -58,7 +63,9 @@ Merge commit: b1829a7375704271a21267e1fcf62808147be593
 Release baseline tag: v0.1.0
 ```
 
-Phase 2 구현은 계속 진행 중이며 CP2만 완료했다. CP2-A 보안 경계, CP2-B OAuth/token manager/exact HTTP client와 token-boundary hardening, CP2-C rate limiter/retry/error taxonomy와 cumulative-wait hardening, CP2-D1 safe preflight offline validation, CP2-D2 actual one-shot을 final integrated QA로 닫았다. 사용자 독립 실행의 safe fixed summary에서 provider contract drift 없음, OpenAPI `3.1.0`, provider version `1.2.14`, actual OAuth와 `GET /api/v1/stocks` 성공, allowed-IP 실행 경로와 성공 응답의 Limit/Remaining/Reset header 유효성을 확인했다. credential 값, token, body와 raw header 값은 기록하지 않았다.
+Phase 2 구현은 계속 진행 중이며 CP2만 `COMPLETE`다. CP2-A 보안 경계, CP2-B OAuth/token manager/exact HTTP client와 token-boundary hardening, CP2-C rate limiter/retry/error taxonomy와 cumulative-wait hardening, CP2-D1 safe preflight offline validation, CP2-D2 actual one-shot을 final integrated QA로 닫았다. 사용자 독립 실행의 safe fixed summary에서 provider contract drift 없음, OpenAPI `3.1.0`, provider version `1.2.14`, actual OAuth와 `GET /api/v1/stocks` 성공, allowed-IP 실행 경로와 성공 응답의 Limit/Remaining/Reset header 유효성을 확인했다. credential 값, token, body와 raw header 값은 기록하지 않았다.
+
+CP3-A에서는 Security Master와 Current Price의 endpoint 역할, KR/US universe, provider staging identity, lifecycle, nullable source time, PriceSnapshot, raw/source/hash/idempotency, additive migration/rollback과 CP3-B/C/D acceptance를 문서화했다. ADR-011은 revised `PROPOSED`, ADR-012는 신규 `PROPOSED`이며 어느 결정도 Codex가 승인하지 않았다. application code, test, fixture, migration, dependency, runtime config, API route와 connector implementation은 변경하지 않았다. CP3-A 상태는 `IMPLEMENTED — AWAITING GPT INDEPENDENT REVIEW`이고 CP3-B는 시작하지 않았다.
 
 `[LIVE_VERIFIED]` 범위는 canonical provider contract, actual OAuth token issuance와 credential acceptance, allowed-IP 실행 경로, actual `GET /api/v1/stocks` 구조, 성공 응답의 Limit/Remaining/Reset header다. natural 429 `Retry-After`, actual 429/5xx, production retry timing, 나머지 Phase 2 market endpoint, CP3 이후 데이터 semantics/freshness는 계속 `[LIVE_UNVERIFIED]`다. Phase 2 전체 완료나 CP3 시작을 의미하지 않는다.
 
@@ -67,5 +74,5 @@ Phase 2 구현은 계속 진행 중이며 CP2만 완료했다. CP2-A 보안 경�
 - Node.js 지원 범위는 24.16 이상 25 미만이며 QA 기준은 24.19.0이다.
 - ADR-009는 아직 `PROPOSED`이며 독립 리뷰·승인 대상이다.
 - 모든 표시 데이터는 합성 fixture이고 실제 투자 판단 자료가 아니다.
-- Toss market connector는 CP2 범위에서 구현됐지만 실제 데이터 수집·정규화·저장·화면 연결은 CP3 이후 범위다. OpenDART/SEC/news/macro, 계좌와 주문은 구현하지 않았다.
+- Toss market connector는 CP2 범위에서 구현됐지만 실제 데이터 수집·정규화·저장·화면 연결은 CP3-B 이후 별도 승인 범위다. CP3-A에서는 문서만 변경했다. OpenDART/SEC/news/macro, 계좌와 주문은 구현하지 않았다.
 - Windows 개발·QA 저장소는 현재 ASCII-only parent path를 사용한다. non-ASCII parent path의 setuptools editable build 실패는 `P2 DEFERRED / ENVIRONMENT CONSTRAINT`이며 CP2 business logic 결함으로 분류하지 않는다.

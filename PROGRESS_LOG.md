@@ -253,3 +253,31 @@
 - CP2: `COMPLETE`
 - CP3: `NOT STARTED`
 - Phase 2: `NOT COMPLETE`
+
+## 2026-08-24 — Phase 2 CP3-A Security Master + Current Price 계획·계약
+
+- corrected preflight에서 `feature/phase-02-toss` local/origin SHA `6bd5d2ae9c26f02f2cd4bd75a474633a9082fa16`, remote main/merge-base `353159da45cfbe3a7f444bf476ce86fa9aece17c`, ancestry `0/18`, clean working tree를 확인했다. 로컬 main branch는 생성·변경하지 않았다.
+- 현재 PowerShell 7.6.4는 previous final QA reference 7.6.5와 다르지만 repository minimum 7.4.0 이상이므로 accepted environment variance로 기록했다. Python 3.13.15, Node 24.19.0, npm 11.17.0과 ASCII-only repository path는 기준에 맞았다.
+- CP3-A는 application 구현 전 문서·계약 checkpoint다. `plans/PHASE_02_CP3_A_CONTRACT.md`를 추가하고 기존 실행계획의 CP1 historical baseline, current live matrix, checkpoint 상태를 분리했다.
+- `/stocks/all`은 KR/US discovery 전용, `/stocks`는 최대 200-symbol detail enrichment, `/prices`는 verified eligible security만 사용하는 역할로 제안했다. `/stocks/all`과 `/prices`는 계속 `[LIVE_UNVERIFIED]`다.
+- Phase 1 Issuer의 corp_code/CIK 강제와 Toss response 부재 충돌 때문에 canonical model을 breaking 완화하지 않고 provider staging identity를 먼저 두는 ADR-012를 `PROPOSED`로 추가했다. symbol/name/ISIN 단독 자동 merge, fake regulatory ID와 unknown VERIFIED mapping을 금지했다.
+- ADR-011은 observed time/date 둘 다 null인 provider 상태와 `/prices timestamp=null`을 structured missing reason으로 표현하도록 수정했지만 `PROPOSED — REVISED FOR CP3-A / AWAITING INDEPENDENT REVIEW`를 유지했다.
+- current price는 strict Decimal string, nullable provider timestamp, provider currency 보존, timestamp null의 `DEGRADED/UNKNOWN`, LKG/latest pointer 보존, duplicate/revision 분리와 SQLite history 누적 금지를 계약화했다.
+- collection attempt, canonical request, raw response, source version, normalized record, latest pointer와 audit event를 별도 identity로 정의했다. 기존 source-record unique 제약은 수정하지 않고 additive provider source-version table proposal로 해결했다.
+- CP3-B contract foundation, CP3-C security master, CP3-D1 price offline, CP3-D2 separately approved live verification, CP3-D3 integrated closeout으로 분리했다. 각 checkpoint는 이전 승인 뒤에만 시작한다.
+- application code, test, fixture, migration, dependency, runtime config, API route와 connector implementation 변경은 0이다. actual credential 사용과 actual Toss API 호출도 0이다.
+- 첫 full `scripts/test.ps1`은 backend 357/357, migration, fixture idempotency, frontend 43/43, OpenAPI와 production build 2회까지 통과한 뒤 pre-existing orphaned workspace Uvicorn listener가 8000을 점유해 E2E 시작에서 exit 1이었다. 3000/8000 listener의 command line이 모두 이 repository의 Next/Uvicorn임을 확인하고 exact process tree만 종료한 뒤 두 포트가 비었음을 검증했다.
+- 두 번째 full run은 backend/frontend/migration/fixture/OpenAPI/build와 E2E 2/2까지 통과한 뒤 documentation이 unstaged여서 secret scan의 index/working-tree equality gate에서 exit 1이었다. scanner 예외나 우회를 추가하지 않고 허용된 문서 7개만 stage했다.
+- final staged documentation 기준 세 번째 `scripts/test.ps1`은 PowerShell 7.6.4, Python 3.13.15, Node 24.19.0, npm 11.17.0에서 exit 0이었다. exact inventory backend 357, frontend 43, E2E 2가 유지됐고 357/357, 43/43, 2/2 PASS, migration repeat/downgrade/re-upgrade, fixture 2차 import `inserted=0`/`updated=0`/`unchanged=13`, OpenAPI, production build 2회, secret scan, initial/final policy scan이 모두 PASS했다.
+- Toss preflight default/SelfTest external request는 각각 0이고 default credential usage는 0이었다. test 삭제, skip/xfail, inventory 감소, assertion 완화, network 우회는 없었다.
+
+## 현재 중지 지점 — Phase 2 CP3-A
+
+- Phase 2: `IMPLEMENTATION IN PROGRESS`
+- CP2: `COMPLETE`
+- CP3-A: `IMPLEMENTED — AWAITING GPT INDEPENDENT REVIEW`
+- CP3-B: `NOT STARTED`
+- ADR-011: `PROPOSED — REVISED FOR CP3-A / AWAITING INDEPENDENT REVIEW`
+- ADR-012: `PROPOSED — AWAITING INDEPENDENT REVIEW`
+- application implementation: `0`
+- actual credential/API usage: `0`

@@ -1,14 +1,62 @@
 # Phase 2 토스증권 읽기 전용 데이터 실행계획
 
-- 계획 상태: `PROPOSED — 사용자 승인 전 구현 금지`
-- Checkpoint: `CP1 — 공식 계약 / execution plan`
-- 작성·공식 문서 확인일: `2026-08-23` (`Asia/Seoul`)
+- 계획 상태: `PHASE 2 IMPLEMENTATION IN PROGRESS`
+- Current checkpoint: `CP3-A IMPLEMENTED — AWAITING GPT INDEPENDENT REVIEW`
+- 최초 작성·공식 문서 조사일: `2026-08-23` (`Asia/Seoul`)
+- 현재 상태 갱신일: `2026-08-24` (`Asia/Seoul`)
 - 기준 브랜치: `feature/phase-02-toss`
-- 기준 commit: `353159da45cfbe3a7f444bf476ce86fa9aece17c`
+- CP3-A 시작 commit: `6bd5d2ae9c26f02f2cd4bd75a474633a9082fa16`
+- Remote main/merge-base: `353159da45cfbe3a7f444bf476ce86fa9aece17c`
 - Phase 1 baseline: `v0.1.0` → `b1829a7375704271a21267e1fcf62808147be593`
 
-이 문서는 Phase 2의 구현 계약이다. 사용자 승인 전에는 Checkpoint 2를 시작하지 않는다.
+이 문서는 Phase 2의 구현 계약이다. checkpoint 완료를 다음 checkpoint의 승인으로 확대하지 않는다.
 공식 문서와 실응답이 다르면 실응답을 조용히 수용하지 않고 수집을 중단한 뒤 문서·fixture·계약을 함께 재검토한다.
+
+## Current execution status
+
+- Phase 1: `COMPLETE`, release baseline `v0.1.0`
+- CP1: `PASS`
+- CP2: `COMPLETE`
+- CP3-A: `IMPLEMENTED — AWAITING GPT INDEPENDENT REVIEW`
+- CP3-B: `NOT STARTED`
+- Phase 2: `IMPLEMENTATION IN PROGRESS`
+
+CP3-A는 `plans/PHASE_02_CP3_A_CONTRACT.md`를 중심으로 Security Master와 Current Price의 계획·계약만 작성하는 documentation checkpoint다. application, test, fixture, migration, dependency, runtime config, API route와 collection job은 변경하지 않는다. 독립 검토와 사용자 승인 전에는 CP3-A를 `PASS`, `APPROVED` 또는 `COMPLETE`로 표시하지 않고 CP3-B를 시작하지 않는다.
+
+## Original CP1 investigation baseline
+
+2026-08-23 CP1 당시에는 credential을 요청·사용하지 않았고 실제 Toss endpoint 호출도 없었다. 따라서 당시 조사 결과는 전부 공식 공개 계약에 근거한 `[OFFICIAL_DOC]`/`[LIVE_UNVERIFIED]`였고 `[LIVE_VERIFIED]` 항목은 없었다. 아래 source hash, endpoint/field/rate/finality 조사 표는 그 역사적 CP1 기준을 보존한다. 현재 live 상태를 2026-08-23부터 검증됐던 것처럼 소급하지 않는다.
+
+## Current live verification matrix
+
+| 대상 | current status | 확인 범위 | 확대 금지 범위 |
+|---|---|---|---|
+| canonical provider contract | `[LIVE_VERIFIED]` | origin/hash 일치, OpenAPI `3.1.0`, provider REST `1.2.14`, drift 없음 | 이후 version/hash가 영구 고정됐다는 주장 |
+| OAuth | `[LIVE_VERIFIED]` | actual token issuance, credential acceptance, allowed-IP execution path | token body/value/TTL의 모든 edge semantics |
+| `GET /api/v1/stocks` | `[LIVE_VERIFIED]` | actual endpoint 호출과 성공 outer response structure | 전체 market·enum·nullable field·identifier/lifecycle semantics |
+| 성공 rate headers | `[LIVE_VERIFIED]` | stocks 성공 응답의 Limit/Remaining/Reset 유효성 | `Retry-After`, natural 429, 다른 group/endpoint behavior |
+| `GET /api/v1/stocks/all` | `[LIVE_UNVERIFIED]` | 공식 contract만 조사 | universe 완전성, enum/null/lifecycle semantics |
+| `GET /api/v1/prices` | `[LIVE_UNVERIFIED]` | 공식 contract만 조사 | price/currency/timestamp-null/freshness semantics |
+| 나머지 market endpoint | `[LIVE_UNVERIFIED]` | 공식 contract만 조사 | 실제 body/header/timing/finality |
+| 429/5xx와 production timing | `[LIVE_UNVERIFIED]` | offline MockTransport/fake-time contract만 검증 | actual provider retry timing과 `Retry-After` |
+
+## Current checkpoint status
+
+CP3-A는 기존 Phase 1 계약을 breaking 변경하지 않고 provider staging identity, nullable provider source time, raw/source revision, current latest pointer와 additive migration 승인안을 정의한다. ADR-011 revised proposal과 ADR-012 proposal은 모두 독립 검토·사용자 결정을 기다린다. CP3-B/C/D의 application work는 아직 시작하지 않았다.
+
+## Historical checkpoint record
+
+| checkpoint | historical result | 비고 |
+|---|---|---|
+| CP1 | `PASS` | 공식 계약 조사와 실행계획; 당시 live 검증 0 |
+| CP2-A | `PASS` | Toss-only dependency/config/policy boundary |
+| CP2-B | `PASS` | OAuth/token manager/exact HTTP boundary와 P2 hardening |
+| CP2-C | `PASS` | rate/retry/error taxonomy와 cumulative-wait hardening |
+| CP2-D1 | `PASS` | safe live preflight tooling의 offline validation |
+| CP2-D2 | `PASS` | 승인된 actual OAuth/stocks one-shot 최소 검증 |
+| CP2 | `COMPLETE` | final integrated QA; Phase 2 전체 완료 아님 |
+| CP3-A | `IMPLEMENTED — AWAITING GPT INDEPENDENT REVIEW` | 문서·계약만; application implementation 0 |
+| CP3-B | `NOT STARTED` | 자동 진입 금지 |
 
 ## 0. 근거 분류
 
@@ -20,7 +68,7 @@
 | `[LIVE_UNVERIFIED]` | 공개 계약은 있으나 credential·허용 IP가 필요한 실응답 검증은 아직 하지 않음 |
 | `[UNVERIFIED]` | 공식 문서와 실응답 어디에서도 확인되지 않음. 구현 기본값으로 사용 금지 |
 
-현재 `[LIVE_VERIFIED]` 항목은 없다. CP1에서는 credential을 요청·사용하지 않았고 공개 문서만 확인했다.
+CP1 조사 시점에는 `[LIVE_VERIFIED]` 항목이 없었다. 현재 상태는 위 `Current live verification matrix`를 따른다.
 
 ## 1. 목표
 
@@ -121,7 +169,20 @@ GET /api/v1/market-indicators/{symbol}/investor-trading
 
 ### 6.1 요청·paging·rate matrix
 
-모든 행의 source class는 `[OFFICIAL_DOC]`이며 live 상태는 `[LIVE_UNVERIFIED]`이다.
+모든 행의 request/paging/rate source class는 CP1의 `[OFFICIAL_DOC]` 조사다. 현재 live 상태는 다음 표로 별도 관리하며, 실제 확인한 좁은 범위를 endpoint 전체 semantics 검증으로 확대하지 않는다.
+
+| method / endpoint | current live status | exact scope |
+|---|---|---|
+| `POST /oauth2/token` | `[LIVE_VERIFIED]` | actual issuance, credential acceptance, allowed-IP path; body/value/edge semantics 저장·확대 금지 |
+| `GET /api/v1/stocks` | `[LIVE_VERIFIED]` | actual call과 성공 outer response; 전체 enum/null/market semantics는 `[LIVE_UNVERIFIED]` |
+| `GET /api/v1/stocks/all` | `[LIVE_UNVERIFIED]` | 공식 contract only |
+| `GET /api/v1/prices` | `[LIVE_UNVERIFIED]` | 공식 contract only |
+| `GET /api/v1/candles` | `[LIVE_UNVERIFIED]` | 공식 contract only |
+| five KR stock-trend endpoints | `[LIVE_UNVERIFIED]` | 공식 contract only |
+| KR/US market calendar | `[LIVE_UNVERIFIED]` | 공식 contract only |
+| five support/call-hold endpoints | `[LIVE_UNVERIFIED]` | 공식 contract only, callable allowlist 밖 |
+
+성공 `GET /api/v1/stocks`의 Limit/Remaining/Reset header는 `[LIVE_VERIFIED]`다. natural 429 `Retry-After`, actual 429/5xx, production retry timing과 다른 endpoint rate behavior는 `[LIVE_UNVERIFIED]`다.
 
 | # | method / endpoint | market | request parameters | paging / maximum | rate group | documented TPS |
 |---:|---|---|---|---|---|---:|
@@ -346,14 +407,18 @@ Phase 1 테스트 삭제, skip, xfail, inventory 감소는 허용하지 않는�
 
 기존 Phase 1 `SourceRecord`는 `observed_at`·`published_at`을 필수 datetime으로 요구하지만 일부 Toss 수급 응답은 `date`만 제공하고 publication timestamp를 제공하지 않는다. 날짜를 자정 timestamp로 만들거나 `fetched_at`을 `observed_at`으로 복사하지 않는다.
 
-CP3 전에 versioned provider source contract를 추가한다.
+CP3-B 승인 후 versioned provider source contract를 추가하는 방안을 제안한다. CP3-A에서는 문서만 작성한다.
 
 - 기존 Phase 1 `SourceRecord`와 fixture는 변경 없이 계속 유효
-- 새 contract는 `observed_at`과 `observed_date`를 구분하고 최소 하나를 요구
-- `published_at` 미제공은 null + `missing_reason=NOT_PROVIDED`
+- 새 contract는 nullable `observed_at`과 nullable `observed_date`를 구분
+- 둘 다 null인 상태를 허용하되 각각의 structured missing reason 필수
+- 둘 다 값이 있으면 dataset contract가 허용하는 조합인지 검증
+- nullable `published_at`이 null이면 structured missing reason 필수
+- `fetched_at`은 required aware UTC이며 observed/published time을 대신하지 않음
 - 전역 `ContractVersion` 허용 범위를 무조건 넓히지 않음
+- 새 provider source contract에 독립 version 부여
 - 기존 API·fixture의 `contract_version=0.1.0` 회귀를 유지
-- schema 변경안과 migration은 CP3 시작 전 ADR-011 승인 필요
+- schema 변경안과 migration은 ADR-011 independent review와 사용자 승인 필요
 
 ### 11.4 Analytics
 
@@ -373,6 +438,8 @@ CP3 전에 versioned provider source contract를 추가한다.
 - `fetched_at`은 response body 수신 완료 시점의 UTC
 - `observed_at`은 provider가 제공한 데이터 기준 timestamp만 사용
 - date-only dataset은 `observed_date`에 저장
+- current price의 provider `timestamp=null`은 `observed_at=null`, `observed_date=null`과 structured missing reason으로 표현하고 `fetched_at`을 복사하지 않음
+- current price timestamp null의 availability는 `DEGRADED`, freshness는 `UNKNOWN`이며 current/latest pointer를 갱신하지 않음
 - freshness 평가는 `fetched_at`과 관측 시간/date, calendar, dataset policy를 분리해 계산
 - API가 명시적 finality flag를 주지 않으면 기본 `UNKNOWN`
 - 공식 문서로 장중 변경이 확실한 당일 값은 `PRELIMINARY`
@@ -421,19 +488,55 @@ CP2-A의 통과는 CP2 전체 통과가 아니며, 아래 기존 완료 조건�
 - rollback: connector/config/dependency/policy 변경 revert; 저장 데이터 없음
 - 완료 조건: credential 없이 offline 전 검증 PASS, credential preflight는 미실행이어도 `[LIVE_UNVERIFIED]`로 명시 가능
 
-### CP3 — Security Master + Current Price
+### CP3-A — Security Master + Current Price 계획·계약
 
-- 구현 파일: Toss stock/price DTO, normalizer, raw store, security master job, current-price service/repository interface
-- 수정 가능한 기존 파일: contract enums/source/security, metadata repository, fixture importer 경계, API status
-- DB migration: security source mapping·job/source metadata만 추가; price history를 SQLite에 적재하지 않음
-- fixture: 공식 schema를 따라 수작업 비식별화한 KR/US stock·price·null·unknown-enum fixture
-- unit test: 200-symbol chunking, stable ID, market/currency/share class, Decimal, nullable timestamp, unknown enum reject
-- integration test: raw hash → source record → normalized security/current snapshot 추적, 반복 import 멱등성
-- live test: 승인된 소수 symbol의 schema·header·timestamp만 대조; 값 자체를 QA evidence에 원문 저장하지 않음
-- offline regression: Phase 1 fixture API/UI와 모든 계약 테스트 유지
-- security test: query symbol validation, URL encoding, response/log redaction
-- rollback: migration downgrade는 disposable DB에서만; raw append 파일은 manifest에서 비활성화하고 자동 삭제 금지
-- 완료 조건: 잘못된 종목 매핑 0, current price에 source/fetched/observed/currency 명시, P0/P1 0
+- 변경 범위: `plans/PHASE_02_CP3_A_CONTRACT.md`와 승인된 상태/ADR/known-issue 문서만
+- application/test/fixture/migration/dependency/runtime config/API route/connector 변경: 0
+- actual credential/API usage: 0
+- 계약 범위: endpoint 역할, universe, provider staging identity, lifecycle, PriceSnapshot, nullable source time, raw/source/hash/idempotency, additive migration과 acceptance
+- 상태: `IMPLEMENTED — AWAITING GPT INDEPENDENT REVIEW`
+- 완료 표현 금지: 독립 검토·사용자 승인 전 `PASS`, `APPROVED`, `COMPLETE` 금지
+- rollback: documentation commit revert; application/data 영향 없음
+
+### CP3-B — Contract Foundation + Additive Migration + Raw/Source Trace
+
+- provider-specific versioned contract와 source timestamp/date/missing semantics
+- exact enum contract, additive `0002_phase_02_cp3_foundation` migration, raw manifest/source metadata, repository interface
+- offline fixture/test only; application collection job와 live API 없음
+- Phase 1 SourceRecord/Issuer/Security v0.1.0, fixture/API/OpenAPI와 `0001` 변경 금지
+- 시작 조건: CP3-A 독립 검토와 사용자 승인, ADR-011/ADR-012 disposition 확정
+
+### CP3-C — Security Master
+
+- `/stocks/all` discovery DTO/fixture와 `/stocks` detail DTO/fixture
+- KR/US conservative universe, provider staging identity, canonical mapping, lifecycle, normalization, storage와 idempotency
+- unknown enum, identifier collision, symbol reuse와 partial detail negative test
+- live API 없음
+- 시작 조건: CP3-B 승인 및 full offline gate 통과
+
+### CP3-D1 — Current Price Offline
+
+- `/prices` DTO/fixture, 최대 200-symbol chunking, strict Decimal/currency/timestamp-null 계약
+- raw/source trace, latest-state, duplicate/revision, last known-good 보존
+- price history SQLite 누적 금지; CP4 Parquet/DuckDB 범위 유지
+- full offline regression
+- 시작 조건: CP3-C 승인
+
+### CP3-D2 — Separately Approved Minimal Live Verification
+
+- 사용자 별도 승인 전 실행 금지
+- 승인된 소수 symbol만 `/stocks/all`과 `/prices` schema/header/timestamp semantics 최소 대조
+- 값, body, token, raw header와 credential 저장 금지
+- account/order/WebSocket 금지, exact callable allowlist 확대 금지
+- 시작 조건: CP3-D1 승인과 별도 live 승인
+
+### CP3-D3 — Integrated QA and Closeout
+
+- 전체 회귀, migration/idempotency/OpenAPI/build/E2E/secret/policy/false-green gate
+- P0/P1/P2 분류와 문서 closeout
+- CP3 완료 여부는 D3 독립 검토와 사용자 승인 뒤에만 판정
+
+각 CP3 checkpoint는 앞 checkpoint 승인 뒤에만 시작한다. CP3-A 뒤 CP3-B/C/D를 자동 실행하지 않는다. 세부 계약과 test-case matrix는 `plans/PHASE_02_CP3_A_CONTRACT.md`를 따른다.
 
 ### CP4 — Candles + time-series storage
 
@@ -483,7 +586,12 @@ CP2-A의 통과는 CP2 전체 통과가 아니며, 아래 기존 완료 조건�
 |---|---|
 | CP1 | 공식 source hash·version, 17개 endpoint 조사, 12개 callable allowlist, 9개 rate group, 미확인·문서 충돌 기록, application diff 0 |
 | CP2 | single backend token manager, single-flight, memory-only, exact host/path, bounded retry, offline PASS, 계좌·주문 fail-closed |
-| CP3 | KR/US master·현재가 strict normalize, stable mapping, Decimal/time/null/source trace, idempotent collection |
+| CP3-A | Security Master/Current Price 계획·계약, ADR-011 revised/ADR-012 proposed, application diff 0, independent review 대기 |
+| CP3-B | versioned provider contract, additive migration, raw/source trace와 offline acceptance |
+| CP3-C | KR/US master strict normalize, staging/canonical stable mapping, lifecycle/collision/idempotency |
+| CP3-D1 | current price offline Decimal/time/null/currency/source/latest/idempotency/revision |
+| CP3-D2 | 별도 승인된 최소 live schema/header/timestamp 대조; secret/body/raw header persistence 0 |
+| CP3-D3 | full regression, migration, idempotency, build/E2E/secret/policy/false-green와 P0/P1 0 |
 | CP4 | 1m·1d candles, durable Parquet/DuckDB, atomic publish, paging·adjustment·timezone·OHLC 검증 |
 | CP5 | 5개 KR flow dataset, 잠정/UNKNOWN의 정직한 표현, revision/history, 장애 격리·멱등성 |
 | CP6 | rate/freshness/data-quality end-to-end, full offline regression, approved live comparison, P0=0·P1=0 |
@@ -549,10 +657,11 @@ checkpoint 완료를 다음 checkpoint 완료로 대신하지 않는다. live �
 
 ## 19. KNOWN_ISSUES
 
-### KI-P2-01 — live credential·허용 IP 미검증
+### KI-P2-01 — live contract 부분 검증
 
-- `[LIVE_UNVERIFIED]` token 발급, 실제 `expires_in`, 허용 IP 차단, 401/403 body/header, 실 rate header
-- 해결: CP2의 별도 credential preflight
+- `[LIVE_VERIFIED]` actual OAuth token issuance, credential acceptance, allowed-IP 실행 경로, `GET /api/v1/stocks`, 성공 Limit/Remaining/Reset header
+- `[LIVE_UNVERIFIED]` natural 429 `Retry-After`, actual 429/5xx, production retry timing, `/stocks/all`, `/prices`, 나머지 market endpoint와 CP3 data semantics/freshness
+- 해결: endpoint별 승인 checkpoint에서 최소 범위를 별도 검증하며 미검증 항목을 소급 승격하지 않음
 
 ### KI-P2-02 — 공식 WebSocket 문서 상태 충돌
 
@@ -569,13 +678,23 @@ checkpoint 완료를 다음 checkpoint 완료로 대신하지 않는다. live �
 
 ### KI-P2-04 — SourceRecord date-only·publication semantics
 
-- Phase 1 SourceRecord의 필수 datetime이 date-only 수급과 publication 미제공 응답을 정확히 표현하지 못한다.
-- 해결: 기존 v0.1.0을 완화하지 않는 versioned provider source contract를 ADR-011로 승인한 뒤 CP3에서 구현.
+- Phase 1 SourceRecord의 필수 datetime이 date-only 수급, publication 미제공과 `/prices timestamp=null`을 정확히 표현하지 못한다.
+- 해결: 기존 v0.1.0을 완화하지 않고 observed time/date 둘 다 null + structured reason을 허용하는 versioned provider source contract를 ADR-011 revised proposal로 독립 검토한 뒤 CP3-B에서 구현.
 
 ### KI-P2-05 — schema·rate drift
 
 - `latest` URL과 rate 수치는 변경 가능하다.
 - 해결: CP 시작 시 version/hash 재확인, runtime header 하향 우선, schema drift fail closed.
+
+### KI-P2-06 — Toss issuer identity conflict
+
+- Toss stock detail에는 Phase 1 `Issuer`가 요구하는 KR corp_code/US CIK가 없고 exchange semantics도 현재 미확인이다.
+- 해결: Toss symbol/ticker를 regulatory ID로 위조하지 않고 ADR-012의 provider staging identity를 사용한다. 승인 전 canonical Issuer/Security 자동 생성과 price publish를 시작하지 않는다.
+
+### KI-P2-07 — source revision/natural key conflict
+
+- 기존 `source_records(source_system, source_type, external_id)` unique는 반복 price snapshot과 same-key revision을 표현하지 못한다.
+- 해결: timestamp suffix로 회피하지 않고 additive provider source-version table, semantic normalized hash와 latest pointer를 CP3-B proposal로 검토한다.
 
 ## 20. Phase 2 완료 게이트
 
@@ -600,4 +719,4 @@ Phase 2 완료 선언에는 모두 필요하다.
 
 ## 최종 판정
 
-Checkpoint 1 문서화는 완료 가능하다. Checkpoint 2는 이 계획과 ADR-010·ADR-011에 대한 사용자 승인 후에만 시작한다.
+CP1은 `PASS`, CP2는 `COMPLETE`다. CP3-A 계획·계약 문서는 구현됐지만 상태는 `IMPLEMENTED — AWAITING GPT INDEPENDENT REVIEW`이며 `PASS`, `APPROVED`, `COMPLETE`가 아니다. ADR-010은 `ACCEPTED`, ADR-011 revised proposal과 ADR-012 proposal은 승인되지 않았다. CP3-B는 `NOT STARTED`이고 독립 검토와 사용자 승인 전 자동으로 시작하지 않는다. Phase 2 전체는 `IMPLEMENTATION IN PROGRESS`다.
