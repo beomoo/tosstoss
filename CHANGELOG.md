@@ -1,5 +1,28 @@
 # Changelog
 
+## Unreleased — Phase 2 CP3-A Approval and Final Closeout — 2026-08-25
+
+### Approved
+
+- 사용자 명시적 결정으로 ADR-011 `date-only Toss 관측을 versioned source contract로 분리`를 `ACCEPTED`로 전환
+- 사용자 명시적 결정으로 revised ADR-012 `Toss provider security identity와 canonical issuer/security mapping 분리`를 `ACCEPTED`로 전환
+- GPT independent re-review `PASS WITH CLOSEOUT CONDITION`, P0 0/P1 0과 P1-01/P1-02 `CLOSED` 결과를 `qa/PHASE_02_CP3_A_INDEPENDENT_QA.md`에 별도 보존
+- CP3-A planning/contract를 `PASS — CONTRACT APPROVED AND CLOSED`로 closeout; CP3-B는 `NOT STARTED`, automatic progression은 `PROHIBITED`
+
+### QA Closeout
+
+- P2 `final post-report-edit regression evidence gap`은 두 QA 보고서를 포함한 final 9-file staged documentation set을 먼저 완성·stage한 뒤 전체 `scripts/test.ps1`을 실행해 해소
+- final staged set 기준 exit 0: backend inventory 357 및 357/357, frontend inventory 43 및 43/43, E2E inventory 2 및 2/2 PASS
+- migration repeat/downgrade/re-upgrade, fixture second import `inserted=0`/`updated=0`/`unchanged=13`, OpenAPI, production build 2회, secret scan, initial/final policy scan PASS
+- actual Toss credential usage 0, actual Toss API requests 0, offline default/SelfTest external request 0
+
+### Scope and Limitations
+
+- application/test/fixture/migration/dependency/runtime config/API route/connector/CP3-B implementation 변경 0
+- test 삭제, skip/xfail, inventory 감소, assertion 완화, exception/scanner/network guard 우회 0
+- `/stocks/all`, `/prices`, complete enum/null/lifecycle, price timestamp-null/currency/freshness, natural 429와 actual 429/5xx production timing은 계속 `[LIVE_UNVERIFIED]`
+- PR/main merge/tag/release 0
+
 ## Unreleased — Phase 2 CP3-A Independent Review Fix — 2026-08-25
 
 ### Changed

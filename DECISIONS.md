@@ -197,16 +197,18 @@ checkpoint 단위로 connector/config/dependency/policy 변경을 revert하고 f
 
 ## ADR-011 — date-only Toss 관측을 versioned source contract로 분리
 
-- 상태: `PROPOSED — INDEPENDENT REVIEW P1-NOT-BLOCKING / AWAITING USER APPROVAL`
+- 상태: `ACCEPTED`
 - 제안일: `2026-08-23`
 - 수정 제안일: `2026-08-24`
-- 독립검증일: `2026-08-25` — 방향상 blocker 없음; Codex가 `ACCEPTED`로 전환하지 않음
+- 독립검증일: `2026-08-25` — 방향상 blocker 없음; 당시에는 사용자 승인 전이어서 `PROPOSED` 유지
+- 결정일: `2026-08-25`
+- 결정 근거: GPT independent re-review `PASS WITH CLOSEOUT CONDITION`, P0 0/P1 0과 사용자의 명시적 승인
 
 ### 문제
 
 Phase 1 `SourceRecord`는 `observed_at`과 `published_at`을 필수 datetime으로 요구한다. Toss 수급 응답 일부는 기준 `date`만 제공하고 publication timestamp를 제공하지 않는다. 또한 공식 `/prices` 계약은 정상 응답에서도 `timestamp=null`을 허용한다. 기존 제안의 “`observed_at`과 `observed_date` 중 최소 하나” 규칙은 이 정상적인 time-unknown 상태를 표현하지 못한다. 자정, 현재 date 또는 fetch 시각을 대입하면 기존 시간 의미를 위반한다.
 
-### 제안
+### 결정
 
 - 기존 Phase 1 `SourceRecord` v0.1.0과 fixture는 변경하지 않는다.
 - Phase 2에 date-only와 timestamp 관측을 구분하는 versioned provider source contract를 추가한다.
@@ -215,7 +217,7 @@ Phase 1 `SourceRecord`는 `observed_at`과 `published_at`을 필수 datetime으�
 - 둘 다 값이 있으면 dataset별 contract가 해당 조합을 명시적으로 허용하는지 검증한다.
 - `published_at`은 nullable이고 null이면 structured missing reason이 필수다.
 - `fetched_at`은 required aware UTC이며 관측 또는 발표 시각을 대신하지 않는다.
-- current price의 provider timestamp가 null이면 availability `DEGRADED`, freshness `UNKNOWN`으로 두고 current/latest publish를 막는 보수적 default를 제안한다.
+- current price의 provider timestamp가 null이면 availability `DEGRADED`, freshness `UNKNOWN`으로 두고 current/latest publish를 막는다.
 - 전역 `ContractVersion = Literal["0.1.0"]`을 무조건 확장하지 않고 새 provider source contract에 독립 version을 부여한다.
 - 신규 provider source version은 기존 `source_records` natural key를 timestamp suffix로 우회하지 않고 additive table에서 revision을 표현한다.
 
@@ -228,7 +230,7 @@ Phase 1 `SourceRecord`는 `observed_at`과 `published_at`을 필수 datetime으�
 
 ### 영향
 
-독립 검토와 사용자 승인 뒤 CP3-B에서 source contract·additive migration·fixture·repository test가 추가될 수 있다. 기존 Phase 1 계약 테스트, fixture/API/OpenAPI와 `contract_version=0.1.0` 응답은 그대로 통과해야 한다. CP3-A에서는 문서 외 구현을 하지 않는다.
+이 결정은 CP3-B의 source contract·additive migration·fixture·repository test 구현 기준이다. 기존 Phase 1 계약 테스트, fixture/API/OpenAPI와 `contract_version=0.1.0` 응답은 그대로 통과해야 한다. ADR 승인은 CP3-B 시작 승인이 아니며 별도 명시적 authorization 전에는 구현하지 않는다.
 
 ### 마이그레이션·롤백
 
@@ -238,9 +240,11 @@ Phase 1 `SourceRecord`는 `observed_at`과 `published_at`을 필수 datetime으�
 
 ## ADR-012 — Toss provider security identity와 canonical issuer/security mapping 분리
 
-- 상태: `PROPOSED — REVISED AFTER INDEPENDENT REVIEW / AWAITING RE-REVIEW`
+- 상태: `ACCEPTED`
 - 제안일: `2026-08-24`
 - 독립검증 보완일: `2026-08-25`
+- 결정일: `2026-08-25`
+- 결정 근거: GPT independent re-review `PASS WITH CLOSEOUT CONDITION`, P0 0/P1 0, P1-01/P1-02 `CLOSED`와 사용자의 명시적 승인
 
 ### 문제
 
@@ -248,7 +252,7 @@ Phase 1 `Issuer`는 KR corp_code 또는 US CIK를 요구하고 `Security`는 iss
 
 첫 독립검증은 두 P1을 확인했다. P1-01은 verified canonical mapping을 Current Price 저장의 필수조건으로 둬 Phase 2가 Phase 3 OpenDART/Phase 4 SEC regulatory mapping에 순환 의존한다는 점이다. P1-02는 최초 observation 뒤 ISIN/listDate가 보강될 때 anchor 우선순위를 다시 적용하면 immutable이어야 할 동일 instrument에 새 provider identity가 생길 수 있다는 점이다.
 
-### 제안
+### 결정
 
 - canonical `Issuer`/`Security` 이전에 provider-scoped `provider_security_identity` staging 계층을 둔다.
 - Toss symbol은 provider-scoped identifier history로만 저장한다.
@@ -274,7 +278,7 @@ Phase 1 `Issuer`는 KR corp_code 또는 US CIK를 요구하고 `Security`는 iss
 
 ### 영향
 
-승인되면 CP3-B에 additive staging/source/mapping/provider-latest schema와 repository interface가, CP3-C에 offline security master normalization이 필요하다. CP3-D current price는 valid provider identity를 소비해 provider-scoped snapshot/latest를 만들고, verified canonical linkage가 있을 때만 canonical current-price view를 제공한다. 따라서 Phase 2 provider-scoped Security Master + Current Price 목표는 Phase 3/4 regulatory mapping 없이 완료 가능하다. 기존 Phase 1 Issuer/Security v0.1.0, fixture IDs와 public API는 변경하지 않는다.
+이 결정은 CP3-B additive staging/source/mapping/provider-latest schema와 repository interface, CP3-C offline security master normalization, CP3-D current price의 구현 기준이다. Current price는 valid provider identity를 소비해 provider-scoped snapshot/latest를 만들고, verified canonical linkage가 있을 때만 canonical current-price view를 제공한다. 따라서 Phase 2 provider-scoped Security Master + Current Price 목표는 Phase 3/4 regulatory mapping 없이 완료 가능하다. 기존 Phase 1 Issuer/Security v0.1.0, fixture IDs와 public API는 변경하지 않는다. ADR 승인은 CP3-B 시작 승인이 아니다.
 
 ### 마이그레이션·롤백
 

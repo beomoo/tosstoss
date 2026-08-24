@@ -301,3 +301,24 @@
 - CP3-A: `REVISED AFTER INDEPENDENT REVIEW — AWAITING GPT RE-REVIEW`
 - CP3-B: `NOT STARTED`
 - automatic checkpoint progression: `PROHIBITED`
+
+## 2026-08-25 — Phase 2 CP3-A approval and final closeout
+
+- preflight에서 `feature/phase-02-toss` local/origin SHA `6a3e1c21160478b44824f1630c8da8e3b784fd6b`, remote main/merge-base `353159da45cfbe3a7f444bf476ce86fa9aece17c`와 clean working tree를 확인했다.
+- 사용자가 제공한 GPT independent re-review 결과 `PASS WITH CLOSEOUT CONDITION`, P0 0/P1 0/P2 evidence gap 1, P1-01/P1-02 `CLOSED`를 `qa/PHASE_02_CP3_A_INDEPENDENT_QA.md`에 의미 변경 없이 별도 보존했다.
+- 사용자의 명시적 결정에 따라 ADR-011과 revised ADR-012를 2026-08-25 `ACCEPTED`로 전환하고 CP3-A repository contract를 승인 상태로 정합화했다.
+- P2 evidence gap은 independent QA와 Codex closeout report를 포함한 final 9-file documentation set을 먼저 완성·stage한 뒤 전체 offline regression을 수행하는 방식으로 해소했다.
+- final staged set의 `scripts/test.ps1`은 exit 0이었다. exact inventory backend 357/frontend 43/E2E 2, backend 357/357, frontend 43/43, E2E 2/2, migration repeat/downgrade/re-upgrade, fixture second import `inserted=0`/`updated=0`/`unchanged=13`, OpenAPI, production build 2회, secret scan과 initial/final policy scan이 모두 PASS했다.
+- offline Toss default/SelfTest external request, actual credential usage와 actual Toss API request는 모두 0이었다.
+- application/test/fixture/migration/dependency/runtime config/API route/connector 변경과 CP3-B implementation은 0이다. test 삭제/skip/xfail/inventory 감소/assertion 완화/scanner 또는 network guard 우회도 0이다.
+
+## 현재 중지 지점 — Phase 2 CP3-A approved closeout
+
+- Phase 2: `IMPLEMENTATION IN PROGRESS`
+- CP1: `PASS`
+- CP2: `COMPLETE`
+- CP3-A: `PASS — CONTRACT APPROVED AND CLOSED`
+- ADR-011: `ACCEPTED`
+- ADR-012: `ACCEPTED`
+- CP3-B: `NOT STARTED`
+- automatic checkpoint progression: `PROHIBITED`

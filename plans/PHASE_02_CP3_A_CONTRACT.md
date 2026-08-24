@@ -1,14 +1,14 @@
 # Phase 2 CP3-A — Security Master + Current Price 계획·계약
 
-- 문서 상태: `REVISED AFTER INDEPENDENT REVIEW — AWAITING GPT RE-REVIEW`
-- 작성일: `2026-08-24`, 독립검증 보완일: `2026-08-25` (`Asia/Seoul`)
+- 문서 상태: `PASS — CONTRACT APPROVED AND CLOSED`
+- 작성일: `2026-08-24`, 독립검증 보완·승인일: `2026-08-25` (`Asia/Seoul`)
 - 기준 브랜치: `feature/phase-02-toss`
 - 시작 commit: `6bd5d2ae9c26f02f2cd4bd75a474633a9082fa16`
 - 독립검증 보완 시작 commit: `386a0b2fe7bd18ed4b662eb2695ff85cc2a08cd3`
 - checkpoint 경계: `CP3-A documentation/contract only`
 - 후속 상태: `CP3-B NOT STARTED`
 
-이 문서는 CP3-B 이후 구현에 앞선 승인안이다. 문서가 작성됐다는 사실은 계약의 `PASS`, ADR의 `ACCEPTED`, application 구현 승인, live endpoint 검증 또는 Phase 2 완료를 뜻하지 않는다.
+이 문서는 GPT independent re-review `PASS WITH CLOSEOUT CONDITION`과 2026-08-25 사용자 승인으로 확정된 CP3-A repository contract다. 이 승인은 CP3-B application 구현 승인, live endpoint 검증 또는 Phase 2 완료를 뜻하지 않는다.
 
 ## 근거 표기
 
@@ -18,7 +18,7 @@
 | `[OFFICIAL_DOC_CONTRACT]` | 저장소의 2026-08-23 canonical Toss OpenAPI 조사 기록에 근거한 공개 provider 계약 |
 | `[LIVE_VERIFIED]` | 2026-08-24 CP2-D2의 redacted one-shot 결과로 실제 확인한 최소 범위 |
 | `[LIVE_UNVERIFIED]` | 공식 계약 또는 계획은 있으나 해당 endpoint/field/semantics를 실제 응답으로 확인하지 않은 범위 |
-| `[PROPOSED_REPO_CONTRACT]` | 이 문서가 독립 검토와 사용자 승인을 요청하는 신규 저장소 계약 |
+| `[REPO_CONTRACT]` | 독립검증과 2026-08-25 사용자 승인을 거친 CP3-A 저장소 계약 |
 | `[USER_DECISION_REQUIRED]` | 구현 전에 독립 검토와 사용자의 명시적 결정이 필요한 항목 |
 
 각 결정은 위 근거를 명시한다. 서로 다른 근거가 한 행에 있으면 확인된 사실과 제안 범위를 문장으로 분리한다.
@@ -29,9 +29,9 @@
 - `[CURRENT_REPO_FACT]` CP2는 exact REST allowlist, memory-only OAuth token, bounded retry, offline/live 경계를 구현했고 `COMPLETE`다.
 - `[LIVE_VERIFIED]` canonical provider contract drift 없음, OpenAPI `3.1.0`, provider REST `1.2.14`, actual OAuth issuance, credential acceptance, allowed-IP 실행 경로, `GET /api/v1/stocks`, 성공 응답의 Limit/Remaining/Reset rate header만 확인됐다.
 - `[LIVE_UNVERIFIED]` `/api/v1/stocks/all`, `/api/v1/prices`, 전체 market/enum/null/freshness semantics, natural 429와 actual 429/5xx는 확인되지 않았다.
-- `[PROPOSED_REPO_CONTRACT]` CP3-A는 Security Master와 Current Price의 endpoint 역할, identity, lifecycle, source trace, idempotency, additive migration, offline acceptance를 계약화한다. application, test, fixture, migration, dependency, runtime config, route 또는 collection job은 만들지 않는다.
+- `[REPO_CONTRACT]` CP3-A는 Security Master와 Current Price의 endpoint 역할, identity, lifecycle, source trace, idempotency, additive migration, offline acceptance를 계약화한다. application, test, fixture, migration, dependency, runtime config, route 또는 collection job은 만들지 않는다.
 - `[CURRENT_REPO_FACT]` 독립검증 결과는 `CHANGES REQUIRED`, P0 0/P1 2였고 CP3-B는 승인되지 않았다. P1-01은 canonical mapping 전제의 순환 의존, P1-02는 최초 allocation 뒤 identifier enrichment reconciliation 부재다.
-- `[PROPOSED_REPO_CONTRACT]` 이번 revision은 provider-scoped price storage와 canonical current-price view를 분리하고, 최초 allocation 전 continuity-first reconciliation을 수행하도록 두 P1만 보완한다.
+- `[REPO_CONTRACT]` approved revision은 provider-scoped price storage와 canonical current-price view를 분리하고, 최초 allocation 전 continuity-first reconciliation을 수행해 P1-01/P1-02를 닫는다.
 
 ## B. Phase 1 계약과의 호환성
 
@@ -42,16 +42,16 @@
 - `[CURRENT_REPO_FACT]` `Security`는 `issuer_id`, `exchange`, `ticker`, `share_class`, `currency`를 요구하고 `mapping_status`는 `VERIFIED|UNRESOLVED`다.
 - `[CURRENT_REPO_FACT]` `SourceRecord` v0.1.0은 `observed_at`, `published_at`, `fetched_at`을 모두 required aware datetime으로 요구한다.
 - `[CURRENT_REPO_FACT]` `source_records`에는 `(source_system, source_type, external_id)` unique 제약이 있어 같은 자연키의 반복 가격 payload와 revision을 한 행 집합으로 표현할 수 없다.
-- `[PROPOSED_REPO_CONTRACT]` 위 계약, Phase 1 fixture/API/OpenAPI, `0001_phase_01`과 기존 row는 수정·완화·backfill하지 않는다. 신규 provider staging/source 계약은 별도 version과 additive table을 사용한다.
+- `[REPO_CONTRACT]` 위 계약, Phase 1 fixture/API/OpenAPI, `0001_phase_01`과 기존 row는 수정·완화·backfill하지 않는다. 신규 provider staging/source 계약은 별도 version과 additive table을 사용한다.
 
 ### B.2 현재 문서·코드 충돌과 disposition
 
 | 충돌 | 영향 | disposition |
 |---|---|---|
-| `[CURRENT_REPO_FACT]` `docs/04` SecurityMaster 예시는 `corp_code=null`, `cik=null`, `mapping_status=VERIFIED`지만 실제 `Issuer` validator는 jurisdiction별 regulatory ID를 강제 | Toss만으로 canonical issuer를 만들면 거짓 ID 또는 validation 실패; canonical mapping을 price storage의 필수조건으로 두면 Phase 2가 Phase 3/4에 순환 의존 | `[PROPOSED_REPO_CONTRACT]` provider staging identity에서 `mapping_status=UNRESOLVED`, explicit missing reason을 사용한다. valid provider identity의 provider-scoped price는 저장할 수 있지만 canonical Security/company price publish는 verified mapping 전까지 금지한다. |
-| `[CURRENT_REPO_FACT]` `Security.exchange` required이나 현재 CP3 근거에는 Toss exchange semantics가 확정돼 있지 않음 | 임의 exchange 생성 위험 | `[PROPOSED_REPO_CONTRACT]` exchange가 검증될 때까지 staging 유지 |
-| `[CURRENT_REPO_FACT]` `SourceRecord` 관측/발표 시각 required, `[OFFICIAL_DOC_CONTRACT]` price timestamp nullable | fetch 시각을 관측시각으로 위조할 위험 | `[PROPOSED_REPO_CONTRACT]` ADR-011 revised provider source contract 사용 |
-| `[CURRENT_REPO_FACT]` Phase 1 source unique key는 revision 불가 | timestamp suffix로 멱등성을 회피할 위험 | `[PROPOSED_REPO_CONTRACT]` 신규 provider source-version table과 latest pointer로 분리 |
+| `[CURRENT_REPO_FACT]` `docs/04` SecurityMaster 예시는 `corp_code=null`, `cik=null`, `mapping_status=VERIFIED`지만 실제 `Issuer` validator는 jurisdiction별 regulatory ID를 강제 | Toss만으로 canonical issuer를 만들면 거짓 ID 또는 validation 실패; canonical mapping을 price storage의 필수조건으로 두면 Phase 2가 Phase 3/4에 순환 의존 | `[REPO_CONTRACT]` provider staging identity에서 `mapping_status=UNRESOLVED`, explicit missing reason을 사용한다. valid provider identity의 provider-scoped price는 저장할 수 있지만 canonical Security/company price publish는 verified mapping 전까지 금지한다. |
+| `[CURRENT_REPO_FACT]` `Security.exchange` required이나 현재 CP3 근거에는 Toss exchange semantics가 확정돼 있지 않음 | 임의 exchange 생성 위험 | `[REPO_CONTRACT]` exchange가 검증될 때까지 staging 유지 |
+| `[CURRENT_REPO_FACT]` `SourceRecord` 관측/발표 시각 required, `[OFFICIAL_DOC_CONTRACT]` price timestamp nullable | fetch 시각을 관측시각으로 위조할 위험 | `[REPO_CONTRACT]` accepted ADR-011 provider source contract 사용 |
+| `[CURRENT_REPO_FACT]` Phase 1 source unique key는 revision 불가 | timestamp suffix로 멱등성을 회피할 위험 | `[REPO_CONTRACT]` 신규 provider source-version table과 latest pointer로 분리 |
 
 ## C. Toss endpoint 역할
 
@@ -59,25 +59,25 @@
 
 - `[OFFICIAL_DOC_CONTRACT]` `market`을 받아 KR/US universe 목록을 반환하는 discovery endpoint다.
 - `[LIVE_UNVERIFIED]` 실제 KR/US body, 목록 완전성, enum/null semantics는 확인하지 않았다.
-- `[PROPOSED_REPO_CONTRACT]` KR과 US를 별도 canonical request로 조회한다. 최초 범위는 `ACTIVE`, common share, 명시적으로 지원된 stock type 후보뿐이다.
-- `[PROPOSED_REPO_CONTRACT]` discovery 후보 생성 전용이다. 상세 Security Master의 단독 최종 source로 사용하지 않는다.
-- `[PROPOSED_REPO_CONTRACT]` 이전 목록에서 사라진 것은 `DISCOVERY_MISSING` observation일 뿐 `INACTIVE` 또는 `DELISTED`가 아니다.
+- `[REPO_CONTRACT]` KR과 US를 별도 canonical request로 조회한다. 최초 범위는 `ACTIVE`, common share, 명시적으로 지원된 stock type 후보뿐이다.
+- `[REPO_CONTRACT]` discovery 후보 생성 전용이다. 상세 Security Master의 단독 최종 source로 사용하지 않는다.
+- `[REPO_CONTRACT]` 이전 목록에서 사라진 것은 `DISCOVERY_MISSING` observation일 뿐 `INACTIVE` 또는 `DELISTED`가 아니다.
 
 ### C.2 `GET /api/v1/stocks`
 
 - `[OFFICIAL_DOC_CONTRACT]` `symbols` 1~200개를 쉼표로 전달하고 `symbol`, `name`, `englishName`, `isinCode`, `market`, `securityType`, `isCommonShare`, `status`, `currency`, `listDate`, `delistDate`, `sharesOutstanding`, `leverageFactor`, `koreanMarketDetail`을 제공하는 detail 후보 endpoint다.
 - `[LIVE_VERIFIED]` actual OAuth 뒤 이 endpoint를 호출하는 구조와 성공 response outer structure만 확인됐다.
 - `[LIVE_UNVERIFIED]` 전체 market, enum, nullable field, ISIN, status/list/delist semantics는 검증되지 않았다.
-- `[PROPOSED_REPO_CONTRACT]` discovery 후보를 최대 200 symbols씩 detail-enrich한다. response에 누락된 후보는 `PARTIAL_DETAIL`로 격리하고 빈 값으로 채우지 않는다.
+- `[REPO_CONTRACT]` discovery 후보를 최대 200 symbols씩 detail-enrich한다. response에 누락된 후보는 `PARTIAL_DETAIL`로 격리하고 빈 값으로 채우지 않는다.
 
 ### C.3 `GET /api/v1/prices`
 
 - `[OFFICIAL_DOC_CONTRACT]` `symbols` 1~200개와 `symbol`, nullable `timestamp`, Decimal string `lastPrice`, `currency`를 사용한다.
 - `[LIVE_UNVERIFIED]` endpoint body, timestamp-null 빈도와 의미, 가격/currency semantics는 실제 확인하지 않았다.
-- `[PROPOSED_REPO_CONTRACT]` discovery/detail 검증을 통과한 valid provider identity 중 lifecycle/currency가 price-eligible이고 collision/quarantine 상태가 아닌 identity만 요청한다. canonical `security_id` 존재는 provider-scoped 요청·저장의 필수조건이 아니다.
-- `[PROPOSED_REPO_CONTRACT]` canonical mapping이 `UNRESOLVED`여도 `provider_security_identity_id`에 귀속된 `ProviderPriceSnapshot`과 provider-scoped latest state는 저장할 수 있다.
-- `[PROPOSED_REPO_CONTRACT]` canonical current-price view는 `security_id` linkage가 `VERIFIED`일 때만 생성·노출한다. unresolved provider price를 canonical company price, issuer-level analysis, OpenDART/SEC/13F 결합 또는 canonical Security API의 verified price로 표현하지 않는다.
-- `[PROPOSED_REPO_CONTRACT]` quarantined, collision, stale provider identity에는 provider-scoped normalized snapshot/latest도 publish하지 않는다.
+- `[REPO_CONTRACT]` discovery/detail 검증을 통과한 valid provider identity 중 lifecycle/currency가 price-eligible이고 collision/quarantine 상태가 아닌 identity만 요청한다. canonical `security_id` 존재는 provider-scoped 요청·저장의 필수조건이 아니다.
+- `[REPO_CONTRACT]` canonical mapping이 `UNRESOLVED`여도 `provider_security_identity_id`에 귀속된 `ProviderPriceSnapshot`과 provider-scoped latest state는 저장할 수 있다.
+- `[REPO_CONTRACT]` canonical current-price view는 `security_id` linkage가 `VERIFIED`일 때만 생성·노출한다. unresolved provider price를 canonical company price, issuer-level analysis, OpenDART/SEC/13F 결합 또는 canonical Security API의 verified price로 표현하지 않는다.
+- `[REPO_CONTRACT]` quarantined, collision, stale provider identity에는 provider-scoped normalized snapshot/latest도 publish하지 않는다.
 
 fallback endpoint, symbol 변환 규칙, exchange inference 또는 추가 endpoint는 추측하지 않는다. 기존 exact callable allowlist도 확대하지 않는다.
 
@@ -98,7 +98,7 @@ fallback endpoint, symbol 변환 규칙, exchange inference 또는 추가 endpoi
 - `[CURRENT_REPO_FACT]` 현재 저장소에는 exact provider `securityType` enum value set이 snapshot으로 보존돼 있지 않다.
 - `[OFFICIAL_DOC_CONTRACT]` `status=ACTIVE`, `securityType`, common-share filter와 KR/US market이 문서화돼 있다.
 - `[LIVE_UNVERIFIED]` 전체 enum set과 실제 market별 값은 미검증이다.
-- `[PROPOSED_REPO_CONTRACT]` CP3-B는 저장된 canonical contract evidence로 common-stock exact token을 먼저 고정해야 하며, 확인 전에는 symbolic 추정값을 runtime allowlist로 만들 수 없다. 확인되지 않은 값은 항상 fail closed한다.
+- `[REPO_CONTRACT]` CP3-B는 저장된 canonical contract evidence로 common-stock exact token을 먼저 고정해야 하며, 확인 전에는 symbolic 추정값을 runtime allowlist로 만들 수 없다. 확인되지 않은 값은 항상 fail closed한다.
 - `[USER_DECISION_REQUIRED]` exact provider enum table은 독립 검토에서 canonical evidence와 대조 후 승인해야 한다. 이 문서가 enum spelling을 새 provider 사실로 발명하지 않는다.
 
 ### D.2 universe publish 조건
@@ -135,10 +135,10 @@ fallback endpoint, symbol 변환 규칙, exchange inference 또는 추가 endpoi
 | canonical Security 이전 provider staging identity | regulatory ID 부재를 정직하게 보존하고 mapping을 지연 | 신규 staging schema와 promotion 절차 필요 | **권고** |
 | 기존 Issuer 계약 breaking 완화 | 단기 구현은 단순 | Phase 1 fixture/API/OpenAPI 회귀와 거짓 VERIFIED row 위험 | 기본 거부 |
 
-- `[PROPOSED_REPO_CONTRACT]` ADR-012에 따라 `provider_security_identity`와 canonical `Issuer`/`Security`를 분리한다.
-- `[PROPOSED_REPO_CONTRACT]` staging row는 nullable `issuer_id`/`security_id`, `mapping_status=UNRESOLVED`, `missing_reasons.issuer_id=UNRESOLVED`, 필요 시 `missing_reasons.security_id=UNRESOLVED`를 가진다.
-- `[PROPOSED_REPO_CONTRACT]` OpenDART corp_code 또는 SEC CIK와 instrument mapping이 승인될 때만 canonical mapping event를 만들 수 있다.
-- `[PROPOSED_REPO_CONTRACT]` provider identity의 유효성과 canonical mapping 상태는 독립 축이다. valid·non-collision·non-quarantine provider identity는 canonical linkage 없이 provider-scoped price를 소유할 수 있다. 이후 승인된 mapping은 nullable `security_id` linkage만 추가하며 provider identity 또는 price history를 rekey하지 않는다.
+- `[REPO_CONTRACT]` accepted ADR-012에 따라 `provider_security_identity`와 canonical `Issuer`/`Security`를 분리한다.
+- `[REPO_CONTRACT]` staging row는 nullable `issuer_id`/`security_id`, `mapping_status=UNRESOLVED`, `missing_reasons.issuer_id=UNRESOLVED`, 필요 시 `missing_reasons.security_id=UNRESOLVED`를 가진다.
+- `[REPO_CONTRACT]` OpenDART corp_code 또는 SEC CIK와 instrument mapping이 승인될 때만 canonical mapping event를 만들 수 있다.
+- `[REPO_CONTRACT]` provider identity의 유효성과 canonical mapping 상태는 독립 축이다. valid·non-collision·non-quarantine provider identity는 canonical linkage 없이 provider-scoped price를 소유할 수 있다. 이후 승인된 mapping은 nullable `security_id` linkage만 추가하며 provider identity 또는 price history를 rekey하지 않는다.
 
 ### E.3 exact continuity-first reconciliation and ID allocation algorithm
 
@@ -162,8 +162,8 @@ fallback endpoint, symbol 변환 규칙, exchange inference 또는 추가 endpoi
 13. 신규 canonical security는 승인된 mapping event의 immutable anchor `security-v1|issuer_id|instrument_identifier_kind|instrument_identifier`로 `security_id = "sec_" + SHA-256(anchor)`를 만든다. ISIN이 후일 변경돼도 ID를 재발급하지 않고 identifier history/revision을 추가한다.
 14. canonical anchor collision, duplicate active ISIN 또는 서로 다른 issuer 후보는 자동 병합하지 않고 `UNRESOLVED_COLLISION`으로 격리한다.
 
-- `[PROPOSED_REPO_CONTRACT]` 위 알고리즘은 P1-02 보완 proposal이며 재검토와 사용자 승인 전 runtime 계약으로 확정되지 않는다.
-- `[USER_DECISION_REQUIRED]` 신규 canonical ID algorithm과 promotion authority를 승인해야 CP3-C mapping 구현을 시작할 수 있다.
+- `[REPO_CONTRACT]` 위 continuity-first provider identity algorithm과 enrichment/no-rekey/collision 규칙은 accepted ADR-012의 runtime 구현 계약이다.
+- `[USER_DECISION_REQUIRED]` canonical issuer/security promotion의 구체적 authority와 external evidence는 CP3-C 구현 전에 별도 승인해야 한다. 이는 accepted provider identity algorithm을 완화하지 않는다.
 
 ### E.4 identifier history cases
 
@@ -205,7 +205,7 @@ fallback endpoint, symbol 변환 규칙, exchange inference 또는 추가 endpoi
 | common flag/type 불일치 | contradiction quarantine; 한 필드로 다른 필드를 덮어쓰기 금지 |
 | 신규 snapshot schema 오류 | raw/source version 보존; normalized publish 금지; LKG 유지 |
 
-- `[PROPOSED_REPO_CONTRACT]` lifecycle은 observation history이며 단일 discovery snapshot의 부재를 사실로 승격하지 않는다.
+- `[REPO_CONTRACT]` lifecycle은 observation history이며 단일 discovery snapshot의 부재를 사실로 승격하지 않는다.
 - `[LIVE_UNVERIFIED]` provider status/delist transition semantics는 CP3-D2 전까지 live verified가 아니다.
 
 ## G. Current Price 계약
@@ -262,7 +262,7 @@ fallback endpoint, symbol 변환 규칙, exchange inference 또는 추가 endpoi
 | schema error | `ERROR` | `UNKNOWN` | raw 보존, LKG/latest 유지 |
 
 - `[OFFICIAL_DOC_CONTRACT]` provider `timestamp`는 null일 수 있고 `lastPrice`는 Decimal string 후보다.
-- `[PROPOSED_REPO_CONTRACT]` `fetched_at`을 `observed_at`으로 복사하거나 timestamp null에 임의 date를 생성하지 않는다.
+- `[REPO_CONTRACT]` `fetched_at`을 `observed_at`으로 복사하거나 timestamp null에 임의 date를 생성하지 않는다.
 - `[USER_DECISION_REQUIRED]` FRESH/STALE/EXPIRED threshold와 market-calendar policy는 CP3-D2의 별도 live evidence 및 독립 승인 없이는 활성화하지 않는다.
 
 ### G.5 duplicate/revision/latest/history
@@ -349,10 +349,10 @@ canonical JSON은 UTF-8, object key 정렬, insignificant whitespace 없음, Dec
 ### I.3 Phase 1 unique 제약 해결
 
 - `[CURRENT_REPO_FACT]` 기존 `source_records(source_system, source_type, external_id)` unique를 수정하거나 timestamp suffix로 우회하지 않는다.
-- `[PROPOSED_REPO_CONTRACT]` 신규 `provider_source_versions`는 `(canonical_request_id, http_status, raw_content_hash, provider_contract_version)` unique를 사용하고 self-FK `supersedes_id`를 둔다.
-- `[PROPOSED_REPO_CONTRACT]` 기존 table은 Phase 1 fixture/source 전용으로 유지한다. provider latest와 revision은 신규 table/pointer에서 표현한다.
+- `[REPO_CONTRACT]` 신규 `provider_source_versions`는 `(canonical_request_id, http_status, raw_content_hash, provider_contract_version)` unique를 사용하고 self-FK `supersedes_id`를 둔다.
+- `[REPO_CONTRACT]` 기존 table은 Phase 1 fixture/source 전용으로 유지한다. provider latest와 revision은 신규 table/pointer에서 표현한다.
 
-## J. versioned provider source contract — ADR-011 revised proposal
+## J. versioned provider source contract — accepted ADR-011
 
 ### J.1 field rules
 
@@ -376,8 +376,8 @@ canonical JSON은 UTF-8, object key 정렬, insignificant whitespace 없음, Dec
 | future candle | bar timestamp를 observed_at으로 사용 | trade date는 separate semantic date | both-value 허용 여부를 candle contract가 검증 |
 
 - `[CURRENT_REPO_FACT]` 기존 `SourceRecord` v0.1.0은 그대로 유지한다.
-- `[PROPOSED_REPO_CONTRACT]` 새 source contract는 별도 class/table/OpenAPI exposure 정책을 갖고 기존 fixture/API response를 바꾸지 않는다.
-- `[USER_DECISION_REQUIRED]` ADR-011은 `PROPOSED — INDEPENDENT REVIEW P1-NOT-BLOCKING / AWAITING USER APPROVAL`이며 승인 전 CP3-B 구현을 시작하지 않는다.
+- `[REPO_CONTRACT]` 새 source contract는 별도 class/table/OpenAPI exposure 정책을 갖고 기존 fixture/API response를 바꾸지 않는다.
+- `[REPO_CONTRACT]` ADR-011은 2026-08-25 `ACCEPTED`다. 이 결정은 CP3-B 시작 권한이 아니며 별도 명시적 authorization 전에는 구현하지 않는다.
 
 ## K. DB migration/rollback
 
@@ -549,7 +549,7 @@ migration 후보명은 `0002_phase_02_cp3_foundation`이다. 이번 checkpoint�
 
 ## N. 비범위와 보안
 
-CP3-A 및 후속 별도 승인 전 계속 금지:
+CP3-B 별도 authorization 및 후속 live checkpoint 승인 전 계속 금지:
 
 - 실제 주문, 모의주문, 자동매매
 - account/holding/order/conditional-order endpoint와 `X-Tossinvest-Account`
@@ -566,12 +566,13 @@ CP3-A 및 후속 별도 승인 전 계속 금지:
 
 | decision | 상태 | conservative default |
 |---|---|---|
-| ADR-011 nullable provider source time | `[USER_DECISION_REQUIRED]` `PROPOSED — INDEPENDENT REVIEW P1-NOT-BLOCKING / AWAITING USER APPROVAL` | 기존 SourceRecord 유지, provider source contract 구현 시작 금지 |
-| ADR-012 provider staging identity | `[USER_DECISION_REQUIRED]` `PROPOSED — REVISED AFTER INDEPENDENT REVIEW / AWAITING RE-REVIEW` | valid provider identity price만 provider scope에 허용; canonical Issuer/Security 자동 생성·canonical price publish 금지 |
+| ADR-011 nullable provider source time | `[REPO_CONTRACT]` `ACCEPTED 2026-08-25` | 기존 SourceRecord 유지; 별도 CP3-B authorization 전 구현 금지 |
+| ADR-012 provider staging identity | `[REPO_CONTRACT]` `ACCEPTED 2026-08-25` | valid provider identity price만 provider scope에 허용; canonical Issuer/Security 자동 생성·canonical price publish 금지 |
 | exact provider securityType enum mapping | `[LIVE_UNVERIFIED]` + independent evidence required | unknown 전부 quarantine |
-| continuity-first provider ID와 canonical promotion authority | `[USER_DECISION_REQUIRED]` | existing identity 우선 재사용; collision quarantine; staging UNRESOLVED 유지 |
+| continuity-first provider ID | `[REPO_CONTRACT]` accepted ADR-012 | existing identity 우선 재사용; enrichment no-rekey; collision quarantine |
+| canonical promotion authority/evidence | `[USER_DECISION_REQUIRED]` | staging UNRESOLVED 유지; name/symbol/ISIN-only promotion 금지 |
 | exchange mapping | `[LIVE_UNVERIFIED]` | exchange 추정 금지, canonical promotion 금지 |
-| timestamp-null current publication | `[PROPOSED_REPO_CONTRACT]` | DEGRADED/UNKNOWN, latest pointer 갱신 금지 |
+| timestamp-null current publication | `[REPO_CONTRACT]` accepted ADR-011 | DEGRADED/UNKNOWN, latest pointer 갱신 금지 |
 | freshness thresholds | `[USER_DECISION_REQUIRED]` after minimal live evidence | 항상 UNKNOWN |
 | SQLite provider current payload vs pointer | `[USER_DECISION_REQUIRED]` CP3-B schema review | provider identity 기준 history 금지, 최소 latest pointer 우선; canonical은 verified linkage view |
 
@@ -579,8 +580,8 @@ CP3-A 및 후속 별도 승인 전 계속 금지:
 
 - CP1: `PASS`
 - CP2: `COMPLETE`
-- CP3-A: `REVISED AFTER INDEPENDENT REVIEW — AWAITING GPT RE-REVIEW`
+- CP3-A: `PASS — CONTRACT APPROVED AND CLOSED`
 - CP3-B: `NOT STARTED`
 - Phase 2: `IMPLEMENTATION IN PROGRESS`
 
-CP3-A는 application implementation 0, fixture/test/migration/dependency 변경 0, actual credential/API usage 0을 전제로 한다. 재검토와 사용자 승인 전에는 이 문서의 제안을 `ACCEPTED`, `PASS` 또는 runtime contract로 표시하지 않으며 다음 checkpoint 자동 진행은 `PROHIBITED`다.
+CP3-A는 application implementation 0, fixture/test/migration/dependency 변경 0, actual credential/API usage 0으로 closeout됐다. approved repository contract는 CP3-B의 기준이지만 CP3-B는 `NOT STARTED`이고 별도 사용자 authorization 전 automatic checkpoint progression은 `PROHIBITED`다. LIVE_UNVERIFIED 항목은 승인으로 승격되지 않는다.

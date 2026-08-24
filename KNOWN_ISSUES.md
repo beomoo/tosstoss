@@ -57,25 +57,25 @@
 
 - 상태: `OPEN`
 - 영향: 필수 `observed_at`·`published_at`에 date-only 기준일이나 fetch 시각을 대입하면 기준일과 수집일을 혼동한다. 기존 ADR-011의 “observed time/date 중 최소 하나”도 공식 `/prices timestamp=null` 상태를 표현하지 못한다.
-- 현재 대응: ADR-011은 독립검증에서 방향상 P1 blocker가 발견되지 않았지만 `PROPOSED — INDEPENDENT REVIEW P1-NOT-BLOCKING / AWAITING USER APPROVAL`이다. 기존 v0.1.0은 유지하고 신규 provider contract에서 observed time/date 둘 다 null + structured reason을 허용한다. 사용자 승인 전 CP3-B source contract 구현을 시작하지 않는다.
+- 현재 대응: ADR-011은 2026-08-25 `ACCEPTED`다. 기존 v0.1.0은 유지하고 신규 provider contract에서 observed time/date 둘 다 null + structured reason을 요구한다. ADR 승인은 CP3-B 시작 권한이 아니며 별도 authorization 전 source contract를 구현하지 않는다.
 
 ## KI-011 — Toss issuer/security identity와 Phase 1 regulatory ID 충돌
 
-- 상태: `OPEN — ADR-012 REVISED / AWAITING RE-REVIEW`
+- 상태: `OPEN — ADR-012 ACCEPTED / IMPLEMENTATION NOT STARTED`
 - 영향: Toss stock response에는 Phase 1 `Issuer`가 KR/US별로 요구하는 corp_code/CIK가 없다. Toss symbol/ticker/name 또는 synthetic ID로 채우면 잘못된 issuer merge, share-class 혼동과 P0 mapping 오류가 생긴다. 반대로 verified canonical mapping을 모든 price storage의 전제조건으로 두면 Phase 2가 Phase 3/4 regulatory mapping에 순환 의존한다. 현재 근거로 exchange도 확정할 수 없다.
-- 현재 대응: revised ADR-012에서 canonical Issuer/Security 이전 provider staging identity와 `ProviderPriceSnapshot`을 제안했다. symbol은 provider-scoped history로, canonical IDs는 nullable `UNRESOLVED`와 explicit reason으로 분리한다. valid·non-collision·non-quarantine provider identity는 provider price/latest를 소유할 수 있지만 canonical current-price view와 issuer/company analysis는 verified linkage 전 금지한다. GPT 재검토와 사용자 승인 전 구현하지 않는다.
+- 현재 대응: accepted ADR-012는 canonical Issuer/Security 이전 provider staging identity와 `ProviderPriceSnapshot`을 요구한다. symbol은 provider-scoped history로, canonical IDs는 nullable `UNRESOLVED`와 explicit reason으로 분리한다. valid·non-collision·non-quarantine provider identity는 provider price/latest를 소유할 수 있지만 canonical current-price view와 issuer/company analysis는 verified linkage 전 금지한다. 별도 CP3-B authorization 전 구현하지 않는다.
 
 ## KI-012 — 반복 price/revision과 기존 source record natural key 충돌
 
 - 상태: `OPEN — CP3-B CONTRACT PROPOSED`
 - 영향: 기존 `source_records(source_system, source_type, external_id)` unique는 같은 request의 반복 price snapshot과 same-key payload revision을 모두 보존할 수 없다. external ID에 현재 시각을 붙이면 멱등성을 우회하고 deterministic rebuild가 깨진다.
-- 현재 대응: 기존 table/0001은 유지하고 additive provider source-version table, raw/normalized hash, supersession과 latest pointer를 제안했다. exact schema는 CP3-A 독립 검토와 사용자 승인 뒤 CP3-B에서만 구현할 수 있다.
+- 현재 대응: 기존 table/0001은 유지하고 approved CP3-A contract의 additive provider source-version table, raw/normalized hash, supersession과 latest pointer를 사용한다. exact schema는 별도 승인된 CP3-B에서만 구현할 수 있다.
 
 ## KI-013 — provider identity identifier enrichment reconciliation
 
-- 상태: `OPEN — ADR-012 REVISED / AWAITING RE-REVIEW`
+- 상태: `OPEN — ADR-012 ACCEPTED / IMPLEMENTATION NOT STARTED`
 - 영향: ISIN/listDate가 없는 최초 observation으로 provider identity를 만든 뒤 후속 observation에 강한 identifier가 등장할 수 있다. 매 observation마다 anchor 우선순위를 다시 적용하면 같은 instrument에 새 ID가 생기고 price/history continuity와 deterministic rebuild가 깨진다.
-- 현재 대응: 기존 active identity와 append-only identifier history를 먼저 검색해 후보가 하나일 때 immutable ID를 재사용하고 identifier enrichment만 추가한다. 후보가 둘 이상이거나 다른 active identity와 충돌하면 new identity/auto merge를 모두 금지하고 `UNRESOLVED_COLLISION`/`QUARANTINE`한다. continuity evidence가 0일 때만 최초 anchor priority를 적용하며, clean replay 결과가 원 실행과 같아야 한다. 이 계약은 GPT 재검토와 사용자 승인 전 구현하지 않는다.
+- 현재 대응: accepted ADR-012는 기존 active identity와 append-only identifier history를 먼저 검색해 후보가 하나일 때 immutable ID를 재사용하고 identifier enrichment만 추가하도록 요구한다. 후보가 둘 이상이거나 다른 active identity와 충돌하면 new identity/auto merge를 모두 금지하고 `UNRESOLVED_COLLISION`/`QUARANTINE`한다. continuity evidence가 0일 때만 최초 anchor priority를 적용하며, clean replay 결과가 원 실행과 같아야 한다. 별도 CP3-B/CP3-C authorization 전 구현하지 않는다.
 
 ## KI-010 — Windows non-ASCII 개발·QA 저장소 경로의 editable install 실패
 

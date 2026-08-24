@@ -1,17 +1,17 @@
 # Project Status
 
-- 프로젝트 상태: `PHASE 2 IMPLEMENTATION IN PROGRESS — CP2 COMPLETE / CP3-A REVISED AFTER INDEPENDENT REVIEW — AWAITING GPT RE-REVIEW / CP3-B NOT STARTED`
-- 현재 Phase: `Phase 2 — CP3-A independent-review P1 contract fix checkpoint`
+- 프로젝트 상태: `PHASE 2 IMPLEMENTATION IN PROGRESS — CP2 COMPLETE / CP3-A PASS — CONTRACT APPROVED AND CLOSED / CP3-B NOT STARTED`
+- 현재 Phase: `Phase 2 — CP3-A approved contract closeout`
 - 현재 버전: `0.1.0`
 - Phase 1 최종 검증 commit: `57b2a63ead06d03191d8094e1689b8d2ab3d7764`
 - Phase 1 PR: `#1`
 - Phase 1 merge commit: `b1829a7375704271a21267e1fcf62808147be593`
 - Release baseline tag: `v0.1.0`
-- 최종 QA일: `2026-08-25 (CP3-A independent-review documentation fix; full offline regression exit 0)`
+- 최종 QA일: `2026-08-25 (CP3-A final staged documentation closeout regression exit 0)`
 - 실제 API 연결: `CP2-D2 one-shot PASS — OAuth + GET /api/v1/stocks만 검증`
 - 실제 주문 기능: `비활성 / 비범위`
 - OpenAI API 사용: `아니오`
-- Phase 2 상태: `CP1 PASS / CP2 COMPLETE / CP3-A REVISED AFTER INDEPENDENT REVIEW — AWAITING GPT RE-REVIEW / CP3-B NOT STARTED`
+- Phase 2 상태: `CP1 PASS / CP2 COMPLETE / CP3-A PASS — CONTRACT APPROVED AND CLOSED / CP3-B NOT STARTED`
 
 ## 완료 상태
 
@@ -53,7 +53,11 @@
 - [x] CP3-A 첫 GPT independent review: `CHANGES REQUIRED`, P0 0 / P1 2
 - [x] P1-01 provider-scoped price/canonical view 분리 계약 보완
 - [x] P1-02 continuity-first identity reconciliation과 enrichment acceptance 보완
-- [ ] CP3-A GPT re-review 및 사용자 승인
+- [x] CP3-A GPT independent re-review: `PASS WITH CLOSEOUT CONDITION`, P0 0 / P1 0 / P1-01·P1-02 CLOSED
+- [x] 사용자 ADR-011 및 revised ADR-012 승인
+- [x] 사용자 CP3-A planning/contract 승인
+- [x] 최종 9-file staged closeout regression과 P2 QA evidence gap 해소
+- [x] CP3-B 미착수 및 automatic progression 금지 확인
 - [ ] CP3-B Contract Foundation + additive migration 시작 승인
 
 ## Phase 1 종료 기준
@@ -68,7 +72,7 @@ Release baseline tag: v0.1.0
 
 Phase 2 구현은 계속 진행 중이며 CP2만 `COMPLETE`다. CP2-A 보안 경계, CP2-B OAuth/token manager/exact HTTP client와 token-boundary hardening, CP2-C rate limiter/retry/error taxonomy와 cumulative-wait hardening, CP2-D1 safe preflight offline validation, CP2-D2 actual one-shot을 final integrated QA로 닫았다. 사용자 독립 실행의 safe fixed summary에서 provider contract drift 없음, OpenAPI `3.1.0`, provider version `1.2.14`, actual OAuth와 `GET /api/v1/stocks` 성공, allowed-IP 실행 경로와 성공 응답의 Limit/Remaining/Reset header 유효성을 확인했다. credential 값, token, body와 raw header 값은 기록하지 않았다.
 
-CP3-A 첫 독립검증은 P1-01/P1-02를 발견했다. 문서 보완은 valid provider identity의 `ProviderPriceSnapshot`/latest를 nullable canonical linkage와 분리해 Phase 3/4 regulatory mapping 순환 의존을 제거하고, continuity-first 검색 → 단일 기존 ID 재사용 → identifier enrichment → collision quarantine → evidence 0일 때만 최초 anchor allocation 순서를 명시했다. canonical current-price view와 issuer/company analysis는 verified mapping에서만 허용하고 provider identity/history는 mapping 뒤에도 rekey하지 않는다. ADR-011은 `PROPOSED — INDEPENDENT REVIEW P1-NOT-BLOCKING / AWAITING USER APPROVAL`, ADR-012는 `PROPOSED — REVISED AFTER INDEPENDENT REVIEW / AWAITING RE-REVIEW`이며 Codex가 승인하지 않았다. application code, test, fixture, migration, dependency, runtime config, API route와 connector implementation은 변경하지 않았다. CP3-A 상태는 `REVISED AFTER INDEPENDENT REVIEW — AWAITING GPT RE-REVIEW`이고 CP3-B는 시작하지 않았다.
+CP3-A 첫 독립검증은 P1-01/P1-02를 발견했다. 보완 계약은 valid provider identity의 `ProviderPriceSnapshot`/latest를 nullable canonical linkage와 분리해 Phase 3/4 regulatory mapping 순환 의존을 제거하고, continuity-first 검색 → 단일 기존 ID 재사용 → identifier enrichment → collision quarantine → evidence 0일 때만 최초 anchor allocation 순서를 명시했다. GPT independent re-review는 P1-01/P1-02를 `CLOSED`하고 `PASS WITH CLOSEOUT CONDITION`을 판정했다. 사용자는 ADR-011, revised ADR-012와 CP3-A contract를 2026-08-25 승인했다. final staged documentation regression으로 P2 QA evidence gap을 닫았으며 application code, test, fixture, migration, dependency, runtime config, API route와 connector implementation은 변경하지 않았다. CP3-A는 `PASS — CONTRACT APPROVED AND CLOSED`, CP3-B는 `NOT STARTED`다.
 
 `[LIVE_VERIFIED]` 범위는 canonical provider contract, actual OAuth token issuance와 credential acceptance, allowed-IP 실행 경로, actual `GET /api/v1/stocks` 구조, 성공 응답의 Limit/Remaining/Reset header다. natural 429 `Retry-After`, actual 429/5xx, production retry timing, 나머지 Phase 2 market endpoint, CP3 이후 데이터 semantics/freshness는 계속 `[LIVE_UNVERIFIED]`다. Phase 2 전체 완료나 CP3 시작을 의미하지 않는다.
 
@@ -77,5 +81,5 @@ CP3-A 첫 독립검증은 P1-01/P1-02를 발견했다. 문서 보완은 valid pr
 - Node.js 지원 범위는 24.16 이상 25 미만이며 QA 기준은 24.19.0이다.
 - ADR-009는 아직 `PROPOSED`이며 독립 리뷰·승인 대상이다.
 - 모든 표시 데이터는 합성 fixture이고 실제 투자 판단 자료가 아니다.
-- Toss market connector는 CP2 범위에서 구현됐지만 실제 데이터 수집·정규화·저장·화면 연결은 CP3-B 이후 별도 승인 범위다. 이번 CP3-A fix에서도 문서만 변경했다. 다음 checkpoint 자동 진행은 `PROHIBITED`이며 OpenDART/SEC/news/macro, 계좌와 주문은 구현하지 않았다.
+- Toss market connector는 CP2 범위에서 구현됐지만 실제 데이터 수집·정규화·저장·화면 연결은 별도 승인된 CP3-B 이후 범위다. CP3-A closeout은 문서만 변경했다. automatic checkpoint progression은 `PROHIBITED`이며 OpenDART/SEC/news/macro, 계좌와 주문은 구현하지 않았다.
 - Windows 개발·QA 저장소는 현재 ASCII-only parent path를 사용한다. non-ASCII parent path의 setuptools editable build 실패는 `P2 DEFERRED / ENVIRONMENT CONSTRAINT`이며 CP2 business logic 결함으로 분류하지 않는다.
