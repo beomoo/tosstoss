@@ -1,5 +1,23 @@
 # Changelog
 
+## Unreleased — Phase 2 CP3-C1 Security Master Staging & Reconciliation — 2026-08-26
+
+### Added
+
+- `/api/v1/stocks/all`과 `/api/v1/stocks` 응답을 위한 `toss-security-master/0.1.0` strict DTO, checksum-valid nullable ISIN, canonical Decimal 문자열과 비식별 KR/US offline fixture를 추가했다.
+- 같은 provider/market의 active symbol, unique ISIN, symbol+listDate, lifecycle/source lineage를 anchor 할당보다 먼저 평가하는 continuity-first reconciliation을 구현했다. 이름은 증거로 사용하지 않는다.
+- valid ISIN → symbol+listDate → symbol+first-seen raw hash 우선순위의 immutable provider identity, append-only symbol/ISIN/listDate/market history, enrichment no-rekey와 symbol-change continuity를 구현했다.
+- 다중·모순 evidence, duplicate ISIN, identifier/share-class/listing-market change를 auto merge/new identity/arbitrary winner 없이 `UNRESOLVED_COLLISION`/`QUARANTINED`로 fail closed한다.
+- discovery disappearance의 `DISCOVERY_MISSING`-only 처리, inactive/delisted observation, exact partial/empty detail batch audit와 `(fetched_at, source_version_id)` clean-DB deterministic replay를 구현했다.
+- semantic normalized record, source-linked staging/lifecycle observation, identity-state event와 detail-batch result를 위한 additive `0004_phase_02_cp3_c1_security_master` 네 table을 추가했다.
+
+### QA and Scope
+
+- C-M01~C-M09, C-U01~C-U08와 IR-D~IR-G를 포함한 offline 회귀를 추가하고 backend exact inventory를 509에서 540으로 올렸다. frontend 43와 E2E 2 exact gate는 유지한다.
+- 기존 `0001`, `0002`, `0003` bytes와 Phase 1 public API/OpenAPI/fixture를 보존하고 0004 mid-DDL cleanup/retry를 검증한다.
+- actual credential, actual Toss request와 external provider network는 각각 0이다. canonical Issuer/Security promotion, price/CP3-D, live collection, frontend와 scheduler는 구현하지 않았다.
+- 상태는 CP3-B `PASS — CLOSED`, CP3-C1 `IMPLEMENTED — AWAITING GPT INDEPENDENT REVIEW`, CP3-C2 `NOT STARTED — USER DECISION REQUIRED`, CP3-D `NOT STARTED`이며 automatic progression은 `PROHIBITED`다.
+
 ## Unreleased — Phase 2 CP3-B Controlled Rollback + Minimal P1 Reapply — 2026-08-26
 
 ### Fixed

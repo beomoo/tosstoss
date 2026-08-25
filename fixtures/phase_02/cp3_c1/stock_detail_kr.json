@@ -1,0 +1,46 @@
+{
+  "result": [
+    {
+      "symbol": "KRT001",
+      "name": "한국 테스트 알파",
+      "englishName": "KR Test Alpha",
+      "isinCode": "KRTESTA00000",
+      "market": "KOSPI",
+      "securityType": "STOCK",
+      "isCommonShare": true,
+      "status": "ACTIVE",
+      "currency": "KRW",
+      "listDate": "2020-01-02",
+      "delistDate": null,
+      "sharesOutstanding": "1000000",
+      "leverageFactor": null,
+      "koreanMarketDetail": {
+        "liquidationTrading": false,
+        "nxtSupported": false,
+        "krxTradingSuspended": false,
+        "nxtTradingSuspended": null
+      }
+    },
+    {
+      "symbol": "KRT002",
+      "name": "한국 테스트 베타",
+      "englishName": null,
+      "isinCode": null,
+      "market": "KOSDAQ",
+      "securityType": "STOCK",
+      "isCommonShare": true,
+      "status": "ACTIVE",
+      "currency": "KRW",
+      "listDate": null,
+      "delistDate": null,
+      "sharesOutstanding": "250000",
+      "leverageFactor": null,
+      "koreanMarketDetail": {
+        "liquidationTrading": false,
+        "nxtSupported": false,
+        "krxTradingSuspended": false,
+        "nxtTradingSuspended": null
+      }
+    }
+  ]
+}

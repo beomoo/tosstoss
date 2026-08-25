@@ -295,3 +295,90 @@ class ProviderLatestPointerRow(Base):
     state_hash: Mapped[str] = mapped_column(String(71), nullable=False)
     provider_contract_version: Mapped[str] = mapped_column(String(64), nullable=False)
     payload_json: Mapped[str] = mapped_column(Text, nullable=False)
+
+
+class ProviderSecurityMasterRecordRow(Base):
+    __tablename__ = "provider_security_master_records"
+    __table_args__ = (UniqueConstraint("normalized_content_hash"),)
+
+    normalized_record_id: Mapped[str] = mapped_column(String(128), primary_key=True)
+    provider: Mapped[str] = mapped_column(String(32), nullable=False)
+    market: Mapped[str] = mapped_column(String(8), nullable=False)
+    provider_listing_market: Mapped[str] = mapped_column(String(32), nullable=False)
+    symbol: Mapped[str] = mapped_column(String(32), nullable=False)
+    status: Mapped[str] = mapped_column(String(32), nullable=False)
+    normalized_content_hash: Mapped[str] = mapped_column(String(71), nullable=False)
+    provider_contract_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    payload_json: Mapped[str] = mapped_column(Text, nullable=False)
+
+
+class ProviderSecurityMasterObservationRow(Base):
+    __tablename__ = "provider_security_master_observations"
+    __table_args__ = (
+        UniqueConstraint(
+            "source_version_id",
+            "symbol",
+            "staging_state",
+            "reconciliation_outcome",
+        ),
+    )
+
+    observation_id: Mapped[str] = mapped_column(String(128), primary_key=True)
+    source_version_id: Mapped[str] = mapped_column(
+        ForeignKey("provider_source_versions.source_version_id"), nullable=False
+    )
+    normalized_record_id: Mapped[str | None] = mapped_column(
+        ForeignKey("provider_security_master_records.normalized_record_id")
+    )
+    provider_security_identity_id: Mapped[str | None] = mapped_column(
+        ForeignKey("provider_security_identities.provider_security_identity_id")
+    )
+    provider: Mapped[str] = mapped_column(String(32), nullable=False)
+    market: Mapped[str] = mapped_column(String(8), nullable=False)
+    symbol: Mapped[str] = mapped_column(String(32), nullable=False)
+    staging_state: Mapped[str] = mapped_column(String(32), nullable=False)
+    reconciliation_outcome: Mapped[str] = mapped_column(String(32), nullable=False)
+    eligible_for_mapping: Mapped[int] = mapped_column(Integer, nullable=False)
+    provider_contract_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    payload_json: Mapped[str] = mapped_column(Text, nullable=False)
+
+
+class ProviderIdentityStateEventRow(Base):
+    __tablename__ = "provider_identity_state_events"
+    __table_args__ = (
+        UniqueConstraint(
+            "provider_security_identity_id",
+            "source_version_id",
+            "identity_state",
+            "staging_state",
+            "reason_code",
+        ),
+    )
+
+    state_event_id: Mapped[str] = mapped_column(String(128), primary_key=True)
+    provider_security_identity_id: Mapped[str] = mapped_column(
+        ForeignKey("provider_security_identities.provider_security_identity_id"), nullable=False
+    )
+    source_version_id: Mapped[str] = mapped_column(
+        ForeignKey("provider_source_versions.source_version_id"), nullable=False
+    )
+    identity_state: Mapped[str] = mapped_column(String(32), nullable=False)
+    staging_state: Mapped[str] = mapped_column(String(32), nullable=False)
+    reason_code: Mapped[str] = mapped_column(String(64), nullable=False)
+    provider_contract_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    payload_json: Mapped[str] = mapped_column(Text, nullable=False)
+
+
+class ProviderDetailBatchResultRow(Base):
+    __tablename__ = "provider_detail_batch_results"
+
+    batch_result_id: Mapped[str] = mapped_column(String(128), primary_key=True)
+    source_version_id: Mapped[str] = mapped_column(
+        ForeignKey("provider_source_versions.source_version_id"), unique=True, nullable=False
+    )
+    requested_count: Mapped[int] = mapped_column(Integer, nullable=False)
+    received_count: Mapped[int] = mapped_column(Integer, nullable=False)
+    missing_count: Mapped[int] = mapped_column(Integer, nullable=False)
+    status: Mapped[str] = mapped_column(String(32), nullable=False)
+    provider_contract_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    payload_json: Mapped[str] = mapped_column(Text, nullable=False)

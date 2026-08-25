@@ -1,0 +1,18 @@
+{
+  "result": [
+    {
+      "symbol": "KRT001",
+      "name": "한국 테스트 알파",
+      "securityType": "STOCK",
+      "isCommonShare": true,
+      "isinCode": "KRTESTA00000"
+    },
+    {
+      "symbol": "KRT002",
+      "name": "한국 테스트 베타",
+      "securityType": "STOCK",
+      "isCommonShare": true,
+      "isinCode": null
+    }
+  ]
+}

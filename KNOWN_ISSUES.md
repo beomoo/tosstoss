@@ -61,9 +61,9 @@
 
 ## KI-011 — Toss issuer/security identity와 Phase 1 regulatory ID 충돌
 
-- 상태: `OPEN — ADR-012 ACCEPTED / CP3-B FOUNDATION IMPLEMENTED / CP3-C RECONCILIATION NOT STARTED`
+- 상태: `MITIGATED — ADR-012 ACCEPTED / CP3-C1 PROVIDER RECONCILIATION IMPLEMENTED / CANONICAL PROMOTION DEFERRED`
 - 영향: Toss stock response에는 Phase 1 `Issuer`가 KR/US별로 요구하는 corp_code/CIK가 없다. Toss symbol/ticker/name 또는 synthetic ID로 채우면 잘못된 issuer merge, share-class 혼동과 P0 mapping 오류가 생긴다. 반대로 verified canonical mapping을 모든 price storage의 전제조건으로 두면 Phase 2가 Phase 3/4 regulatory mapping에 순환 의존한다. 현재 근거로 exchange도 확정할 수 없다.
-- 현재 대응: CP3-B는 canonical Issuer/Security를 바꾸지 않고 provider identity/history/mapping/latest pointer의 additive foundation을 구현했다. identity foundation은 `UNRESOLVED`로 시작하고 fake corp_code/CIK column이 없다. VERIFIED mapping은 ACTIVE non-quarantined identity, 실제 issuer/security 관계와 identity source lineage evidence를 모두 요구한다. `0003`과 repository는 같은 provider identity의 inclusive validity interval overlap을 차단하고 concurrent open-ended promotion을 한 row로 제한한다. 기존 mapping을 자동 종료·변경하는 transition workflow, symbol/ISIN continuity reconciliation, canonical promotion과 ProviderPriceSnapshot은 각각 CP3-C/CP3-D 전까지 구현하지 않는다.
+- 현재 대응: CP3-C1은 Toss name/symbol/ISIN만으로 canonical Issuer/Security를 만들거나 `VERIFIED`로 승격하지 않고 provider staging에서 중단한다. conservative KR/US common-equity 후보만 eligible evidence로 표시하고 unsupported/contradictory/collision은 격리한다. fake corp_code/CIK와 exchange 추정은 0이다. canonical promotion authority는 CP3-C2 `USER_DECISION_REQUIRED`, ProviderPriceSnapshot은 CP3-D 비범위로 남는다.
 
 ## KI-012 — 반복 price/revision과 기존 source record natural key 충돌
 
@@ -73,9 +73,9 @@
 
 ## KI-013 — provider identity identifier enrichment reconciliation
 
-- 상태: `OPEN — CP3-B HISTORY FOUNDATION IMPLEMENTED / CP3-C SERVICE NOT STARTED`
+- 상태: `MITIGATED — CP3-C1 CONTINUITY/ENRICHMENT SERVICE IMPLEMENTED — AWAITING INDEPENDENT REVIEW`
 - 영향: ISIN/listDate가 없는 최초 observation으로 provider identity를 만든 뒤 후속 observation에 강한 identifier가 등장할 수 있다. 매 observation마다 anchor 우선순위를 다시 적용하면 같은 instrument에 새 ID가 생기고 price/history continuity와 deterministic rebuild가 깨진다.
-- 현재 대응: CP3-B는 immutable anchor ID, append-only identifier history, collision/quarantine state와 deterministic insert-or-verify foundation을 구현했다. VERIFIED linkage와 latest pointer에는 identity state/source lineage relational checks가 적용된다. 기존 active identity/history continuity 검색, enrichment reconciliation, collision candidate 계산과 deterministic replay service는 CP3-C에서 별도 구현·검증해야 하며 현재 자동 merge/new identity 기능은 없다.
+- 현재 대응: CP3-C1은 기존 active identity/history continuity를 최초 anchor보다 먼저 검색하고, 단일 비모순 후보는 같은 ID를 재사용해 ISIN/listDate/symbol history만 추가한다. 다중·충돌 evidence는 관련 identity를 `UNRESOLVED_COLLISION`으로 만들고 신규 identity/merge/winner를 생성하지 않는다. 동일 append-only source history의 clean rebuild가 identity ID, immutable anchor, history, lifecycle/collision 결과를 byte-stable하게 재현하는 offline 회귀를 추가했다. 독립 QA 전이므로 완전 종료로 선언하지 않는다.
 
 ## KI-010 — Windows non-ASCII 개발·QA 저장소 경로의 editable install 실패
 

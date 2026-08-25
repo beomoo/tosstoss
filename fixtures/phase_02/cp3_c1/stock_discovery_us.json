@@ -1,0 +1,18 @@
+{
+  "result": [
+    {
+      "symbol": "USTA",
+      "name": "US Test Alpha",
+      "securityType": "STOCK",
+      "isCommonShare": true,
+      "isinCode": "USTESTA00007"
+    },
+    {
+      "symbol": "USTB",
+      "name": "US Test Beta",
+      "securityType": "STOCK",
+      "isCommonShare": true,
+      "isinCode": null
+    }
+  ]
+}

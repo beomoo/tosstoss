@@ -312,6 +312,15 @@ Phase 1 `Issuer`는 KR corp_code 또는 US CIK를 요구하고 `Security`는 iss
 - first insert race는 같은 payload를 idempotent duplicate로, 다른 payload를 typed conditional conflict로 처리하며 row 하나만 유지한다. raw `OperationalError`/`IntegrityError`를 repository 경계 밖으로 노출하지 않는다.
 - 이 hardening은 CP3-C identity reconciliation이나 CP3-D price payload/service를 시작하지 않으며 ADR-012의 provider/canonical 분리 결정을 바꾸지 않는다.
 
+### CP3-C1 구현 기록 — 2026-08-26
+
+- strict discovery/detail DTO와 비식별 offline fixture를 `toss-security-master/0.1.0`으로 분리하고, unknown enum·extra field·JSON numeric Decimal·invalid ISIN은 normalized staging 전에 fail closed한다.
+- 같은 provider/market의 continuity evidence를 최초 anchor보다 먼저 평가한다. deterministic 후보가 하나면 기존 ID/anchor를 유지하고 identifier history를 추가하며, 후보가 여럿이거나 identifier/share-class/listing-market evidence가 모순되면 신규 ID·merge·임의 winner 없이 관련 identity를 격리한다.
+- semantic normalized record, source-linked staging/lifecycle observation, identity-state event와 detail-batch exact audit는 CP3-B table에 사실대로 표현할 수 없어 additive `0004_phase_02_cp3_c1_security_master` 네 table로 보존한다. `0001`/`0002`/`0003`은 byte-identical이고 backfill/destructive rewrite는 없다.
+- discovery disappearance는 `DISCOVERY_MISSING` observation만 추가하며 delisting/`valid_to`/canonical mapping close를 추론하지 않는다. detail inactive/delisted/contradiction/partial/empty 상태는 LKG/history를 삭제하지 않고 별도 observation으로 남긴다.
+- deterministic replay는 source를 `(fetched_at, source_version_id)`로 정렬하며 clock/run/job/attempt ID를 identity allocation에 사용하지 않는다.
+- CP3-C1은 `ELIGIBLE_FOR_MAPPING` candidate evidence에서 중단한다. canonical Issuer/Security 생성, fake corp_code/CIK, exchange 추정과 `VERIFIED` 승격 권한은 CP3-C2 사용자 결정 전까지 계속 금지한다. CP3-D 가격 구현과 live request도 시작하지 않았다.
+
 ---
 
 ## 새 결정 기록 양식

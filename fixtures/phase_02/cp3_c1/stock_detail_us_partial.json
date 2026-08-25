@@ -1,0 +1,20 @@
+{
+  "result": [
+    {
+      "symbol": "USTA",
+      "name": "US Test Alpha",
+      "englishName": "US Test Alpha",
+      "isinCode": "USTESTA00007",
+      "market": "NASDAQ",
+      "securityType": "STOCK",
+      "isCommonShare": true,
+      "status": "ACTIVE",
+      "currency": "USD",
+      "listDate": "2019-04-03",
+      "delistDate": null,
+      "sharesOutstanding": "750000",
+      "leverageFactor": null,
+      "koreanMarketDetail": null
+    }
+  ]
+}

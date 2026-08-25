@@ -26,6 +26,12 @@ CP3_INVARIANT_TABLES = (
     "provider_source_versions",
     "provider_identity_mappings",
 )
+CP3_C1_TABLES = (
+    "provider_security_master_records",
+    "provider_security_master_observations",
+    "provider_identity_state_events",
+    "provider_detail_batch_results",
+)
 
 
 def phase_one_dump(database_url: str) -> dict[str, list[tuple[object, ...]]]:
@@ -174,11 +180,15 @@ def test_blank_database_upgrades_to_cp3_head(workspace_tmp_path: Path) -> None:
             "provider_identifier_history",
             "provider_identity_mappings",
             "provider_latest_pointers",
+            "provider_security_master_records",
+            "provider_security_master_observations",
+            "provider_identity_state_events",
+            "provider_detail_batch_results",
         }.issubset(tables)
         with engine.connect() as connection:
             assert connection.execute(
                 text("SELECT version_num FROM alembic_version")
-            ).scalar_one() == ("0003_phase_02_cp3_b_invariants")
+            ).scalar_one() == ("0004_phase_02_cp3_c1_security_master")
     finally:
         engine.dispose()
 
@@ -273,6 +283,65 @@ def test_existing_cp3b_rows_survive_0003_downgrade_and_reupgrade(
 
     command.upgrade(config, "0003_phase_02_cp3_b_invariants")
     assert cp3_invariant_dump(url) == expected
+
+
+def test_0004_mid_migration_failure_cleans_only_new_tables_and_is_retryable(
+    workspace_tmp_path: Path,
+) -> None:
+    url = f"sqlite:///{(workspace_tmp_path / 'cp3-c1-mid-failure.sqlite3').as_posix()}"
+    config = alembic_config(url)
+    command.upgrade(config, "0001_phase_01")
+    engine = create_engine(url)
+    try:
+        FixtureImporter(session_factory(engine)).import_repository(FixtureRepository(FIXTURE_DIR))
+    finally:
+        engine.dispose()
+    command.upgrade(config, "0002_phase_02_cp3_foundation")
+    seed_valid_cp3_invariant_rows(url)
+    command.upgrade(config, "0003_phase_02_cp3_b_invariants")
+    expected_phase_one = phase_one_dump(url)
+    expected_cp3 = cp3_invariant_dump(url)
+
+    engine = create_engine(url)
+    try:
+        with engine.begin() as connection:
+            connection.execute(text("CREATE TABLE provider_identity_state_events (sentinel TEXT)"))
+    finally:
+        engine.dispose()
+
+    with pytest.raises(OperationalError):
+        command.upgrade(config, "0004_phase_02_cp3_c1_security_master")
+
+    engine = create_engine(url)
+    try:
+        inspector = inspect(engine)
+        tables = set(inspector.get_table_names())
+        assert inspector.get_columns("provider_identity_state_events")[0]["name"] == "sentinel"
+        assert {
+            "provider_security_master_records",
+            "provider_security_master_observations",
+            "provider_detail_batch_results",
+        }.isdisjoint(tables)
+        with engine.connect() as connection:
+            assert (
+                connection.execute(text("SELECT version_num FROM alembic_version")).scalar_one()
+                == "0003_phase_02_cp3_b_invariants"
+            )
+        with engine.begin() as connection:
+            connection.execute(text("DROP TABLE provider_identity_state_events"))
+    finally:
+        engine.dispose()
+    assert phase_one_dump(url) == expected_phase_one
+    assert cp3_invariant_dump(url) == expected_cp3
+
+    command.upgrade(config, "head")
+    engine = create_engine(url)
+    try:
+        assert set(CP3_C1_TABLES).issubset(set(inspect(engine).get_table_names()))
+    finally:
+        engine.dispose()
+    assert phase_one_dump(url) == expected_phase_one
+    assert cp3_invariant_dump(url) == expected_cp3
 
 
 def test_0003_fails_closed_on_preexisting_multiple_source_roots(
@@ -497,6 +566,22 @@ def test_cp3_foundation_migration_file_is_byte_identical() -> None:
             "4991e9ea",
             "d8920807",
             "17abaee6",
+        )
+    )
+
+
+def test_cp3_b_invariants_migration_file_is_byte_identical() -> None:
+    migration = PROJECT_ROOT / "services/api/alembic/versions/0003_phase_02_cp3_b_invariants.py"
+    assert hashlib.sha256(migration.read_bytes()).hexdigest() == "".join(
+        (
+            "b59e74b5",
+            "e817b6a5",
+            "606d9f89",
+            "f1f57eec",
+            "3e0ba361",
+            "6918d117",
+            "d3cc28af",
+            "4f5c420b",
         )
     )
 

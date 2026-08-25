@@ -280,6 +280,51 @@ def _assert_expected_schema(database_url: str) -> None:
                 "provider_contract_version": ("VARCHAR(64)", False, False),
                 "payload_json": ("TEXT", False, False),
             },
+            "provider_security_master_records": {
+                "normalized_record_id": ("VARCHAR(128)", False, True),
+                "provider": ("VARCHAR(32)", False, False),
+                "market": ("VARCHAR(8)", False, False),
+                "provider_listing_market": ("VARCHAR(32)", False, False),
+                "symbol": ("VARCHAR(32)", False, False),
+                "status": ("VARCHAR(32)", False, False),
+                "normalized_content_hash": ("VARCHAR(71)", False, False),
+                "provider_contract_version": ("VARCHAR(64)", False, False),
+                "payload_json": ("TEXT", False, False),
+            },
+            "provider_security_master_observations": {
+                "observation_id": ("VARCHAR(128)", False, True),
+                "source_version_id": ("VARCHAR(128)", False, False),
+                "normalized_record_id": ("VARCHAR(128)", True, False),
+                "provider_security_identity_id": ("VARCHAR(128)", True, False),
+                "provider": ("VARCHAR(32)", False, False),
+                "market": ("VARCHAR(8)", False, False),
+                "symbol": ("VARCHAR(32)", False, False),
+                "staging_state": ("VARCHAR(32)", False, False),
+                "reconciliation_outcome": ("VARCHAR(32)", False, False),
+                "eligible_for_mapping": ("INTEGER", False, False),
+                "provider_contract_version": ("VARCHAR(64)", False, False),
+                "payload_json": ("TEXT", False, False),
+            },
+            "provider_identity_state_events": {
+                "state_event_id": ("VARCHAR(128)", False, True),
+                "provider_security_identity_id": ("VARCHAR(128)", False, False),
+                "source_version_id": ("VARCHAR(128)", False, False),
+                "identity_state": ("VARCHAR(32)", False, False),
+                "staging_state": ("VARCHAR(32)", False, False),
+                "reason_code": ("VARCHAR(64)", False, False),
+                "provider_contract_version": ("VARCHAR(64)", False, False),
+                "payload_json": ("TEXT", False, False),
+            },
+            "provider_detail_batch_results": {
+                "batch_result_id": ("VARCHAR(128)", False, True),
+                "source_version_id": ("VARCHAR(128)", False, False),
+                "requested_count": ("INTEGER", False, False),
+                "received_count": ("INTEGER", False, False),
+                "missing_count": ("INTEGER", False, False),
+                "status": ("VARCHAR(32)", False, False),
+                "provider_contract_version": ("VARCHAR(64)", False, False),
+                "payload_json": ("TEXT", False, False),
+            },
         }
         assert set(inspector.get_table_names()) == set(expected_columns) | {"alembic_version"}
         for table, expected in expected_columns.items():
@@ -308,6 +353,10 @@ def _assert_expected_schema(database_url: str) -> None:
             "provider_identifier_history": ("identifier_history_id",),
             "provider_identity_mappings": ("mapping_id",),
             "provider_latest_pointers": ("latest_pointer_id",),
+            "provider_security_master_records": ("normalized_record_id",),
+            "provider_security_master_observations": ("observation_id",),
+            "provider_identity_state_events": ("state_event_id",),
+            "provider_detail_batch_results": ("batch_result_id",),
         }
         expected_uniques = {
             "issuers": {("corp_code",), ("cik",)},
@@ -338,6 +387,25 @@ def _assert_expected_schema(database_url: str) -> None:
             },
             "provider_identity_mappings": set(),
             "provider_latest_pointers": {("dataset", "provider_security_identity_id")},
+            "provider_security_master_records": {("normalized_content_hash",)},
+            "provider_security_master_observations": {
+                (
+                    "source_version_id",
+                    "symbol",
+                    "staging_state",
+                    "reconciliation_outcome",
+                )
+            },
+            "provider_identity_state_events": {
+                (
+                    "provider_security_identity_id",
+                    "source_version_id",
+                    "identity_state",
+                    "staging_state",
+                    "reason_code",
+                )
+            },
+            "provider_detail_batch_results": {("source_version_id",)},
         }
         for table, expected_pk in expected_primary_keys.items():
             assert (
@@ -436,6 +504,27 @@ def _assert_expected_schema(database_url: str) -> None:
                 ),
                 ("source_version_id",): ("provider_source_versions", ("source_version_id",)),
             },
+            "provider_security_master_observations": {
+                ("source_version_id",): ("provider_source_versions", ("source_version_id",)),
+                ("normalized_record_id",): (
+                    "provider_security_master_records",
+                    ("normalized_record_id",),
+                ),
+                ("provider_security_identity_id",): (
+                    "provider_security_identities",
+                    ("provider_security_identity_id",),
+                ),
+            },
+            "provider_identity_state_events": {
+                ("provider_security_identity_id",): (
+                    "provider_security_identities",
+                    ("provider_security_identity_id",),
+                ),
+                ("source_version_id",): ("provider_source_versions", ("source_version_id",)),
+            },
+            "provider_detail_batch_results": {
+                ("source_version_id",): ("provider_source_versions", ("source_version_id",)),
+            },
         }
         for table in expected_columns:
             reflected_foreign_keys = {
@@ -476,7 +565,7 @@ def test_downgrade_and_reupgrade(workspace_tmp_path: Path) -> None:
         with engine.connect() as connection:
             assert (
                 connection.execute(text("SELECT version_num FROM alembic_version")).scalar_one()
-                == "0003_phase_02_cp3_b_invariants"
+                == "0004_phase_02_cp3_c1_security_master"
             )
     finally:
         engine.dispose()
