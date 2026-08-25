@@ -1,5 +1,24 @@
 # Changelog
 
+## Unreleased — Phase 2 CP3-B Controlled Rollback + Minimal P1 Reapply — 2026-08-26
+
+### Fixed
+
+- canonical request별 source history를 하나의 ORIGINAL root와 하나의 current leaf를 갖는 linear chain으로 검증한다. 후속 version은 exact leaf만 supersede할 수 있고 second root, non-leaf supersession, fork, cycle과 cross-request link를 fail closed한다.
+- additive `0003_phase_02_cp3_b_invariants`에 ORIGINAL root, non-null supersedes child와 open-ended VERIFIED mapping을 위한 SQLite partial unique index를 추가한다. migration은 invalid pre-existing history/overlap을 rewrite 없이 거부하고 `0001`/`0002`를 수정하지 않는다.
+- VERIFIED mapping의 nullable validity boundary를 unbounded interval로, 양 끝을 inclusive로 해석해 같은 provider identity의 bounded/open-ended overlap을 repository에서 차단한다. 기존 mapping을 자동 종료·변경하지 않는다.
+- source revision과 current VERIFIED promotion의 independent-session race에서 exactly one writer만 성공하고 loser는 raw SQLite exception 대신 safe typed conflict를 받는다.
+
+### QA and Scope
+
+- backend exact inventory gate를 493에서 509로 올렸다. source chain/root/fork/order/preservation, mapping overlap/history/concurrent promotion과 0003 upgrade/downgrade/re-upgrade/invalid-data tests를 추가했다.
+- frontend 43, E2E 2 exact gate와 policy missing/lookalike canary, exact control-plane count 70 및 digest enforcement를 유지한다.
+- CP2와 approved CP3-A contract, `0001`, `0002`, connector/runtime, frontend, public API/OpenAPI와 dependency는 변경하지 않았다.
+- actual credential 사용과 actual Toss API request는 0이며 CP3-C는 `NOT STARTED`다.
+- `a33cf6e0ff74bf7db1a373061f90785a92709696` 기준으로 기존 작업을 stash에 보존한 뒤 P1 직접 관련 변경만 선택 재구성했다.
+- `scripts/secret-scan.ps1`과 `scripts/secret_scan_driver.py`는 baseline 그대로이며 audit transport ZIP은 repository에 포함하지 않는다.
+- CP3-B 상태는 `IMPLEMENTED — AWAITING GPT INDEPENDENT REVIEW`; automatic progression은 `PROHIBITED`다.
+
 ## Unreleased — Phase 2 CP3-B Independent-Review Hardening — 2026-08-25
 
 ### Fixed

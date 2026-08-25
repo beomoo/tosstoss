@@ -12,6 +12,13 @@ from toss_dashboard_api.storage.models import (
     SecurityRow,
 )
 
+_INTERNAL_ADDITIVE_REVISIONS = frozenset(
+    {
+        "0002_phase_02_cp3_foundation",
+        "0003_phase_02_cp3_b_invariants",
+    }
+)
+
 
 class SQLiteMetadataRepository:
     def __init__(self, sessions: sessionmaker[Session], engine: Engine) -> None:
@@ -45,7 +52,7 @@ class SQLiteMetadataRepository:
             except Exception as exc:
                 raise RuntimeError("database schema is not migrated") from exc
         actual_revision = str(revision)
-        if actual_revision == "0002_phase_02_cp3_foundation":
+        if actual_revision in _INTERNAL_ADDITIVE_REVISIONS:
             # The Phase 1 application API remains pinned to its public foundation
             # revision while CP3-B metadata tables stay internal and additive.
             return "0001_phase_01"

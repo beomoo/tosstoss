@@ -7,10 +7,12 @@ from sqlalchemy import (
     Date,
     DateTime,
     ForeignKey,
+    Index,
     Integer,
     String,
     Text,
     UniqueConstraint,
+    text,
 )
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
@@ -120,6 +122,18 @@ class ProviderSourceVersionRow(Base):
             "http_status",
             "raw_content_hash",
             "provider_contract_version",
+        ),
+        Index(
+            "uq_provider_source_versions_original_root",
+            "canonical_request_id",
+            unique=True,
+            sqlite_where=text("revision_status = 'ORIGINAL'"),
+        ),
+        Index(
+            "uq_provider_source_versions_supersedes",
+            "supersedes_id",
+            unique=True,
+            sqlite_where=text("supersedes_id IS NOT NULL"),
         ),
     )
 
@@ -238,6 +252,12 @@ class ProviderIdentityMappingRow(Base):
             "(issuer_id IS NOT NULL AND security_id IS NOT NULL AND approved_at IS NOT NULL)"
         ),
         CheckConstraint("valid_to IS NULL OR valid_from IS NULL OR valid_from <= valid_to"),
+        Index(
+            "uq_provider_identity_mappings_current_verified",
+            "provider_security_identity_id",
+            unique=True,
+            sqlite_where=text("mapping_status = 'VERIFIED' AND valid_to IS NULL"),
+        ),
     )
 
     mapping_id: Mapped[str] = mapped_column(String(128), primary_key=True)

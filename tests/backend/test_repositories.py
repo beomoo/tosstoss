@@ -1,3 +1,6 @@
+from sqlalchemy import text
+
+
 def test_sqlite_metadata_repository_roundtrips(database_context) -> None:
     securities = database_context.metadata.list_securities()
     assert [item.security_id for item in securities] == [
@@ -6,6 +9,11 @@ def test_sqlite_metadata_repository_roundtrips(database_context) -> None:
     ]
     assert database_context.metadata.issuer_exists("issuer_kr_synthetic") is True
     assert database_context.metadata.issuer_exists("issuer_missing") is False
+    with database_context.engine.connect() as connection:
+        assert (
+            connection.execute(text("SELECT version_num FROM alembic_version")).scalar_one()
+            == "0003_phase_02_cp3_b_invariants"
+        )
     assert database_context.metadata.database_revision() == "0001_phase_01"
     assert database_context.metadata.fixture_version() == "0.1.0"
     assert (

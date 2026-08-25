@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import date
 
 from pydantic import BaseModel
 from sqlalchemy import select, update
@@ -14,6 +15,7 @@ from toss_dashboard_api.contracts.enums import (
     ProviderAuditEventType,
     ProviderDataset,
     ProviderIdentityState,
+    RevisionStatus,
 )
 from toss_dashboard_api.contracts.provider_identity import (
     ProviderIdentifierHistory,
@@ -134,8 +136,13 @@ class SQLiteProviderRepository:
     def append_source_version(
         self, version: ProviderSourceVersion
     ) -> InsertResult[ProviderSourceVersion]:
-        with self._sessions.begin() as session:
-            return self._append_source_version(session, version)
+        try:
+            with self._sessions.begin() as session:
+                return self._append_source_version(session, version)
+        except ProviderRepositoryError:
+            raise
+        except (IntegrityError, OperationalError):
+            raise ProviderContractConflict("provider source revision write conflict") from None
 
     def record_source_version_with_audit(
         self,
@@ -144,13 +151,22 @@ class SQLiteProviderRepository:
     ) -> InsertResult[ProviderSourceVersion]:
         if event.source_version_id != version.source_version_id:
             raise ProviderRepositoryError("audit event does not reference the source version")
-        with self._sessions.begin() as session:
-            result = self._append_source_version(session, version)
-            self._append_audit_event(session, event)
-            return result
+        try:
+            with self._sessions.begin() as session:
+                result = self._append_source_version(session, version)
+                self._append_audit_event(session, event)
+                return result
+        except ProviderRepositoryError:
+            raise
+        except (IntegrityError, OperationalError):
+            raise ProviderContractConflict("provider source revision write conflict") from None
 
     def source_revision_chain(self, source_version_id: str) -> list[ProviderSourceVersion]:
         with self._sessions() as session:
+            requested = session.get(ProviderSourceVersionRow, source_version_id)
+            if requested is None:
+                raise ProviderRepositoryError("provider source revision is missing")
+            self._validated_source_leaf(session, requested.canonical_request_id)
             chain: list[ProviderSourceVersion] = []
             seen: set[str] = set()
             current = source_version_id
@@ -280,31 +296,38 @@ class SQLiteProviderRepository:
         self, mapping: ProviderIdentityMapping
     ) -> InsertResult[ProviderIdentityMapping]:
         payload = _payload_json(mapping)
-        with self._sessions.begin() as session:
-            row = session.get(ProviderIdentityMappingRow, mapping.mapping_id)
-            if row is not None:
-                return InsertResult(self._verify_payload(row.payload_json, payload, mapping), False)
-            self._validate_identity_mapping(session, mapping)
-            session.add(
-                ProviderIdentityMappingRow(
-                    mapping_id=mapping.mapping_id,
-                    provider_security_identity_id=mapping.provider_security_identity_id,
-                    issuer_id=mapping.issuer_id,
-                    security_id=mapping.security_id,
-                    mapping_status=mapping.mapping_status.value,
-                    evidence_source_version_id=mapping.evidence_source_version_id,
-                    approved_at=(
-                        None
-                        if mapping.approved_at is None
-                        else self._json_time(mapping.approved_at)
-                    ),
-                    valid_from=mapping.valid_from,
-                    valid_to=mapping.valid_to,
-                    provider_contract_version=mapping.provider_contract_version,
-                    payload_json=payload,
+        try:
+            with self._sessions.begin() as session:
+                row = session.get(ProviderIdentityMappingRow, mapping.mapping_id)
+                if row is not None:
+                    return InsertResult(
+                        self._verify_payload(row.payload_json, payload, mapping), False
+                    )
+                self._validate_identity_mapping(session, mapping)
+                session.add(
+                    ProviderIdentityMappingRow(
+                        mapping_id=mapping.mapping_id,
+                        provider_security_identity_id=mapping.provider_security_identity_id,
+                        issuer_id=mapping.issuer_id,
+                        security_id=mapping.security_id,
+                        mapping_status=mapping.mapping_status.value,
+                        evidence_source_version_id=mapping.evidence_source_version_id,
+                        approved_at=(
+                            None
+                            if mapping.approved_at is None
+                            else self._json_time(mapping.approved_at)
+                        ),
+                        valid_from=mapping.valid_from,
+                        valid_to=mapping.valid_to,
+                        provider_contract_version=mapping.provider_contract_version,
+                        payload_json=payload,
+                    )
                 )
-            )
-        return InsertResult(mapping, True)
+            return InsertResult(mapping, True)
+        except ProviderRepositoryError:
+            raise
+        except (IntegrityError, OperationalError):
+            raise ProviderContractConflict("verified identity mapping write conflict") from None
 
     def read_latest_pointer(
         self, dataset: str, provider_security_identity_id: str
@@ -401,7 +424,9 @@ class SQLiteProviderRepository:
         payload = _payload_json(version)
         row = session.get(ProviderSourceVersionRow, version.source_version_id)
         if row is not None:
-            return InsertResult(self._verify_source_duplicate(row, version), False)
+            stored = self._verify_source_duplicate(row, version)
+            self._validated_source_leaf(session, version.canonical_request_id)
+            return InsertResult(stored, False)
         raw = session.get(ProviderRawManifestRow, version.raw_response_id)
         if raw is None:
             raise ProviderRepositoryError("provider source references an unknown raw manifest")
@@ -415,14 +440,24 @@ class SQLiteProviderRepository:
             )
         )
         if duplicate is not None:
-            return InsertResult(self._verify_source_duplicate(duplicate, version), False)
+            stored = self._verify_source_duplicate(duplicate, version)
+            self._validated_source_leaf(session, version.canonical_request_id)
+            return InsertResult(stored, False)
         self._validate_source_trace(session, version, raw)
-        if version.supersedes_id is not None:
-            parent = session.get(ProviderSourceVersionRow, version.supersedes_id)
-            if parent is None:
-                raise ProviderRepositoryError("provider source supersedes an unknown version")
-            if parent.canonical_request_id != version.canonical_request_id:
-                raise ProviderContractConflict("revision chain crossed canonical requests")
+        current_leaf = self._validated_source_leaf(session, version.canonical_request_id)
+        if current_leaf is None:
+            if (
+                version.revision_status != RevisionStatus.ORIGINAL
+                or version.supersedes_id is not None
+            ):
+                raise ProviderContractConflict("first provider source must be an original root")
+        elif (
+            version.revision_status == RevisionStatus.ORIGINAL
+            or version.supersedes_id != current_leaf
+        ):
+            raise ProviderContractConflict(
+                "provider source revision must supersede the unique current leaf"
+            )
         session.add(
             ProviderSourceVersionRow(
                 source_version_id=version.source_version_id,
@@ -440,6 +475,80 @@ class SQLiteProviderRepository:
         )
         session.flush()
         return InsertResult(version, True)
+
+    @staticmethod
+    def _validated_source_leaf(session: Session, canonical_request_id: str) -> str | None:
+        rows = list(
+            session.scalars(
+                select(ProviderSourceVersionRow).where(
+                    ProviderSourceVersionRow.canonical_request_id == canonical_request_id
+                )
+            )
+        )
+        if not rows:
+            return None
+
+        nodes: dict[str, tuple[str, str | None]] = {}
+        try:
+            for row in rows:
+                contract = ProviderSourceVersion.model_validate_json(row.payload_json)
+                if (
+                    contract.source_version_id != row.source_version_id
+                    or contract.canonical_request_id != row.canonical_request_id
+                    or contract.revision_status.value != row.revision_status
+                    or contract.supersedes_id != row.supersedes_id
+                ):
+                    raise ValueError
+                nodes[row.source_version_id] = (row.revision_status, row.supersedes_id)
+        except Exception:
+            raise ProviderContractConflict("provider source revision history is invalid") from None
+
+        roots = [
+            source_id
+            for source_id, (status, parent_id) in nodes.items()
+            if status == RevisionStatus.ORIGINAL.value and parent_id is None
+        ]
+        if len(roots) != 1:
+            raise ProviderContractConflict(
+                "provider source revision history must have one original root"
+            )
+
+        valid_statuses = {status.value for status in RevisionStatus}
+        children: dict[str, list[str]] = {}
+        for source_id, (status, parent_id) in nodes.items():
+            if status not in valid_statuses:
+                raise ProviderContractConflict("provider source revision history is invalid")
+            if status == RevisionStatus.ORIGINAL.value:
+                if parent_id is not None:
+                    raise ProviderContractConflict("provider source revision history is invalid")
+                continue
+            if parent_id is None or parent_id not in nodes:
+                raise ProviderContractConflict(
+                    "provider source revision parent is outside its canonical request"
+                )
+            children.setdefault(parent_id, []).append(source_id)
+            if len(children[parent_id]) > 1:
+                raise ProviderContractConflict("provider source revision history contains a fork")
+
+        leaves = [source_id for source_id in nodes if source_id not in children]
+        if len(leaves) != 1:
+            raise ProviderContractConflict(
+                "provider source revision history must have one current leaf"
+            )
+
+        visited: set[str] = set()
+        current = roots[0]
+        while True:
+            if current in visited:
+                raise ProviderContractConflict("provider source revision history contains a cycle")
+            visited.add(current)
+            next_versions = children.get(current, [])
+            if not next_versions:
+                break
+            current = next_versions[0]
+        if len(visited) != len(nodes) or current != leaves[0]:
+            raise ProviderContractConflict("provider source revision history is not linear")
+        return current
 
     def _append_audit_event(
         self, session: Session, event: ProviderAuditEvent
@@ -630,6 +739,32 @@ class SQLiteProviderRepository:
             raise ProviderContractConflict("verified mapping requires existing issuer and security")
         if security.issuer_id != issuer.issuer_id:
             raise ProviderContractConflict("verified mapping issuer and security do not match")
+        existing_mappings = session.scalars(
+            select(ProviderIdentityMappingRow).where(
+                ProviderIdentityMappingRow.provider_security_identity_id
+                == mapping.provider_security_identity_id,
+                ProviderIdentityMappingRow.mapping_status == MappingStatus.VERIFIED.value,
+            )
+        )
+        for row in existing_mappings:
+            try:
+                existing = ProviderIdentityMapping.model_validate_json(row.payload_json)
+            except Exception:
+                raise ProviderContractConflict(
+                    "verified identity mapping history is invalid"
+                ) from None
+            if cls._mapping_intervals_overlap(existing, mapping):
+                raise ProviderContractConflict("verified identity mapping intervals overlap")
+
+    @staticmethod
+    def _mapping_intervals_overlap(
+        left: ProviderIdentityMapping, right: ProviderIdentityMapping
+    ) -> bool:
+        left_start = date.min if left.valid_from is None else left.valid_from
+        left_end = date.max if left.valid_to is None else left.valid_to
+        right_start = date.min if right.valid_from is None else right.valid_from
+        right_end = date.max if right.valid_to is None else right.valid_to
+        return left_start <= right_end and right_start <= left_end
 
     @classmethod
     def _validate_latest_eligibility(cls, session: Session, pointer: ProviderLatestPointer) -> None:

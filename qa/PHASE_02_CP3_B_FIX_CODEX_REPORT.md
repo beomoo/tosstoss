@@ -1,13 +1,13 @@
 # Phase 2 CP3-B Independent-Review Fix Codex Self Report
 
 CP3-B:
-REVISED AFTER INDEPENDENT REVIEW — AWAITING GPT RE-REVIEW
+IMPLEMENTED — AWAITING GPT INDEPENDENT REVIEW
 
 CP3-C:
 NOT STARTED
 
-Independent re-review:
-PENDING
+Independent QA:
+NOT YET PERFORMED
 
 This report is a Codex self-report and is not an independent QA result.
 
@@ -230,7 +230,7 @@ This is a Codex self-assessment and is not an independent QA result.
 ## M. Next-step state
 
 CP3-B:
-REVISED AFTER INDEPENDENT REVIEW — AWAITING GPT RE-REVIEW
+IMPLEMENTED — AWAITING GPT INDEPENDENT REVIEW
 
 CP3-C:
 NOT STARTED
@@ -246,3 +246,89 @@ NOT CREATED
 
 Tag/Release:
 NOT CREATED
+
+## N. 2026-08-26 — Controlled rollback and minimal P1 reapply
+
+### N.1 Execution basis and scope
+
+- Starting SHA: `a33cf6e0ff74bf7db1a373061f90785a92709696`.
+- The complete prior staged/unstaged/untracked state is preserved in `stash@{0}` with message `cp3-b-remediation-full-backup-before-minimal-reapply`.
+- Local `feature/phase-02-toss` was restored to `origin/feature/phase-02-toss` before selective reapply.
+- Only source revision-chain remediation, VERIFIED mapping exclusivity, database revision compatibility, additive migration `0003`, focused tests, exact QA inventory/control digest, Markdown audit evidence, and minimum status/changelog documentation were reapplied.
+- `PROGRESS_LOG.md`, scanner canary changes, archive exceptions, audit ZIP, and all CP3-C work were excluded.
+
+### N.2 Required remediation status
+
+CP3-B:
+IMPLEMENTED — AWAITING GPT INDEPENDENT REVIEW
+
+P1 source revision chain:
+REMEDIATED
+
+P1 VERIFIED mapping exclusivity:
+REMEDIATED
+
+database_revision compatibility:
+PASS
+
+Migration 0003:
+PASS
+
+Secret scanner:
+UNCHANGED FROM a33cf6e BASELINE
+
+Audit transport ZIP:
+NOT INCLUDED IN REPOSITORY
+
+Independent QA:
+NOT YET PERFORMED
+
+This report is a Codex self-report and is not an independent QA result.
+
+### N.3 Targeted evidence
+
+- Repository/migration/schema targeted suite: `92/92 PASS`.
+- Backend exact inventory: `509 collected`.
+- Blank DB to head, Phase 1 fixture DB to head, 0002 to 0003, 0003 downgrade/re-upgrade, valid-row preservation, and invalid pre-existing invariant rejection: PASS.
+- Unknown database revision startup check: FAIL CLOSED / PASS.
+- Source history: one ORIGINAL root, exact current-leaf supersession, duplicate idempotency, fork/root race rejection, prior-version queryability, and no history deletion: PASS.
+- VERIFIED mapping: relational evidence validation, inclusive interval overlap rejection, one current open-ended mapping, concurrent promotion winner/typed loser, unresolved nullable linkage, and no automatic canonical mapping: PASS.
+- Actual credential usage: `0`.
+- Actual Toss API requests: `0`.
+- CP3-C: `NOT STARTED`.
+
+### N.4 Final staged regression
+
+- Command: `pwsh -NoProfile -File .\scripts\test.ps1`.
+- Result: `BLOCKED / exit 1`.
+- Backend `509/509`, frontend `43/43`, E2E `2/2`, migration roundtrip, fixture idempotency, OpenAPI check, and production build passed before the final scanner gate.
+- The untouched `a33cf6e` baseline `scripts/secret-scan.ps1` reported 1,382 high-entropy findings in run-generated `.mypy_cache` metadata and returned exit 1.
+- No scanner threshold, filter, scope, canary, exception, or allowlist was changed in response.
+
+BLOCKED — independent secret-scan infrastructure issue reproduced.
+
+CP3-B P1 remediation:
+PASS in targeted tests
+
+secret-scan:
+FAIL with untouched a33cf6e baseline scanner
+
+No scanner changes were made.
+
+Separate infrastructure remediation required.
+
+### N.5 False-green and excluded-scope review
+
+- Test deletion: `0`.
+- Skip additions: `0`.
+- Xfail additions: `0`.
+- Assertion weakening: `0`.
+- Exception swallowing: `0`.
+- Inventory relaxation: `0`.
+- Secret threshold changes: `0`.
+- Secret filter changes: `0`.
+- Scanner scope reduction: `0`.
+- Archive bypass: `0`.
+- Audit ZIP committed: `NO`.
+- CP3-C changes: `0`.
+- PR/main merge/tag/release: `0`.

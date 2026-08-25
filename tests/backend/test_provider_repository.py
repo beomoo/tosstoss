@@ -9,6 +9,7 @@ from threading import Barrier
 import pytest
 from pydantic import ValidationError
 from sqlalchemy import func, select, text, update
+from sqlalchemy.exc import IntegrityError, OperationalError
 
 from toss_dashboard_api.contracts.base import canonical_json_bytes, sha256_prefixed
 from toss_dashboard_api.contracts.enums import (
@@ -120,10 +121,16 @@ def source_contract(
     return ProviderSourceVersion.model_validate(payload)
 
 
-def persisted_graph(database_context, workspace_tmp_path: Path, raw_bytes: bytes = b"first"):
+def persisted_graph(
+    database_context,
+    workspace_tmp_path: Path,
+    raw_bytes: bytes = b"first",
+    *,
+    market: str = "KR",
+):
     raw_store = ProviderRawStore(workspace_tmp_path / "raw")
     repo = repository(database_context, raw_store)
-    request = build_canonical_request("/api/v1/stocks/all", {"market": "KR"})
+    request = build_canonical_request("/api/v1/stocks/all", {"market": market})
     stored = raw_store.persist(raw_bytes)
     manifest = build_provider_raw_manifest(
         request=request,
@@ -144,6 +151,51 @@ def persisted_graph(database_context, workspace_tmp_path: Path, raw_bytes: bytes
     repo.insert_or_verify_raw_manifest(manifest)
     source = source_contract(request=request, manifest=manifest)
     return repo, request, manifest, source
+
+
+def changed_source_candidate(
+    repo: SQLiteProviderRepository,
+    request,
+    raw_store: ProviderRawStore,
+    *,
+    raw_bytes: bytes,
+    revision_status: RevisionStatus = RevisionStatus.ORIGINAL,
+    supersedes_id: str | None = None,
+    fetched_at: datetime | None = None,
+) -> ProviderSourceVersion:
+    stored = raw_store.persist(raw_bytes)
+    manifest = build_provider_raw_manifest(
+        request=request,
+        http_status=200,
+        raw_content_hash=stored.raw_content_hash,
+        raw_storage_ref=stored.raw_storage_ref,
+        fetched_at=(datetime(2026, 8, 25, 1, 3, tzinfo=UTC) if fetched_at is None else fetched_at),
+        response_metadata=ProviderResponseMetadata(content_type="application/json"),
+        parser_version="toss-source-parser/0.1.0",
+    )
+    repo.insert_or_verify_raw_manifest(manifest)
+    return source_contract(
+        request=request,
+        manifest=manifest,
+        revision_status=revision_status,
+        supersedes_id=supersedes_id,
+    )
+
+
+def source_version_row(source: ProviderSourceVersion) -> ProviderSourceVersionRow:
+    return ProviderSourceVersionRow(
+        source_version_id=source.source_version_id,
+        canonical_request_id=source.canonical_request_id,
+        raw_response_id=source.raw_response_id,
+        dataset=source.dataset.value,
+        http_status=200,
+        raw_content_hash=source.raw_content_hash,
+        provider_contract_version=source.provider_contract_version,
+        revision_status=source.revision_status.value,
+        supersedes_id=source.supersedes_id,
+        normalized_content_hash=source.normalized_content_hash,
+        payload_json=canonical_json_bytes(source.model_dump(mode="json")).decode("utf-8"),
+    )
 
 
 def persisted_dataset_graph(
@@ -224,8 +276,9 @@ def provider_identity(
     source_version_id: str,
     *,
     identity_state: ProviderIdentityState = ProviderIdentityState.ACTIVE,
+    anchor_token: str = "A",
 ) -> ProviderSecurityIdentity:
-    anchor = "toss-identity-v1|KR|FIRST_SEEN_RAW|A|evidence"
+    anchor = f"toss-identity-v1|KR|FIRST_SEEN_RAW|{anchor_token}|evidence"
     digest = hashlib.sha256(anchor.encode()).hexdigest()
     return ProviderSecurityIdentity(
         provider_security_identity_id=f"tpsi_{digest}",
@@ -247,6 +300,8 @@ def verified_mapping(
     mapping_id: str = "pmap_verified_a",
     issuer_id: str = "issuer_kr_synthetic",
     security_id: str = "security_kr_synthetic_common",
+    valid_from: date | None = None,
+    valid_to: date | None = None,
 ) -> ProviderIdentityMapping:
     return ProviderIdentityMapping(
         mapping_id=mapping_id,
@@ -256,8 +311,8 @@ def verified_mapping(
         mapping_status=MappingStatus.VERIFIED,
         evidence_source_version_id=source_version_id,
         approved_at=NOW,
-        valid_from=None,
-        valid_to=None,
+        valid_from=valid_from,
+        valid_to=valid_to,
         provider_contract_version=PROVIDER_IDENTITY_CONTRACT_VERSION,
     )
 
@@ -539,6 +594,208 @@ def test_same_request_different_raw_hash_appends_revision_and_preserves_old(
     assert [item.source_version_id for item in chain] == [
         revised.source_version_id,
         original.source_version_id,
+    ]
+
+
+def test_second_original_with_different_raw_bytes_is_rejected_and_preserves_root(
+    database_context, workspace_tmp_path: Path
+) -> None:
+    repo, request, _, original = persisted_graph(database_context, workspace_tmp_path)
+    repo.append_source_version(original)
+    duplicate_root = changed_source_candidate(
+        repo,
+        request,
+        ProviderRawStore(workspace_tmp_path / "raw"),
+        raw_bytes=b"second-original",
+    )
+
+    with pytest.raises(ProviderContractConflict, match="unique current leaf"):
+        repo.append_source_version(duplicate_root)
+
+    with database_context.engine.connect() as connection:
+        rows = connection.execute(select(ProviderSourceVersionRow.payload_json)).scalars().all()
+    assert rows == [canonical_json_bytes(original.model_dump(mode="json")).decode("utf-8")]
+
+
+def test_revision_cannot_supersede_a_non_leaf_and_preserves_prior_rows(
+    database_context, workspace_tmp_path: Path
+) -> None:
+    repo, request, _, original = persisted_graph(database_context, workspace_tmp_path)
+    raw_store = ProviderRawStore(workspace_tmp_path / "raw")
+    repo.append_source_version(original)
+    amended = changed_source_candidate(
+        repo,
+        request,
+        raw_store,
+        raw_bytes=b"valid-amended",
+        revision_status=RevisionStatus.AMENDED,
+        supersedes_id=original.source_version_id,
+    )
+    repo.append_source_version(amended)
+    invalid = changed_source_candidate(
+        repo,
+        request,
+        raw_store,
+        raw_bytes=b"non-leaf-amended",
+        revision_status=RevisionStatus.AMENDED,
+        supersedes_id=original.source_version_id,
+        fetched_at=datetime(2026, 8, 25, 1, 4, tzinfo=UTC),
+    )
+    before = repo.source_revision_chain(amended.source_version_id)
+
+    with pytest.raises(ProviderContractConflict, match="unique current leaf"):
+        repo.append_source_version(invalid)
+
+    assert repo.source_revision_chain(amended.source_version_id) == before
+    with database_context.engine.connect() as connection:
+        assert (
+            connection.execute(
+                select(func.count()).select_from(ProviderSourceVersionRow)
+            ).scalar_one()
+            == 2
+        )
+
+
+def test_two_independent_source_revision_writers_have_one_winner_and_typed_loser(
+    database_context, workspace_tmp_path: Path
+) -> None:
+    raw_store = ProviderRawStore(workspace_tmp_path / "raw")
+    repo, request, _, original = persisted_graph(database_context, workspace_tmp_path)
+    repo.append_source_version(original)
+    candidates = [
+        changed_source_candidate(
+            repo,
+            request,
+            raw_store,
+            raw_bytes=f"concurrent-revision-{suffix}".encode(),
+            revision_status=RevisionStatus.AMENDED,
+            supersedes_id=original.source_version_id,
+            fetched_at=datetime(2026, 8, 25, 1, minute, tzinfo=UTC),
+        )
+        for suffix, minute in (("a", 4), ("b", 5))
+    ]
+    barrier = Barrier(2)
+
+    def append(candidate: ProviderSourceVersion) -> str:
+        independent = repository(database_context, raw_store)
+        barrier.wait()
+        try:
+            independent.append_source_version(candidate)
+        except ProviderContractConflict:
+            return "TYPED_CONFLICT"
+        except (IntegrityError, OperationalError):
+            return "RAW_DATABASE_ERROR"
+        return "SUCCESS"
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        outcomes = list(executor.map(append, candidates))
+
+    assert sorted(outcomes) == ["SUCCESS", "TYPED_CONFLICT"]
+    assert "RAW_DATABASE_ERROR" not in outcomes
+    with database_context.engine.connect() as connection:
+        persisted = (
+            connection.execute(
+                select(ProviderSourceVersionRow.payload_json).order_by(
+                    ProviderSourceVersionRow.source_version_id
+                )
+            )
+            .scalars()
+            .all()
+        )
+    assert len(persisted) == 2
+    winner = next(
+        candidate
+        for candidate in candidates
+        if canonical_json_bytes(candidate.model_dump(mode="json")).decode("utf-8") in persisted
+    )
+    assert repo.source_revision_chain(winner.source_version_id) == [winner, original]
+
+
+def test_database_unique_index_prevents_a_second_original_root(
+    database_context, workspace_tmp_path: Path
+) -> None:
+    repo, request, _, original = persisted_graph(database_context, workspace_tmp_path)
+    repo.append_source_version(original)
+    duplicate_root = changed_source_candidate(
+        repo,
+        request,
+        ProviderRawStore(workspace_tmp_path / "raw"),
+        raw_bytes=b"database-second-original",
+    )
+    sessions = session_factory(database_context.engine)
+
+    with pytest.raises(IntegrityError):
+        with sessions.begin() as session:
+            session.add(source_version_row(duplicate_root))
+            session.flush()
+
+    assert repo.source_revision_chain(original.source_version_id) == [original]
+
+
+def test_database_unique_index_prevents_a_revision_fork(
+    database_context, workspace_tmp_path: Path
+) -> None:
+    repo, request, _, original = persisted_graph(database_context, workspace_tmp_path)
+    raw_store = ProviderRawStore(workspace_tmp_path / "raw")
+    repo.append_source_version(original)
+    first_child = changed_source_candidate(
+        repo,
+        request,
+        raw_store,
+        raw_bytes=b"database-first-child",
+        revision_status=RevisionStatus.AMENDED,
+        supersedes_id=original.source_version_id,
+    )
+    repo.append_source_version(first_child)
+    second_child = changed_source_candidate(
+        repo,
+        request,
+        raw_store,
+        raw_bytes=b"database-second-child",
+        revision_status=RevisionStatus.AMENDED,
+        supersedes_id=original.source_version_id,
+        fetched_at=datetime(2026, 8, 25, 1, 4, tzinfo=UTC),
+    )
+    sessions = session_factory(database_context.engine)
+
+    with pytest.raises(IntegrityError):
+        with sessions.begin() as session:
+            session.add(source_version_row(second_child))
+            session.flush()
+
+    assert repo.source_revision_chain(first_child.source_version_id) == [first_child, original]
+
+
+def test_source_revision_chain_is_queryable_in_exact_leaf_to_root_order(
+    database_context, workspace_tmp_path: Path
+) -> None:
+    repo, request, _, original = persisted_graph(database_context, workspace_tmp_path)
+    raw_store = ProviderRawStore(workspace_tmp_path / "raw")
+    repo.append_source_version(original)
+    amended = changed_source_candidate(
+        repo,
+        request,
+        raw_store,
+        raw_bytes=b"ordered-amended",
+        revision_status=RevisionStatus.AMENDED,
+        supersedes_id=original.source_version_id,
+    )
+    repo.append_source_version(amended)
+    restated = changed_source_candidate(
+        repo,
+        request,
+        raw_store,
+        raw_bytes=b"ordered-restated",
+        revision_status=RevisionStatus.AMENDED,
+        supersedes_id=amended.source_version_id,
+        fetched_at=datetime(2026, 8, 25, 1, 4, tzinfo=UTC),
+    )
+    repo.append_source_version(restated)
+
+    assert repo.source_revision_chain(restated.source_version_id) == [
+        restated,
+        amended,
+        original,
     ]
 
 
@@ -937,7 +1194,10 @@ def test_verified_mapping_rejects_unrelated_evidence_source(
     identity = provider_identity(source.source_version_id)
     repo.insert_or_verify_identity(identity)
     repo_again, _, _, unrelated = persisted_graph(
-        database_context, workspace_tmp_path, raw_bytes=b"unrelated-evidence"
+        database_context,
+        workspace_tmp_path,
+        raw_bytes=b"unrelated-evidence",
+        market="US",
     )
     repo_again.append_source_version(unrelated)
     mapping = verified_mapping(identity.provider_security_identity_id, unrelated.source_version_id)
@@ -956,19 +1216,224 @@ def test_verified_mapping_accepts_first_source_lineage_and_valid_relationship(
     result = repo.record_identity_mapping(mapping)
     assert result.inserted is True
     assert result.record == mapping
+    assert repo.record_identity_mapping(mapping).inserted is False
 
 
-def test_verified_mapping_accepts_identifier_history_evidence_lineage(
+def test_second_open_ended_verified_mapping_for_one_identity_is_rejected(
     database_context, workspace_tmp_path: Path
 ) -> None:
     repo, _, _, source = persisted_graph(database_context, workspace_tmp_path)
     repo.append_source_version(source)
     identity = provider_identity(source.source_version_id)
     repo.insert_or_verify_identity(identity)
-    repo_again, _, _, enriched_source = persisted_graph(
-        database_context, workspace_tmp_path, raw_bytes=b"identifier-enrichment"
+    first = verified_mapping(identity.provider_security_identity_id, source.source_version_id)
+    second = verified_mapping(
+        identity.provider_security_identity_id,
+        source.source_version_id,
+        mapping_id="pmap_open_ended_b",
+        issuer_id="issuer_us_synthetic",
+        security_id="security_us_synthetic_common",
     )
-    repo_again.append_source_version(enriched_source)
+    repo.record_identity_mapping(first)
+
+    with pytest.raises(ProviderContractConflict, match="intervals overlap"):
+        repo.record_identity_mapping(second)
+
+    with database_context.engine.connect() as connection:
+        rows = (
+            connection.execute(
+                select(ProviderIdentityMappingRow.payload_json).where(
+                    ProviderIdentityMappingRow.provider_security_identity_id
+                    == identity.provider_security_identity_id
+                )
+            )
+            .scalars()
+            .all()
+        )
+    assert rows == [canonical_json_bytes(first.model_dump(mode="json")).decode("utf-8")]
+
+
+def test_overlapping_bounded_verified_mapping_intervals_are_rejected(
+    database_context, workspace_tmp_path: Path
+) -> None:
+    repo, _, _, source = persisted_graph(database_context, workspace_tmp_path)
+    repo.append_source_version(source)
+    identity = provider_identity(source.source_version_id)
+    repo.insert_or_verify_identity(identity)
+    first = verified_mapping(
+        identity.provider_security_identity_id,
+        source.source_version_id,
+        mapping_id="pmap_bounded_a",
+        valid_from=date(2020, 1, 1),
+        valid_to=date(2022, 12, 31),
+    )
+    overlapping = verified_mapping(
+        identity.provider_security_identity_id,
+        source.source_version_id,
+        mapping_id="pmap_bounded_b",
+        valid_from=date(2022, 12, 31),
+        valid_to=date(2024, 1, 1),
+    )
+    repo.record_identity_mapping(first)
+
+    with pytest.raises(ProviderContractConflict, match="intervals overlap"):
+        repo.record_identity_mapping(overlapping)
+
+
+def test_open_ended_and_bounded_verified_mapping_overlap_is_rejected(
+    database_context, workspace_tmp_path: Path
+) -> None:
+    repo, _, _, source = persisted_graph(database_context, workspace_tmp_path)
+    repo.append_source_version(source)
+    identity = provider_identity(source.source_version_id)
+    repo.insert_or_verify_identity(identity)
+    bounded = verified_mapping(
+        identity.provider_security_identity_id,
+        source.source_version_id,
+        mapping_id="pmap_bounded_before_open",
+        valid_from=date(2020, 1, 1),
+        valid_to=date(2025, 1, 1),
+    )
+    open_ended = verified_mapping(
+        identity.provider_security_identity_id,
+        source.source_version_id,
+        mapping_id="pmap_open_after_bounded",
+        valid_from=date(2025, 1, 1),
+        valid_to=None,
+    )
+    repo.record_identity_mapping(bounded)
+
+    with pytest.raises(ProviderContractConflict, match="intervals overlap"):
+        repo.record_identity_mapping(open_ended)
+
+
+def test_non_overlapping_historical_verified_mappings_are_allowed(
+    database_context, workspace_tmp_path: Path
+) -> None:
+    repo, _, _, source = persisted_graph(database_context, workspace_tmp_path)
+    repo.append_source_version(source)
+    identity = provider_identity(source.source_version_id)
+    repo.insert_or_verify_identity(identity)
+    first = verified_mapping(
+        identity.provider_security_identity_id,
+        source.source_version_id,
+        mapping_id="pmap_historical_a",
+        valid_from=None,
+        valid_to=date(2021, 12, 31),
+    )
+    second = verified_mapping(
+        identity.provider_security_identity_id,
+        source.source_version_id,
+        mapping_id="pmap_historical_b",
+        issuer_id="issuer_us_synthetic",
+        security_id="security_us_synthetic_common",
+        valid_from=date(2022, 1, 1),
+        valid_to=date(2023, 12, 31),
+    )
+
+    assert repo.record_identity_mapping(first).inserted is True
+    assert repo.record_identity_mapping(second).inserted is True
+
+
+def test_verified_mappings_for_different_provider_identities_are_independent(
+    database_context, workspace_tmp_path: Path
+) -> None:
+    repo, _, _, source = persisted_graph(database_context, workspace_tmp_path)
+    repo.append_source_version(source)
+    identity_a = provider_identity(source.source_version_id, anchor_token="A")
+    identity_b = provider_identity(source.source_version_id, anchor_token="B")
+    repo.insert_or_verify_identity(identity_a)
+    repo.insert_or_verify_identity(identity_b)
+    mapping_a = verified_mapping(
+        identity_a.provider_security_identity_id,
+        source.source_version_id,
+        mapping_id="pmap_identity_a",
+    )
+    mapping_b = verified_mapping(
+        identity_b.provider_security_identity_id,
+        source.source_version_id,
+        mapping_id="pmap_identity_b",
+        issuer_id="issuer_us_synthetic",
+        security_id="security_us_synthetic_common",
+    )
+
+    assert repo.record_identity_mapping(mapping_a).inserted is True
+    assert repo.record_identity_mapping(mapping_b).inserted is True
+
+
+def test_two_independent_verified_mapping_promotions_have_one_winner(
+    database_context, workspace_tmp_path: Path
+) -> None:
+    raw_store = ProviderRawStore(workspace_tmp_path / "raw")
+    repo, _, _, source = persisted_graph(database_context, workspace_tmp_path)
+    repo.append_source_version(source)
+    identity = provider_identity(source.source_version_id)
+    repo.insert_or_verify_identity(identity)
+    candidates = [
+        verified_mapping(
+            identity.provider_security_identity_id,
+            source.source_version_id,
+            mapping_id="pmap_concurrent_a",
+        ),
+        verified_mapping(
+            identity.provider_security_identity_id,
+            source.source_version_id,
+            mapping_id="pmap_concurrent_b",
+            issuer_id="issuer_us_synthetic",
+            security_id="security_us_synthetic_common",
+        ),
+    ]
+    barrier = Barrier(2)
+
+    def promote(candidate: ProviderIdentityMapping) -> str:
+        independent = repository(database_context, raw_store)
+        barrier.wait()
+        try:
+            independent.record_identity_mapping(candidate)
+        except ProviderContractConflict:
+            return "TYPED_CONFLICT"
+        except (IntegrityError, OperationalError):
+            return "RAW_DATABASE_ERROR"
+        return "SUCCESS"
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        outcomes = list(executor.map(promote, candidates))
+
+    assert sorted(outcomes) == ["SUCCESS", "TYPED_CONFLICT"]
+    assert "RAW_DATABASE_ERROR" not in outcomes
+    with database_context.engine.connect() as connection:
+        rows = (
+            connection.execute(
+                select(ProviderIdentityMappingRow.payload_json).where(
+                    ProviderIdentityMappingRow.provider_security_identity_id
+                    == identity.provider_security_identity_id,
+                    ProviderIdentityMappingRow.mapping_status == MappingStatus.VERIFIED.value,
+                    ProviderIdentityMappingRow.valid_to.is_(None),
+                )
+            )
+            .scalars()
+            .all()
+        )
+    assert len(rows) == 1
+    assert ProviderIdentityMapping.model_validate_json(rows[0]) in candidates
+
+
+def test_verified_mapping_accepts_identifier_history_evidence_lineage(
+    database_context, workspace_tmp_path: Path
+) -> None:
+    repo, request, _, source = persisted_graph(database_context, workspace_tmp_path)
+    repo.append_source_version(source)
+    identity = provider_identity(source.source_version_id)
+    repo.insert_or_verify_identity(identity)
+    enriched_source = changed_source_candidate(
+        repo,
+        request,
+        ProviderRawStore(workspace_tmp_path / "raw"),
+        raw_bytes=b"identifier-enrichment",
+        revision_status=RevisionStatus.AMENDED,
+        supersedes_id=source.source_version_id,
+    )
+    repo.append_source_version(enriched_source)
     history = ProviderIdentifierHistory(
         identifier_history_id="pih_enriched_mapping_evidence",
         provider_security_identity_id=identity.provider_security_identity_id,
@@ -1176,7 +1641,10 @@ def test_latest_pointer_rejects_source_outside_identity_lineage(
     identity = provider_identity(source.source_version_id)
     repo.insert_or_verify_identity(identity)
     repo_again, _, _, unrelated = persisted_graph(
-        database_context, workspace_tmp_path, raw_bytes=b"latest-unrelated-source"
+        database_context,
+        workspace_tmp_path,
+        raw_bytes=b"latest-unrelated-source",
+        market="US",
     )
     repo_again.append_source_version(unrelated)
     pointer = latest_pointer(

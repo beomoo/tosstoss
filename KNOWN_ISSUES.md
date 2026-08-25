@@ -63,13 +63,13 @@
 
 - 상태: `OPEN — ADR-012 ACCEPTED / CP3-B FOUNDATION IMPLEMENTED / CP3-C RECONCILIATION NOT STARTED`
 - 영향: Toss stock response에는 Phase 1 `Issuer`가 KR/US별로 요구하는 corp_code/CIK가 없다. Toss symbol/ticker/name 또는 synthetic ID로 채우면 잘못된 issuer merge, share-class 혼동과 P0 mapping 오류가 생긴다. 반대로 verified canonical mapping을 모든 price storage의 전제조건으로 두면 Phase 2가 Phase 3/4 regulatory mapping에 순환 의존한다. 현재 근거로 exchange도 확정할 수 없다.
-- 현재 대응: CP3-B는 canonical Issuer/Security를 바꾸지 않고 provider identity/history/mapping/latest pointer의 additive foundation을 구현했다. identity foundation은 `UNRESOLVED`로 시작하고 fake corp_code/CIK column이 없다. VERIFIED mapping은 ACTIVE non-quarantined identity, 실제 issuer/security 관계와 identity source lineage evidence를 모두 요구한다. symbol/ISIN continuity reconciliation, canonical promotion과 ProviderPriceSnapshot은 각각 CP3-C/CP3-D 전까지 구현하지 않는다.
+- 현재 대응: CP3-B는 canonical Issuer/Security를 바꾸지 않고 provider identity/history/mapping/latest pointer의 additive foundation을 구현했다. identity foundation은 `UNRESOLVED`로 시작하고 fake corp_code/CIK column이 없다. VERIFIED mapping은 ACTIVE non-quarantined identity, 실제 issuer/security 관계와 identity source lineage evidence를 모두 요구한다. `0003`과 repository는 같은 provider identity의 inclusive validity interval overlap을 차단하고 concurrent open-ended promotion을 한 row로 제한한다. 기존 mapping을 자동 종료·변경하는 transition workflow, symbol/ISIN continuity reconciliation, canonical promotion과 ProviderPriceSnapshot은 각각 CP3-C/CP3-D 전까지 구현하지 않는다.
 
 ## KI-012 — 반복 price/revision과 기존 source record natural key 충돌
 
 - 상태: `MITIGATED — CP3-B SOURCE IDEMPOTENCY/TRACE HARDENED / PRICE USE DEFERRED`
 - 영향: 기존 `source_records(source_system, source_type, external_id)` unique는 같은 request의 반복 price snapshot과 same-key payload revision을 모두 보존할 수 없다. external ID에 현재 시각을 붙이면 멱등성을 우회하고 deterministic rebuild가 깨진다.
-- 현재 대응: 기존 table/0001을 byte-identical로 유지하고 신규 `provider_source_versions`의 request/status/raw-hash/contract unique, deterministic source ID, self-FK supersession과 provider latest pointer를 구현했다. 같은 raw/source를 나중에 재수집하면 `fetched_at`·safe telemetry 차이를 semantic duplicate로 처리해 first-seen manifest를 유지하지만 dataset/parser/normalized hash/revision link 차이는 conflict로 차단한다. exact path→dataset/request→raw→source→attempt/audit graph와 atomic source+audit rollback을 offline test로 고정했다. 실제 반복 price snapshot은 CP3-D 전까지 적재하지 않는다.
+- 현재 대응: 기존 table/`0001`/`0002`를 byte-identical로 유지하고 신규 `provider_source_versions`의 request/status/raw-hash/contract unique, deterministic source ID, self-FK supersession과 provider latest pointer를 구현했다. 같은 raw/source를 나중에 재수집하면 `fetched_at`·safe telemetry 차이를 semantic duplicate로 처리해 first-seen manifest를 유지하지만 dataset/parser/normalized hash/revision link 차이는 conflict로 차단한다. additive `0003`은 request별 ORIGINAL root와 non-null supersedes parent를 각각 unique partial index로 보호하고 repository는 unique current leaf만 supersede하는 전체 linear chain을 검증한다. exact path→dataset/request→raw→source→attempt/audit graph와 atomic source+audit rollback도 offline test로 고정했다. 실제 반복 price snapshot은 CP3-D 전까지 적재하지 않는다.
 
 ## KI-013 — provider identity identifier enrichment reconciliation
 

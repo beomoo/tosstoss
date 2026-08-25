@@ -349,6 +349,38 @@ def _assert_expected_schema(database_url: str) -> None:
                 for constraint in inspector.get_unique_constraints(table)
             } == expected_uniques[table]
 
+        expected_indexes = {
+            "provider_source_versions": {
+                (
+                    "uq_provider_source_versions_original_root",
+                    ("canonical_request_id",),
+                    True,
+                ),
+                (
+                    "uq_provider_source_versions_supersedes",
+                    ("supersedes_id",),
+                    True,
+                ),
+            },
+            "provider_identity_mappings": {
+                (
+                    "uq_provider_identity_mappings_current_verified",
+                    ("provider_security_identity_id",),
+                    True,
+                )
+            },
+        }
+        for table in expected_columns:
+            reflected_indexes = {
+                (
+                    _constraint_name(index.get("name")),
+                    _column_names(index.get("column_names")),
+                    bool(index.get("unique", False)),
+                )
+                for index in inspector.get_indexes(table)
+            }
+            assert reflected_indexes == expected_indexes.get(table, set())
+
         expected_foreign_keys = {
             "securities": {("issuer_id",): ("issuers", ("issuer_id",))},
             "source_records": {("supersedes_id",): ("source_records", ("source_record_id",))},
@@ -444,7 +476,7 @@ def test_downgrade_and_reupgrade(workspace_tmp_path: Path) -> None:
         with engine.connect() as connection:
             assert (
                 connection.execute(text("SELECT version_num FROM alembic_version")).scalar_one()
-                == "0002_phase_02_cp3_foundation"
+                == "0003_phase_02_cp3_b_invariants"
             )
     finally:
         engine.dispose()
