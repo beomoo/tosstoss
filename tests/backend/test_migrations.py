@@ -174,6 +174,112 @@ def _assert_expected_schema(database_url: str) -> None:
                 "fixture_version": ("VARCHAR(32)", False, False),
                 "imported_at": ("DATETIME", False, False),
             },
+            "canonical_requests": {
+                "canonical_request_id": ("VARCHAR(128)", False, True),
+                "provider": ("VARCHAR(32)", False, False),
+                "method": ("VARCHAR(8)", False, False),
+                "path_template": ("VARCHAR(256)", False, False),
+                "canonical_query_json": ("TEXT", False, False),
+                "canonical_query_hash": ("VARCHAR(71)", False, False),
+                "provider_contract_version": ("VARCHAR(64)", False, False),
+                "payload_json": ("TEXT", False, False),
+            },
+            "provider_raw_manifests": {
+                "raw_response_id": ("VARCHAR(128)", False, True),
+                "canonical_request_id": ("VARCHAR(128)", False, False),
+                "http_status": ("INTEGER", False, False),
+                "raw_content_hash": ("VARCHAR(71)", False, False),
+                "raw_storage_ref": ("VARCHAR(128)", False, False),
+                "fetched_at": ("VARCHAR(35)", False, False),
+                "response_metadata_json": ("TEXT", False, False),
+                "provider_contract_version": ("VARCHAR(64)", False, False),
+                "payload_json": ("TEXT", False, False),
+            },
+            "provider_source_versions": {
+                "source_version_id": ("VARCHAR(128)", False, True),
+                "canonical_request_id": ("VARCHAR(128)", False, False),
+                "raw_response_id": ("VARCHAR(128)", False, False),
+                "dataset": ("VARCHAR(64)", False, False),
+                "http_status": ("INTEGER", False, False),
+                "raw_content_hash": ("VARCHAR(71)", False, False),
+                "provider_contract_version": ("VARCHAR(64)", False, False),
+                "revision_status": ("VARCHAR(32)", False, False),
+                "supersedes_id": ("VARCHAR(128)", True, False),
+                "normalized_content_hash": ("VARCHAR(71)", False, False),
+                "payload_json": ("TEXT", False, False),
+            },
+            "collection_attempts": {
+                "attempt_id": ("VARCHAR(128)", False, True),
+                "provider": ("VARCHAR(32)", False, False),
+                "dataset": ("VARCHAR(64)", False, False),
+                "canonical_request_id": ("VARCHAR(128)", True, False),
+                "started_at": ("VARCHAR(35)", False, False),
+                "finished_at": ("VARCHAR(35)", True, False),
+                "status": ("VARCHAR(32)", False, False),
+                "records_received": ("INTEGER", False, False),
+                "records_rejected": ("INTEGER", False, False),
+                "safe_result_code": ("VARCHAR(64)", False, False),
+                "payload_json": ("TEXT", False, False),
+            },
+            "provider_audit_events": {
+                "audit_event_id": ("VARCHAR(128)", False, True),
+                "attempt_id": ("VARCHAR(128)", False, False),
+                "source_version_id": ("VARCHAR(128)", True, False),
+                "event_type": ("VARCHAR(64)", False, False),
+                "safe_status": ("VARCHAR(64)", False, False),
+                "record_count": ("INTEGER", False, False),
+                "occurred_at": ("VARCHAR(35)", False, False),
+                "payload_json": ("TEXT", False, False),
+            },
+            "provider_security_identities": {
+                "provider_security_identity_id": ("VARCHAR(128)", False, True),
+                "provider": ("VARCHAR(32)", False, False),
+                "market": ("VARCHAR(8)", False, False),
+                "allocation_anchor_hash": ("VARCHAR(71)", False, False),
+                "identity_state": ("VARCHAR(32)", False, False),
+                "mapping_status": ("VARCHAR(32)", False, False),
+                "first_source_version_id": ("VARCHAR(128)", False, False),
+                "latest_source_version_id": ("VARCHAR(128)", False, False),
+                "provider_contract_version": ("VARCHAR(64)", False, False),
+                "payload_json": ("TEXT", False, False),
+            },
+            "provider_identifier_history": {
+                "identifier_history_id": ("VARCHAR(128)", False, True),
+                "provider_security_identity_id": ("VARCHAR(128)", False, False),
+                "identifier_kind": ("VARCHAR(32)", False, False),
+                "identifier_value": ("VARCHAR(128)", False, False),
+                "valid_from": ("DATE", True, False),
+                "valid_to": ("DATE", True, False),
+                "source_version_id": ("VARCHAR(128)", False, False),
+                "revision_reason": ("VARCHAR(32)", False, False),
+                "provider_contract_version": ("VARCHAR(64)", False, False),
+                "payload_json": ("TEXT", False, False),
+            },
+            "provider_identity_mappings": {
+                "mapping_id": ("VARCHAR(128)", False, True),
+                "provider_security_identity_id": ("VARCHAR(128)", False, False),
+                "issuer_id": ("VARCHAR(128)", True, False),
+                "security_id": ("VARCHAR(128)", True, False),
+                "mapping_status": ("VARCHAR(32)", False, False),
+                "evidence_source_version_id": ("VARCHAR(128)", False, False),
+                "approved_at": ("VARCHAR(35)", True, False),
+                "valid_from": ("DATE", True, False),
+                "valid_to": ("DATE", True, False),
+                "provider_contract_version": ("VARCHAR(64)", False, False),
+                "payload_json": ("TEXT", False, False),
+            },
+            "provider_latest_pointers": {
+                "latest_pointer_id": ("VARCHAR(128)", False, True),
+                "dataset": ("VARCHAR(64)", False, False),
+                "provider_security_identity_id": ("VARCHAR(128)", False, False),
+                "normalized_record_id": ("VARCHAR(128)", False, False),
+                "source_version_id": ("VARCHAR(128)", False, False),
+                "accepted_observed_at": ("VARCHAR(35)", True, False),
+                "accepted_observed_date": ("DATE", True, False),
+                "state_hash": ("VARCHAR(71)", False, False),
+                "provider_contract_version": ("VARCHAR(64)", False, False),
+                "payload_json": ("TEXT", False, False),
+            },
         }
         assert set(inspector.get_table_names()) == set(expected_columns) | {"alembic_version"}
         for table, expected in expected_columns.items():
@@ -193,6 +299,15 @@ def _assert_expected_schema(database_url: str) -> None:
             "source_records": ("source_record_id",),
             "data_quality_statuses": ("quality_status_id",),
             "fixture_import_runs": ("import_run_id",),
+            "canonical_requests": ("canonical_request_id",),
+            "provider_raw_manifests": ("raw_response_id",),
+            "provider_source_versions": ("source_version_id",),
+            "collection_attempts": ("attempt_id",),
+            "provider_audit_events": ("audit_event_id",),
+            "provider_security_identities": ("provider_security_identity_id",),
+            "provider_identifier_history": ("identifier_history_id",),
+            "provider_identity_mappings": ("mapping_id",),
+            "provider_latest_pointers": ("latest_pointer_id",),
         }
         expected_uniques = {
             "issuers": {("corp_code",), ("cik",)},
@@ -200,6 +315,29 @@ def _assert_expected_schema(database_url: str) -> None:
             "source_records": {("source_system", "source_type", "external_id")},
             "data_quality_statuses": {("issuer_id", "source_system", "dataset")},
             "fixture_import_runs": {("manifest_digest",)},
+            "canonical_requests": set(),
+            "provider_raw_manifests": {("canonical_request_id", "http_status", "raw_content_hash")},
+            "provider_source_versions": {
+                (
+                    "canonical_request_id",
+                    "http_status",
+                    "raw_content_hash",
+                    "provider_contract_version",
+                )
+            },
+            "collection_attempts": set(),
+            "provider_audit_events": set(),
+            "provider_security_identities": {("provider", "allocation_anchor_hash")},
+            "provider_identifier_history": {
+                (
+                    "provider_security_identity_id",
+                    "identifier_kind",
+                    "identifier_value",
+                    "source_version_id",
+                )
+            },
+            "provider_identity_mappings": set(),
+            "provider_latest_pointers": {("dataset", "provider_security_identity_id")},
         }
         for table, expected_pk in expected_primary_keys.items():
             assert (
@@ -215,6 +353,57 @@ def _assert_expected_schema(database_url: str) -> None:
             "securities": {("issuer_id",): ("issuers", ("issuer_id",))},
             "source_records": {("supersedes_id",): ("source_records", ("source_record_id",))},
             "data_quality_statuses": {("issuer_id",): ("issuers", ("issuer_id",))},
+            "provider_raw_manifests": {
+                ("canonical_request_id",): ("canonical_requests", ("canonical_request_id",))
+            },
+            "provider_source_versions": {
+                ("canonical_request_id",): ("canonical_requests", ("canonical_request_id",)),
+                ("raw_response_id",): ("provider_raw_manifests", ("raw_response_id",)),
+                ("supersedes_id",): ("provider_source_versions", ("source_version_id",)),
+            },
+            "collection_attempts": {
+                ("canonical_request_id",): ("canonical_requests", ("canonical_request_id",))
+            },
+            "provider_audit_events": {
+                ("attempt_id",): ("collection_attempts", ("attempt_id",)),
+                ("source_version_id",): ("provider_source_versions", ("source_version_id",)),
+            },
+            "provider_security_identities": {
+                ("first_source_version_id",): (
+                    "provider_source_versions",
+                    ("source_version_id",),
+                ),
+                ("latest_source_version_id",): (
+                    "provider_source_versions",
+                    ("source_version_id",),
+                ),
+            },
+            "provider_identifier_history": {
+                ("provider_security_identity_id",): (
+                    "provider_security_identities",
+                    ("provider_security_identity_id",),
+                ),
+                ("source_version_id",): ("provider_source_versions", ("source_version_id",)),
+            },
+            "provider_identity_mappings": {
+                ("provider_security_identity_id",): (
+                    "provider_security_identities",
+                    ("provider_security_identity_id",),
+                ),
+                ("issuer_id",): ("issuers", ("issuer_id",)),
+                ("security_id",): ("securities", ("security_id",)),
+                ("evidence_source_version_id",): (
+                    "provider_source_versions",
+                    ("source_version_id",),
+                ),
+            },
+            "provider_latest_pointers": {
+                ("provider_security_identity_id",): (
+                    "provider_security_identities",
+                    ("provider_security_identity_id",),
+                ),
+                ("source_version_id",): ("provider_source_versions", ("source_version_id",)),
+            },
         }
         for table in expected_columns:
             reflected_foreign_keys = {
@@ -255,7 +444,7 @@ def test_downgrade_and_reupgrade(workspace_tmp_path: Path) -> None:
         with engine.connect() as connection:
             assert (
                 connection.execute(text("SELECT version_num FROM alembic_version")).scalar_one()
-                == "0001_phase_01"
+                == "0002_phase_02_cp3_foundation"
             )
     finally:
         engine.dispose()

@@ -6,7 +6,7 @@
 - 시작 commit: `6bd5d2ae9c26f02f2cd4bd75a474633a9082fa16`
 - 독립검증 보완 시작 commit: `386a0b2fe7bd18ed4b662eb2695ff85cc2a08cd3`
 - checkpoint 경계: `CP3-A documentation/contract only`
-- 후속 상태: `CP3-B NOT STARTED`
+- 후속 상태: `CP3-B IMPLEMENTED — AWAITING GPT INDEPENDENT REVIEW / CP3-C NOT STARTED`
 
 이 문서는 GPT independent re-review `PASS WITH CLOSEOUT CONDITION`과 2026-08-25 사용자 승인으로 확정된 CP3-A repository contract다. 이 승인은 CP3-B application 구현 승인, live endpoint 검증 또는 Phase 2 완료를 뜻하지 않는다.
 
@@ -407,10 +407,19 @@ migration 후보명은 `0002_phase_02_cp3_foundation`이다. 이번 checkpoint�
 - migration 중 실패하면 transaction rollback, unpublished manifest, LKG pointer를 유지한다.
 - downgrade는 신규 metadata/pointer table만 제거할 수 있으나 실제 raw/history를 자동 삭제하지 않는다. 실제 DB에는 backup과 별도 승인 없이 실행하지 않는다.
 
+### K.3 CP3-B implementation record — 2026-08-25
+
+- `[CURRENT_REPO_FACT]` `0002_phase_02_cp3_foundation`은 `0001_phase_01`을 정확히 parent로 사용하며 기존 table/column을 수정하지 않고 9개 provider metadata/pointer table만 추가한다.
+- `[CURRENT_REPO_FACT]` `canonical_requests`, `provider_raw_manifests`, `provider_source_versions`, `collection_attempts`, `provider_audit_events`, `provider_security_identities`, `provider_identifier_history`, `provider_identity_mappings`, `provider_latest_pointers`를 구현했다.
+- `[CURRENT_REPO_FACT]` disposable DB에서 blank upgrade, 기존 Phase 1 fixture DB upgrade, CP3 downgrade/re-upgrade, migration failure, FK/unique/self-FK/check constraint와 Phase 1 row/hash/payload 보존을 offline test로 검증한다.
+- `[CURRENT_REPO_FACT]` latest table은 `(dataset, provider_security_identity_id)` unique pointer foundation뿐이며 가격 history 또는 `ProviderPriceSnapshot` payload를 저장하지 않는다.
+- `[REPO_CONTRACT]` CP3-B 상태는 `IMPLEMENTED — AWAITING GPT INDEPENDENT REVIEW`이고 CP3-C는 `NOT STARTED`다.
+
 ## L. CP3-B/C/D checkpoint 분리
 
 ### CP3-B — Contract Foundation + Additive Migration + Raw/Source Trace
 
+- 상태: `IMPLEMENTED — AWAITING GPT INDEPENDENT REVIEW`
 - provider-specific versioned contracts, source timestamp/date/missing semantics, enums
 - additive migration, raw manifest/source metadata, repository interfaces
 - offline fixtures/tests only
@@ -549,7 +558,7 @@ migration 후보명은 `0002_phase_02_cp3_foundation`이다. 이번 checkpoint�
 
 ## N. 비범위와 보안
 
-CP3-B 별도 authorization 및 후속 live checkpoint 승인 전 계속 금지:
+CP3-C와 후속 live checkpoint의 별도 승인 전 계속 금지:
 
 - 실제 주문, 모의주문, 자동매매
 - account/holding/order/conditional-order endpoint와 `X-Tossinvest-Account`
@@ -574,14 +583,15 @@ CP3-B 별도 authorization 및 후속 live checkpoint 승인 전 계속 금지:
 | exchange mapping | `[LIVE_UNVERIFIED]` | exchange 추정 금지, canonical promotion 금지 |
 | timestamp-null current publication | `[REPO_CONTRACT]` accepted ADR-011 | DEGRADED/UNKNOWN, latest pointer 갱신 금지 |
 | freshness thresholds | `[USER_DECISION_REQUIRED]` after minimal live evidence | 항상 UNKNOWN |
-| SQLite provider current payload vs pointer | `[USER_DECISION_REQUIRED]` CP3-B schema review | provider identity 기준 history 금지, 최소 latest pointer 우선; canonical은 verified linkage view |
+| SQLite provider current payload vs pointer | `[REPO_CONTRACT]` CP3-B minimum foundation implemented | `(dataset, provider_security_identity_id)` unique latest pointer만 구현; payload/history와 canonical projection은 CP3-D 전까지 금지 |
 
 ## checkpoint 판정
 
 - CP1: `PASS`
 - CP2: `COMPLETE`
 - CP3-A: `PASS — CONTRACT APPROVED AND CLOSED`
-- CP3-B: `NOT STARTED`
+- CP3-B: `IMPLEMENTED — AWAITING GPT INDEPENDENT REVIEW`
+- CP3-C: `NOT STARTED`
 - Phase 2: `IMPLEMENTATION IN PROGRESS`
 
-CP3-A는 application implementation 0, fixture/test/migration/dependency 변경 0, actual credential/API usage 0으로 closeout됐다. approved repository contract는 CP3-B의 기준이지만 CP3-B는 `NOT STARTED`이고 별도 사용자 authorization 전 automatic checkpoint progression은 `PROHIBITED`다. LIVE_UNVERIFIED 항목은 승인으로 승격되지 않는다.
+CP3-A는 application implementation 0, fixture/test/migration/dependency 변경 0, actual credential/API usage 0으로 closeout됐다. 별도 승인된 CP3-B는 provider contract/raw/source/migration/repository와 offline tests만 구현했고 독립검증 전이므로 `PASS`, `APPROVED`, `COMPLETE`가 아니다. CP3-C는 `NOT STARTED`이고 automatic checkpoint progression은 `PROHIBITED`다. LIVE_UNVERIFIED 항목은 승인으로 승격되지 않는다.

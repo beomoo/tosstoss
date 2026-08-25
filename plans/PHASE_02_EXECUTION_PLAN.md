@@ -1,7 +1,7 @@
 # Phase 2 토스증권 읽기 전용 데이터 실행계획
 
 - 계획 상태: `PHASE 2 IMPLEMENTATION IN PROGRESS`
-- Current checkpoint: `CP3-A PASS — CONTRACT APPROVED AND CLOSED`
+- Current checkpoint: `CP3-B IMPLEMENTED — AWAITING GPT INDEPENDENT REVIEW`
 - 최초 작성·공식 문서 조사일: `2026-08-23` (`Asia/Seoul`)
 - 현재 상태 갱신일: `2026-08-25` (`Asia/Seoul`)
 - 기준 브랜치: `feature/phase-02-toss`
@@ -18,10 +18,11 @@
 - CP1: `PASS`
 - CP2: `COMPLETE`
 - CP3-A: `PASS — CONTRACT APPROVED AND CLOSED`
-- CP3-B: `NOT STARTED`
+- CP3-B: `IMPLEMENTED — AWAITING GPT INDEPENDENT REVIEW`
+- CP3-C: `NOT STARTED`
 - Phase 2: `IMPLEMENTATION IN PROGRESS`
 
-CP3-A는 `plans/PHASE_02_CP3_A_CONTRACT.md`를 중심으로 Security Master와 Current Price의 planning/contract를 확정한 documentation checkpoint다. 첫 독립검증의 P1-01/P1-02를 보완한 뒤 GPT independent re-review는 `PASS WITH CLOSEOUT CONDITION`(P0 0/P1 0/P2 evidence gap 1)이었고, 사용자가 2026-08-25 ADR-011, revised ADR-012와 CP3-A 계약을 승인했다. final staged documentation regression으로 P2 evidence gap을 닫는 것이 closeout 조건이다. application, test, fixture, migration, dependency, runtime config, API route와 collection job은 변경하지 않는다. CP3-B는 `NOT STARTED`이며 별도 authorization 전 자동 진행하지 않는다.
+CP3-A는 `plans/PHASE_02_CP3_A_CONTRACT.md`를 중심으로 Security Master와 Current Price의 planning/contract를 확정한 documentation checkpoint다. 첫 독립검증의 P1-01/P1-02를 보완한 뒤 GPT independent re-review와 사용자 승인으로 `PASS — CONTRACT APPROVED AND CLOSED`다. CP3-B는 승인된 계약에 따라 provider source/identity 전용 contract, crash-safe raw store, additive `0002_phase_02_cp3_foundation`, SQLite repository와 offline tests를 구현했다. collection job, endpoint DTO/normalizer, Security Master reconciliation, Current Price contract/normalizer와 live API는 구현하지 않았다. CP3-B는 독립검증 전이므로 `PASS`, `APPROVED` 또는 `COMPLETE`가 아니며 CP3-C는 `NOT STARTED`다.
 
 ## Original CP1 investigation baseline
 
@@ -42,7 +43,7 @@ CP3-A는 `plans/PHASE_02_CP3_A_CONTRACT.md`를 중심으로 Security Master와 C
 
 ## Current checkpoint status
 
-CP3-A approved repository contract는 기존 Phase 1 계약을 breaking 변경하지 않고 provider staging identity, nullable provider source time, raw/source revision, provider-scoped current latest와 additive migration 전략을 정의한다. valid provider identity의 price storage는 canonical issuer/security mapping과 분리하고 canonical current-price view만 verified linkage를 요구한다. identity allocation은 continuity-first reconciliation 뒤 신규 anchor를 선택하며 enrichment가 ID를 rekey하지 않는다. ADR-011과 revised ADR-012는 `ACCEPTED`다. CP3-B/C/D의 application work는 아직 시작하지 않았다.
+CP3-A approved repository contract는 기존 Phase 1 계약을 breaking 변경하지 않고 provider staging identity, nullable provider source time, raw/source revision, provider-scoped current latest와 additive migration 전략을 정의한다. CP3-B는 전역 `ContractVersion`, 기존 SourceRecord/Issuer/Security, Phase 1 row/API/OpenAPI와 `0001`을 보존하면서 source/identity foundation을 additive하게 구현했다. 9개 신규 table은 canonical request, raw manifest, source revision, attempt/audit, identity/history/mapping과 provider latest pointer만 다룬다. CP3-C reconciliation과 CP3-D price implementation은 시작하지 않았다.
 
 ## Historical checkpoint record
 
@@ -56,7 +57,8 @@ CP3-A approved repository contract는 기존 Phase 1 계약을 breaking 변경�
 | CP2-D2 | `PASS` | 승인된 actual OAuth/stocks one-shot 최소 검증 |
 | CP2 | `COMPLETE` | final integrated QA; Phase 2 전체 완료 아님 |
 | CP3-A | `PASS — CONTRACT APPROVED AND CLOSED` | P1-01/P1-02 closed, independent re-review와 사용자 승인; application implementation 0 |
-| CP3-B | `NOT STARTED` | 자동 진입 금지 |
+| CP3-B | `IMPLEMENTED — AWAITING GPT INDEPENDENT REVIEW` | contract/raw/source/migration/repository/offline tests; 승인 전 CP3-C 진입 금지 |
+| CP3-C | `NOT STARTED` | 자동 진입 금지 |
 
 ## 0. 근거 분류
 
@@ -501,11 +503,14 @@ CP2-A의 통과는 CP2 전체 통과가 아니며, 아래 기존 완료 조건�
 
 ### CP3-B — Contract Foundation + Additive Migration + Raw/Source Trace
 
-- provider-specific versioned contract와 source timestamp/date/missing semantics
-- exact enum contract, additive `0002_phase_02_cp3_foundation` migration, raw manifest/source metadata, repository interface
-- offline fixture/test only; application collection job와 live API 없음
-- Phase 1 SourceRecord/Issuer/Security v0.1.0, fixture/API/OpenAPI와 `0001` 변경 금지
-- 시작 조건: accepted CP3-A contract를 기준으로 한 사용자의 별도 CP3-B implementation authorization; automatic progression 금지
+- 상태: `IMPLEMENTED — AWAITING GPT INDEPENDENT REVIEW`
+- provider source `toss-source/0.1.0`과 identity `toss-identity/0.1.0` local contract, nullable observation time/date와 exact dataset policy를 구현했다.
+- secret-free canonical query/request identity, exact-byte hash-addressed raw store, immutable raw/source revision과 safe attempt/audit를 구현했다.
+- additive `0002_phase_02_cp3_foundation`은 9개 metadata/pointer table과 FK/unique/check/self-FK만 추가한다.
+- SQLite repository는 deterministic insert-or-verify, source+audit atomic transaction, append-only identity/history/mapping과 conditional latest pointer foundation을 제공한다.
+- backend inventory는 357에서 448로 증가했다. fixture/API/OpenAPI, global `0.1.0`, 기존 row와 `0001` bytes를 회귀 검증한다.
+- offline only이며 actual credential/Toss API request, collection job, endpoint DTO/normalizer, Security Master reconciliation과 Current Price implementation은 0이다.
+- 독립검증과 사용자 승인 전 CP3-C로 자동 진행하지 않는다.
 
 ### CP3-C — Security Master
 
@@ -721,4 +726,4 @@ Phase 2 완료 선언에는 모두 필요하다.
 
 ## 최종 판정
 
-CP1은 `PASS`, CP2는 `COMPLETE`다. CP3-A는 P1-01/P1-02를 닫고 GPT independent re-review와 사용자 승인을 거쳐 `PASS — CONTRACT APPROVED AND CLOSED`다. ADR-010, ADR-011과 revised ADR-012는 `ACCEPTED`다. 이는 CP3-B implementation authorization이나 Phase 2 완료가 아니다. CP3-B는 `NOT STARTED`이고 automatic checkpoint progression은 `PROHIBITED`다. Phase 2 전체는 `IMPLEMENTATION IN PROGRESS`다. `/stocks/all`, `/prices`, complete enum/null/lifecycle, price timestamp-null/currency/freshness, natural 429와 actual 429/5xx production timing은 계속 `[LIVE_UNVERIFIED]`다.
+CP1은 `PASS`, CP2는 `COMPLETE`, CP3-A는 `PASS — CONTRACT APPROVED AND CLOSED`다. ADR-010, ADR-011과 revised ADR-012는 `ACCEPTED`다. CP3-B는 `IMPLEMENTED — AWAITING GPT INDEPENDENT REVIEW`이며 `PASS`, `APPROVED` 또는 `COMPLETE`가 아니다. CP3-C는 `NOT STARTED`, automatic checkpoint progression은 `PROHIBITED`다. Phase 2 전체는 `IMPLEMENTATION IN PROGRESS`다. `/stocks/all`, `/prices`, complete enum/null/lifecycle, price timestamp-null/currency/freshness, natural 429와 actual 429/5xx production timing은 계속 `[LIVE_UNVERIFIED]`다.

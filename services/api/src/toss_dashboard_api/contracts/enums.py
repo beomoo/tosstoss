@@ -79,6 +79,57 @@ class SourceType(StrEnum):
     HOLDING = "HOLDING"
 
 
+class ProviderSystem(StrEnum):
+    TOSS_OPEN_API = "TOSS_OPEN_API"
+
+
+class ProviderDataset(StrEnum):
+    STOCK_DISCOVERY = "STOCK_DISCOVERY"
+    STOCK_DETAIL = "STOCK_DETAIL"
+    CURRENT_PRICE = "CURRENT_PRICE"
+    DAILY_FLOW = "DAILY_FLOW"
+
+
+class ProviderHttpMethod(StrEnum):
+    GET = "GET"
+
+
+class CollectionAttemptStatus(StrEnum):
+    STARTED = "STARTED"
+    SUCCEEDED = "SUCCEEDED"
+    FAILED = "FAILED"
+    PARTIAL = "PARTIAL"
+
+
+class ProviderAuditEventType(StrEnum):
+    RAW_PERSISTED = "RAW_PERSISTED"
+    SOURCE_APPENDED = "SOURCE_APPENDED"
+    DUPLICATE_OBSERVED = "DUPLICATE_OBSERVED"
+    VALIDATION_REJECTED = "VALIDATION_REJECTED"
+    LATEST_ACCEPTED = "LATEST_ACCEPTED"
+
+
+class ProviderIdentityState(StrEnum):
+    ACTIVE = "ACTIVE"
+    INACTIVE = "INACTIVE"
+    QUARANTINED = "QUARANTINED"
+    UNRESOLVED_COLLISION = "UNRESOLVED_COLLISION"
+
+
+class ProviderIdentifierKind(StrEnum):
+    SYMBOL = "SYMBOL"
+    ISIN = "ISIN"
+    LIST_DATE = "LIST_DATE"
+    MARKET = "MARKET"
+
+
+class ProviderIdentifierReason(StrEnum):
+    INITIAL = "INITIAL"
+    ENRICHMENT = "ENRICHMENT"
+    CORRECTION = "CORRECTION"
+    SYMBOL_CHANGE = "SYMBOL_CHANGE"
+
+
 class AdjustmentStatus(StrEnum):
     RAW = "RAW"
 

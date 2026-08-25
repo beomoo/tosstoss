@@ -1,5 +1,36 @@
 # Changelog
 
+## Unreleased — Phase 2 CP3-B Provider Source Trace Foundation — 2026-08-25
+
+### Added
+
+- 독립 `toss-source/0.1.0` provider source contract와 `toss-identity/0.1.0` identity foundation contract
+- deterministic secret-free canonical request, allowlisted raw manifest metadata와 exact-byte SHA-256 contract
+- injected base directory, hash-addressed opaque ref, reparse/symlink/hard-link 방어, flush/fsync와 atomic rename을 사용하는 append-only raw store
+- canonical request/raw/source revision/attempt/audit/identity/history/mapping/latest pointer용 additive 9-table `0002_phase_02_cp3_foundation`
+- insert-or-verify conflict detection, source+audit atomic transaction, append-only identity metadata와 compare-and-set latest pointer SQLite repository
+- contract/canonical request/raw store/revision/repository/migration/security 회귀 tests; backend exact inventory 357 → 448
+
+### Compatibility and Security
+
+- Phase 1 global `ContractVersion = Literal["0.1.0"]`, SourceRecord/Issuer/Security, fixture row/ID/hash/payload, public API/OpenAPI와 `0001` bytes 보존
+- auth endpoint body, credential/token/header/account metadata, absolute raw path와 unrestricted response header 저장 surface 0
+- actual credential 사용과 actual Toss API request 0; standard suite는 offline 경계를 유지
+- account/order/WebSocket, connector auth/client/rate/preflight, frontend, config, dependency와 live script 변경 0
+
+### Scope and Status
+
+- endpoint DTO/normalizer, collection job, Security Master continuity reconciliation와 Current Price/ProviderPriceSnapshot 구현은 포함하지 않음
+- ADR-010/011/012는 `ACCEPTED`, CP3-A는 `PASS — CONTRACT APPROVED AND CLOSED`
+- CP3-B는 `IMPLEMENTED — AWAITING GPT INDEPENDENT REVIEW`; `PASS`, `APPROVED`, `COMPLETE`가 아님
+- CP3-C는 `NOT STARTED`, automatic checkpoint progression은 `PROHIBITED`
+- `/stocks/all`, `/prices`, provider enum/null/lifecycle, price timestamp-null/currency/freshness와 actual 429/5xx timing은 계속 `[LIVE_UNVERIFIED]`
+
+### QA
+
+- target contract/raw/repository/migration regression 100개 PASS, 전체 backend inventory 448개로 증가
+- final staged full regression의 exact 결과와 exit code는 동일 commit의 `qa/PHASE_02_CP3_B_CODEX_REPORT.md`에 기록
+
 ## Unreleased — Phase 2 CP3-A Approval and Final Closeout — 2026-08-25
 
 ### Approved

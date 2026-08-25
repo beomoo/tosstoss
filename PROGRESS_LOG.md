@@ -322,3 +322,28 @@
 - ADR-012: `ACCEPTED`
 - CP3-B: `NOT STARTED`
 - automatic checkpoint progression: `PROHIBITED`
+
+## 2026-08-25 — Phase 2 CP3-B Contract Foundation + Additive Migration + Raw/Source Trace
+
+- 시작 preflight에서 `feature/phase-02-toss` local/origin SHA `c210c1af7a03d63f6bdfa844fe064d452a9fd0e0`, remote main/merge-base `353159da45cfbe3a7f444bf476ce86fa9aece17c`, ancestry main/feature `0/22`와 clean working tree를 확인했다.
+- 환경은 PowerShell 7.6.4, Python 3.13.15, Node 24.19.0, npm 11.17.0과 ASCII-only repository path이며 supported baseline 안이다.
+- 전역 Phase 1 `ContractVersion=0.1.0`을 확장하지 않고 provider source `toss-source/0.1.0`과 identity `toss-identity/0.1.0` local contract를 추가했다.
+- canonical request는 exact CP3 market path template, secret-free canonical query, validate/deduplicate/ASCII-sort symbols와 provider contract version으로 deterministic ID/hash를 만든다.
+- provider source contract는 nullable observed timestamp/date/published time과 structured missing reason, required aware UTC fetched time, dataset별 allowed combination, deterministic normalized/source hash와 revision link를 강제한다.
+- raw store는 exact bytes를 hash-addressed opaque ref에 temp write → flush/fsync → atomic rename으로 publish하고 traversal, absolute ref, symlink/junction/reparse, hard link, half-written temp와 기존 hash-content conflict를 fail closed한다. raw durable verification 전 DB manifest를 publish할 수 없다.
+- additive `0002_phase_02_cp3_foundation`은 기존 table을 수정하지 않고 canonical request, raw manifest, source version, attempt, audit, identity, identifier history, mapping과 provider latest pointer 9개 table만 추가한다.
+- SQLite repository는 same ID/same payload idempotency, same ID/different payload conflict, source revision chain, source+audit atomicity, append-only identity metadata와 conditional latest pointer/LKG 보존 foundation을 구현했다.
+- blank/existing DB upgrade, CP3 downgrade/re-upgrade, migration failure, Phase 1 row/ID/hash/payload/OpenAPI/0001 byte 보존과 raw file 비삭제를 offline test로 검증한다.
+- backend inventory는 357에서 448로 증가했다. target contract/raw/repository/migration과 기존 API/repository 회귀 100개가 통과했다.
+- 실제 credential, actual Toss API, collection job, endpoint DTO/normalizer, Security Master reconciliation, Current Price, account/order/WebSocket, frontend와 dependency 변경은 0이다.
+
+## 현재 중지 지점 — Phase 2 CP3-B implementation
+
+- Phase 2: `IMPLEMENTATION IN PROGRESS`
+- CP2: `COMPLETE`
+- CP3-A: `PASS — CONTRACT APPROVED AND CLOSED`
+- CP3-B: `IMPLEMENTED — AWAITING GPT INDEPENDENT REVIEW`
+- CP3-C: `NOT STARTED`
+- ADR-010/ADR-011/ADR-012: `ACCEPTED`
+- actual credential/API usage: `0`
+- automatic checkpoint progression: `PROHIBITED`

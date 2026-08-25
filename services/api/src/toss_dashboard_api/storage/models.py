@@ -1,8 +1,17 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, UniqueConstraint
+from sqlalchemy import (
+    CheckConstraint,
+    Date,
+    DateTime,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+)
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
@@ -68,3 +77,201 @@ class FixtureImportRunRow(Base):
     manifest_digest: Mapped[str] = mapped_column(String(71), unique=True, nullable=False)
     fixture_version: Mapped[str] = mapped_column(String(32), nullable=False)
     imported_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class CanonicalRequestRow(Base):
+    __tablename__ = "canonical_requests"
+
+    canonical_request_id: Mapped[str] = mapped_column(String(128), primary_key=True)
+    provider: Mapped[str] = mapped_column(String(32), nullable=False)
+    method: Mapped[str] = mapped_column(String(8), nullable=False)
+    path_template: Mapped[str] = mapped_column(String(256), nullable=False)
+    canonical_query_json: Mapped[str] = mapped_column(Text, nullable=False)
+    canonical_query_hash: Mapped[str] = mapped_column(String(71), nullable=False)
+    provider_contract_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    payload_json: Mapped[str] = mapped_column(Text, nullable=False)
+
+
+class ProviderRawManifestRow(Base):
+    __tablename__ = "provider_raw_manifests"
+    __table_args__ = (
+        UniqueConstraint("canonical_request_id", "http_status", "raw_content_hash"),
+        CheckConstraint("http_status >= 100 AND http_status <= 599"),
+    )
+
+    raw_response_id: Mapped[str] = mapped_column(String(128), primary_key=True)
+    canonical_request_id: Mapped[str] = mapped_column(
+        ForeignKey("canonical_requests.canonical_request_id"), nullable=False
+    )
+    http_status: Mapped[int] = mapped_column(Integer, nullable=False)
+    raw_content_hash: Mapped[str] = mapped_column(String(71), nullable=False)
+    raw_storage_ref: Mapped[str] = mapped_column(String(128), nullable=False)
+    fetched_at: Mapped[str] = mapped_column(String(35), nullable=False)
+    response_metadata_json: Mapped[str] = mapped_column(Text, nullable=False)
+    provider_contract_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    payload_json: Mapped[str] = mapped_column(Text, nullable=False)
+
+
+class ProviderSourceVersionRow(Base):
+    __tablename__ = "provider_source_versions"
+    __table_args__ = (
+        UniqueConstraint(
+            "canonical_request_id",
+            "http_status",
+            "raw_content_hash",
+            "provider_contract_version",
+        ),
+    )
+
+    source_version_id: Mapped[str] = mapped_column(String(128), primary_key=True)
+    canonical_request_id: Mapped[str] = mapped_column(
+        ForeignKey("canonical_requests.canonical_request_id"), nullable=False
+    )
+    raw_response_id: Mapped[str] = mapped_column(
+        ForeignKey("provider_raw_manifests.raw_response_id"), nullable=False
+    )
+    dataset: Mapped[str] = mapped_column(String(64), nullable=False)
+    http_status: Mapped[int] = mapped_column(Integer, nullable=False)
+    raw_content_hash: Mapped[str] = mapped_column(String(71), nullable=False)
+    provider_contract_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    revision_status: Mapped[str] = mapped_column(String(32), nullable=False)
+    supersedes_id: Mapped[str | None] = mapped_column(
+        ForeignKey("provider_source_versions.source_version_id")
+    )
+    normalized_content_hash: Mapped[str] = mapped_column(String(71), nullable=False)
+    payload_json: Mapped[str] = mapped_column(Text, nullable=False)
+
+
+class CollectionAttemptRow(Base):
+    __tablename__ = "collection_attempts"
+    __table_args__ = (
+        CheckConstraint("records_received >= 0"),
+        CheckConstraint("records_rejected >= 0"),
+    )
+
+    attempt_id: Mapped[str] = mapped_column(String(128), primary_key=True)
+    provider: Mapped[str] = mapped_column(String(32), nullable=False)
+    dataset: Mapped[str] = mapped_column(String(64), nullable=False)
+    canonical_request_id: Mapped[str | None] = mapped_column(
+        ForeignKey("canonical_requests.canonical_request_id")
+    )
+    started_at: Mapped[str] = mapped_column(String(35), nullable=False)
+    finished_at: Mapped[str | None] = mapped_column(String(35))
+    status: Mapped[str] = mapped_column(String(32), nullable=False)
+    records_received: Mapped[int] = mapped_column(Integer, nullable=False)
+    records_rejected: Mapped[int] = mapped_column(Integer, nullable=False)
+    safe_result_code: Mapped[str] = mapped_column(String(64), nullable=False)
+    payload_json: Mapped[str] = mapped_column(Text, nullable=False)
+
+
+class ProviderAuditEventRow(Base):
+    __tablename__ = "provider_audit_events"
+    __table_args__ = (CheckConstraint("record_count >= 0"),)
+
+    audit_event_id: Mapped[str] = mapped_column(String(128), primary_key=True)
+    attempt_id: Mapped[str] = mapped_column(
+        ForeignKey("collection_attempts.attempt_id"), nullable=False
+    )
+    source_version_id: Mapped[str | None] = mapped_column(
+        ForeignKey("provider_source_versions.source_version_id")
+    )
+    event_type: Mapped[str] = mapped_column(String(64), nullable=False)
+    safe_status: Mapped[str] = mapped_column(String(64), nullable=False)
+    record_count: Mapped[int] = mapped_column(Integer, nullable=False)
+    occurred_at: Mapped[str] = mapped_column(String(35), nullable=False)
+    payload_json: Mapped[str] = mapped_column(Text, nullable=False)
+
+
+class ProviderSecurityIdentityRow(Base):
+    __tablename__ = "provider_security_identities"
+    __table_args__ = (UniqueConstraint("provider", "allocation_anchor_hash"),)
+
+    provider_security_identity_id: Mapped[str] = mapped_column(String(128), primary_key=True)
+    provider: Mapped[str] = mapped_column(String(32), nullable=False)
+    market: Mapped[str] = mapped_column(String(8), nullable=False)
+    allocation_anchor_hash: Mapped[str] = mapped_column(String(71), nullable=False)
+    identity_state: Mapped[str] = mapped_column(String(32), nullable=False)
+    mapping_status: Mapped[str] = mapped_column(String(32), nullable=False)
+    first_source_version_id: Mapped[str] = mapped_column(
+        ForeignKey("provider_source_versions.source_version_id"), nullable=False
+    )
+    latest_source_version_id: Mapped[str] = mapped_column(
+        ForeignKey("provider_source_versions.source_version_id"), nullable=False
+    )
+    provider_contract_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    payload_json: Mapped[str] = mapped_column(Text, nullable=False)
+
+
+class ProviderIdentifierHistoryRow(Base):
+    __tablename__ = "provider_identifier_history"
+    __table_args__ = (
+        UniqueConstraint(
+            "provider_security_identity_id",
+            "identifier_kind",
+            "identifier_value",
+            "source_version_id",
+        ),
+        CheckConstraint("valid_to IS NULL OR valid_from IS NULL OR valid_from <= valid_to"),
+    )
+
+    identifier_history_id: Mapped[str] = mapped_column(String(128), primary_key=True)
+    provider_security_identity_id: Mapped[str] = mapped_column(
+        ForeignKey("provider_security_identities.provider_security_identity_id"), nullable=False
+    )
+    identifier_kind: Mapped[str] = mapped_column(String(32), nullable=False)
+    identifier_value: Mapped[str] = mapped_column(String(128), nullable=False)
+    valid_from: Mapped[date | None] = mapped_column(Date)
+    valid_to: Mapped[date | None] = mapped_column(Date)
+    source_version_id: Mapped[str] = mapped_column(
+        ForeignKey("provider_source_versions.source_version_id"), nullable=False
+    )
+    revision_reason: Mapped[str] = mapped_column(String(32), nullable=False)
+    provider_contract_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    payload_json: Mapped[str] = mapped_column(Text, nullable=False)
+
+
+class ProviderIdentityMappingRow(Base):
+    __tablename__ = "provider_identity_mappings"
+    __table_args__ = (
+        CheckConstraint(
+            "mapping_status != 'VERIFIED' OR "
+            "(issuer_id IS NOT NULL AND security_id IS NOT NULL AND approved_at IS NOT NULL)"
+        ),
+        CheckConstraint("valid_to IS NULL OR valid_from IS NULL OR valid_from <= valid_to"),
+    )
+
+    mapping_id: Mapped[str] = mapped_column(String(128), primary_key=True)
+    provider_security_identity_id: Mapped[str] = mapped_column(
+        ForeignKey("provider_security_identities.provider_security_identity_id"), nullable=False
+    )
+    issuer_id: Mapped[str | None] = mapped_column(ForeignKey("issuers.issuer_id"))
+    security_id: Mapped[str | None] = mapped_column(ForeignKey("securities.security_id"))
+    mapping_status: Mapped[str] = mapped_column(String(32), nullable=False)
+    evidence_source_version_id: Mapped[str] = mapped_column(
+        ForeignKey("provider_source_versions.source_version_id"), nullable=False
+    )
+    approved_at: Mapped[str | None] = mapped_column(String(35))
+    valid_from: Mapped[date | None] = mapped_column(Date)
+    valid_to: Mapped[date | None] = mapped_column(Date)
+    provider_contract_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    payload_json: Mapped[str] = mapped_column(Text, nullable=False)
+
+
+class ProviderLatestPointerRow(Base):
+    __tablename__ = "provider_latest_pointers"
+    __table_args__ = (UniqueConstraint("dataset", "provider_security_identity_id"),)
+
+    latest_pointer_id: Mapped[str] = mapped_column(String(128), primary_key=True)
+    dataset: Mapped[str] = mapped_column(String(64), nullable=False)
+    provider_security_identity_id: Mapped[str] = mapped_column(
+        ForeignKey("provider_security_identities.provider_security_identity_id"), nullable=False
+    )
+    normalized_record_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    source_version_id: Mapped[str] = mapped_column(
+        ForeignKey("provider_source_versions.source_version_id"), nullable=False
+    )
+    accepted_observed_at: Mapped[str | None] = mapped_column(String(35))
+    accepted_observed_date: Mapped[date | None] = mapped_column(Date)
+    state_hash: Mapped[str] = mapped_column(String(71), nullable=False)
+    provider_contract_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    payload_json: Mapped[str] = mapped_column(Text, nullable=False)

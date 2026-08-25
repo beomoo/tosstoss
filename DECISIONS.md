@@ -236,6 +236,13 @@ Phase 1 `SourceRecord`는 `observed_at`과 `published_at`을 필수 datetime으�
 
 신규 provider record만 새 contract를 사용한다. rollback은 신규 publish 중지, last known-good pointer 유지와 해당 additive contract/migration의 disposable-DB 검증 후 revert다. 기존 Phase 1 row·fixture와 raw/history를 변환하거나 삭제하지 않는다.
 
+### CP3-B 구현 기록 — 2026-08-25
+
+- 전용 `toss-source/0.1.0` contract가 nullable `observed_at`, `observed_date`, `published_at`, structured missing reason과 required aware UTC `fetched_at`을 구현한다.
+- STOCK_DISCOVERY/STOCK_DETAIL, CURRENT_PRICE, future DAILY_FLOW의 observation 조합을 strict offline contract test로 고정했다. endpoint DTO/normalizer 또는 live semantics는 구현·검증하지 않았다.
+- 기존 `SourceRecord`, 전역 `ContractVersion = Literal["0.1.0"]`, fixture/API/OpenAPI는 변경하지 않았다.
+- additive source-version/raw-manifest schema와 deterministic normalized hash는 fetch/run/storage identity를 semantic hash에서 제외하고 revision history를 별도 보존한다.
+
 ---
 
 ## ADR-012 — Toss provider security identity와 canonical issuer/security mapping 분리
@@ -283,6 +290,13 @@ Phase 1 `Issuer`는 KR corp_code 또는 US CIK를 요구하고 `Security`는 iss
 ### 마이그레이션·롤백
 
 후보 `0002_phase_02_cp3_foundation`은 신규 table/FK/unique constraint만 추가한다. provider latest의 key는 `provider_security_identity_id`이고 canonical linkage는 nullable mapping table에서 분리한다. `0001` 수정, 기존 table destructive rebuild, corp_code/CIK fake backfill, 기존 fixture 변환과 SQLite 가격 history 누적을 금지한다. downgrade는 disposable DB에서만 검증하며 실제 raw/history를 자동 삭제하지 않는다.
+
+### CP3-B 구현 기록 — 2026-08-25
+
+- `provider_security_identities`, append-only identifier history, nullable canonical mapping과 provider-scoped latest pointer의 schema/repository foundation을 구현했다.
+- identity ID는 immutable allocation anchor SHA-256과 일치해야 하고 foundation row는 스스로 `VERIFIED`로 승격할 수 없다. verified mapping은 실제 canonical issuer/security linkage와 approval time을 요구한다.
+- full continuity-first reconciliation, enrichment collision service, canonical promotion, Security Master DTO/normalizer는 CP3-C로 이연했다.
+- latest foundation은 `(dataset, provider_security_identity_id)` unique pointer뿐이며 ProviderPriceSnapshot 또는 SQLite 가격 history를 구현하지 않았다.
 
 ---
 

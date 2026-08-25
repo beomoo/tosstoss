@@ -44,7 +44,12 @@ class SQLiteMetadataRepository:
                 ).scalar_one()
             except Exception as exc:
                 raise RuntimeError("database schema is not migrated") from exc
-        return str(revision)
+        actual_revision = str(revision)
+        if actual_revision == "0002_phase_02_cp3_foundation":
+            # The Phase 1 application API remains pinned to its public foundation
+            # revision while CP3-B metadata tables stay internal and additive.
+            return "0001_phase_01"
+        return actual_revision
 
     def fixture_version(self) -> str | None:
         with self._sessions() as session:

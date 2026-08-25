@@ -1394,7 +1394,7 @@ function Assert-ExactRelativeFileSet {
         $actualSet.Count -ne $Actual.Count -or
         -not $expectedSet.SetEquals($actualSet)
     ) {
-        throw "$Name does not match the exact approved Phase 1 file set."
+        throw "$Name does not match the exact approved file set."
     }
 }
 
@@ -1507,6 +1507,11 @@ $expectedBackendTestFiles = @(
     "tests/backend/test_migrations.py",
     "tests/backend/test_no_external_network.py",
     "tests/backend/test_openapi_snapshot.py",
+    "tests/backend/test_provider_identity_contracts.py",
+    "tests/backend/test_provider_migration.py",
+    "tests/backend/test_provider_raw_store.py",
+    "tests/backend/test_provider_repository.py",
+    "tests/backend/test_provider_source_contracts.py",
     "tests/backend/test_rejection_matrix.py",
     "tests/backend/test_repositories.py",
     "tests/backend/test_settings_security.py",
@@ -1528,6 +1533,50 @@ Assert-ExactRelativeFileSet `
     -Expected $expectedBackendTestFiles `
     -Actual $actualBackendTestFiles `
     -Name "Backend test source"
+
+$cp3BRepresentativeBackendTest = "tests/backend/test_provider_source_contracts.py"
+$cp3BMissingBackendTestSet = [string[]] @(
+    $expectedBackendTestFiles | Where-Object {
+        $_ -cne $cp3BRepresentativeBackendTest
+    }
+)
+$cp3BMissingBackendTestRejected = $false
+try {
+    Assert-ExactRelativeFileSet `
+        -Expected $cp3BMissingBackendTestSet `
+        -Actual $expectedBackendTestFiles `
+        -Name "CP3-B missing backend test canary"
+}
+catch {
+    $cp3BMissingBackendTestRejected = $true
+}
+if (-not $cp3BMissingBackendTestRejected) {
+    throw "The approved backend test source set accepted a missing CP3-B test canary."
+}
+
+$cp3BLookalikeBackendTestSet = [string[]] @(
+    $expectedBackendTestFiles | ForEach-Object {
+        if ($_ -ceq $cp3BRepresentativeBackendTest) {
+            "tests/backend/test_provider_source_contract.py"
+        }
+        else {
+            $_
+        }
+    }
+)
+$cp3BLookalikeBackendTestRejected = $false
+try {
+    Assert-ExactRelativeFileSet `
+        -Expected $expectedBackendTestFiles `
+        -Actual $cp3BLookalikeBackendTestSet `
+        -Name "CP3-B lookalike backend test canary"
+}
+catch {
+    $cp3BLookalikeBackendTestRejected = $true
+}
+if (-not $cp3BLookalikeBackendTestRejected) {
+    throw "The approved backend test source set accepted a lookalike CP3-B test canary."
+}
 
 $expectedFrontendTestFiles = @(
     "apps/web/src/components/AppShell.test.tsx",
@@ -1599,15 +1648,15 @@ $phaseControlFiles = @(
         Where-Object { $_.Name -cne "policy-scan.ps1" }
 )
 $approvedPhaseControlDigest = [string]::Concat(
-    "ed63a8e1", "06816370", "1d0729a3", "22f7cf56",
-    "1ae8bd34", "68c1f75f", "0103131e", "4b639f84"
+    "f486c1d6", "e7693eeb", "78fe341c", "6a28508d",
+    "bd0ef8b8", "f2cf7bd8", "2c5e607b", "7425f604"
 )
 if (
-    $phaseControlFiles.Count -ne 65 -or
+    $phaseControlFiles.Count -ne 70 -or
     (Get-FileSetManifestSha256 -Files $phaseControlFiles) -cne
         $approvedPhaseControlDigest
 ) {
-    throw "The Phase 1 control-plane source digest does not match the approved suite."
+    throw "The approved phase control-plane source digest does not match the approved suite."
 }
 
 $testSourceFiles = @(
@@ -2350,4 +2399,4 @@ Assert-NoRawPattern `
     -Message "A public token-manager or raw-token extraction surface was found." `
     -Files $applicationRuntimeSourceFiles
 
-Write-Host "Phase 2 CP2-D1 scope policy scan passed."
+Write-Host "Phase 2 CP3-B scope policy scan passed."
