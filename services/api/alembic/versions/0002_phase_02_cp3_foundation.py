@@ -15,8 +15,14 @@ branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
 
-def upgrade() -> None:
-    op.create_table(
+def _create_table(created_tables: list[str], name: str, *elements: object) -> None:
+    op.create_table(name, *elements)
+    created_tables.append(name)
+
+
+def _upgrade_tables(created_tables: list[str]) -> None:
+    _create_table(
+        created_tables,
         "canonical_requests",
         sa.Column("canonical_request_id", sa.String(128), primary_key=True),
         sa.Column("provider", sa.String(32), nullable=False),
@@ -27,7 +33,8 @@ def upgrade() -> None:
         sa.Column("provider_contract_version", sa.String(64), nullable=False),
         sa.Column("payload_json", sa.Text(), nullable=False),
     )
-    op.create_table(
+    _create_table(
+        created_tables,
         "provider_raw_manifests",
         sa.Column("raw_response_id", sa.String(128), primary_key=True),
         sa.Column(
@@ -46,7 +53,8 @@ def upgrade() -> None:
         sa.CheckConstraint("http_status >= 100 AND http_status <= 599"),
         sa.UniqueConstraint("canonical_request_id", "http_status", "raw_content_hash"),
     )
-    op.create_table(
+    _create_table(
+        created_tables,
         "provider_source_versions",
         sa.Column("source_version_id", sa.String(128), primary_key=True),
         sa.Column(
@@ -80,7 +88,8 @@ def upgrade() -> None:
             "provider_contract_version",
         ),
     )
-    op.create_table(
+    _create_table(
+        created_tables,
         "collection_attempts",
         sa.Column("attempt_id", sa.String(128), primary_key=True),
         sa.Column("provider", sa.String(32), nullable=False),
@@ -100,7 +109,8 @@ def upgrade() -> None:
         sa.CheckConstraint("records_received >= 0"),
         sa.CheckConstraint("records_rejected >= 0"),
     )
-    op.create_table(
+    _create_table(
+        created_tables,
         "provider_audit_events",
         sa.Column("audit_event_id", sa.String(128), primary_key=True),
         sa.Column(
@@ -121,7 +131,8 @@ def upgrade() -> None:
         sa.Column("payload_json", sa.Text(), nullable=False),
         sa.CheckConstraint("record_count >= 0"),
     )
-    op.create_table(
+    _create_table(
+        created_tables,
         "provider_security_identities",
         sa.Column("provider_security_identity_id", sa.String(128), primary_key=True),
         sa.Column("provider", sa.String(32), nullable=False),
@@ -145,7 +156,8 @@ def upgrade() -> None:
         sa.Column("payload_json", sa.Text(), nullable=False),
         sa.UniqueConstraint("provider", "allocation_anchor_hash"),
     )
-    op.create_table(
+    _create_table(
+        created_tables,
         "provider_identifier_history",
         sa.Column("identifier_history_id", sa.String(128), primary_key=True),
         sa.Column(
@@ -175,7 +187,8 @@ def upgrade() -> None:
             "source_version_id",
         ),
     )
-    op.create_table(
+    _create_table(
+        created_tables,
         "provider_identity_mappings",
         sa.Column("mapping_id", sa.String(128), primary_key=True),
         sa.Column(
@@ -204,7 +217,8 @@ def upgrade() -> None:
         ),
         sa.CheckConstraint("valid_to IS NULL OR valid_from IS NULL OR valid_from <= valid_to"),
     )
-    op.create_table(
+    _create_table(
+        created_tables,
         "provider_latest_pointers",
         sa.Column("latest_pointer_id", sa.String(128), primary_key=True),
         sa.Column("dataset", sa.String(64), nullable=False),
@@ -228,6 +242,25 @@ def upgrade() -> None:
         sa.Column("payload_json", sa.Text(), nullable=False),
         sa.UniqueConstraint("dataset", "provider_security_identity_id"),
     )
+
+
+def upgrade() -> None:
+    created_tables: list[str] = []
+    try:
+        _upgrade_tables(created_tables)
+    except Exception:
+        cleanup_failure: Exception | None = None
+        for table_name in reversed(created_tables):
+            try:
+                op.drop_table(table_name)
+            except Exception as exc:
+                cleanup_failure = exc
+                break
+        if cleanup_failure is not None:
+            raise RuntimeError(
+                "CP3 foundation migration cleanup failed closed"
+            ) from cleanup_failure
+        raise
 
 
 def downgrade() -> None:

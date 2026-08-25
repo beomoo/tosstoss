@@ -76,10 +76,11 @@ class ProviderRawStore:
                 os.fsync(stream.fileno())
             self._assert_regular_single_link(temp)
             try:
-                os.rename(temp, target)
+                self._publish_no_replace(temp, target)
             except FileExistsError:
                 self._verify_existing(target, digest, raw_bytes)
                 return PersistedRaw(f"sha256:{digest}", raw_ref, False)
+            temp.unlink()
             self._assert_regular_single_link(target)
             self._fsync_directory(prefix_directory)
             return PersistedRaw(f"sha256:{digest}", raw_ref, True)
@@ -147,6 +148,11 @@ class ProviderRawStore:
         payload = target.read_bytes()
         if hashlib.sha256(payload).hexdigest() != digest or payload != expected_bytes:
             raise ProviderRawStoreConflict("existing raw object conflicts with immutable digest")
+
+    @staticmethod
+    def _publish_no_replace(temp: Path, target: Path) -> None:
+        """Atomically publish a durable inode only when the target is absent."""
+        os.link(temp, target)
 
     @staticmethod
     def _fsync_directory(directory: Path) -> None:

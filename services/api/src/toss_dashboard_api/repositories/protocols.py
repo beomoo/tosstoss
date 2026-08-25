@@ -53,6 +53,10 @@ class ProviderRepository(Protocol):
         self, version: ProviderSourceVersion
     ) -> InsertResult[ProviderSourceVersion]: ...
 
+    def record_source_version_with_audit(
+        self, version: ProviderSourceVersion, event: ProviderAuditEvent
+    ) -> InsertResult[ProviderSourceVersion]: ...
+
     def source_revision_chain(self, source_version_id: str) -> list[ProviderSourceVersion]: ...
 
     def record_collection_attempt(

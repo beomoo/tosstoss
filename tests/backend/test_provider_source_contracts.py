@@ -153,6 +153,7 @@ def test_current_price_allows_timestamp_and_forbids_observed_date() -> None:
 def test_daily_flow_requires_date_and_allows_timestamp_plus_date() -> None:
     payload = source_payload(
         dataset=ProviderDataset.DAILY_FLOW,
+        source_locator="provider://toss-open-api/market/daily-flow",
         observed_at="2026-08-25T10:00:00+09:00",
         observed_date=date(2026, 8, 25),
     )
@@ -176,6 +177,30 @@ def test_current_price_without_timestamp_cannot_be_fresh() -> None:
     payload["normalized_content_hash"] = provider_source_normalized_hash(payload)
     with pytest.raises(ValidationError, match="UNKNOWN freshness"):
         ProviderSourceVersion.model_validate(payload)
+
+
+def test_current_price_with_timestamp_must_remain_unknown_before_live_verification() -> None:
+    payload = source_payload(
+        observed_at="2026-08-25T10:00:00+09:00",
+        freshness_status=FreshnessStatus.FRESH,
+    )
+    reasons = dict(payload["missing_reasons"])  # type: ignore[arg-type]
+    reasons.pop("observed_at")
+    payload["missing_reasons"] = reasons
+    payload["normalized_content_hash"] = provider_source_normalized_hash(payload)
+    with pytest.raises(ValidationError, match="UNKNOWN freshness"):
+        ProviderSourceVersion.model_validate(payload)
+
+
+def test_current_price_with_timestamp_and_unknown_freshness_is_valid() -> None:
+    payload = source_payload(observed_at="2026-08-25T10:00:00+09:00")
+    reasons = dict(payload["missing_reasons"])  # type: ignore[arg-type]
+    reasons.pop("observed_at")
+    payload["missing_reasons"] = reasons
+    payload["normalized_content_hash"] = provider_source_normalized_hash(payload)
+    payload["source_version_id"] = provider_source_version_id(payload)
+    source = ProviderSourceVersion.model_validate(payload)
+    assert source.freshness_status == FreshnessStatus.UNKNOWN
 
 
 def test_original_and_revision_link_rules_are_exact() -> None:

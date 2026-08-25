@@ -1,7 +1,7 @@
 # Phase 2 토스증권 읽기 전용 데이터 실행계획
 
 - 계획 상태: `PHASE 2 IMPLEMENTATION IN PROGRESS`
-- Current checkpoint: `CP3-B IMPLEMENTED — AWAITING GPT INDEPENDENT REVIEW`
+- Current checkpoint: `CP3-B REVISED AFTER INDEPENDENT REVIEW — AWAITING GPT RE-REVIEW`
 - 최초 작성·공식 문서 조사일: `2026-08-23` (`Asia/Seoul`)
 - 현재 상태 갱신일: `2026-08-25` (`Asia/Seoul`)
 - 기준 브랜치: `feature/phase-02-toss`
@@ -18,11 +18,11 @@
 - CP1: `PASS`
 - CP2: `COMPLETE`
 - CP3-A: `PASS — CONTRACT APPROVED AND CLOSED`
-- CP3-B: `IMPLEMENTED — AWAITING GPT INDEPENDENT REVIEW`
+- CP3-B: `REVISED AFTER INDEPENDENT REVIEW — AWAITING GPT RE-REVIEW`
 - CP3-C: `NOT STARTED`
 - Phase 2: `IMPLEMENTATION IN PROGRESS`
 
-CP3-A는 `plans/PHASE_02_CP3_A_CONTRACT.md`를 중심으로 Security Master와 Current Price의 planning/contract를 확정한 documentation checkpoint다. 첫 독립검증의 P1-01/P1-02를 보완한 뒤 GPT independent re-review와 사용자 승인으로 `PASS — CONTRACT APPROVED AND CLOSED`다. CP3-B는 승인된 계약에 따라 provider source/identity 전용 contract, crash-safe raw store, additive `0002_phase_02_cp3_foundation`, SQLite repository와 offline tests를 구현했다. collection job, endpoint DTO/normalizer, Security Master reconciliation, Current Price contract/normalizer와 live API는 구현하지 않았다. CP3-B는 독립검증 전이므로 `PASS`, `APPROVED` 또는 `COMPLETE`가 아니며 CP3-C는 `NOT STARTED`다.
+CP3-A는 `plans/PHASE_02_CP3_A_CONTRACT.md`를 중심으로 Security Master와 Current Price의 planning/contract를 확정한 documentation checkpoint다. 첫 독립검증의 P1-01/P1-02를 보완한 뒤 GPT independent re-review와 사용자 승인으로 `PASS — CONTRACT APPROVED AND CLOSED`다. CP3-B는 승인된 계약에 따라 provider source/identity 전용 contract, crash-safe raw store, additive `0002_phase_02_cp3_foundation`, SQLite repository와 offline tests를 구현했다. 첫 CP3-B 독립검증의 P1 5건과 P2 1건에 따라 repeated-fetch semantic idempotency, exact trace graph, verified mapping integrity, SQL CAS/latest eligibility, mid-migration cleanup과 atomic no-replace raw publish를 보완했다. collection job, endpoint DTO/normalizer, Security Master reconciliation, Current Price payload/normalizer와 live API는 구현하지 않았다. CP3-B는 재검토 전이므로 `PASS`, `APPROVED` 또는 `COMPLETE`가 아니며 CP3-C는 `NOT STARTED`다.
 
 ## Original CP1 investigation baseline
 
@@ -57,7 +57,7 @@ CP3-A approved repository contract는 기존 Phase 1 계약을 breaking 변경�
 | CP2-D2 | `PASS` | 승인된 actual OAuth/stocks one-shot 최소 검증 |
 | CP2 | `COMPLETE` | final integrated QA; Phase 2 전체 완료 아님 |
 | CP3-A | `PASS — CONTRACT APPROVED AND CLOSED` | P1-01/P1-02 closed, independent re-review와 사용자 승인; application implementation 0 |
-| CP3-B | `IMPLEMENTED — AWAITING GPT INDEPENDENT REVIEW` | contract/raw/source/migration/repository/offline tests; 승인 전 CP3-C 진입 금지 |
+| CP3-B | `REVISED AFTER INDEPENDENT REVIEW — AWAITING GPT RE-REVIEW` | P1 5건/P2 1건 hardening 후 재검토 대기; 승인 전 CP3-C 진입 금지 |
 | CP3-C | `NOT STARTED` | 자동 진입 금지 |
 
 ## 0. 근거 분류
@@ -391,7 +391,7 @@ Phase 1 테스트 삭제, skip, xfail, inventory 감소는 허용하지 않는�
 - request metadata에는 method, allowlisted path, secret 없는 canonical query, fetch 시각만 저장
 - response metadata에는 status, `X-Request-Id`, rate header, content type만 allowlist 저장
 - Authorization, cookie, client ID/secret, access token, account header는 저장 금지
-- raw bytes SHA-256을 계산하고 temp file → fsync 가능한 범위 → atomic rename 후 manifest publish
+- raw bytes SHA-256을 계산하고 temp file → fsync 가능한 범위 → atomic no-replace publish 후 manifest publish
 - 동일 request 자연키와 payload hash 재수집은 새 audit event를 남기되 normalized duplicate를 만들지 않음
 - `raw_storage_ref`는 로컬 opaque ref만 노출하고 절대경로와 credential을 포함하지 않음
 
@@ -503,12 +503,13 @@ CP2-A의 통과는 CP2 전체 통과가 아니며, 아래 기존 완료 조건�
 
 ### CP3-B — Contract Foundation + Additive Migration + Raw/Source Trace
 
-- 상태: `IMPLEMENTED — AWAITING GPT INDEPENDENT REVIEW`
+- 상태: `REVISED AFTER INDEPENDENT REVIEW — AWAITING GPT RE-REVIEW`
 - provider source `toss-source/0.1.0`과 identity `toss-identity/0.1.0` local contract, nullable observation time/date와 exact dataset policy를 구현했다.
 - secret-free canonical query/request identity, exact-byte hash-addressed raw store, immutable raw/source revision과 safe attempt/audit를 구현했다.
 - additive `0002_phase_02_cp3_foundation`은 9개 metadata/pointer table과 FK/unique/check/self-FK만 추가한다.
 - SQLite repository는 deterministic insert-or-verify, source+audit atomic transaction, append-only identity/history/mapping과 conditional latest pointer foundation을 제공한다.
-- backend inventory는 357에서 448로 증가했다. fixture/API/OpenAPI, global `0.1.0`, 기존 row와 `0001` bytes를 회귀 검증한다.
+- 독립검증 보완은 repeated later-fetch duplicate, exact path→dataset/request→raw→source→attempt/audit trace, VERIFIED mapping lineage/FK integrity, one-statement SQL CAS와 latest eligibility, real mid-migration rollback, raw no-replace race를 fail closed한다.
+- backend exact inventory gate는 448에서 493으로 증가했다. fixture/API/OpenAPI, global `0.1.0`, 기존 row와 `0001` bytes를 회귀 검증한다.
 - offline only이며 actual credential/Toss API request, collection job, endpoint DTO/normalizer, Security Master reconciliation과 Current Price implementation은 0이다.
 - 독립검증과 사용자 승인 전 CP3-C로 자동 진행하지 않는다.
 
@@ -726,4 +727,4 @@ Phase 2 완료 선언에는 모두 필요하다.
 
 ## 최종 판정
 
-CP1은 `PASS`, CP2는 `COMPLETE`, CP3-A는 `PASS — CONTRACT APPROVED AND CLOSED`다. ADR-010, ADR-011과 revised ADR-012는 `ACCEPTED`다. CP3-B는 `IMPLEMENTED — AWAITING GPT INDEPENDENT REVIEW`이며 `PASS`, `APPROVED` 또는 `COMPLETE`가 아니다. CP3-C는 `NOT STARTED`, automatic checkpoint progression은 `PROHIBITED`다. Phase 2 전체는 `IMPLEMENTATION IN PROGRESS`다. `/stocks/all`, `/prices`, complete enum/null/lifecycle, price timestamp-null/currency/freshness, natural 429와 actual 429/5xx production timing은 계속 `[LIVE_UNVERIFIED]`다.
+CP1은 `PASS`, CP2는 `COMPLETE`, CP3-A는 `PASS — CONTRACT APPROVED AND CLOSED`다. ADR-010, ADR-011과 revised ADR-012는 `ACCEPTED`다. CP3-B는 `REVISED AFTER INDEPENDENT REVIEW — AWAITING GPT RE-REVIEW`이며 `PASS`, `APPROVED` 또는 `COMPLETE`가 아니다. CP3-C는 `NOT STARTED`, automatic checkpoint progression은 `PROHIBITED`다. Phase 2 전체는 `IMPLEMENTATION IN PROGRESS`다. `/stocks/all`, `/prices`, complete enum/null/lifecycle, price timestamp-null/currency/freshness, natural 429와 actual 429/5xx production timing은 계속 `[LIVE_UNVERIFIED]`다.

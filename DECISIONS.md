@@ -243,6 +243,13 @@ Phase 1 `SourceRecord`는 `observed_at`과 `published_at`을 필수 datetime으�
 - 기존 `SourceRecord`, 전역 `ContractVersion = Literal["0.1.0"]`, fixture/API/OpenAPI는 변경하지 않았다.
 - additive source-version/raw-manifest schema와 deterministic normalized hash는 fetch/run/storage identity를 semantic hash에서 제외하고 revision history를 별도 보존한다.
 
+### CP3-B 독립검증 보완 기록 — 2026-08-25
+
+- 같은 canonical request/status/raw hash/provider contract의 later fetch는 `fetched_at`과 allowlisted telemetry가 달라도 first-seen immutable raw/source duplicate로 처리한다. dataset, parser version, normalized hash, revision/supersedes 또는 provider contract가 다르면 fail closed한다.
+- repository는 `/api/v1/stocks/all → STOCK_DISCOVERY`, `/api/v1/stocks → STOCK_DETAIL`, `/api/v1/prices → CURRENT_PRICE` exact mapping과 request→raw→source→attempt/audit graph를 강제한다. `DAILY_FLOW`은 승인 endpoint가 없어 persistence를 금지한다.
+- CURRENT_PRICE source freshness는 CP3-D2 승인 전 timestamp 존재 여부와 무관하게 `UNKNOWN`이고 timestamp-null source는 보존할 수 있지만 latest pointer에는 사용할 수 없다.
+- `0002` mid-DDL failure는 해당 upgrade가 생성한 CP3 table만 역순 제거해 revision/Phase 1 row/pre-existing object를 보존한다. raw publish는 overwrite 가능한 rename 대신 atomic no-replace를 사용한다.
+
 ---
 
 ## ADR-012 — Toss provider security identity와 canonical issuer/security mapping 분리
@@ -297,6 +304,13 @@ Phase 1 `Issuer`는 KR corp_code 또는 US CIK를 요구하고 `Security`는 iss
 - identity ID는 immutable allocation anchor SHA-256과 일치해야 하고 foundation row는 스스로 `VERIFIED`로 승격할 수 없다. verified mapping은 실제 canonical issuer/security linkage와 approval time을 요구한다.
 - full continuity-first reconciliation, enrichment collision service, canonical promotion, Security Master DTO/normalizer는 CP3-C로 이연했다.
 - latest foundation은 `(dataset, provider_security_identity_id)` unique pointer뿐이며 ProviderPriceSnapshot 또는 SQLite 가격 history를 구현하지 않았다.
+
+### CP3-B 독립검증 보완 기록 — 2026-08-25
+
+- VERIFIED mapping은 existing ACTIVE identity, 실제 canonical issuer/security row와 `Security.issuer_id == mapping.issuer_id`, 그리고 identity first/latest 또는 identifier-history source lineage evidence를 모두 요구한다. quarantined/collision identity와 unrelated evidence는 거부한다.
+- latest pointer eligibility는 ACTIVE identity, exact dataset/source observation과 identity lineage를 검증한다. 기존 pointer 갱신은 `latest_pointer_id`와 expected `state_hash`를 WHERE에 둔 단일 SQL conditional update이며 두 independent session 중 정확히 한 writer만 old hash를 소비한다.
+- first insert race는 같은 payload를 idempotent duplicate로, 다른 payload를 typed conditional conflict로 처리하며 row 하나만 유지한다. raw `OperationalError`/`IntegrityError`를 repository 경계 밖으로 노출하지 않는다.
+- 이 hardening은 CP3-C identity reconciliation이나 CP3-D price payload/service를 시작하지 않으며 ADR-012의 provider/canonical 분리 결정을 바꾸지 않는다.
 
 ---
 

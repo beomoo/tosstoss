@@ -57,25 +57,25 @@
 
 - 상태: `OPEN — CONTRACT FOUNDATION IMPLEMENTED / LIVE SEMANTICS UNVERIFIED`
 - 영향: 필수 `observed_at`·`published_at`에 date-only 기준일이나 fetch 시각을 대입하면 기준일과 수집일을 혼동한다. 기존 ADR-011의 “observed time/date 중 최소 하나”도 공식 `/prices timestamp=null` 상태를 표현하지 못한다.
-- 현재 대응: ADR-011은 2026-08-25 `ACCEPTED`다. CP3-B의 별도 `toss-source/0.1.0` contract는 기존 v0.1.0을 유지하면서 observed time/date 둘 다 null + structured reason을 표현하고 dataset별 조합을 fail closed한다. 실제 `/prices` timestamp-null 빈도·의미와 freshness는 계속 live unverified이며 CP3-D 전에는 user-facing price publish를 구현하지 않는다.
+- 현재 대응: ADR-011은 2026-08-25 `ACCEPTED`다. CP3-B의 별도 `toss-source/0.1.0` contract는 기존 v0.1.0을 유지하면서 observed time/date 둘 다 null + structured reason을 표현하고 dataset별 조합을 fail closed한다. CURRENT_PRICE freshness는 CP3-D2 승인 전 timestamp 유무와 무관하게 `UNKNOWN`이며 timestamp-null source는 보존하되 latest pointer에는 사용할 수 없다. 실제 `/prices` timestamp-null 빈도·의미와 freshness는 계속 live unverified이며 CP3-D 전에는 user-facing price publish를 구현하지 않는다.
 
 ## KI-011 — Toss issuer/security identity와 Phase 1 regulatory ID 충돌
 
 - 상태: `OPEN — ADR-012 ACCEPTED / CP3-B FOUNDATION IMPLEMENTED / CP3-C RECONCILIATION NOT STARTED`
 - 영향: Toss stock response에는 Phase 1 `Issuer`가 KR/US별로 요구하는 corp_code/CIK가 없다. Toss symbol/ticker/name 또는 synthetic ID로 채우면 잘못된 issuer merge, share-class 혼동과 P0 mapping 오류가 생긴다. 반대로 verified canonical mapping을 모든 price storage의 전제조건으로 두면 Phase 2가 Phase 3/4 regulatory mapping에 순환 의존한다. 현재 근거로 exchange도 확정할 수 없다.
-- 현재 대응: CP3-B는 canonical Issuer/Security를 바꾸지 않고 provider identity/history/mapping/latest pointer의 additive foundation을 구현했다. identity foundation은 `UNRESOLVED`로 시작하고 fake corp_code/CIK column이 없으며 verified mapping은 실제 issuer/security FK와 approval을 요구한다. symbol/ISIN continuity reconciliation, canonical promotion과 ProviderPriceSnapshot은 각각 CP3-C/CP3-D 전까지 구현하지 않는다.
+- 현재 대응: CP3-B는 canonical Issuer/Security를 바꾸지 않고 provider identity/history/mapping/latest pointer의 additive foundation을 구현했다. identity foundation은 `UNRESOLVED`로 시작하고 fake corp_code/CIK column이 없다. VERIFIED mapping은 ACTIVE non-quarantined identity, 실제 issuer/security 관계와 identity source lineage evidence를 모두 요구한다. symbol/ISIN continuity reconciliation, canonical promotion과 ProviderPriceSnapshot은 각각 CP3-C/CP3-D 전까지 구현하지 않는다.
 
 ## KI-012 — 반복 price/revision과 기존 source record natural key 충돌
 
-- 상태: `MITIGATED — CP3-B ADDITIVE SOURCE VERSION FOUNDATION IMPLEMENTED / PRICE USE DEFERRED`
+- 상태: `MITIGATED — CP3-B SOURCE IDEMPOTENCY/TRACE HARDENED / PRICE USE DEFERRED`
 - 영향: 기존 `source_records(source_system, source_type, external_id)` unique는 같은 request의 반복 price snapshot과 same-key payload revision을 모두 보존할 수 없다. external ID에 현재 시각을 붙이면 멱등성을 우회하고 deterministic rebuild가 깨진다.
-- 현재 대응: 기존 table/0001을 byte-identical로 유지하고 신규 `provider_source_versions`의 request/status/raw-hash/contract unique, deterministic source ID, self-FK supersession과 provider latest pointer를 구현했다. timestamp suffix를 사용하지 않는 offline idempotency/revision test가 통과해야 한다. 실제 반복 price snapshot은 CP3-D 전까지 적재하지 않는다.
+- 현재 대응: 기존 table/0001을 byte-identical로 유지하고 신규 `provider_source_versions`의 request/status/raw-hash/contract unique, deterministic source ID, self-FK supersession과 provider latest pointer를 구현했다. 같은 raw/source를 나중에 재수집하면 `fetched_at`·safe telemetry 차이를 semantic duplicate로 처리해 first-seen manifest를 유지하지만 dataset/parser/normalized hash/revision link 차이는 conflict로 차단한다. exact path→dataset/request→raw→source→attempt/audit graph와 atomic source+audit rollback을 offline test로 고정했다. 실제 반복 price snapshot은 CP3-D 전까지 적재하지 않는다.
 
 ## KI-013 — provider identity identifier enrichment reconciliation
 
 - 상태: `OPEN — CP3-B HISTORY FOUNDATION IMPLEMENTED / CP3-C SERVICE NOT STARTED`
 - 영향: ISIN/listDate가 없는 최초 observation으로 provider identity를 만든 뒤 후속 observation에 강한 identifier가 등장할 수 있다. 매 observation마다 anchor 우선순위를 다시 적용하면 같은 instrument에 새 ID가 생기고 price/history continuity와 deterministic rebuild가 깨진다.
-- 현재 대응: CP3-B는 immutable anchor ID, append-only identifier history, collision/quarantine state와 deterministic insert-or-verify foundation을 구현했다. 기존 active identity/history continuity 검색, enrichment reconciliation, collision candidate 계산과 deterministic replay service는 CP3-C에서 별도 구현·검증해야 하며 현재 자동 merge/new identity 기능은 없다.
+- 현재 대응: CP3-B는 immutable anchor ID, append-only identifier history, collision/quarantine state와 deterministic insert-or-verify foundation을 구현했다. VERIFIED linkage와 latest pointer에는 identity state/source lineage relational checks가 적용된다. 기존 active identity/history continuity 검색, enrichment reconciliation, collision candidate 계산과 deterministic replay service는 CP3-C에서 별도 구현·검증해야 하며 현재 자동 merge/new identity 기능은 없다.
 
 ## KI-010 — Windows non-ASCII 개발·QA 저장소 경로의 editable install 실패
 

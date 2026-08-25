@@ -337,12 +337,36 @@
 - backend inventory는 357에서 448로 증가했다. target contract/raw/repository/migration과 기존 API/repository 회귀 100개가 통과했다.
 - 실제 credential, actual Toss API, collection job, endpoint DTO/normalizer, Security Master reconciliation, Current Price, account/order/WebSocket, frontend와 dependency 변경은 0이다.
 
-## 현재 중지 지점 — Phase 2 CP3-B implementation
+## 초기 구현 중지 지점 — Phase 2 CP3-B implementation (historical)
 
 - Phase 2: `IMPLEMENTATION IN PROGRESS`
 - CP2: `COMPLETE`
 - CP3-A: `PASS — CONTRACT APPROVED AND CLOSED`
 - CP3-B: `IMPLEMENTED — AWAITING GPT INDEPENDENT REVIEW`
+- CP3-C: `NOT STARTED`
+- ADR-010/ADR-011/ADR-012: `ACCEPTED`
+- actual credential/API usage: `0`
+- automatic checkpoint progression: `PROHIBITED`
+
+## 2026-08-25 — Phase 2 CP3-B independent-review hardening re-implementation
+
+- preflight에서 `feature/phase-02-toss` local/origin SHA `58cc17d80b9b727b516cd45cb906eaa68f813d89`, remote main/merge-base `353159da45cfbe3a7f444bf476ce86fa9aece17c`와 clean working tree를 확인했다.
+- 이전 fix가 local/GitHub에 존재하지 않는 recovery case D였으므로 pushed CP3-B commit을 amend하지 않고 normal fast-forward follow-up으로 P1 5건/P2 1건을 다시 구현한다.
+- P1-01: later `fetched_at`·safe telemetry를 semantic raw/source identity에서 제외해 first-seen immutable manifest를 반환하며 dataset/parser/normalized hash/revision link conflict는 보존했다.
+- P1-02: exact path→dataset과 canonical request→raw→source→attempt/audit 관계를 repository에서 검증하고 `record_source_version_with_audit()`를 protocol에 추가했다. mismatch transaction은 source/audit 모두 0이다.
+- P1-03: VERIFIED mapping 전에 ACTIVE identity, issuer/security 존재와 관계, identity source lineage를 검증한다. quarantine/collision/unrelated evidence는 fail closed한다.
+- P1-04: latest update는 expected state hash를 WHERE에 둔 one-statement SQL CAS를 사용한다. two independent session race는 one winner/typed loser를 요구하고 CURRENT_PRICE freshness는 `UNKNOWN`, timestamp-null latest는 금지한다.
+- P1-05: 0002 후반 sentinel 충돌로 실제 mid-DDL failure를 만들고 earlier CP3 table cleanup, 0001 revision/Phase 1 row/sentinel 보존과 cleanup 없는 retry를 검증한다.
+- P2-01: final raw publish는 atomic no-replace를 사용해 competing same bytes를 dedupe하고 different bytes를 conflict로 차단하며 overwrite/temp leak을 금지한다.
+- backend exact inventory gate는 448에서 493으로 증가했다. test file set은 그대로이고 policy control-plane count 70, exact digest와 missing/lookalike canary를 유지한다.
+- 실제 credential/API, connector auth/client/rate/preflight, endpoint DTO/normalizer, CP3-C/D, frontend/dependency/public route 변경은 0이다. final staged full regression 결과는 같은 commit의 `qa/PHASE_02_CP3_B_FIX_CODEX_REPORT.md`에 보존한다.
+
+## 현재 중지 지점 — Phase 2 CP3-B independent re-review gate
+
+- Phase 2: `IMPLEMENTATION IN PROGRESS`
+- CP2: `COMPLETE`
+- CP3-A: `PASS — CONTRACT APPROVED AND CLOSED`
+- CP3-B: `REVISED AFTER INDEPENDENT REVIEW — AWAITING GPT RE-REVIEW`
 - CP3-C: `NOT STARTED`
 - ADR-010/ADR-011/ADR-012: `ACCEPTED`
 - actual credential/API usage: `0`

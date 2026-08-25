@@ -122,6 +122,58 @@ def test_failed_cp3_upgrade_leaves_revision_and_prior_schema_unchanged(
         engine.dispose()
 
 
+def test_mid_migration_failure_removes_partial_cp3_schema_and_preserves_phase_one(
+    workspace_tmp_path: Path,
+) -> None:
+    url = f"sqlite:///{(workspace_tmp_path / 'mid-failure.sqlite3').as_posix()}"
+    config = alembic_config(url)
+    command.upgrade(config, "0001_phase_01")
+    engine = create_engine(url)
+    try:
+        FixtureImporter(session_factory(engine)).import_repository(FixtureRepository(FIXTURE_DIR))
+        with engine.begin() as connection:
+            connection.execute(text("CREATE TABLE provider_identity_mappings (sentinel TEXT)"))
+    finally:
+        engine.dispose()
+    phase_one_before = phase_one_dump(url)
+
+    with pytest.raises(OperationalError):
+        command.upgrade(config, "head")
+
+    engine = create_engine(url)
+    try:
+        inspector = inspect(engine)
+        tables = set(inspector.get_table_names())
+        assert inspector.get_columns("provider_identity_mappings")[0]["name"] == "sentinel"
+        assert {
+            "canonical_requests",
+            "provider_raw_manifests",
+            "provider_source_versions",
+            "collection_attempts",
+            "provider_audit_events",
+            "provider_security_identities",
+            "provider_identifier_history",
+            "provider_latest_pointers",
+        }.isdisjoint(tables)
+        with engine.connect() as connection:
+            assert connection.execute(
+                text("SELECT version_num FROM alembic_version")
+            ).scalar_one() == ("0001_phase_01")
+        with engine.begin() as connection:
+            connection.execute(text("DROP TABLE provider_identity_mappings"))
+    finally:
+        engine.dispose()
+    assert phase_one_dump(url) == phase_one_before
+
+    command.upgrade(config, "head")
+    engine = create_engine(url)
+    try:
+        assert "provider_latest_pointers" in set(inspect(engine).get_table_names())
+    finally:
+        engine.dispose()
+    assert phase_one_dump(url) == phase_one_before
+
+
 def test_database_downgrade_never_deletes_raw_files(workspace_tmp_path: Path) -> None:
     url = f"sqlite:///{(workspace_tmp_path / 'raw-safe.sqlite3').as_posix()}"
     config = alembic_config(url)

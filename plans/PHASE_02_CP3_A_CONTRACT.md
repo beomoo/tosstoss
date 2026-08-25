@@ -6,7 +6,7 @@
 - 시작 commit: `6bd5d2ae9c26f02f2cd4bd75a474633a9082fa16`
 - 독립검증 보완 시작 commit: `386a0b2fe7bd18ed4b662eb2695ff85cc2a08cd3`
 - checkpoint 경계: `CP3-A documentation/contract only`
-- 후속 상태: `CP3-B IMPLEMENTED — AWAITING GPT INDEPENDENT REVIEW / CP3-C NOT STARTED`
+- 후속 상태: `CP3-B REVISED AFTER INDEPENDENT REVIEW — AWAITING GPT RE-REVIEW / CP3-C NOT STARTED`
 
 이 문서는 GPT independent re-review `PASS WITH CLOSEOUT CONDITION`과 2026-08-25 사용자 승인으로 확정된 CP3-A repository contract다. 이 승인은 CP3-B application 구현 승인, live endpoint 검증 또는 Phase 2 완료를 뜻하지 않는다.
 
@@ -308,7 +308,7 @@ fallback endpoint, symbol 변환 규칙, exchange inference 또는 추가 endpoi
 
 ### H.3 crash safety
 
-raw bytes는 temp file에 쓰고 가능한 범위에서 flush/fsync한 뒤 같은 volume atomic rename을 완료해야 한다. DB source manifest와 latest pointer는 durable raw ref가 확인된 뒤 transaction으로 publish한다. crash/partial write 시 manifest를 publish하지 않고 half-written file을 정상 input으로 사용하지 않는다.
+raw bytes는 temp file에 쓰고 가능한 범위에서 flush/fsync한 뒤 target을 교체할 수 없는 atomic no-replace publish를 완료해야 한다. 경쟁 writer가 먼저 만든 같은 bytes/hash는 dedupe하고 다른/corrupt bytes는 conflict로 차단하며 기존 target을 overwrite하지 않는다. DB source manifest와 latest pointer는 durable raw ref가 확인된 뒤 transaction으로 publish한다. crash/partial write 시 manifest를 publish하지 않고 half-written file을 정상 input으로 사용하지 않는다.
 
 ## I. hash/idempotency/revision
 
@@ -413,13 +413,16 @@ migration 후보명은 `0002_phase_02_cp3_foundation`이다. 이번 checkpoint�
 - `[CURRENT_REPO_FACT]` `canonical_requests`, `provider_raw_manifests`, `provider_source_versions`, `collection_attempts`, `provider_audit_events`, `provider_security_identities`, `provider_identifier_history`, `provider_identity_mappings`, `provider_latest_pointers`를 구현했다.
 - `[CURRENT_REPO_FACT]` disposable DB에서 blank upgrade, 기존 Phase 1 fixture DB upgrade, CP3 downgrade/re-upgrade, migration failure, FK/unique/self-FK/check constraint와 Phase 1 row/hash/payload 보존을 offline test로 검증한다.
 - `[CURRENT_REPO_FACT]` latest table은 `(dataset, provider_security_identity_id)` unique pointer foundation뿐이며 가격 history 또는 `ProviderPriceSnapshot` payload를 저장하지 않는다.
-- `[REPO_CONTRACT]` CP3-B 상태는 `IMPLEMENTED — AWAITING GPT INDEPENDENT REVIEW`이고 CP3-C는 `NOT STARTED`다.
+- `[CURRENT_REPO_FACT]` 독립검증 hardening은 later-fetch telemetry를 semantic identity에서 제외하되 dataset/parser/normalized hash/revision link 충돌을 차단하고, exact path→dataset/request→raw→source→attempt/audit graph를 repository에서 검증한다.
+- `[CURRENT_REPO_FACT]` VERIFIED mapping은 active non-quarantined identity, 실제 issuer/security 관계와 identity source lineage evidence를 요구한다. provider latest는 one-statement conditional SQL update를 사용하며 CURRENT_PRICE freshness는 CP3-D2 전 `UNKNOWN`, timestamp-null source는 latest-ineligible이다.
+- `[CURRENT_REPO_FACT]` 0002 중간 DDL failure는 이 migration이 생성한 table만 역순 cleanup하고 Phase 1 row/revision과 pre-existing sentinel을 보존한다. raw final publish는 atomic no-replace이며 competing target을 overwrite하지 않는다.
+- `[REPO_CONTRACT]` CP3-B 상태는 `REVISED AFTER INDEPENDENT REVIEW — AWAITING GPT RE-REVIEW`이고 CP3-C는 `NOT STARTED`다.
 
 ## L. CP3-B/C/D checkpoint 분리
 
 ### CP3-B — Contract Foundation + Additive Migration + Raw/Source Trace
 
-- 상태: `IMPLEMENTED — AWAITING GPT INDEPENDENT REVIEW`
+- 상태: `REVISED AFTER INDEPENDENT REVIEW — AWAITING GPT RE-REVIEW`
 - provider-specific versioned contracts, source timestamp/date/missing semantics, enums
 - additive migration, raw manifest/source metadata, repository interfaces
 - offline fixtures/tests only
@@ -556,6 +559,17 @@ migration 후보명은 `0002_phase_02_cp3_foundation`이다. 이번 checkpoint�
 | IR-F | enrichment collision fail closed | existing identity A/B; 신규 ISIN evidence가 둘과 충돌 | auto merge 0; new identity 0; `UNRESOLVED_COLLISION`/`QUARANTINE`; 관련 latest 갱신 0 | P0 | merge/new/latest counts 0과 두 original identity/history 보존 assert |
 | IR-G | enrichment 포함 deterministic rebuild | 동일 raw/source history를 clean DB에서 처음부터 replay | 최종 provider identity ID, immutable anchor와 identifier history가 원 실행과 동일 | P0 | 원 실행/rebuild의 ordered canonical dump와 hash set byte-for-byte compare; current clock 제외 |
 
+### M.8 CP3-B independent-review hardening acceptance
+
+| ID | 목적 | 입력 | 기대 결과 | severity | false-green 방지 |
+|---|---|---|---|---|---|
+| B-IR01 | later-fetch semantic idempotency | 같은 request/status/raw hash/contract와 later `fetched_at`·safe telemetry | first-seen raw/source 반환, source duplicate 0; dataset/parser/hash/revision 차이는 conflict | P0 | stored payload/row count와 각 conflict exception을 모두 assert |
+| B-IR02 | exact trace graph | approved path와 mismatch dataset/raw/source/attempt/audit 조합 | mismatch persistence 0; `DAILY_FLOW` repository persistence 0; source+audit transaction rollback | P0 | source/audit before/after exact count와 path별 negative matrix |
+| B-IR03 | VERIFIED relational integrity | missing/mismatched issuer/security, non-active identity, unrelated evidence | VERIFIED mapping 0; valid active lineage만 1 | P0 | rejected mapping 뒤 prior mapping ordered payload unchanged assert |
+| B-IR04 | true SQL CAS/latest eligibility | 두 independent session이 같은 old hash로 다른 pointer write | 정확히 한 writer 성공, loser typed conflict, mixed row 0; timestamp-null CURRENT_PRICE latest 0 | P0 | barrier 기반 two-session execution, sequential 호출을 concurrency로 표시 금지 |
+| B-IR05 | real mid-migration cleanup | 0001+fixture 뒤 0002 후반 table sentinel 충돌 | revision 0001, earlier CP3 table 0, Phase 1 rows/sentinel unchanged, retry 가능 | P0 | 첫 table failure가 아닌 후반 DDL failure와 byte/row dump compare |
+| B-IR06 | raw no-replace race | publish 직전 competing same/different target | same bytes dedupe; different bytes typed conflict; overwrite 0; temp cleanup | P0 | in-memory hook으로 competing target을 먼저 만들고 surviving bytes assert |
+
 ## N. 비범위와 보안
 
 CP3-C와 후속 live checkpoint의 별도 승인 전 계속 금지:
@@ -590,8 +604,8 @@ CP3-C와 후속 live checkpoint의 별도 승인 전 계속 금지:
 - CP1: `PASS`
 - CP2: `COMPLETE`
 - CP3-A: `PASS — CONTRACT APPROVED AND CLOSED`
-- CP3-B: `IMPLEMENTED — AWAITING GPT INDEPENDENT REVIEW`
+- CP3-B: `REVISED AFTER INDEPENDENT REVIEW — AWAITING GPT RE-REVIEW`
 - CP3-C: `NOT STARTED`
 - Phase 2: `IMPLEMENTATION IN PROGRESS`
 
-CP3-A는 application implementation 0, fixture/test/migration/dependency 변경 0, actual credential/API usage 0으로 closeout됐다. 별도 승인된 CP3-B는 provider contract/raw/source/migration/repository와 offline tests만 구현했고 독립검증 전이므로 `PASS`, `APPROVED`, `COMPLETE`가 아니다. CP3-C는 `NOT STARTED`이고 automatic checkpoint progression은 `PROHIBITED`다. LIVE_UNVERIFIED 항목은 승인으로 승격되지 않는다.
+CP3-A는 application implementation 0, fixture/test/migration/dependency 변경 0, actual credential/API usage 0으로 closeout됐다. 별도 승인된 CP3-B는 provider contract/raw/source/migration/repository와 offline tests를 구현하고 첫 독립검증의 P1 5건/P2 1건을 보완했지만 re-review 전이므로 `PASS`, `APPROVED`, `COMPLETE`가 아니다. CP3-C는 `NOT STARTED`이고 automatic checkpoint progression은 `PROHIBITED`다. LIVE_UNVERIFIED 항목은 승인으로 승격되지 않는다.

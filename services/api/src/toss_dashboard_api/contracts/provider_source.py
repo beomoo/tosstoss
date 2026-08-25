@@ -74,6 +74,17 @@ _ALLOWED_QUERY_KEYS: dict[str, frozenset[str]] = {
     "/api/v1/stocks": frozenset({"symbols"}),
     "/api/v1/prices": frozenset({"symbols"}),
 }
+PROVIDER_DATASET_BY_PATH: dict[str, ProviderDataset] = {
+    "/api/v1/stocks/all": ProviderDataset.STOCK_DISCOVERY,
+    "/api/v1/stocks": ProviderDataset.STOCK_DETAIL,
+    "/api/v1/prices": ProviderDataset.CURRENT_PRICE,
+}
+PROVIDER_SOURCE_LOCATOR_BY_DATASET: dict[ProviderDataset, str] = {
+    ProviderDataset.STOCK_DISCOVERY: "provider://toss-open-api/market/stock-discovery",
+    ProviderDataset.STOCK_DETAIL: "provider://toss-open-api/market/stock-detail",
+    ProviderDataset.CURRENT_PRICE: "provider://toss-open-api/market/current-price",
+    ProviderDataset.DAILY_FLOW: "provider://toss-open-api/market/daily-flow",
+}
 
 
 class ProviderStrictModel(BaseModel):
@@ -421,10 +432,14 @@ class ProviderSourceVersion(ProviderStrictModel):
         elif self.dataset == ProviderDataset.CURRENT_PRICE:
             if self.observed_date is not None:
                 raise ValueError("current price forbids observed_date")
-            if self.observed_at is None and self.freshness_status != FreshnessStatus.UNKNOWN:
-                raise ValueError("current price without timestamp must have UNKNOWN freshness")
+            if self.freshness_status != FreshnessStatus.UNKNOWN:
+                raise ValueError("current price must have UNKNOWN freshness before CP3-D2")
         elif self.dataset == ProviderDataset.DAILY_FLOW and self.observed_date is None:
             raise ValueError("daily flow requires observed_date")
+
+        expected_locator = PROVIDER_SOURCE_LOCATOR_BY_DATASET[self.dataset]
+        if self.source_locator != expected_locator:
+            raise ValueError("source_locator does not match provider dataset")
 
         if self.revision_status == RevisionStatus.ORIGINAL and self.supersedes_id is not None:
             raise ValueError("original provider source cannot supersede another version")

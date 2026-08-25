@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 import hashlib
-from datetime import UTC, datetime
+from concurrent.futures import ThreadPoolExecutor
+from datetime import UTC, date, datetime
 from pathlib import Path
+from threading import Barrier
 
 import pytest
 from pydantic import ValidationError
-from sqlalchemy import func, select, text
+from sqlalchemy import func, select, text, update
 
 from toss_dashboard_api.contracts.base import canonical_json_bytes, sha256_prefixed
 from toss_dashboard_api.contracts.enums import (
@@ -43,6 +45,7 @@ from toss_dashboard_api.contracts.provider_source import (
     provider_source_normalized_hash,
     provider_source_version_id,
 )
+from toss_dashboard_api.repositories.protocols import ProviderRepository
 from toss_dashboard_api.repositories.provider import (
     ProviderConditionalWriteConflict,
     ProviderContractConflict,
@@ -50,7 +53,9 @@ from toss_dashboard_api.repositories.provider import (
 )
 from toss_dashboard_api.storage.database import session_factory
 from toss_dashboard_api.storage.models import (
+    CollectionAttemptRow,
     ProviderAuditEventRow,
+    ProviderIdentityMappingRow,
     ProviderLatestPointerRow,
     ProviderRawManifestRow,
     ProviderSourceVersionRow,
@@ -65,6 +70,10 @@ def repository(database_context, raw_store: ProviderRawStore) -> SQLiteProviderR
     return SQLiteProviderRepository(session_factory(database_context.engine), raw_store)
 
 
+def require_provider_repository_protocol(value: ProviderRepository) -> ProviderRepository:
+    return value
+
+
 def source_contract(
     *,
     request,
@@ -72,29 +81,37 @@ def source_contract(
     source_version_id: str | None = None,
     revision_status: RevisionStatus = RevisionStatus.ORIGINAL,
     supersedes_id: str | None = None,
+    dataset: ProviderDataset = ProviderDataset.STOCK_DISCOVERY,
+    source_locator: str = "provider://toss-open-api/market/stock-discovery",
+    fetched_at: datetime | None = None,
+    parser_version: str = "toss-source-parser/0.1.0",
+    observed_at: datetime | None = None,
+    observed_date: date | None = None,
+    freshness_status: FreshnessStatus = FreshnessStatus.UNKNOWN,
 ) -> ProviderSourceVersion:
+    missing_reasons = {"published_at": MissingReason.NOT_PROVIDED}
+    if observed_at is None:
+        missing_reasons["observed_at"] = MissingReason.NOT_PROVIDED
+    if observed_date is None:
+        missing_reasons["observed_date"] = MissingReason.NOT_PROVIDED
     payload: dict[str, object] = {
         "source_version_id": "tsrc_pending",
         "provider": ProviderSystem.TOSS_OPEN_API,
-        "dataset": ProviderDataset.STOCK_DISCOVERY,
+        "dataset": dataset,
         "canonical_request_id": request.canonical_request_id,
         "raw_response_id": manifest.raw_response_id,
-        "source_locator": "provider://toss-open-api/market/stock-discovery",
-        "observed_at": None,
-        "observed_date": None,
+        "source_locator": source_locator,
+        "observed_at": observed_at,
+        "observed_date": observed_date,
         "published_at": None,
-        "fetched_at": NOW,
-        "missing_reasons": {
-            "observed_at": MissingReason.NOT_PROVIDED,
-            "observed_date": MissingReason.NOT_PROVIDED,
-            "published_at": MissingReason.NOT_PROVIDED,
-        },
-        "freshness_status": FreshnessStatus.UNKNOWN,
+        "fetched_at": manifest.fetched_at if fetched_at is None else fetched_at,
+        "missing_reasons": missing_reasons,
+        "freshness_status": freshness_status,
         "finality_status": FinalityStatus.UNKNOWN,
         "revision_status": revision_status,
         "supersedes_id": supersedes_id,
         "raw_content_hash": manifest.raw_content_hash,
-        "parser_version": "toss-source-parser/0.1.0",
+        "parser_version": parser_version,
         "provider_contract_version": PROVIDER_SOURCE_CONTRACT_VERSION,
         "raw_storage_ref": manifest.raw_storage_ref,
     }
@@ -129,11 +146,52 @@ def persisted_graph(database_context, workspace_tmp_path: Path, raw_bytes: bytes
     return repo, request, manifest, source
 
 
-def completed_attempt(request_id: str) -> CollectionAttempt:
+def persisted_dataset_graph(
+    database_context,
+    workspace_tmp_path: Path,
+    *,
+    path: str,
+    query: dict[str, object],
+    dataset: ProviderDataset,
+    source_locator: str,
+    raw_bytes: bytes,
+    observed_at: datetime | None = None,
+):
+    raw_store = ProviderRawStore(workspace_tmp_path / "raw")
+    repo = repository(database_context, raw_store)
+    request = build_canonical_request(path, query)  # type: ignore[arg-type]
+    stored = raw_store.persist(raw_bytes)
+    manifest = build_provider_raw_manifest(
+        request=request,
+        http_status=200,
+        raw_content_hash=stored.raw_content_hash,
+        raw_storage_ref=stored.raw_storage_ref,
+        fetched_at=NOW,
+        response_metadata=ProviderResponseMetadata(content_type="application/json"),
+        parser_version="toss-source-parser/0.1.0",
+    )
+    repo.insert_or_verify_canonical_request(request)
+    repo.insert_or_verify_raw_manifest(manifest)
+    source = source_contract(
+        request=request,
+        manifest=manifest,
+        dataset=dataset,
+        source_locator=source_locator,
+        observed_at=observed_at,
+    )
+    return repo, request, manifest, source
+
+
+def completed_attempt(
+    request_id: str,
+    *,
+    attempt_id: str = "attempt_cp3b_001",
+    dataset: ProviderDataset = ProviderDataset.STOCK_DISCOVERY,
+) -> CollectionAttempt:
     return CollectionAttempt(
-        attempt_id="attempt_cp3b_001",
+        attempt_id=attempt_id,
         provider=ProviderSystem.TOSS_OPEN_API,
-        dataset=ProviderDataset.STOCK_DISCOVERY,
+        dataset=dataset,
         canonical_request_id=request_id,
         started_at=NOW,
         finished_at=datetime(2026, 8, 25, 1, 2, 4, tzinfo=UTC),
@@ -144,19 +202,29 @@ def completed_attempt(request_id: str) -> CollectionAttempt:
     )
 
 
-def audit_event(source_version_id: str, *, event_id: str = "audit_cp3b_001") -> ProviderAuditEvent:
+def audit_event(
+    source_version_id: str | None,
+    *,
+    event_id: str = "audit_cp3b_001",
+    attempt_id: str = "attempt_cp3b_001",
+    event_type: ProviderAuditEventType = ProviderAuditEventType.SOURCE_APPENDED,
+) -> ProviderAuditEvent:
     return ProviderAuditEvent(
         audit_event_id=event_id,
-        attempt_id="attempt_cp3b_001",
+        attempt_id=attempt_id,
         source_version_id=source_version_id,
-        event_type=ProviderAuditEventType.SOURCE_APPENDED,
+        event_type=event_type,
         safe_status="SUCCEEDED",
         record_count=1,
         occurred_at=datetime(2026, 8, 25, 1, 2, 4, tzinfo=UTC),
     )
 
 
-def provider_identity(source_version_id: str) -> ProviderSecurityIdentity:
+def provider_identity(
+    source_version_id: str,
+    *,
+    identity_state: ProviderIdentityState = ProviderIdentityState.ACTIVE,
+) -> ProviderSecurityIdentity:
     anchor = "toss-identity-v1|KR|FIRST_SEEN_RAW|A|evidence"
     digest = hashlib.sha256(anchor.encode()).hexdigest()
     return ProviderSecurityIdentity(
@@ -164,7 +232,7 @@ def provider_identity(source_version_id: str) -> ProviderSecurityIdentity:
         provider=ProviderSystem.TOSS_OPEN_API,
         market=Market.KR,
         allocation_anchor_hash=f"sha256:{digest}",
-        identity_state=ProviderIdentityState.ACTIVE,
+        identity_state=identity_state,
         mapping_status=MappingStatus.UNRESOLVED,
         first_source_version_id=source_version_id,
         latest_source_version_id=source_version_id,
@@ -172,14 +240,44 @@ def provider_identity(source_version_id: str) -> ProviderSecurityIdentity:
     )
 
 
-def latest_pointer(identity_id: str, source_version_id: str, suffix: str) -> ProviderLatestPointer:
-    return ProviderLatestPointer(
-        latest_pointer_id=provider_latest_pointer_id(ProviderDataset.STOCK_DISCOVERY, identity_id),
-        dataset=ProviderDataset.STOCK_DISCOVERY,
+def verified_mapping(
+    identity_id: str,
+    source_version_id: str,
+    *,
+    mapping_id: str = "pmap_verified_a",
+    issuer_id: str = "issuer_kr_synthetic",
+    security_id: str = "security_kr_synthetic_common",
+) -> ProviderIdentityMapping:
+    return ProviderIdentityMapping(
+        mapping_id=mapping_id,
         provider_security_identity_id=identity_id,
-        normalized_record_id=f"normalized_{suffix}",
+        issuer_id=issuer_id,
+        security_id=security_id,
+        mapping_status=MappingStatus.VERIFIED,
+        evidence_source_version_id=source_version_id,
+        approved_at=NOW,
+        valid_from=None,
+        valid_to=None,
+        provider_contract_version=PROVIDER_IDENTITY_CONTRACT_VERSION,
+    )
+
+
+def latest_pointer(
+    identity_id: str,
+    source_version_id: str,
+    suffix: str,
+    *,
+    dataset: ProviderDataset = ProviderDataset.STOCK_DISCOVERY,
+    observed_at: datetime | None = None,
+) -> ProviderLatestPointer:
+    normalized_suffix = suffix.replace("-", "_")
+    return ProviderLatestPointer(
+        latest_pointer_id=provider_latest_pointer_id(dataset, identity_id),
+        dataset=dataset,
+        provider_security_identity_id=identity_id,
+        normalized_record_id=f"normalized_{normalized_suffix}",
         source_version_id=source_version_id,
-        accepted_observed_at=None,
+        accepted_observed_at=observed_at,
         accepted_observed_date=None,
         state_hash=sha256_prefixed(suffix.encode()),
         provider_contract_version=PROVIDER_IDENTITY_CONTRACT_VERSION,
@@ -191,6 +289,14 @@ def test_canonical_request_insert_or_verify_is_idempotent(
 ) -> None:
     repo, request, _, _ = persisted_graph(database_context, workspace_tmp_path)
     assert repo.insert_or_verify_canonical_request(request).inserted is False
+
+
+def test_provider_repository_protocol_includes_atomic_source_and_audit_method(
+    database_context, workspace_tmp_path: Path
+) -> None:
+    repo, _, _, _ = persisted_graph(database_context, workspace_tmp_path)
+    protocol_value = require_provider_repository_protocol(repo)
+    assert callable(protocol_value.record_source_version_with_audit)
 
 
 def test_same_request_id_with_conflicting_payload_fails_closed(
@@ -246,6 +352,65 @@ def test_same_raw_id_with_conflicting_payload_fails_closed(
         repo.insert_or_verify_raw_manifest(conflicting)
 
 
+def test_same_raw_bytes_later_fetch_returns_first_seen_immutable_manifest(
+    database_context, workspace_tmp_path: Path
+) -> None:
+    repo, request, manifest, _ = persisted_graph(database_context, workspace_tmp_path)
+    later = build_provider_raw_manifest(
+        request=request,
+        http_status=manifest.http_status,
+        raw_content_hash=manifest.raw_content_hash,
+        raw_storage_ref=manifest.raw_storage_ref,
+        fetched_at=datetime(2026, 8, 25, 2, 2, 3, tzinfo=UTC),
+        response_metadata=manifest.response_metadata,
+        parser_version=manifest.parser_version,
+    )
+    result = repo.insert_or_verify_raw_manifest(later)
+    assert result.inserted is False
+    assert result.record == manifest
+
+
+def test_same_raw_bytes_changed_safe_telemetry_returns_first_seen_manifest(
+    database_context, workspace_tmp_path: Path
+) -> None:
+    repo, request, manifest, _ = persisted_graph(database_context, workspace_tmp_path)
+    later = build_provider_raw_manifest(
+        request=request,
+        http_status=manifest.http_status,
+        raw_content_hash=manifest.raw_content_hash,
+        raw_storage_ref=manifest.raw_storage_ref,
+        fetched_at=datetime(2026, 8, 25, 2, 2, 3, tzinfo=UTC),
+        response_metadata=ProviderResponseMetadata(
+            request_id="safe-request-2",
+            rate_limit=10,
+            rate_remaining=9,
+            rate_reset_seconds=5,
+            content_type="application/json",
+        ),
+        parser_version=manifest.parser_version,
+    )
+    result = repo.insert_or_verify_raw_manifest(later)
+    assert result.inserted is False
+    assert result.record == manifest
+
+
+def test_same_raw_bytes_changed_content_type_fails_closed(
+    database_context, workspace_tmp_path: Path
+) -> None:
+    repo, request, manifest, _ = persisted_graph(database_context, workspace_tmp_path)
+    conflicting = build_provider_raw_manifest(
+        request=request,
+        http_status=manifest.http_status,
+        raw_content_hash=manifest.raw_content_hash,
+        raw_storage_ref=manifest.raw_storage_ref,
+        fetched_at=manifest.fetched_at,
+        response_metadata=ProviderResponseMetadata(content_type=None),
+        parser_version=manifest.parser_version,
+    )
+    with pytest.raises(ProviderContractConflict, match="conflicting content"):
+        repo.insert_or_verify_raw_manifest(conflicting)
+
+
 def test_same_request_and_raw_hash_creates_no_duplicate_source(
     database_context, workspace_tmp_path: Path
 ) -> None:
@@ -266,6 +431,85 @@ def test_duplicate_semantics_with_another_source_id_returns_existing_version(
     result = repo.append_source_version(bypassed)
     assert result.inserted is False
     assert result.record.source_version_id == source.source_version_id
+
+
+def test_same_source_later_fetch_returns_first_seen_source_version(
+    database_context, workspace_tmp_path: Path
+) -> None:
+    repo, request, manifest, source = persisted_graph(database_context, workspace_tmp_path)
+    repo.append_source_version(source)
+    later_manifest = build_provider_raw_manifest(
+        request=request,
+        http_status=manifest.http_status,
+        raw_content_hash=manifest.raw_content_hash,
+        raw_storage_ref=manifest.raw_storage_ref,
+        fetched_at=datetime(2026, 8, 25, 3, 2, 3, tzinfo=UTC),
+        response_metadata=ProviderResponseMetadata(
+            request_id="safe-request-later", content_type="application/json"
+        ),
+        parser_version=manifest.parser_version,
+    )
+    assert repo.insert_or_verify_raw_manifest(later_manifest).record == manifest
+    later_source = source_contract(request=request, manifest=later_manifest)
+    result = repo.append_source_version(later_source)
+    assert result.inserted is False
+    assert result.record == source
+
+
+def test_duplicate_source_with_different_normalized_hash_fails_closed(
+    database_context, workspace_tmp_path: Path
+) -> None:
+    repo, _, _, source = persisted_graph(database_context, workspace_tmp_path)
+    repo.append_source_version(source)
+    conflicting = source.model_copy(
+        update={"normalized_content_hash": sha256_prefixed(b"different-normalized")}
+    )
+    with pytest.raises(ProviderContractConflict, match="semantic content"):
+        repo.append_source_version(conflicting)
+
+
+def test_duplicate_source_with_different_parser_version_fails_closed(
+    database_context, workspace_tmp_path: Path
+) -> None:
+    repo, request, manifest, source = persisted_graph(database_context, workspace_tmp_path)
+    repo.append_source_version(source)
+    conflicting = source_contract(
+        request=request,
+        manifest=manifest,
+        parser_version="toss-source-parser/0.2.0",
+    )
+    with pytest.raises(ProviderContractConflict, match="semantic content"):
+        repo.append_source_version(conflicting)
+
+
+def test_duplicate_source_with_different_dataset_fails_closed(
+    database_context, workspace_tmp_path: Path
+) -> None:
+    repo, request, manifest, source = persisted_graph(database_context, workspace_tmp_path)
+    repo.append_source_version(source)
+    conflicting = source_contract(
+        request=request,
+        manifest=manifest,
+        dataset=ProviderDataset.STOCK_DETAIL,
+        source_locator="provider://toss-open-api/market/stock-detail",
+    )
+    with pytest.raises(ProviderContractConflict, match="semantic content"):
+        repo.append_source_version(conflicting)
+
+
+def test_duplicate_source_with_different_revision_link_fails_closed(
+    database_context, workspace_tmp_path: Path
+) -> None:
+    repo, request, manifest, source = persisted_graph(database_context, workspace_tmp_path)
+    repo.append_source_version(source)
+    conflicting = source_contract(
+        request=request,
+        manifest=manifest,
+        revision_status=RevisionStatus.AMENDED,
+        supersedes_id=source.source_version_id,
+    )
+    with pytest.raises(ProviderContractConflict, match="semantic content"):
+        repo.append_source_version(conflicting)
 
 
 def test_same_request_different_raw_hash_appends_revision_and_preserves_old(
@@ -298,6 +542,152 @@ def test_same_request_different_raw_hash_appends_revision_and_preserves_old(
     ]
 
 
+def test_prices_path_rejects_daily_flow_source_dataset(
+    database_context, workspace_tmp_path: Path
+) -> None:
+    repo, request, manifest, _ = persisted_dataset_graph(
+        database_context,
+        workspace_tmp_path,
+        path="/api/v1/prices",
+        query={"symbols": ["A"]},
+        dataset=ProviderDataset.CURRENT_PRICE,
+        source_locator="provider://toss-open-api/market/current-price",
+        raw_bytes=b"price-daily-flow-mismatch",
+    )
+    invalid = source_contract(
+        request=request,
+        manifest=manifest,
+        dataset=ProviderDataset.DAILY_FLOW,
+        source_locator="provider://toss-open-api/market/daily-flow",
+        observed_date=date(2026, 8, 25),
+    )
+    with pytest.raises(ProviderContractConflict, match="path and source dataset"):
+        repo.append_source_version(invalid)
+
+
+def test_stocks_all_path_rejects_current_price_source_dataset(
+    database_context, workspace_tmp_path: Path
+) -> None:
+    repo, request, manifest, _ = persisted_graph(database_context, workspace_tmp_path)
+    invalid = source_contract(
+        request=request,
+        manifest=manifest,
+        dataset=ProviderDataset.CURRENT_PRICE,
+        source_locator="provider://toss-open-api/market/current-price",
+        observed_at=NOW,
+    )
+    with pytest.raises(ProviderContractConflict, match="path and source dataset"):
+        repo.append_source_version(invalid)
+
+
+def test_source_rejects_fetched_at_that_does_not_match_raw_observation(
+    database_context, workspace_tmp_path: Path
+) -> None:
+    repo, request, manifest, _ = persisted_graph(database_context, workspace_tmp_path)
+    invalid = source_contract(
+        request=request,
+        manifest=manifest,
+        fetched_at=datetime(2026, 8, 25, 2, 2, 3, tzinfo=UTC),
+    )
+    with pytest.raises(ProviderContractConflict, match="trace does not match"):
+        repo.append_source_version(invalid)
+
+
+def test_source_rejects_parser_that_does_not_match_raw_manifest(
+    database_context, workspace_tmp_path: Path
+) -> None:
+    repo, request, manifest, _ = persisted_graph(database_context, workspace_tmp_path)
+    invalid = source_contract(
+        request=request,
+        manifest=manifest,
+        parser_version="toss-source-parser/0.2.0",
+    )
+    with pytest.raises(ProviderContractConflict, match="trace does not match"):
+        repo.append_source_version(invalid)
+
+
+def test_collection_attempt_rejects_dataset_mismatch_with_request(
+    database_context, workspace_tmp_path: Path
+) -> None:
+    repo, request, _, _ = persisted_graph(database_context, workspace_tmp_path)
+    invalid = completed_attempt(request.canonical_request_id, dataset=ProviderDataset.CURRENT_PRICE)
+    with pytest.raises(ProviderContractConflict, match="does not match canonical request"):
+        repo.record_collection_attempt(invalid)
+
+
+def test_audit_rejects_attempt_request_mismatch(database_context, workspace_tmp_path: Path) -> None:
+    repo, request, _, source = persisted_graph(database_context, workspace_tmp_path)
+    repo.append_source_version(source)
+    other_request = build_canonical_request("/api/v1/stocks/all", {"market": "US"})
+    repo.insert_or_verify_canonical_request(other_request)
+    repo.record_collection_attempt(completed_attempt(other_request.canonical_request_id))
+    with pytest.raises(ProviderContractConflict, match="attempt and source trace"):
+        repo.append_audit_event(audit_event(source.source_version_id))
+    assert request.canonical_request_id != other_request.canonical_request_id
+
+
+def test_audit_rejects_attempt_dataset_mismatch(database_context, workspace_tmp_path: Path) -> None:
+    repo, request, _, source = persisted_graph(database_context, workspace_tmp_path)
+    repo.append_source_version(source)
+    repo.record_collection_attempt(completed_attempt(request.canonical_request_id))
+    with database_context.engine.begin() as connection:
+        connection.execute(
+            update(CollectionAttemptRow)
+            .where(CollectionAttemptRow.attempt_id == "attempt_cp3b_001")
+            .values(dataset=ProviderDataset.CURRENT_PRICE.value)
+        )
+    with pytest.raises(ProviderContractConflict, match="attempt and source trace"):
+        repo.append_audit_event(audit_event(source.source_version_id))
+
+
+def test_audit_rejects_attempt_provider_mismatch(
+    database_context, workspace_tmp_path: Path
+) -> None:
+    repo, request, _, source = persisted_graph(database_context, workspace_tmp_path)
+    repo.append_source_version(source)
+    repo.record_collection_attempt(completed_attempt(request.canonical_request_id))
+    with database_context.engine.begin() as connection:
+        connection.execute(
+            update(CollectionAttemptRow)
+            .where(CollectionAttemptRow.attempt_id == "attempt_cp3b_001")
+            .values(provider="UNAPPROVED_PROVIDER")
+        )
+    with pytest.raises(ProviderContractConflict, match="attempt and source trace"):
+        repo.append_audit_event(audit_event(source.source_version_id))
+
+
+def test_source_appended_audit_without_source_is_rejected(
+    database_context, workspace_tmp_path: Path
+) -> None:
+    repo, request, _, _ = persisted_graph(database_context, workspace_tmp_path)
+    repo.record_collection_attempt(completed_attempt(request.canonical_request_id))
+    event = audit_event(None)
+    with pytest.raises(ProviderContractConflict, match="requires a source version"):
+        repo.append_audit_event(event)
+
+
+def test_trace_mismatch_rolls_back_source_and_audit_together(
+    database_context, workspace_tmp_path: Path
+) -> None:
+    repo, _, _, source = persisted_graph(database_context, workspace_tmp_path)
+    other_request = build_canonical_request("/api/v1/stocks/all", {"market": "US"})
+    repo.insert_or_verify_canonical_request(other_request)
+    repo.record_collection_attempt(completed_attempt(other_request.canonical_request_id))
+    with pytest.raises(ProviderContractConflict, match="attempt and source trace"):
+        repo.record_source_version_with_audit(source, audit_event(source.source_version_id))
+    with database_context.engine.connect() as connection:
+        assert (
+            connection.execute(
+                select(func.count()).select_from(ProviderSourceVersionRow)
+            ).scalar_one()
+            == 0
+        )
+        assert (
+            connection.execute(select(func.count()).select_from(ProviderAuditEventRow)).scalar_one()
+            == 0
+        )
+
+
 def test_collection_attempt_and_audit_are_append_only(
     database_context, workspace_tmp_path: Path
 ) -> None:
@@ -309,6 +699,43 @@ def test_collection_attempt_and_audit_are_append_only(
     event = audit_event(source.source_version_id)
     assert repo.append_audit_event(event).inserted is True
     assert repo.append_audit_event(event).inserted is False
+
+
+def test_duplicate_observation_records_distinct_attempt_and_audit_without_new_source(
+    database_context, workspace_tmp_path: Path
+) -> None:
+    repo, request, _, source = persisted_graph(database_context, workspace_tmp_path)
+    repo.append_source_version(source)
+    first_attempt = completed_attempt(request.canonical_request_id)
+    duplicate_attempt = completed_attempt(
+        request.canonical_request_id, attempt_id="attempt_cp3b_duplicate"
+    )
+    repo.record_collection_attempt(first_attempt)
+    repo.record_collection_attempt(duplicate_attempt)
+    repo.append_audit_event(audit_event(source.source_version_id))
+    repo.append_audit_event(
+        audit_event(
+            source.source_version_id,
+            event_id="audit_cp3b_duplicate",
+            attempt_id=duplicate_attempt.attempt_id,
+            event_type=ProviderAuditEventType.DUPLICATE_OBSERVED,
+        )
+    )
+    with database_context.engine.connect() as connection:
+        assert (
+            connection.execute(select(func.count()).select_from(CollectionAttemptRow)).scalar_one()
+            == 2
+        )
+        assert (
+            connection.execute(select(func.count()).select_from(ProviderAuditEventRow)).scalar_one()
+            == 2
+        )
+        assert (
+            connection.execute(
+                select(func.count()).select_from(ProviderSourceVersionRow)
+            ).scalar_one()
+            == 1
+        )
 
 
 def test_source_and_audit_publish_atomically(database_context, workspace_tmp_path: Path) -> None:
@@ -335,7 +762,14 @@ def test_source_and_audit_exception_rolls_back_partial_database_publish(
     repo, request, _, source = persisted_graph(database_context, workspace_tmp_path)
     repo.record_collection_attempt(completed_attempt(request.canonical_request_id))
     existing_event = audit_event(source.source_version_id)
-    repo.append_audit_event(existing_event.model_copy(update={"source_version_id": None}))
+    repo.append_audit_event(
+        existing_event.model_copy(
+            update={
+                "source_version_id": None,
+                "event_type": ProviderAuditEventType.RAW_PERSISTED,
+            }
+        )
+    )
     conflicting = existing_event.model_copy(update={"safe_status": "FAILED"})
     with pytest.raises(ProviderContractConflict):
         repo.record_source_version_with_audit(source, conflicting)
@@ -431,6 +865,162 @@ def test_verified_mapping_without_canonical_security_is_rejected() -> None:
         )
 
 
+def test_verified_mapping_rejects_issuer_security_relationship_mismatch(
+    database_context, workspace_tmp_path: Path
+) -> None:
+    repo, _, _, source = persisted_graph(database_context, workspace_tmp_path)
+    repo.append_source_version(source)
+    identity = provider_identity(source.source_version_id)
+    repo.insert_or_verify_identity(identity)
+    mapping = verified_mapping(
+        identity.provider_security_identity_id,
+        source.source_version_id,
+        security_id="security_us_synthetic_common",
+    )
+    with pytest.raises(ProviderContractConflict, match="issuer and security do not match"):
+        repo.record_identity_mapping(mapping)
+
+
+def test_verified_mapping_rejects_missing_issuer(
+    database_context, workspace_tmp_path: Path
+) -> None:
+    repo, _, _, source = persisted_graph(database_context, workspace_tmp_path)
+    repo.append_source_version(source)
+    identity = provider_identity(source.source_version_id)
+    repo.insert_or_verify_identity(identity)
+    mapping = verified_mapping(
+        identity.provider_security_identity_id,
+        source.source_version_id,
+        issuer_id="issuer_missing",
+    )
+    with pytest.raises(ProviderContractConflict, match="existing issuer and security"):
+        repo.record_identity_mapping(mapping)
+
+
+def test_verified_mapping_rejects_missing_security(
+    database_context, workspace_tmp_path: Path
+) -> None:
+    repo, _, _, source = persisted_graph(database_context, workspace_tmp_path)
+    repo.append_source_version(source)
+    identity = provider_identity(source.source_version_id)
+    repo.insert_or_verify_identity(identity)
+    mapping = verified_mapping(
+        identity.provider_security_identity_id,
+        source.source_version_id,
+        security_id="security_missing",
+    )
+    with pytest.raises(ProviderContractConflict, match="existing issuer and security"):
+        repo.record_identity_mapping(mapping)
+
+
+@pytest.mark.parametrize(
+    "identity_state",
+    [ProviderIdentityState.QUARANTINED, ProviderIdentityState.UNRESOLVED_COLLISION],
+)
+def test_verified_mapping_rejects_non_active_identity(
+    database_context, workspace_tmp_path: Path, identity_state: ProviderIdentityState
+) -> None:
+    repo, _, _, source = persisted_graph(database_context, workspace_tmp_path)
+    repo.append_source_version(source)
+    identity = provider_identity(source.source_version_id, identity_state=identity_state)
+    repo.insert_or_verify_identity(identity)
+    mapping = verified_mapping(identity.provider_security_identity_id, source.source_version_id)
+    with pytest.raises(ProviderContractConflict, match="active provider identity"):
+        repo.record_identity_mapping(mapping)
+
+
+def test_verified_mapping_rejects_unrelated_evidence_source(
+    database_context, workspace_tmp_path: Path
+) -> None:
+    repo, _, _, source = persisted_graph(database_context, workspace_tmp_path)
+    repo.append_source_version(source)
+    identity = provider_identity(source.source_version_id)
+    repo.insert_or_verify_identity(identity)
+    repo_again, _, _, unrelated = persisted_graph(
+        database_context, workspace_tmp_path, raw_bytes=b"unrelated-evidence"
+    )
+    repo_again.append_source_version(unrelated)
+    mapping = verified_mapping(identity.provider_security_identity_id, unrelated.source_version_id)
+    with pytest.raises(ProviderContractConflict, match="outside provider identity lineage"):
+        repo.record_identity_mapping(mapping)
+
+
+def test_verified_mapping_accepts_first_source_lineage_and_valid_relationship(
+    database_context, workspace_tmp_path: Path
+) -> None:
+    repo, _, _, source = persisted_graph(database_context, workspace_tmp_path)
+    repo.append_source_version(source)
+    identity = provider_identity(source.source_version_id)
+    repo.insert_or_verify_identity(identity)
+    mapping = verified_mapping(identity.provider_security_identity_id, source.source_version_id)
+    result = repo.record_identity_mapping(mapping)
+    assert result.inserted is True
+    assert result.record == mapping
+
+
+def test_verified_mapping_accepts_identifier_history_evidence_lineage(
+    database_context, workspace_tmp_path: Path
+) -> None:
+    repo, _, _, source = persisted_graph(database_context, workspace_tmp_path)
+    repo.append_source_version(source)
+    identity = provider_identity(source.source_version_id)
+    repo.insert_or_verify_identity(identity)
+    repo_again, _, _, enriched_source = persisted_graph(
+        database_context, workspace_tmp_path, raw_bytes=b"identifier-enrichment"
+    )
+    repo_again.append_source_version(enriched_source)
+    history = ProviderIdentifierHistory(
+        identifier_history_id="pih_enriched_mapping_evidence",
+        provider_security_identity_id=identity.provider_security_identity_id,
+        identifier_kind=ProviderIdentifierKind.ISIN,
+        identifier_value="KR0000000001",
+        valid_from=None,
+        valid_to=None,
+        source_version_id=enriched_source.source_version_id,
+        revision_reason=ProviderIdentifierReason.ENRICHMENT,
+        provider_contract_version=PROVIDER_IDENTITY_CONTRACT_VERSION,
+    )
+    repo.append_identifier_history(history)
+    mapping = verified_mapping(
+        identity.provider_security_identity_id, enriched_source.source_version_id
+    )
+    assert repo.record_identity_mapping(mapping).inserted is True
+
+
+def test_rejected_verified_mapping_preserves_existing_mapping_state(
+    database_context, workspace_tmp_path: Path
+) -> None:
+    repo, _, _, source = persisted_graph(database_context, workspace_tmp_path)
+    repo.append_source_version(source)
+    identity = provider_identity(source.source_version_id)
+    repo.insert_or_verify_identity(identity)
+    unresolved = ProviderIdentityMapping(
+        mapping_id="pmap_existing_unresolved",
+        provider_security_identity_id=identity.provider_security_identity_id,
+        issuer_id=None,
+        security_id=None,
+        mapping_status=MappingStatus.UNRESOLVED,
+        evidence_source_version_id=source.source_version_id,
+        approved_at=None,
+        valid_from=None,
+        valid_to=None,
+        provider_contract_version=PROVIDER_IDENTITY_CONTRACT_VERSION,
+    )
+    repo.record_identity_mapping(unresolved)
+    invalid = verified_mapping(
+        identity.provider_security_identity_id,
+        source.source_version_id,
+        mapping_id="pmap_rejected_verified",
+        security_id="security_us_synthetic_common",
+    )
+    with pytest.raises(ProviderContractConflict):
+        repo.record_identity_mapping(invalid)
+    with database_context.engine.connect() as connection:
+        rows = connection.execute(select(ProviderIdentityMappingRow.payload_json)).scalars().all()
+    assert len(rows) == 1
+    assert ProviderIdentityMapping.model_validate_json(rows[0]) == unresolved
+
+
 def test_latest_pointer_compare_and_set_is_atomic_and_idempotent(
     database_context, workspace_tmp_path: Path
 ) -> None:
@@ -469,6 +1059,255 @@ def test_latest_pointer_failed_precondition_preserves_last_known_good(
         repo.read_latest_pointer(first.dataset.value, identity.provider_security_identity_id)
         == first
     )
+
+
+def test_current_price_timestamp_unknown_source_is_latest_eligible(
+    database_context, workspace_tmp_path: Path
+) -> None:
+    repo, _, _, source = persisted_dataset_graph(
+        database_context,
+        workspace_tmp_path,
+        path="/api/v1/prices",
+        query={"symbols": ["A"]},
+        dataset=ProviderDataset.CURRENT_PRICE,
+        source_locator="provider://toss-open-api/market/current-price",
+        raw_bytes=b"current-price-timestamp",
+        observed_at=NOW,
+    )
+    repo.append_source_version(source)
+    identity = provider_identity(source.source_version_id)
+    repo.insert_or_verify_identity(identity)
+    pointer = latest_pointer(
+        identity.provider_security_identity_id,
+        source.source_version_id,
+        "current-price",
+        dataset=ProviderDataset.CURRENT_PRICE,
+        observed_at=NOW,
+    )
+    assert source.freshness_status == FreshnessStatus.UNKNOWN
+    assert repo.conditional_write_latest(pointer, expected_state_hash=None).inserted is True
+
+
+def test_current_price_null_timestamp_source_is_storable_but_not_latest_eligible(
+    database_context, workspace_tmp_path: Path
+) -> None:
+    repo, _, _, source = persisted_dataset_graph(
+        database_context,
+        workspace_tmp_path,
+        path="/api/v1/prices",
+        query={"symbols": ["A"]},
+        dataset=ProviderDataset.CURRENT_PRICE,
+        source_locator="provider://toss-open-api/market/current-price",
+        raw_bytes=b"current-price-null-timestamp",
+    )
+    assert repo.append_source_version(source).inserted is True
+    identity = provider_identity(source.source_version_id)
+    repo.insert_or_verify_identity(identity)
+    pointer = latest_pointer(
+        identity.provider_security_identity_id,
+        source.source_version_id,
+        "current-price-null",
+        dataset=ProviderDataset.CURRENT_PRICE,
+    )
+    with pytest.raises(ProviderContractConflict, match="not latest eligible"):
+        repo.conditional_write_latest(pointer, expected_state_hash=None)
+    assert repo.source_revision_chain(source.source_version_id) == [source]
+
+
+@pytest.mark.parametrize(
+    "identity_state",
+    [ProviderIdentityState.QUARANTINED, ProviderIdentityState.UNRESOLVED_COLLISION],
+)
+def test_latest_pointer_rejects_quarantine_or_collision_identity(
+    database_context,
+    workspace_tmp_path: Path,
+    identity_state: ProviderIdentityState,
+) -> None:
+    repo, _, _, source = persisted_graph(database_context, workspace_tmp_path)
+    repo.append_source_version(source)
+    identity = provider_identity(source.source_version_id, identity_state=identity_state)
+    repo.insert_or_verify_identity(identity)
+    pointer = latest_pointer(
+        identity.provider_security_identity_id, source.source_version_id, "ineligible"
+    )
+    with pytest.raises(ProviderContractConflict, match="active provider identity"):
+        repo.conditional_write_latest(pointer, expected_state_hash=None)
+
+
+def test_latest_pointer_rejects_dataset_mismatch_with_source(
+    database_context, workspace_tmp_path: Path
+) -> None:
+    repo, _, _, source = persisted_graph(database_context, workspace_tmp_path)
+    repo.append_source_version(source)
+    identity = provider_identity(source.source_version_id)
+    repo.insert_or_verify_identity(identity)
+    pointer = latest_pointer(
+        identity.provider_security_identity_id,
+        source.source_version_id,
+        "wrong-dataset",
+        dataset=ProviderDataset.STOCK_DETAIL,
+    )
+    with pytest.raises(ProviderContractConflict, match="does not match source lineage"):
+        repo.conditional_write_latest(pointer, expected_state_hash=None)
+
+
+def test_latest_pointer_rejects_observation_mismatch_with_source(
+    database_context, workspace_tmp_path: Path
+) -> None:
+    repo, _, _, source = persisted_graph(database_context, workspace_tmp_path)
+    repo.append_source_version(source)
+    identity = provider_identity(source.source_version_id)
+    repo.insert_or_verify_identity(identity)
+    pointer = latest_pointer(
+        identity.provider_security_identity_id,
+        source.source_version_id,
+        "wrong-observation",
+        observed_at=NOW,
+    )
+    with pytest.raises(ProviderContractConflict, match="does not match source lineage"):
+        repo.conditional_write_latest(pointer, expected_state_hash=None)
+
+
+def test_latest_pointer_rejects_source_outside_identity_lineage(
+    database_context, workspace_tmp_path: Path
+) -> None:
+    repo, _, _, source = persisted_graph(database_context, workspace_tmp_path)
+    repo.append_source_version(source)
+    identity = provider_identity(source.source_version_id)
+    repo.insert_or_verify_identity(identity)
+    repo_again, _, _, unrelated = persisted_graph(
+        database_context, workspace_tmp_path, raw_bytes=b"latest-unrelated-source"
+    )
+    repo_again.append_source_version(unrelated)
+    pointer = latest_pointer(
+        identity.provider_security_identity_id, unrelated.source_version_id, "unrelated"
+    )
+    with pytest.raises(ProviderContractConflict, match="does not match source lineage"):
+        repo.conditional_write_latest(pointer, expected_state_hash=None)
+
+
+def test_two_independent_sessions_cas_exactly_one_writer_wins(
+    database_context, workspace_tmp_path: Path
+) -> None:
+    raw_store = ProviderRawStore(workspace_tmp_path / "raw")
+    repo = repository(database_context, raw_store)
+    request = build_canonical_request("/api/v1/stocks/all", {"market": "KR"})
+    stored = raw_store.persist(b"two-session-cas")
+    manifest = build_provider_raw_manifest(
+        request=request,
+        http_status=200,
+        raw_content_hash=stored.raw_content_hash,
+        raw_storage_ref=stored.raw_storage_ref,
+        fetched_at=NOW,
+        response_metadata=ProviderResponseMetadata(content_type="application/json"),
+        parser_version="toss-source-parser/0.1.0",
+    )
+    repo.insert_or_verify_canonical_request(request)
+    repo.insert_or_verify_raw_manifest(manifest)
+    source = source_contract(request=request, manifest=manifest)
+    repo.append_source_version(source)
+    identity = provider_identity(source.source_version_id)
+    repo.insert_or_verify_identity(identity)
+    first = latest_pointer(identity.provider_security_identity_id, source.source_version_id, "one")
+    repo.conditional_write_latest(first, expected_state_hash=None)
+    candidates = [
+        latest_pointer(
+            identity.provider_security_identity_id, source.source_version_id, "writer-a"
+        ),
+        latest_pointer(
+            identity.provider_security_identity_id, source.source_version_id, "writer-b"
+        ),
+    ]
+    barrier = Barrier(2)
+
+    def write(candidate: ProviderLatestPointer) -> str:
+        independent = repository(database_context, raw_store)
+        barrier.wait()
+        try:
+            independent.conditional_write_latest(candidate, expected_state_hash=first.state_hash)
+        except ProviderConditionalWriteConflict:
+            return "CONFLICT"
+        return "SUCCESS"
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        outcomes = list(executor.map(write, candidates))
+    assert sorted(outcomes) == ["CONFLICT", "SUCCESS"]
+    final = repo.read_latest_pointer(first.dataset.value, identity.provider_security_identity_id)
+    assert final in candidates
+    assert final is not None
+    assert (final.normalized_record_id, final.state_hash) in {
+        (candidate.normalized_record_id, candidate.state_hash) for candidate in candidates
+    }
+    assert repo.source_revision_chain(source.source_version_id) == [source]
+
+
+def test_two_independent_sessions_first_insert_race_keeps_one_complete_row(
+    database_context, workspace_tmp_path: Path
+) -> None:
+    repo, _, _, source = persisted_graph(database_context, workspace_tmp_path)
+    repo.append_source_version(source)
+    identity = provider_identity(source.source_version_id)
+    repo.insert_or_verify_identity(identity)
+    candidates = [
+        latest_pointer(
+            identity.provider_security_identity_id, source.source_version_id, "insert-a"
+        ),
+        latest_pointer(
+            identity.provider_security_identity_id, source.source_version_id, "insert-b"
+        ),
+    ]
+    raw_store = ProviderRawStore(workspace_tmp_path / "raw")
+    barrier = Barrier(2)
+
+    def insert(candidate: ProviderLatestPointer) -> str:
+        independent = repository(database_context, raw_store)
+        barrier.wait()
+        try:
+            independent.conditional_write_latest(candidate, expected_state_hash=None)
+        except ProviderConditionalWriteConflict:
+            return "CONFLICT"
+        return "SUCCESS"
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        outcomes = list(executor.map(insert, candidates))
+    assert sorted(outcomes) == ["CONFLICT", "SUCCESS"]
+    with database_context.engine.connect() as connection:
+        rows = connection.execute(select(ProviderLatestPointerRow.payload_json)).scalars().all()
+    assert len(rows) == 1
+    persisted = ProviderLatestPointer.model_validate_json(rows[0])
+    assert persisted in candidates
+
+
+def test_two_independent_sessions_same_first_insert_is_idempotent(
+    database_context, workspace_tmp_path: Path
+) -> None:
+    repo, _, _, source = persisted_graph(database_context, workspace_tmp_path)
+    repo.append_source_version(source)
+    identity = provider_identity(source.source_version_id)
+    repo.insert_or_verify_identity(identity)
+    candidate = latest_pointer(
+        identity.provider_security_identity_id, source.source_version_id, "same-insert"
+    )
+    raw_store = ProviderRawStore(workspace_tmp_path / "raw")
+    barrier = Barrier(2)
+
+    def insert() -> bool:
+        independent = repository(database_context, raw_store)
+        barrier.wait()
+        return independent.conditional_write_latest(candidate, expected_state_hash=None).inserted
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        outcomes = [
+            future.result() for future in [executor.submit(insert), executor.submit(insert)]
+        ]
+    assert sorted(outcomes) == [False, True]
+    with database_context.engine.connect() as connection:
+        assert (
+            connection.execute(
+                select(func.count()).select_from(ProviderLatestPointerRow)
+            ).scalar_one()
+            == 1
+        )
 
 
 def test_latest_failure_does_not_rollback_source_history(

@@ -1,5 +1,25 @@
 # Changelog
 
+## Unreleased — Phase 2 CP3-B Independent-Review Hardening — 2026-08-25
+
+### Fixed
+
+- same request/status/raw hash/provider contract의 later fetch에서 `fetched_at`·safe telemetry 차이를 semantic duplicate로 처리하고 first-seen raw/source manifest를 보존한다. dataset/parser/normalized hash/revision/supersedes 차이는 conflict다.
+- `/stocks/all → STOCK_DISCOVERY`, `/stocks → STOCK_DETAIL`, `/prices → CURRENT_PRICE` exact mapping과 request→raw→source→attempt/audit graph를 repository에서 강제한다. `DAILY_FLOW` persistence는 승인 endpoint가 없어 금지한다.
+- VERIFIED mapping은 ACTIVE identity, 실제 issuer/security 관계와 identity first/latest 또는 identifier-history source evidence를 요구한다.
+- provider latest update를 DB-level one-statement conditional SQL update로 변경하고 two-session winner 1/typed loser conflict, first-insert race와 complete-row 보존을 검증한다.
+- CURRENT_PRICE freshness는 CP3-D2 전 항상 `UNKNOWN`이며 timestamp-null source는 보존 가능하지만 latest pointer에는 사용할 수 없다.
+- `0002` 후반 DDL sentinel failure 시 earlier CP3 tables를 제거하고 0001 revision/Phase 1 rows/pre-existing sentinel을 보존한다.
+- raw final publish를 overwrite 가능한 rename에서 atomic no-replace로 변경해 competing same bytes는 dedupe, different bytes는 conflict로 처리한다.
+
+### QA and Status
+
+- backend exact inventory gate를 448에서 493으로 올리고 later-fetch/trace/mapping/two-session CAS/mid-migration/no-replace negative tests를 추가했다.
+- test file exact allowlist, control-plane count 70과 digest gate, missing/lookalike canary와 모든 보안 gate를 유지했다.
+- actual credential 사용과 actual Toss API request는 0이며 LIVE_VERIFIED 범위는 확대하지 않았다.
+- CP3-B: `REVISED AFTER INDEPENDENT REVIEW — AWAITING GPT RE-REVIEW`; CP3-C: `NOT STARTED`; automatic progression: `PROHIBITED`.
+- final staged full regression의 exact 결과와 exit code는 `qa/PHASE_02_CP3_B_FIX_CODEX_REPORT.md`에 기록한다.
+
 ## Unreleased — Phase 2 CP3-B Provider Source Trace Foundation — 2026-08-25
 
 ### Added

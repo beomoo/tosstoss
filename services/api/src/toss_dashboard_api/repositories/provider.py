@@ -3,10 +3,18 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from pydantic import BaseModel
-from sqlalchemy import select
+from sqlalchemy import select, update
+from sqlalchemy.dialects.sqlite import insert as sqlite_insert
+from sqlalchemy.exc import IntegrityError, OperationalError
 from sqlalchemy.orm import Session, sessionmaker
 
 from toss_dashboard_api.contracts.base import canonical_json_bytes
+from toss_dashboard_api.contracts.enums import (
+    MappingStatus,
+    ProviderAuditEventType,
+    ProviderDataset,
+    ProviderIdentityState,
+)
 from toss_dashboard_api.contracts.provider_identity import (
     ProviderIdentifierHistory,
     ProviderIdentityMapping,
@@ -14,6 +22,8 @@ from toss_dashboard_api.contracts.provider_identity import (
     ProviderSecurityIdentity,
 )
 from toss_dashboard_api.contracts.provider_source import (
+    PROVIDER_DATASET_BY_PATH,
+    PROVIDER_SOURCE_LOCATOR_BY_DATASET,
     CanonicalRequest,
     CollectionAttempt,
     ProviderAuditEvent,
@@ -23,6 +33,7 @@ from toss_dashboard_api.contracts.provider_source import (
 from toss_dashboard_api.storage.models import (
     CanonicalRequestRow,
     CollectionAttemptRow,
+    IssuerRow,
     ProviderAuditEventRow,
     ProviderIdentifierHistoryRow,
     ProviderIdentityMappingRow,
@@ -30,6 +41,7 @@ from toss_dashboard_api.storage.models import (
     ProviderRawManifestRow,
     ProviderSecurityIdentityRow,
     ProviderSourceVersionRow,
+    SecurityRow,
 )
 from toss_dashboard_api.storage.provider_raw import ProviderRawStore
 
@@ -44,6 +56,15 @@ class ProviderContractConflict(ProviderRepositoryError):
 
 class ProviderConditionalWriteConflict(ProviderRepositoryError):
     """A latest pointer compare-and-set precondition did not match."""
+
+
+_SOURCE_LINKED_AUDIT_EVENTS = frozenset(
+    {
+        ProviderAuditEventType.SOURCE_APPENDED,
+        ProviderAuditEventType.DUPLICATE_OBSERVED,
+        ProviderAuditEventType.LATEST_ACCEPTED,
+    }
+)
 
 
 @dataclass(frozen=True)
@@ -97,9 +118,7 @@ class SQLiteProviderRepository:
             self._verify_manifest_request(request, manifest)
             row = session.get(ProviderRawManifestRow, manifest.raw_response_id)
             if row is not None:
-                return InsertResult(
-                    self._verify_payload(row.payload_json, payload, manifest), False
-                )
+                return InsertResult(self._verify_raw_duplicate(row, manifest), False)
             duplicate = session.scalar(
                 select(ProviderRawManifestRow).where(
                     ProviderRawManifestRow.canonical_request_id == manifest.canonical_request_id,
@@ -108,9 +127,7 @@ class SQLiteProviderRepository:
                 )
             )
             if duplicate is not None:
-                return InsertResult(
-                    ProviderRawManifest.model_validate_json(duplicate.payload_json), False
-                )
+                return InsertResult(self._verify_raw_duplicate(duplicate, manifest), False)
             session.add(self._raw_manifest_row(manifest, payload))
         return InsertResult(manifest, True)
 
@@ -157,6 +174,7 @@ class SQLiteProviderRepository:
             row = session.get(CollectionAttemptRow, attempt.attempt_id)
             if row is not None:
                 return InsertResult(self._verify_payload(row.payload_json, payload, attempt), False)
+            self._validate_attempt_request(session, attempt)
             session.add(
                 CollectionAttemptRow(
                     attempt_id=attempt.attempt_id,
@@ -204,6 +222,7 @@ class SQLiteProviderRepository:
                 if existing.provider_security_identity_id != identity.provider_security_identity_id:
                     raise ProviderContractConflict("provider allocation anchor identity conflict")
                 return InsertResult(existing, False)
+            self._validate_identity_sources(session, identity)
             session.add(
                 ProviderSecurityIdentityRow(
                     provider_security_identity_id=identity.provider_security_identity_id,
@@ -228,6 +247,19 @@ class SQLiteProviderRepository:
             row = session.get(ProviderIdentifierHistoryRow, history.identifier_history_id)
             if row is not None:
                 return InsertResult(self._verify_payload(row.payload_json, payload, history), False)
+            identity = session.get(
+                ProviderSecurityIdentityRow, history.provider_security_identity_id
+            )
+            source = session.get(ProviderSourceVersionRow, history.source_version_id)
+            if identity is None or source is None:
+                raise ProviderContractConflict(
+                    "identifier history requires an existing identity and source"
+                )
+            source_contract = ProviderSourceVersion.model_validate_json(source.payload_json)
+            if identity.provider != source_contract.provider.value:
+                raise ProviderContractConflict(
+                    "identifier history source does not match identity provider"
+                )
             session.add(
                 ProviderIdentifierHistoryRow(
                     identifier_history_id=history.identifier_history_id,
@@ -252,6 +284,7 @@ class SQLiteProviderRepository:
             row = session.get(ProviderIdentityMappingRow, mapping.mapping_id)
             if row is not None:
                 return InsertResult(self._verify_payload(row.payload_json, payload, mapping), False)
+            self._validate_identity_mapping(session, mapping)
             session.add(
                 ProviderIdentityMappingRow(
                     mapping_id=mapping.mapping_id,
@@ -295,39 +328,72 @@ class SQLiteProviderRepository:
         expected_state_hash: str | None,
     ) -> InsertResult[ProviderLatestPointer]:
         payload = _payload_json(pointer)
-        with self._sessions.begin() as session:
-            row = session.scalar(
-                select(ProviderLatestPointerRow).where(
-                    ProviderLatestPointerRow.dataset == pointer.dataset.value,
-                    ProviderLatestPointerRow.provider_security_identity_id
-                    == pointer.provider_security_identity_id,
+        try:
+            with self._sessions.begin() as session:
+                self._validate_latest_eligibility(session, pointer)
+                values = self._latest_pointer_values(pointer, payload)
+                if expected_state_hash is None:
+                    insert_statement = (
+                        sqlite_insert(ProviderLatestPointerRow)
+                        .values(**values)
+                        .on_conflict_do_nothing()
+                    )
+                    result = session.execute(insert_statement)
+                    if result.rowcount == 1:
+                        return InsertResult(pointer, True)
+                    if result.rowcount != 0:
+                        raise ProviderRepositoryError(
+                            "latest pointer insert affected an invalid row count"
+                        )
+                    existing = session.get(ProviderLatestPointerRow, pointer.latest_pointer_id)
+                    if existing is not None and existing.payload_json == payload:
+                        return InsertResult(
+                            ProviderLatestPointer.model_validate_json(existing.payload_json),
+                            False,
+                        )
+                    raise ProviderConditionalWriteConflict(
+                        "latest pointer initial insert conflicted"
+                    )
+
+                update_statement = (
+                    update(ProviderLatestPointerRow)
+                    .where(
+                        ProviderLatestPointerRow.latest_pointer_id == pointer.latest_pointer_id,
+                        ProviderLatestPointerRow.state_hash == expected_state_hash,
+                        ProviderLatestPointerRow.payload_json != payload,
+                    )
+                    .values(
+                        normalized_record_id=pointer.normalized_record_id,
+                        source_version_id=pointer.source_version_id,
+                        accepted_observed_at=values["accepted_observed_at"],
+                        accepted_observed_date=pointer.accepted_observed_date,
+                        state_hash=pointer.state_hash,
+                        provider_contract_version=pointer.provider_contract_version,
+                        payload_json=payload,
+                    )
                 )
-            )
-            if row is None:
-                if expected_state_hash is not None:
+                result = session.execute(update_statement)
+                if result.rowcount == 1:
+                    return InsertResult(pointer, True)
+                if result.rowcount == 0:
+                    existing = session.get(ProviderLatestPointerRow, pointer.latest_pointer_id)
+                    if (
+                        existing is not None
+                        and existing.state_hash == expected_state_hash
+                        and existing.payload_json == payload
+                    ):
+                        return InsertResult(
+                            ProviderLatestPointer.model_validate_json(existing.payload_json),
+                            False,
+                        )
                     raise ProviderConditionalWriteConflict(
                         "latest pointer precondition did not match"
                     )
-                session.add(self._latest_pointer_row(pointer, payload))
-                return InsertResult(pointer, True)
-            if row.state_hash != expected_state_hash:
-                raise ProviderConditionalWriteConflict("latest pointer precondition did not match")
-            if row.payload_json == payload:
-                return InsertResult(pointer, False)
-            if row.latest_pointer_id != pointer.latest_pointer_id:
-                raise ProviderContractConflict("latest pointer deterministic identity conflict")
-            row.normalized_record_id = pointer.normalized_record_id
-            row.source_version_id = pointer.source_version_id
-            row.accepted_observed_at = (
-                None
-                if pointer.accepted_observed_at is None
-                else self._json_time(pointer.accepted_observed_at)
-            )
-            row.accepted_observed_date = pointer.accepted_observed_date
-            row.state_hash = pointer.state_hash
-            row.provider_contract_version = pointer.provider_contract_version
-            row.payload_json = payload
-            return InsertResult(pointer, True)
+                raise ProviderRepositoryError("latest pointer update affected an invalid row count")
+        except ProviderRepositoryError:
+            raise
+        except (IntegrityError, OperationalError):
+            raise ProviderRepositoryError("latest pointer database operation failed") from None
 
     def _append_source_version(
         self, session: Session, version: ProviderSourceVersion
@@ -335,22 +401,10 @@ class SQLiteProviderRepository:
         payload = _payload_json(version)
         row = session.get(ProviderSourceVersionRow, version.source_version_id)
         if row is not None:
-            return InsertResult(self._verify_payload(row.payload_json, payload, version), False)
+            return InsertResult(self._verify_source_duplicate(row, version), False)
         raw = session.get(ProviderRawManifestRow, version.raw_response_id)
         if raw is None:
             raise ProviderRepositoryError("provider source references an unknown raw manifest")
-        if (
-            raw.canonical_request_id != version.canonical_request_id
-            or raw.raw_content_hash != version.raw_content_hash
-            or raw.provider_contract_version != version.provider_contract_version
-        ):
-            raise ProviderContractConflict("provider source and raw manifest do not match")
-        if version.supersedes_id is not None:
-            parent = session.get(ProviderSourceVersionRow, version.supersedes_id)
-            if parent is None:
-                raise ProviderRepositoryError("provider source supersedes an unknown version")
-            if parent.canonical_request_id != version.canonical_request_id:
-                raise ProviderContractConflict("revision chain crossed canonical requests")
         duplicate = session.scalar(
             select(ProviderSourceVersionRow).where(
                 ProviderSourceVersionRow.canonical_request_id == version.canonical_request_id,
@@ -361,9 +415,14 @@ class SQLiteProviderRepository:
             )
         )
         if duplicate is not None:
-            return InsertResult(
-                ProviderSourceVersion.model_validate_json(duplicate.payload_json), False
-            )
+            return InsertResult(self._verify_source_duplicate(duplicate, version), False)
+        self._validate_source_trace(session, version, raw)
+        if version.supersedes_id is not None:
+            parent = session.get(ProviderSourceVersionRow, version.supersedes_id)
+            if parent is None:
+                raise ProviderRepositoryError("provider source supersedes an unknown version")
+            if parent.canonical_request_id != version.canonical_request_id:
+                raise ProviderContractConflict("revision chain crossed canonical requests")
         session.add(
             ProviderSourceVersionRow(
                 source_version_id=version.source_version_id,
@@ -389,6 +448,7 @@ class SQLiteProviderRepository:
         row = session.get(ProviderAuditEventRow, event.audit_event_id)
         if row is not None:
             return InsertResult(self._verify_payload(row.payload_json, payload, event), False)
+        self._validate_audit_event(session, event)
         session.add(
             ProviderAuditEventRow(
                 audit_event_id=event.audit_event_id,
@@ -403,6 +463,215 @@ class SQLiteProviderRepository:
         )
         session.flush()
         return InsertResult(event, True)
+
+    @staticmethod
+    def _verify_raw_duplicate(
+        row: ProviderRawManifestRow, incoming: ProviderRawManifest
+    ) -> ProviderRawManifest:
+        stored = ProviderRawManifest.model_validate_json(row.payload_json)
+        stored_semantics = SQLiteProviderRepository._raw_duplicate_semantics(stored)
+        incoming_semantics = SQLiteProviderRepository._raw_duplicate_semantics(incoming)
+        if stored_semantics != incoming_semantics:
+            raise ProviderContractConflict("raw observation has conflicting content")
+        return stored
+
+    @staticmethod
+    def _raw_duplicate_semantics(manifest: ProviderRawManifest) -> dict[str, object]:
+        semantics: dict[str, object] = manifest.model_dump(mode="json")
+        semantics.pop("fetched_at")
+        telemetry = manifest.response_metadata.model_dump(mode="json")
+        for field_name in (
+            "request_id",
+            "rate_limit",
+            "rate_remaining",
+            "rate_reset_seconds",
+            "retry_after_seconds",
+        ):
+            telemetry.pop(field_name)
+        semantics["response_metadata"] = telemetry
+        return semantics
+
+    @staticmethod
+    def _verify_source_duplicate(
+        row: ProviderSourceVersionRow, incoming: ProviderSourceVersion
+    ) -> ProviderSourceVersion:
+        stored = ProviderSourceVersion.model_validate_json(row.payload_json)
+        stored_semantics = stored.model_dump(mode="json")
+        incoming_semantics = incoming.model_dump(mode="json")
+        for field_name in ("source_version_id", "fetched_at"):
+            stored_semantics.pop(field_name)
+            incoming_semantics.pop(field_name)
+        if stored_semantics != incoming_semantics:
+            raise ProviderContractConflict("source observation has conflicting semantic content")
+        return stored
+
+    @staticmethod
+    def _validate_source_trace(
+        session: Session,
+        version: ProviderSourceVersion,
+        raw: ProviderRawManifestRow,
+    ) -> None:
+        request = session.get(CanonicalRequestRow, version.canonical_request_id)
+        if request is None:
+            raise ProviderRepositoryError("provider source references an unknown request")
+        raw_contract = ProviderRawManifest.model_validate_json(raw.payload_json)
+        expected_dataset = PROVIDER_DATASET_BY_PATH.get(request.path_template)
+        if expected_dataset is None or expected_dataset != version.dataset:
+            raise ProviderContractConflict("provider path and source dataset do not match")
+        if version.source_locator != PROVIDER_SOURCE_LOCATOR_BY_DATASET[version.dataset]:
+            raise ProviderContractConflict("provider source locator does not match dataset")
+        if (
+            raw.canonical_request_id != version.canonical_request_id
+            or raw_contract.provider != version.provider
+            or request.provider != version.provider.value
+            or raw.raw_content_hash != version.raw_content_hash
+            or raw_contract.raw_storage_ref != version.raw_storage_ref
+            or raw_contract.fetched_at != version.fetched_at
+            or raw_contract.parser_version != version.parser_version
+            or raw.provider_contract_version != version.provider_contract_version
+            or request.provider_contract_version != version.provider_contract_version
+        ):
+            raise ProviderContractConflict("provider source trace does not match request and raw")
+
+    @staticmethod
+    def _validate_attempt_request(session: Session, attempt: CollectionAttempt) -> None:
+        if attempt.canonical_request_id is None:
+            return
+        request = session.get(CanonicalRequestRow, attempt.canonical_request_id)
+        if request is None:
+            raise ProviderRepositoryError("collection attempt references an unknown request")
+        expected_dataset = PROVIDER_DATASET_BY_PATH.get(request.path_template)
+        if (
+            request.provider != attempt.provider.value
+            or expected_dataset is None
+            or expected_dataset != attempt.dataset
+        ):
+            raise ProviderContractConflict("collection attempt does not match canonical request")
+
+    @staticmethod
+    def _validate_audit_event(session: Session, event: ProviderAuditEvent) -> None:
+        attempt = session.get(CollectionAttemptRow, event.attempt_id)
+        if attempt is None:
+            raise ProviderRepositoryError("audit event references an unknown attempt")
+        source_required = event.event_type in _SOURCE_LINKED_AUDIT_EVENTS
+        if source_required and event.source_version_id is None:
+            raise ProviderContractConflict("source-linked audit event requires a source version")
+        if not source_required and event.source_version_id is not None:
+            raise ProviderContractConflict("source-free audit event cannot claim a source version")
+        if event.source_version_id is None:
+            return
+        source_row = session.get(ProviderSourceVersionRow, event.source_version_id)
+        if source_row is None:
+            raise ProviderRepositoryError("audit event references an unknown source version")
+        source = ProviderSourceVersion.model_validate_json(source_row.payload_json)
+        if (
+            attempt.provider != source.provider.value
+            or attempt.dataset != source.dataset.value
+            or attempt.canonical_request_id != source.canonical_request_id
+        ):
+            raise ProviderContractConflict("audit attempt and source trace do not match")
+
+    @staticmethod
+    def _validate_identity_sources(session: Session, identity: ProviderSecurityIdentity) -> None:
+        first = session.get(ProviderSourceVersionRow, identity.first_source_version_id)
+        latest = session.get(ProviderSourceVersionRow, identity.latest_source_version_id)
+        if first is None or latest is None:
+            raise ProviderContractConflict("provider identity requires existing source lineage")
+        for row in (first, latest):
+            source = ProviderSourceVersion.model_validate_json(row.payload_json)
+            if source.provider != identity.provider:
+                raise ProviderContractConflict(
+                    "provider identity source lineage has a different provider"
+                )
+
+    @staticmethod
+    def _source_belongs_to_identity(
+        session: Session,
+        identity: ProviderSecurityIdentityRow,
+        source_version_id: str,
+    ) -> bool:
+        if source_version_id in {
+            identity.first_source_version_id,
+            identity.latest_source_version_id,
+        }:
+            return True
+        history_id = session.scalar(
+            select(ProviderIdentifierHistoryRow.identifier_history_id).where(
+                ProviderIdentifierHistoryRow.provider_security_identity_id
+                == identity.provider_security_identity_id,
+                ProviderIdentifierHistoryRow.source_version_id == source_version_id,
+            )
+        )
+        return history_id is not None
+
+    @classmethod
+    def _validate_identity_mapping(cls, session: Session, mapping: ProviderIdentityMapping) -> None:
+        identity = session.get(ProviderSecurityIdentityRow, mapping.provider_security_identity_id)
+        evidence = session.get(ProviderSourceVersionRow, mapping.evidence_source_version_id)
+        if identity is None or evidence is None:
+            raise ProviderContractConflict(
+                "identity mapping requires existing identity and evidence"
+            )
+        evidence_contract = ProviderSourceVersion.model_validate_json(evidence.payload_json)
+        if (
+            identity.provider != evidence_contract.provider.value
+            or not cls._source_belongs_to_identity(
+                session, identity, mapping.evidence_source_version_id
+            )
+        ):
+            raise ProviderContractConflict("mapping evidence is outside provider identity lineage")
+        if mapping.mapping_status != MappingStatus.VERIFIED:
+            return
+        if identity.identity_state != ProviderIdentityState.ACTIVE.value:
+            raise ProviderContractConflict("verified mapping requires an active provider identity")
+        issuer = session.get(IssuerRow, mapping.issuer_id)
+        security = session.get(SecurityRow, mapping.security_id)
+        if issuer is None or security is None:
+            raise ProviderContractConflict("verified mapping requires existing issuer and security")
+        if security.issuer_id != issuer.issuer_id:
+            raise ProviderContractConflict("verified mapping issuer and security do not match")
+
+    @classmethod
+    def _validate_latest_eligibility(cls, session: Session, pointer: ProviderLatestPointer) -> None:
+        identity = session.get(ProviderSecurityIdentityRow, pointer.provider_security_identity_id)
+        source_row = session.get(ProviderSourceVersionRow, pointer.source_version_id)
+        if identity is None or source_row is None:
+            raise ProviderContractConflict("latest pointer requires existing identity and source")
+        if identity.identity_state != ProviderIdentityState.ACTIVE.value:
+            raise ProviderContractConflict("latest pointer requires an active provider identity")
+        source = ProviderSourceVersion.model_validate_json(source_row.payload_json)
+        if (
+            source.dataset != pointer.dataset
+            or source.provider.value != identity.provider
+            or pointer.provider_contract_version != identity.provider_contract_version
+            or pointer.accepted_observed_at != source.observed_at
+            or pointer.accepted_observed_date != source.observed_date
+            or not cls._source_belongs_to_identity(session, identity, pointer.source_version_id)
+        ):
+            raise ProviderContractConflict("latest pointer does not match source lineage")
+        if pointer.dataset == ProviderDataset.CURRENT_PRICE and source.observed_at is None:
+            raise ProviderContractConflict(
+                "current price without provider timestamp is not latest eligible"
+            )
+
+    @staticmethod
+    def _latest_pointer_values(pointer: ProviderLatestPointer, payload: str) -> dict[str, object]:
+        return {
+            "latest_pointer_id": pointer.latest_pointer_id,
+            "dataset": pointer.dataset.value,
+            "provider_security_identity_id": pointer.provider_security_identity_id,
+            "normalized_record_id": pointer.normalized_record_id,
+            "source_version_id": pointer.source_version_id,
+            "accepted_observed_at": (
+                None
+                if pointer.accepted_observed_at is None
+                else SQLiteProviderRepository._json_time(pointer.accepted_observed_at)
+            ),
+            "accepted_observed_date": pointer.accepted_observed_date,
+            "state_hash": pointer.state_hash,
+            "provider_contract_version": pointer.provider_contract_version,
+            "payload_json": payload,
+        }
 
     @staticmethod
     def _verify_payload[ContractT: BaseModel](
