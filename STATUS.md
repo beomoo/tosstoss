@@ -1,7 +1,7 @@
 # Project Status
 
-- 프로젝트 상태: `PHASE 2 IMPLEMENTATION IN PROGRESS — CP2 COMPLETE / CP3-A PASS — CONTRACT APPROVED AND CLOSED / CP3-B IMPLEMENTED — AWAITING GPT INDEPENDENT REVIEW / CP3-C NOT STARTED`
-- 현재 Phase: `Phase 2 — CP3-B independent review gate after minimal P1 reapply`
+- 프로젝트 상태: `PHASE 2 IMPLEMENTATION IN PROGRESS — CP2 COMPLETE / CP3-A PASS — CONTRACT APPROVED AND CLOSED / CP3-B PASS — FUNCTIONALLY APPROVED / DOCUMENTATION CLOSEOUT PUSHED FOR FINAL GPT CHECK / CP3-C NOT STARTED`
+- 현재 Phase: `Phase 2 — CP3-B documentation closeout final GPT check`
 - 현재 버전: `0.1.0`
 - Phase 1 최종 검증 commit: `57b2a63ead06d03191d8094e1689b8d2ab3d7764`
 - Phase 1 PR: `#1`
@@ -11,7 +11,7 @@
 - 실제 API 연결: `CP2-D2 one-shot PASS — OAuth + GET /api/v1/stocks만 검증`
 - 실제 주문 기능: `비활성 / 비범위`
 - OpenAI API 사용: `아니오`
-- Phase 2 상태: `CP1 PASS / CP2 COMPLETE / CP3-A PASS — CONTRACT APPROVED AND CLOSED / CP3-B IMPLEMENTED — AWAITING GPT INDEPENDENT REVIEW / CP3-C NOT STARTED`
+- Phase 2 상태: `CP1 PASS / CP2 COMPLETE / CP3-A PASS — CONTRACT APPROVED AND CLOSED / CP3-B PASS — FUNCTIONALLY APPROVED / DOCUMENTATION CLOSEOUT PUSHED FOR FINAL GPT CHECK / CP3-C NOT STARTED`
 
 ## 완료 상태
 
@@ -72,7 +72,8 @@
 - [x] structural audit P1-A: canonical request별 단일 linear source revision chain과 concurrent fork 차단
 - [x] structural audit P1-B: VERIFIED mapping inclusive interval overlap 및 concurrent current promotion 차단
 - [x] additive `0003_phase_02_cp3_b_invariants`와 backend exact inventory 493 → 509 증가
-- [ ] CP3-B GPT independent re-review와 사용자 승인
+- [x] CP3-B GPT independent review: `PASS WITH CLOSEOUT CONDITION`, P0 0 / P1 0
+- [ ] CP3-B documentation closeout final GPT check와 사용자 승인
 - [ ] CP3-C Security Master 별도 시작 승인
 
 ## Phase 1 종료 기준
@@ -89,7 +90,7 @@ Phase 2 구현은 계속 진행 중이며 CP2만 `COMPLETE`다. CP2-A 보안 경
 
 CP3-A 첫 독립검증은 P1-01/P1-02를 발견했다. 보완 계약은 valid provider identity의 `ProviderPriceSnapshot`/latest를 nullable canonical linkage와 분리해 Phase 3/4 regulatory mapping 순환 의존을 제거하고, continuity-first 검색 → 단일 기존 ID 재사용 → identifier enrichment → collision quarantine → evidence 0일 때만 최초 anchor allocation 순서를 명시했다. GPT independent re-review와 사용자 승인으로 CP3-A는 `PASS — CONTRACT APPROVED AND CLOSED`다.
 
-CP3-B는 기존 Phase 1 전역 `contract_version=0.1.0`, SourceRecord/Issuer/Security, fixture row/API/OpenAPI와 `0001`을 보존하면서 독립 provider source/identity 계약, canonical request, crash-safe raw store, immutable source revision, attempt/audit, identity/history/mapping/latest pointer foundation과 additive `0002`를 구현했다. 첫 독립검증의 P1 5건/P2 1건에 따라 later-fetch semantic duplicate, exact trace graph, VERIFIED mapping lineage/FK integrity, one-statement SQL CAS/latest eligibility, real mid-migration cleanup과 atomic no-replace raw publish를 보완했다. 후속 structural audit의 P1 2건은 additive `0003` partial unique index와 repository validation으로 canonical request별 단일 revision chain, fork/root 경쟁, VERIFIED mapping의 inclusive interval overlap과 concurrent current promotion을 fail closed한다. backend exact inventory는 509개다. endpoint DTO/normalizer, collection job, full identity reconciliation, ProviderPriceSnapshot/price payload semantics와 live API는 구현하지 않았다. controlled rollback 뒤 scanner와 audit archive 정책 변경을 제외한 최소 P1 set만 재구성했으며 CP3-B는 `IMPLEMENTED — AWAITING GPT INDEPENDENT REVIEW`, CP3-C는 `NOT STARTED`다.
+CP3-B는 기존 Phase 1 전역 `contract_version=0.1.0`, SourceRecord/Issuer/Security, fixture row/API/OpenAPI와 `0001`을 보존하면서 독립 provider source/identity 계약, canonical request, crash-safe raw store, immutable source revision, attempt/audit, identity/history/mapping/latest pointer foundation과 additive `0002`를 구현했다. 첫 독립검증의 P1 5건/P2 1건에 따라 later-fetch semantic duplicate, exact trace graph, VERIFIED mapping lineage/FK integrity, one-statement SQL CAS/latest eligibility, real mid-migration cleanup과 atomic no-replace raw publish를 보완했다. 후속 structural audit의 P1 2건은 additive `0003` partial unique index와 repository validation으로 canonical request별 단일 revision chain, fork/root 경쟁, VERIFIED mapping의 inclusive interval overlap과 concurrent current promotion을 fail closed한다. backend exact inventory는 509개다. endpoint DTO/normalizer, collection job, full identity reconciliation, ProviderPriceSnapshot/price payload semantics와 live API는 구현하지 않았다. controlled rollback 뒤 scanner와 audit archive 정책 변경을 제외한 최소 P1 set만 재구성했고 GPT independent review는 `PASS WITH CLOSEOUT CONDITION`, P0 0 / P1 0으로 판정했다. 현재 CP3-B는 `PASS — FUNCTIONALLY APPROVED / DOCUMENTATION CLOSEOUT PUSHED FOR FINAL GPT CHECK`, CP3-C는 `NOT STARTED`다.
 
 `[LIVE_VERIFIED]` 범위는 canonical provider contract, actual OAuth token issuance와 credential acceptance, allowed-IP 실행 경로, actual `GET /api/v1/stocks` 구조, 성공 응답의 Limit/Remaining/Reset header다. natural 429 `Retry-After`, actual 429/5xx, production retry timing, 나머지 Phase 2 market endpoint, CP3 이후 데이터 semantics/freshness는 계속 `[LIVE_UNVERIFIED]`다. Phase 2 전체 완료나 CP3 시작을 의미하지 않는다.
 

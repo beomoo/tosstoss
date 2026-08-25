@@ -332,3 +332,79 @@ Separate infrastructure remediation required.
 - Audit ZIP committed: `NO`.
 - CP3-C changes: `0`.
 - PR/main merge/tag/release: `0`.
+
+## O. 2026-08-26 — Final clean-worktree regression and remediation commit
+
+Execution:
+PASS
+
+Root `.mypy_cache` before rerun:
+generated ignored local directory
+
+Tracked files inside `.mypy_cache`:
+0
+
+Reparse/symlink/junction:
+0
+
+Action:
+local generated `.mypy_cache` removed
+
+Implementation/test/migration changes during cleanup:
+0
+
+Final full regression:
+PASS / exit 0
+
+Backend:
+509/509 PASS
+
+Frontend:
+43/43 PASS
+
+E2E:
+2/2 PASS
+
+Migration:
+PASS
+
+database_revision compatibility:
+PASS
+
+fixture idempotency:
+PASS
+
+OpenAPI:
+PASS
+
+production build:
+PASS
+
+secret scan:
+PASS
+
+policy scan:
+PASS
+
+Root `.mypy_cache` after full regression:
+ABSENT
+
+Actual credential usage:
+0
+
+Actual Toss API requests:
+0
+
+CP3-C:
+NOT STARTED
+
+Implementation commit:
+`5374e186df25803228c8b36e4b56406586eca75c`
+
+The successful rerun exercised the exact staged implementation fingerprint
+that was committed as `5374e186df25803228c8b36e4b56406586eca75c`.
+
+The prior BLOCKED record is preserved as historical evidence and was not
+rewritten.
+
+This report remains a Codex self-report and is not an independent QA result.
