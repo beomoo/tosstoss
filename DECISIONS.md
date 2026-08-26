@@ -417,6 +417,99 @@ CP3-C2-A migration은 0이다. 문서 제안 rollback은 documentation commit re
 
 ---
 
+## ADR-014 — issuer authority는 별도 append-only ledger와 issuer-only link로 표현
+
+- 상태: `PROPOSED — AWAITING GPT INDEPENDENT REVIEW`
+- 제안일: `2026-08-26`
+- 상세 설계: `plans/PHASE_02_CP3_C2_B1_RUNTIME_CONTRACT.md`
+
+### 문제
+
+Accepted ADR-013은 automatic canonical promotion을 금지하고 field-owned
+authority bundle에 대한 authenticated human approval을 요구한다. 그러나 현행
+`MappingStatus`는 `UNRESOLVED|VERIFIED`뿐이고,
+`ProviderIdentityMapping(VERIFIED)`은 issuer와 security를 동시에 요구한다.
+따라서 authority evidence/bundle, issuer-only approval, authenticated reviewer,
+stale/review-required, rejection/revocation/supersession을 기존 mapping row에
+넣으면 `issuer approved / security unresolved`를 거짓으로 표현하거나 기존
+계약을 breaking 변경하게 된다.
+
+또한 기존 unique constraint만으로 duplicate corp_code/CIK 후보를 막으면 두
+상충 후보 중 먼저 쓴 행이 사실상 승자가 될 수 있고, approval row를 수정·삭제해
+revocation을 표현하면 ADR-013의 append-only history를 잃는다.
+
+### 제안
+
+- 기존 `MappingStatus`, provider identity/history, `Issuer`/`Security` public
+  contract와 `0001`~`0004`는 변경하지 않는다.
+- `AuthorityEvidence`, `AuthorityBundle`, `IssuerDecision`,
+  `IssuerApprovalEvent`, `IssuerAuthorityLink`에 독립 version을 부여한다.
+- semantic ID/hash는 canonical UTF-8/NFC JSON과 SHA-256으로 만들고 retrieval
+  time, run/job/DB row ID, insertion order와 current clock을 제외한다.
+- machine은 `UNRESOLVED`, `STALE`, `REVIEW_REQUIRED`, 최대 positive state
+  `READY_FOR_MANUAL_REVIEW`만 생성한다. `APPROVED`, `REJECTED`, `REVOKED`,
+  `SUPERSEDED`는 server-resolved authenticated human event로만 확정한다.
+- human approval event는 exact immutable decision/bundle/hash를 참조하고,
+  conflict override field를 제공하지 않는다.
+- approved B link는 provider identity와 canonical issuer만 연결하고
+  `security_resolution_state=UNRESOLVED`를 강제한다. canonical `Security`와
+  `ProviderIdentityMapping(VERIFIED)` write는 0이다.
+- correction/revocation/supersession은 새 evidence/relation/decision/event/link
+  row를 append한다. current head는 append-only link chain에서 rebuild 가능한
+  CAS projection으로만 관리한다.
+- duplicate authority identifier claim은 모두 먼저 기록한 뒤 distinct
+  candidate fingerprint를 전역 검사한다. unique constraint의 first-writer를
+  정답으로 사용하지 않고 모든 affected candidate를
+  `UNRESOLVED`/`REVIEW_REQUIRED`로 만든다.
+- KR은 authoritative OpenDART corp_code와 independently established legal
+  jurisdiction을 분리한다. KRX/provider/OpenDART listing field로 관할권을
+  추론하지 않으며 unsupported foreign jurisdiction은 unresolved다.
+- US는 accepted evidence의 authoritative registrant metadata에서만
+  zero-padded CIK를 취한다. accession/login/filing-agent CIK는 별도
+  zero-authority provenance다. foreign private issuer의 실제 관할권이 현행
+  KR/US contract로 표현되지 않으면 unresolved다.
+
+### 대안
+
+1. 기존 `MappingStatus` 확장: Phase 1/CP3-B 계약 의미를 바꾸고 issuer/security
+   축을 다시 합치므로 거부한다.
+2. `ProviderIdentityMapping`에 nullable security와 approval fields 추가: 기존
+   VERIFIED invariant와 0002/0003 무결성을 깨므로 거부한다.
+3. 승인 row를 in-place update/delete: correction/revocation 감사 이력을 잃어
+   거부한다.
+4. corp_code/CIK global unique insert의 첫 성공을 canonical winner로 사용:
+   상충 evidence를 숨기므로 거부한다.
+5. 비인증 local flag/CLI 확인을 human approval로 간주: ADR-013의
+   authenticated-human 조건을 충족하지 않아 거부한다.
+
+### 영향
+
+CP3-C2-B1은 문서 설계만 작성한다. 이 ADR은 아직 `PROPOSED`이며 independent
+review와 사용자 승인을 통과하기 전 runtime 구현 권한이 아니다. CP3-C2-B
+implementation, CP3-C2-C, CP3-D와 automatic progression은 계속 시작되지
+않는다.
+
+향후 승인된 구현은 canonical issuer insert-or-verify와 issuer-only link를 한
+transaction으로 수행할 수 있지만, canonical Security 또는 VERIFIED provider
+mapping을 만들 수 없다. 정확한 local authentication/reauthentication policy도
+implementation 전에 별도 검증되어야 한다.
+
+### 마이그레이션·롤백
+
+후속 migration 후보는
+`0005_phase_02_cp3_c2_b_issuer_authority`이며 down revision은 정확히
+`0004_phase_02_cp3_c1_security_master`다. evidence, observation, relation,
+bundle/membership, identifier claim, decision, approval event, issuer-only link와
+rebuildable head table만 additive로 제안한다. B1에서는 migration file 생성·적용
+모두 0이다.
+
+`0001`~`0004` 수정, 기존 row backfill/rebuild/rekey, provider/canonical history
+삭제는 금지한다. 실제 운영 rollback은 신규 write 중지와 ledger 보존이
+원칙이며 destructive downgrade는 backup/restore 검증과 별도 승인 없이 하지
+않는다.
+
+---
+
 ## 새 결정 기록 양식
 
 ```md
