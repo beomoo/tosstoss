@@ -1,5 +1,52 @@
 # Changelog
 
+## Unreleased — Phase 2 CP3-C2-B2-A Authority Ledger Foundation — 2026-08-27
+
+### Added
+
+- approved ADR-013/ADR-014에 맞춘 versioned `AuthoritySourcePolicy`, raw
+  `AuthorityEvidence`, retrieval observation/relation, candidate-specific
+  `AuthorityEvidenceApplication`, exact application-member `AuthorityBundle`,
+  identifier claim과 machine-only `IssuerDecision` contract를 추가했다.
+- canonical UTF-8/NFC JSON과 SHA-256 semantic IDs는 retrieval/evaluation/record
+  time, DB/run/request ID, clock와 member input order를 제외한다.
+- additive `0005_phase_02_cp3_c2_b_issuer_authority`에 approved 21-table
+  authority/authentication/approval/link family, 68 inline CHECK, 14 named
+  index와 40 append-only UPDATE/DELETE trigger를 추가했다.
+- deterministic immutable row를 same-ID/same-content이면 idempotent success,
+  same-ID/different-content이면 typed conflict로 처리하는 low-level SQLite
+  ledger repository를 추가했다.
+
+### Safety and compatibility
+
+- source-policy exact scope/role/weight matrix와 server-owned production policy
+  registry boundary를 두고 unlisted scope, fixture/test namespace, copied or
+  relabelled tainted lineage와 historical synthetic corp_code/CIK를 production
+  bundle에서 fail closed한다.
+- corp_code/CIK claim lookup은 non-unique로 유지해 contradictory claims를 모두
+  보존하고 insertion-order winner나 canonical issuer를 만들지 않는다.
+- `0001`~`0004` SHA-256과 기존 provider/issuer/security/source/history row를
+  보존하며 기존 `MappingStatus = VERIFIED | UNRESOLVED`와 Phase 1 public
+  database revision contract를 변경하지 않는다.
+- reviewer/WebAuthn/challenge/approval/link table은 later-phase schema
+  foundation뿐이다. WebAuthn verification, human approval execution, canonical
+  Issuer/Security write, VERIFIED mapping, provider rekey와 live authority
+  request는 모두 0이다.
+
+### QA and status
+
+- B2-A targeted offline tests `54`, full backend inventory `598`, frontend
+  inventory `43`, E2E inventory `2`를 고정했다. Final staged full regression과
+  migration/fixture/build/secret/policy 결과는
+  `qa/PHASE_02_CP3_C2_B2_A_CODEX_REPORT.md`에 기록한다.
+- `scripts/test.ps1`의 exact backend inventory와
+  `scripts/policy-scan.ps1`의 exact test allowlist/control-manifest count/digest만
+  새 authorized files에 맞춰 갱신했다. scanner 조건이나 network guard는
+  완화하지 않았다.
+- CP3-C2-B implementation은 `IN PROGRESS`, B2-A는
+  `IMPLEMENTED — AWAITING GPT INDEPENDENT REVIEW`다. B2-B/B2-C/B2-D,
+  CP3-C2-C와 CP3-D는 `NOT STARTED`, automatic progression은 `PROHIBITED`다.
+
 ## Unreleased — Phase 2 CP3-C1 Independent-Review P1 Remediation — 2026-08-26
 
 ### Fixed

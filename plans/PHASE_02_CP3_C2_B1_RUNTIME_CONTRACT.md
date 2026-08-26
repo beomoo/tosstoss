@@ -12,9 +12,13 @@
 - Design date: `2026-08-26` (`Asia/Seoul`)
 - Governing decision: `ADR-013 — ACCEPTED`
 - Closeout decision: `ADR-014 — ACCEPTED`
-- Production implementation:
+- B1 closeout production-implementation snapshot:
   `NOT STARTED — REQUIRES SEPARATE USER START APPROVAL`
-- Migration implementation: `NOT STARTED`
+- Current implementation status: `IN PROGRESS`
+- CP3-C2-B2-A: `IMPLEMENTED — AWAITING GPT INDEPENDENT REVIEW`
+- CP3-C2-B2-B / B2-C / B2-D: `NOT STARTED`
+- Migration implementation: additive `0005` implemented in B2-A; production
+  database application `0`
 - Automatic checkpoint progression: `PROHIBITED`
 
 This document defines the approved versioned runtime contracts and additive
@@ -1483,7 +1487,7 @@ An approved B projection would separately expose:
 It would not contain `security_id` and would not imply a verified provider
 identity mapping.
 
-## 18. B1 checkpoint result
+## 18. B1 checkpoint closeout snapshot
 
 - CP3-C1: `PASS — CLOSED`
 - CP3-C2-A: `PASS — CONTRACT APPROVED AND CLOSED`
@@ -1504,4 +1508,28 @@ GPT independent re-review of SHA
 reviewed SHA, remains accepted and non-blocking. Local checks are not GitHub CI
 evidence. The user explicitly approved the revised B1 contract and ADR-014 on
 `2026-08-26` for documentation closeout only. CP3-C2-B implementation,
-CP3-C2-C, CP3-D, and automatic progression remain unauthorized.
+CP3-C2-C, CP3-D, and automatic progression were not authorized by that
+closeout.
+
+## 19. Later B2-A implementation status — non-normative
+
+On `2026-08-27`, the user separately authorized entry into CP3-C2-B
+implementation, limited to `CP3-C2-B2-A — Authority Ledger & Additive 0005
+Foundation`. This later status record does not alter the approved B1 technical
+contract or retroactively broaden the B1 closeout approval.
+
+- CP3-C2-B implementation: `IN PROGRESS`
+- CP3-C2-B2-A: `IMPLEMENTED — AWAITING GPT INDEPENDENT REVIEW`
+- Additive `0005_phase_02_cp3_c2_b_issuer_authority`: implemented and exercised
+  only against disposable QA databases; persistent production application `0`
+- CP3-C2-B2-B: `NOT STARTED`
+- CP3-C2-B2-C: `NOT STARTED`
+- CP3-C2-B2-D: `NOT STARTED`
+- CP3-C2-C: `NOT STARTED`
+- CP3-D: `NOT STARTED`
+- Automatic progression: `PROHIBITED`
+
+B2-A adds only the immutable ledger contract/schema/storage foundation. It does
+not implement WebAuthn verification, approval execution, canonical Issuer or
+Security promotion, VERIFIED provider mapping, provider rekey, live source
+collection, or link-head workflow.

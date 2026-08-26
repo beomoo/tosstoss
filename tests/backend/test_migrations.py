@@ -29,6 +29,30 @@ TableFingerprint = tuple[
     tuple[tuple[str, str], ...],
 ]
 
+AUTHORITY_TABLES = {
+    "authority_source_policies",
+    "reviewer_principals",
+    "reviewer_webauthn_credentials",
+    "reviewer_webauthn_credential_events",
+    "issuer_approval_challenges",
+    "issuer_approval_challenge_consumptions",
+    "reviewer_authentication_events",
+    "authority_evidence",
+    "authority_evidence_observations",
+    "authority_evidence_relations",
+    "authority_evidence_applications",
+    "authority_bundles",
+    "authority_bundle_evidence_applications",
+    "authority_bundle_scope_results",
+    "authority_bundle_provider_observations",
+    "authority_identifier_claims",
+    "issuer_decisions",
+    "issuer_approval_events",
+    "issuer_approval_evidence_observations",
+    "issuer_authority_links",
+    "issuer_authority_link_heads",
+}
+
 
 def _column_names(value: Sequence[str] | None) -> tuple[str, ...]:
     return tuple(value or ())
@@ -326,7 +350,9 @@ def _assert_expected_schema(database_url: str) -> None:
                 "payload_json": ("TEXT", False, False),
             },
         }
-        assert set(inspector.get_table_names()) == set(expected_columns) | {"alembic_version"}
+        assert set(inspector.get_table_names()) == (
+            set(expected_columns) | AUTHORITY_TABLES | {"alembic_version"}
+        )
         for table, expected in expected_columns.items():
             reflected = {
                 str(column["name"]): (
@@ -565,7 +591,7 @@ def test_downgrade_and_reupgrade(workspace_tmp_path: Path) -> None:
         with engine.connect() as connection:
             assert (
                 connection.execute(text("SELECT version_num FROM alembic_version")).scalar_one()
-                == "0004_phase_02_cp3_c1_security_master"
+                == "0005_phase_02_cp3_c2_b_issuer_authority"
             )
     finally:
         engine.dispose()

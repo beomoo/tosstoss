@@ -559,10 +559,10 @@ revocation을 표현하면 ADR-013의 append-only history를 잃는다.
 ### 영향
 
 CP3-C2-B1은 문서 설계만 작성했고 independent re-review와 명시적 사용자
-승인으로 contract documentation을 닫는다. ADR-014 acceptance는 runtime
-구현 권한이 아니다. CP3-C2-B implementation은
-`NOT STARTED — REQUIRES SEPARATE USER START APPROVAL`이며 CP3-C2-C, CP3-D와
-automatic progression도 계속 시작되지 않는다.
+승인으로 contract documentation을 닫았다. ADR-014 acceptance 자체는 runtime
+구현 권한이 아니었고, B1 closeout 시점의 CP3-C2-B implementation은
+`NOT STARTED — REQUIRES SEPARATE USER START APPROVAL`이었다. 이후 별도 사용자
+승인에 따른 제한된 B2-A 진입은 아래 구현 진입 기록으로 분리한다.
 
 향후 승인된 구현은 canonical issuer insert-or-verify와 issuer-only link를 한
 transaction으로 수행할 수 있지만, canonical Security 또는 VERIFIED provider
@@ -572,18 +572,41 @@ CP3-C2-B user start authorization 뒤에만 가능하다.
 
 ### 마이그레이션·롤백
 
-후속 migration 후보는
+후속 migration 후보로 승인된 설계는
 `0005_phase_02_cp3_c2_b_issuer_authority`이며 down revision은 정확히
 `0004_phase_02_cp3_c1_security_master`다. source policy, reviewer public
 credential/challenge/authentication audit, evidence/application/observation/
 relation, bundle/membership, identifier claim, decision, approval event,
-issuer-only link와 rebuildable head table만 additive로 제안한다. B1에서는
+issuer-only link와 rebuildable head table만 additive로 제안했다. B1에서는
 migration file 생성·적용 모두 0이다.
 
 `0001`~`0004` 수정, 기존 row backfill/rebuild/rekey, provider/canonical history
 삭제는 금지한다. 실제 운영 rollback은 신규 write 중지와 ledger 보존이
 원칙이며 destructive downgrade는 backup/restore 검증과 별도 승인 없이 하지
 않는다.
+
+### CP3-C2-B2-A 구현 진입 기록 — 2026-08-27
+
+- 사용자가 CP3-C2-B implementation 시작을 별도로 명시 승인했다.
+- 승인된 이번 terminal scope는 `CP3-C2-B2-A — Authority Ledger & Additive
+  0005 Foundation`뿐이다.
+- B2-A는 approved B1 semantic contract, 21-table additive `0005`, immutable
+  append-only enforcement와 low-level insert-or-verify repository foundation만
+  구현한다.
+- `0001`~`0004`, 기존 provider/canonical row와 public `MappingStatus` 의미는
+  변경하지 않는다.
+- reviewer/WebAuthn/challenge/approval/link schema는 approved later-phase
+  foundation으로 포함할 수 있지만 operational WebAuthn verification, approval
+  execution, canonical issuer promotion과 link-head mutation은 B2-A에서 수행하지
+  않는다.
+- canonical Issuer write, canonical Security write,
+  `ProviderIdentityMapping(VERIFIED)` write, provider identity rekey와 automatic
+  promotion은 각각 `0`이다.
+- CP3-C2-B implementation: `IN PROGRESS`.
+- CP3-C2-B2-A: `IMPLEMENTED — AWAITING GPT INDEPENDENT REVIEW`.
+- CP3-C2-B2-B, CP3-C2-B2-C, CP3-C2-B2-D, CP3-C2-C와 CP3-D:
+  `NOT STARTED`.
+- Automatic checkpoint progression: `PROHIBITED`.
 
 ---
 
