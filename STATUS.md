@@ -1,19 +1,19 @@
 # Project Status
 
-- 프로젝트 상태: `PHASE 2 IMPLEMENTATION IN PROGRESS — CP2 COMPLETE / CP3-A PASS — CONTRACT APPROVED AND CLOSED / CP3-B PASS — CLOSED / CP3-C1 REVISED AFTER INDEPENDENT REVIEW — AWAITING GPT RE-REVIEW / CP3-C2 NOT STARTED — USER DECISION REQUIRED / CP3-D NOT STARTED`
-- 현재 Phase: `Phase 2 — CP3-C1 revised after independent review; GPT re-review 대기`
+- 프로젝트 상태: `PHASE 2 IMPLEMENTATION IN PROGRESS — CP2 COMPLETE / CP3-A PASS — CONTRACT APPROVED AND CLOSED / CP3-B PASS — CLOSED / CP3-C1 PASS — FUNCTIONALLY APPROVED / DOCUMENTATION CLOSEOUT PUSHED FOR FINAL GPT CHECK / CP3-C2 NOT STARTED — USER DECISION REQUIRED / CP3-D NOT STARTED`
+- 현재 Phase: `Phase 2 — CP3-C1 functionally approved; documentation closeout pushed for final GPT check`
 - 현재 버전: `0.1.0`
 - Phase 1 최종 검증 commit: `57b2a63ead06d03191d8094e1689b8d2ab3d7764`
 - Phase 1 PR: `#1`
 - Phase 1 merge commit: `b1829a7375704271a21267e1fcf62808147be593`
 - Release baseline tag: `v0.1.0`
-- 최종 QA일: `2026-08-26 (CP3-C1 independent-review P1 remediation self-QA)`
+- 최종 QA일: `2026-08-26 (CP3-C1 independent re-review documentation closeout)`
 - 실제 API 연결: `CP2-D2 one-shot PASS — OAuth + GET /api/v1/stocks만 검증`
 - 실제 주문 기능: `비활성 / 비범위`
 - OpenAI API 사용: `아니오`
-- Phase 2 상태: `CP1 PASS / CP2 COMPLETE / CP3-A PASS — CONTRACT APPROVED AND CLOSED / CP3-B PASS — CLOSED / CP3-C1 REVISED AFTER INDEPENDENT REVIEW — AWAITING GPT RE-REVIEW / CP3-C2 NOT STARTED — USER DECISION REQUIRED / CP3-D NOT STARTED`
+- Phase 2 상태: `CP1 PASS / CP2 COMPLETE / CP3-A PASS — CONTRACT APPROVED AND CLOSED / CP3-B PASS — CLOSED / CP3-C1 PASS — FUNCTIONALLY APPROVED / DOCUMENTATION CLOSEOUT PUSHED FOR FINAL GPT CHECK / CP3-C2 NOT STARTED — USER DECISION REQUIRED / CP3-D NOT STARTED`
 - CP3-B: `PASS — CLOSED`
-- CP3-C1: `REVISED AFTER INDEPENDENT REVIEW — AWAITING GPT RE-REVIEW`
+- CP3-C1: `PASS — FUNCTIONALLY APPROVED / DOCUMENTATION CLOSEOUT PUSHED FOR FINAL GPT CHECK`
 - CP3-C2: `NOT STARTED — USER DECISION REQUIRED`
 - CP3-D: `NOT STARTED`
 - Automatic checkpoint progression: `PROHIBITED`
@@ -87,7 +87,7 @@
 - [x] P1-01 semantic current identifier resolution과 ambiguous-current fail-closed 보완
 - [x] P1-02 complete detail batch duplicate-ISIN planning과 affected observation 전부 quarantine 보완
 - [x] migration 0, backend exact inventory 540 → 544 증가
-- [ ] CP3-C1 GPT independent re-review
+- [x] CP3-C1 GPT independent re-review: `PASS WITH CLOSEOUT CONDITION`, P0 0 / P1 0 / P1-01·P1-02 CLOSED
 - [ ] CP3-C2 canonical promotion authority 사용자 결정 및 별도 시작 승인
 - [ ] CP3-D 별도 시작 승인
 
@@ -107,7 +107,7 @@ CP3-A 첫 독립검증은 P1-01/P1-02를 발견했다. 보완 계약은 valid pr
 
 CP3-B는 기존 Phase 1 전역 `contract_version=0.1.0`, SourceRecord/Issuer/Security, fixture row/API/OpenAPI와 `0001`을 보존하면서 독립 provider source/identity 계약, canonical request, crash-safe raw store, immutable source revision, attempt/audit, identity/history/mapping/latest pointer foundation과 additive `0002`/`0003`을 구현하고 독립검증·문서 closeout을 거쳐 `PASS — CLOSED`다.
 
-CP3-C1은 `/stocks/all` discovery와 `/stocks` detail의 strict offline DTO, 비식별 KR/US fixture, normalized semantic record/source observation/state event/detail-batch audit를 구현했다. 신규 identity는 같은 provider/market의 continuity evidence를 먼저 검색하고 증거가 0일 때만 valid ISIN → symbol+listDate → symbol+first-seen raw hash 순으로 immutable anchor를 발급한다. 후속 ISIN/listDate/symbol은 append-only history로 보강하며 rekey하지 않고, 다중·모순 증거는 auto merge/new identity/winner 없이 `UNRESOLVED_COLLISION`/`QUARANTINED`로 격리한다. 독립검토 P1 보완은 closed/open/SYMBOL_CHANGE 의미에 따른 current set으로 history ID/hash ordering 의존을 제거하고, 상충 current value를 fail closed하며, complete detail response의 duplicate ISIN affected observation 전부를 publish 전 collision plan으로 격리한다. provider가 주지 않은 symbol-change date는 만들지 않는다. discovery disappearance는 `DISCOVERY_MISSING`만 기록하고, inactive/delisted/partial/empty detail과 clean-DB deterministic replay를 감사 가능하게 보존한다. `0004`를 포함한 기존 migration은 변경하지 않았고 backend exact inventory는 544개다. 현재 CP3-C1은 `REVISED AFTER INDEPENDENT REVIEW — AWAITING GPT RE-REVIEW`이며 `PASS`로 표시하지 않는다.
+CP3-C1은 `/stocks/all` discovery와 `/stocks` detail의 strict offline DTO, 비식별 KR/US fixture, normalized semantic record/source observation/state event/detail-batch audit를 구현했다. 신규 identity는 같은 provider/market의 continuity evidence를 먼저 검색하고 증거가 0일 때만 valid ISIN → symbol+listDate → symbol+first-seen raw hash 순으로 immutable anchor를 발급한다. 후속 ISIN/listDate/symbol은 append-only history로 보강하며 rekey하지 않고, 다중·모순 증거는 auto merge/new identity/winner 없이 `UNRESOLVED_COLLISION`/`QUARANTINED`로 격리한다. 독립검토 P1 보완은 closed/open/SYMBOL_CHANGE 의미에 따른 current set으로 history ID/hash ordering 의존을 제거하고, 상충 current value를 fail closed하며, complete detail response의 duplicate ISIN affected observation 전부를 publish 전 collision plan으로 격리한다. provider가 주지 않은 symbol-change date는 만들지 않는다. discovery disappearance는 `DISCOVERY_MISSING`만 기록하고, inactive/delisted/partial/empty detail과 clean-DB deterministic replay를 감사 가능하게 보존한다. `0004`를 포함한 기존 migration은 변경하지 않았고 backend exact inventory는 544개다. GPT independent re-review는 `PASS WITH CLOSEOUT CONDITION`, P0 0 / P1 0으로 P1-01·P1-02를 CLOSED 판정했다. 현재 CP3-C1은 `PASS — FUNCTIONALLY APPROVED / DOCUMENTATION CLOSEOUT PUSHED FOR FINAL GPT CHECK`이며 CP3-C2와 CP3-D는 시작하지 않았다.
 
 `[LIVE_VERIFIED]` 범위는 canonical provider contract, actual OAuth token issuance와 credential acceptance, allowed-IP 실행 경로, actual `GET /api/v1/stocks` 구조, 성공 응답의 Limit/Remaining/Reset header다. natural 429 `Retry-After`, actual 429/5xx, production retry timing, 나머지 Phase 2 market endpoint, CP3 이후 데이터 semantics/freshness는 계속 `[LIVE_UNVERIFIED]`다. Phase 2 전체 완료나 CP3 시작을 의미하지 않는다.
 

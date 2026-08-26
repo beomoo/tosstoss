@@ -73,9 +73,16 @@
 
 ## KI-013 — provider identity identifier enrichment reconciliation
 
-- 상태: `MITIGATED — CP3-C1 REVISED AFTER INDEPENDENT REVIEW — AWAITING GPT RE-REVIEW`
+- 상태: `MITIGATED — CP3-C1 FUNCTIONALLY APPROVED / DOCUMENTATION CLOSEOUT PUSHED FOR FINAL GPT CHECK`
 - 영향: ISIN/listDate가 없는 최초 observation으로 provider identity를 만든 뒤 후속 observation에 강한 identifier가 등장할 수 있다. 매 observation마다 anchor 우선순위를 다시 적용하면 같은 instrument에 새 ID가 생기고 price/history continuity와 deterministic rebuild가 깨진다.
-- 현재 대응: CP3-C1은 기존 active identity/history continuity를 최초 anchor보다 먼저 검색하고, 단일 비모순 후보는 같은 ID를 재사용해 ISIN/listDate/symbol history만 추가한다. 독립검토 P1 보완으로 current identifier는 closed/open/SYMBOL_CHANGE 의미를 source chronology에서 해석하며 history ID/hash로 winner를 선택하지 않는다. 상충 current value는 fail closed한다. 한 detail source의 duplicate non-null ISIN도 publish 전에 batch-level로 계획해 affected observation 전부를 처음부터 non-eligible collision quarantine으로 기록한다. 동일 append-only source history와 response order variation의 canonical dump 회귀를 유지한다. GPT re-review 전이므로 완전 종료로 선언하지 않는다.
+- 현재 대응: CP3-C1은 기존 active identity/history continuity를 최초 anchor보다 먼저 검색하고, 단일 비모순 후보는 같은 ID를 재사용해 ISIN/listDate/symbol history만 추가한다. 독립검토 P1 보완으로 current identifier는 closed/open/SYMBOL_CHANGE 의미를 source chronology에서 해석하며 history ID/hash로 winner를 선택하지 않는다. 상충 current value는 fail closed한다. 한 detail source의 duplicate non-null ISIN도 publish 전에 batch-level로 계획해 affected observation 전부를 처음부터 non-eligible collision quarantine으로 기록한다. 동일 append-only source history와 response order variation의 canonical dump 회귀를 유지한다. GPT independent re-review는 P1-01·P1-02를 CLOSED로 판정했으며, CP3-C2 canonical promotion authority는 계속 `USER_DECISION_REQUIRED`다.
+
+## KI-014 — secret-scan randomized self-canary intermittent behavior
+
+- 상태: `OPEN — NONBLOCKING QA INFRASTRUCTURE P2`
+- 관찰: CP3-C1 Codex self-report의 final successful run 전 실행 기록에서 변경되지 않은 secret-scan의 randomized self-canary가 간헐적으로 자체 거부 조건을 만족하지 못한 현상이 관찰됐다. 이후 독립 secret-scan과 최종 전체 회귀에서는 PASS했다.
+- 영향: 랜덤 self-canary의 재현성에 관한 비차단 QA infrastructure P2다. repository secret 노출이나 CP3-C1 기능 결함의 증거는 확인되지 않았다.
+- 현재 대응: scanner source, threshold, filter, scope를 변경하지 않는다. self-report의 exact entropy 설명은 GPT가 독립적으로 검증하지 않았으며 확립된 원인으로 기록하지 않는다. 근본 원인은 미검증 상태로 별도 QA infrastructure 조사에 이월한다.
 
 ## KI-010 — Windows non-ASCII 개발·QA 저장소 경로의 editable install 실패
 
