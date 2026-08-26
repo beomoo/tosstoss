@@ -1,22 +1,28 @@
 # Phase 2 CP3-C2-B1 — Issuer Authority Runtime Contract and Additive Migration Design
 
 - Checkpoint: `CP3-C2-B1`
-- Status: `REVISED AFTER INDEPENDENT REVIEW — AWAITING GPT RE-REVIEW`
+- Status: `PASS — CONTRACT APPROVED AND CLOSED`
 - Initial design starting SHA: `959f78415aade27e57d191db3025c66ea4266999`
 - Independent-review remediation starting SHA:
   `adfb76285af7ae5884cfc60a0223591bb7e9c913`
+- Independently reviewed SHA:
+  `f3a7a3c4cc99de9cd9656544c1b29e3d03df6911`
+- Independent re-review: `PASS WITH CLOSEOUT CONDITION`
 - Branch: `feature/phase-02-toss`
 - Design date: `2026-08-26` (`Asia/Seoul`)
 - Governing decision: `ADR-013 — ACCEPTED`
-- Production implementation: `NOT STARTED`
+- Closeout decision: `ADR-014 — ACCEPTED`
+- Production implementation:
+  `NOT STARTED — REQUIRES SEPARATE USER START APPROVAL`
 - Migration implementation: `NOT STARTED`
 - Automatic checkpoint progression: `PROHIBITED`
 
-This document proposes the versioned runtime contracts and additive schema needed
+This document defines the approved versioned runtime contracts and additive
+schema design needed
 for CP3-C2-B issuer authority. It is a design checkpoint only. Normative terms
 such as **MUST**, **MUST NOT**, **REQUIRED**, and **MAY** apply to a later,
-separately authorized implementation after independent review and explicit user
-approval.
+separately authorized implementation. B1 closeout and ADR-014 acceptance do not
+authorize that implementation.
 
 No application code, ORM model, repository, migration, fixture, test, route,
 frontend, scheduler, connector, credential, or live request is created by B1.
@@ -1482,16 +1488,20 @@ identity mapping.
 - CP3-C1: `PASS — CLOSED`
 - CP3-C2-A: `PASS — CONTRACT APPROVED AND CLOSED`
 - ADR-013: `ACCEPTED` and unchanged
-- CP3-C2-B1:
-  `REVISED AFTER INDEPENDENT REVIEW — AWAITING GPT RE-REVIEW`
-- CP3-C2-B implementation: `NOT STARTED`
+- ADR-014: `ACCEPTED`
+- CP3-C2-B1: `PASS — CONTRACT APPROVED AND CLOSED`
+- CP3-C2-B implementation:
+  `NOT STARTED — REQUIRES SEPARATE USER START APPROVAL`
 - Proposed `0005` file created/applied: `0`
 - CP3-C2-C: `NOT STARTED`
 - CP3-D: `NOT STARTED`
 - Automatic progression: `PROHIBITED`
 
-GPT independent re-review and explicit user approval are required before this
-proposed contract or migration can become an accepted implementation contract.
-ADR-014 remains `PROPOSED — AWAITING GPT INDEPENDENT RE-REVIEW`. Even a later
-approval would not start CP3-C2-B implementation, CP3-C2-C, or CP3-D without
-their separately required start authorization.
+GPT independent re-review of SHA
+`f3a7a3c4cc99de9cd9656544c1b29e3d03df6911` returned
+`PASS WITH CLOSEOUT CONDITION`, P0 `0`, P1 `0`; P1-01 through P1-04 are
+`CLOSED`. P2-01, absence of GitHub commit status/workflow evidence for the
+reviewed SHA, remains accepted and non-blocking. Local checks are not GitHub CI
+evidence. The user explicitly approved the revised B1 contract and ADR-014 on
+`2026-08-26` for documentation closeout only. CP3-C2-B implementation,
+CP3-C2-C, CP3-D, and automatic progression remain unauthorized.

@@ -419,8 +419,9 @@ CP3-C2-A migration은 0이다. 문서 제안 rollback은 documentation commit re
 
 ## ADR-014 — issuer authority는 별도 append-only ledger와 issuer-only link로 표현
 
-- 상태: `PROPOSED — AWAITING GPT INDEPENDENT RE-REVIEW`
+- 상태: `ACCEPTED`
 - 제안일: `2026-08-26`
+- 결정일: `2026-08-26`
 - 상세 설계: `plans/PHASE_02_CP3_C2_B1_RUNTIME_CONTRACT.md`
 
 ### 문제
@@ -515,9 +516,32 @@ revocation을 표현하면 ADR-013의 append-only history를 잃는다.
 - P2-01: reviewed SHA에는 GitHub status/workflow run이 없다. local
   documentation safety gates만 Codex local evidence로 구분하며 CI evidence를
   만들거나 추정하지 않는다.
-- 이 기록은 P1 closure나 PASS가 아니다. ADR-014는
-  `PROPOSED — AWAITING GPT INDEPENDENT RE-REVIEW`이고 CP3-C2-B implementation,
-  CP3-C2-C, CP3-D는 계속 `NOT STARTED`다.
+- 이 remediation 기록 당시에는 P1 closure나 PASS가 아니었다. 당시 ADR-014
+  상태는 `PROPOSED — AWAITING GPT INDEPENDENT RE-REVIEW`였고
+  CP3-C2-B implementation, CP3-C2-C, CP3-D는 `NOT STARTED`였다.
+
+### 독립 재검토·사용자 승인 closeout 기록 — 2026-08-26
+
+- Independently reviewed SHA:
+  `f3a7a3c4cc99de9cd9656544c1b29e3d03df6911`.
+- GPT independent re-review verdict: `PASS WITH CLOSEOUT CONDITION`.
+- P0: `0`.
+- P1: `0`.
+- P1-01 authenticated-human trust root: `CLOSED`.
+- P1-02 legal-jurisdiction authority: `CLOSED`.
+- P1-03 authority provenance/application: `CLOSED`.
+- P1-04 production source admission / fixture isolation: `CLOSED`.
+- P2-01: `NON-BLOCKING — GitHub CI execution evidence absent`. Reviewed SHA에
+  GitHub commit status/workflow run은 없으며 local diff/secret/policy 결과는
+  Codex local evidence일 뿐 GitHub CI evidence가 아니다.
+- User decision: revised CP3-C2-B1 runtime contract와 ADR-014를 명시적으로
+  승인했다.
+- Approval scope: CP3-C2-B1 documentation closeout only.
+- ADR-014 acceptance는 CP3-C2-B implementation 시작 권한이 아니다.
+- CP3-C2-B implementation:
+  `NOT STARTED — REQUIRES SEPARATE USER START APPROVAL`.
+- CP3-C2-C와 CP3-D는 `NOT STARTED`, automatic checkpoint progression은
+  `PROHIBITED`다.
 
 ### 대안
 
@@ -534,16 +558,17 @@ revocation을 표현하면 ADR-013의 append-only history를 잃는다.
 
 ### 영향
 
-CP3-C2-B1은 문서 설계만 작성한다. 이 ADR은 아직 `PROPOSED`이며 GPT
-independent re-review와 사용자 승인을 통과하기 전 runtime 구현 권한이
-아니다. CP3-C2-B implementation, CP3-C2-C, CP3-D와 automatic progression은
-계속 시작되지 않는다.
+CP3-C2-B1은 문서 설계만 작성했고 independent re-review와 명시적 사용자
+승인으로 contract documentation을 닫는다. ADR-014 acceptance는 runtime
+구현 권한이 아니다. CP3-C2-B implementation은
+`NOT STARTED — REQUIRES SEPARATE USER START APPROVAL`이며 CP3-C2-C, CP3-D와
+automatic progression도 계속 시작되지 않는다.
 
 향후 승인된 구현은 canonical issuer insert-or-verify와 issuer-only link를 한
 transaction으로 수행할 수 있지만, canonical Security 또는 VERIFIED provider
 mapping을 만들 수 없다. Local authentication/reauthentication은 이 proposal의
 `issuer-steward-webauthn/0.1.0`보다 약화할 수 없고 구현·독립검증은 별도
-CP3-C2-B authorization 뒤에만 가능하다.
+CP3-C2-B user start authorization 뒤에만 가능하다.
 
 ### 마이그레이션·롤백
 
