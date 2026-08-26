@@ -1,7 +1,7 @@
 # Phase 2 토스증권 읽기 전용 데이터 실행계획
 
 - 계획 상태: `PHASE 2 IMPLEMENTATION IN PROGRESS`
-- Current checkpoint: `CP3-C1 REVISED AFTER INDEPENDENT REVIEW — AWAITING GPT RE-REVIEW`
+- Current checkpoint: `CP3-C2-A PLANNING — AWAITING GPT INDEPENDENT REVIEW`
 - 최초 작성·공식 문서 조사일: `2026-08-23` (`Asia/Seoul`)
 - 현재 상태 갱신일: `2026-08-26` (`Asia/Seoul`)
 - 기준 브랜치: `feature/phase-02-toss`
@@ -19,12 +19,13 @@
 - CP2: `COMPLETE`
 - CP3-A: `PASS — CONTRACT APPROVED AND CLOSED`
 - CP3-B: `PASS — CLOSED`
-- CP3-C1: `REVISED AFTER INDEPENDENT REVIEW — AWAITING GPT RE-REVIEW`
-- CP3-C2 canonical promotion authority: `NOT STARTED — USER DECISION REQUIRED`
+- CP3-C1: `PASS — CLOSED`
+- CP3-C2-A canonical promotion authority: `PLANNING — AWAITING GPT INDEPENDENT REVIEW`
+- CP3-C2 implementation: `NOT STARTED`
 - CP3-D: `NOT STARTED`
 - Phase 2: `IMPLEMENTATION IN PROGRESS`
 
-CP3-A는 `plans/PHASE_02_CP3_A_CONTRACT.md`를 중심으로 Security Master와 Current Price의 planning/contract를 확정한 documentation checkpoint다. CP3-B는 provider source/identity foundation과 독립검증 hardening/documentation closeout을 마쳐 `PASS — CLOSED`다. CP3-C1은 별도 사용자 승인에 따라 strict `/stocks/all`·`/stocks` offline DTO/fixture, conservative universe, continuity-first identity reconciliation, append-only enrichment/lifecycle, collision quarantine, partial-detail audit와 deterministic replay를 additive `0004`로 구현했다. GPT independent review의 P1 두 건에 따라 current identifier를 ID/hash가 아닌 semantic current set으로 해석하고, complete detail response의 duplicate ISIN을 publish 전에 batch-level로 quarantine하도록 보완했다. 실제 collection/live request와 canonical promotion은 포함하지 않는다. CP3-C1은 GPT re-review 전이므로 full CP3-C `PASS`가 아니며 CP3-C2는 사용자 결정 전 시작할 수 없다. CP3-D도 시작하지 않았다.
+CP3-A는 `plans/PHASE_02_CP3_A_CONTRACT.md`를 중심으로 Security Master와 Current Price의 planning/contract를 확정한 documentation checkpoint다. CP3-B는 provider source/identity foundation과 독립검증 hardening/documentation closeout을 마쳐 `PASS — CLOSED`다. CP3-C1은 별도 사용자 승인에 따라 strict `/stocks/all`·`/stocks` offline DTO/fixture, conservative universe, continuity-first identity reconciliation, append-only enrichment/lifecycle, collision quarantine, partial-detail audit와 deterministic replay를 additive `0004`로 구현했다. GPT independent review의 P1 두 건에 따라 current identifier를 ID/hash가 아닌 semantic current set으로 해석하고, complete detail response의 duplicate ISIN을 publish 전에 batch-level로 quarantine하도록 보완했다. GPT independent re-review/documentation closeout 뒤 CP3-C1은 `PASS — CLOSED`다. CP3-C2-A는 current public OpenDART/KRX/SEC/primary-exchange/CGS authority와 access/licensing boundary를 조사해 field-owned evidence bundle, fail-closed default, manual final approval과 CP3-C2-B issuer/CP3-C2-C security split을 제안하는 documentation-only checkpoint다. 실제 collection/live request와 canonical promotion implementation은 포함하지 않으며 CP3-D도 시작하지 않았다.
 
 ## Original CP1 investigation baseline
 
@@ -45,7 +46,7 @@ CP3-A는 `plans/PHASE_02_CP3_A_CONTRACT.md`를 중심으로 Security Master와 C
 
 ## Current checkpoint status
 
-CP3-A approved repository contract는 기존 Phase 1 계약을 breaking 변경하지 않고 provider staging identity, nullable provider source time, raw/source revision, provider-scoped current latest와 additive migration 전략을 정의한다. CP3-B의 9개 source/identity foundation table과 `0003` invariants는 `PASS — CLOSED`다. CP3-C1은 semantic normalized master record, source-linked staging/lifecycle observation, identity-state event와 partial-detail batch audit 네 table만 additive `0004`로 추가했다. canonical Issuer/Security mapping row를 생성하지 않고 eligible candidate evidence에서 멈춘다. CP3-C2와 CP3-D는 시작하지 않았다.
+CP3-A approved repository contract는 기존 Phase 1 계약을 breaking 변경하지 않고 provider staging identity, nullable provider source time, raw/source revision, provider-scoped current latest와 additive migration 전략을 정의한다. CP3-B의 9개 source/identity foundation table과 `0003` invariants는 `PASS — CLOSED`다. CP3-C1은 semantic normalized master record, source-linked staging/lifecycle observation, identity-state event와 partial-detail batch audit 네 table만 additive `0004`로 추가했고 independent re-review closeout 뒤 `PASS — CLOSED`다. canonical Issuer/Security mapping row를 생성하지 않고 eligible candidate evidence에서 멈춘다. CP3-C2-A는 `plans/PHASE_02_CP3_C2_PROMOTION_AUTHORITY.md`에 planning contract만 제안했으며 CP3-C2 implementation과 CP3-D는 시작하지 않았다.
 
 ## Historical checkpoint record
 
@@ -60,8 +61,9 @@ CP3-A approved repository contract는 기존 Phase 1 계약을 breaking 변경�
 | CP2 | `COMPLETE` | final integrated QA; Phase 2 전체 완료 아님 |
 | CP3-A | `PASS — CONTRACT APPROVED AND CLOSED` | P1-01/P1-02 closed, independent re-review와 사용자 승인; application implementation 0 |
 | CP3-B | `PASS — CLOSED` | 독립검증 hardening과 documentation closeout 완료 |
-| CP3-C1 | `REVISED AFTER INDEPENDENT REVIEW — AWAITING GPT RE-REVIEW` | P1-01/P1-02 minimal fix-forward 보완; re-review 전 |
-| CP3-C2 | `NOT STARTED — USER DECISION REQUIRED` | canonical promotion authority 자동 진입 금지 |
+| CP3-C1 | `PASS — CLOSED` | P1-01/P1-02 closed, independent re-review/documentation closeout 완료 |
+| CP3-C2-A | `PLANNING — AWAITING GPT INDEPENDENT REVIEW` | canonical promotion authority 조사·계약만; production change 0 |
+| CP3-C2 implementation | `NOT STARTED` | GPT review와 사용자 별도 승인 전 자동 진입 금지 |
 | CP3-D | `NOT STARTED` | 가격 구현 자동 진입 금지 |
 
 ## 0. 근거 분류
@@ -517,13 +519,57 @@ CP2-A의 통과는 CP2 전체 통과가 아니며, 아래 기존 완료 조건�
 - offline only이며 actual credential/Toss API request, collection job, endpoint DTO/normalizer, Security Master reconciliation과 Current Price implementation은 0이다.
 - GPT independent review closeout과 최종 documentation regression을 마쳐 `PASS — CLOSED`다. 이 closeout은 후속 checkpoint automatic progression 권한이 아니다.
 
-### CP3-C — Security Master
+### CP3-C1 — Provider Security Master staging/reconciliation
 
+- 상태: `PASS — CLOSED`
 - `/stocks/all` discovery DTO/fixture와 `/stocks` detail DTO/fixture
-- KR/US conservative universe, provider staging identity, canonical mapping, lifecycle, normalization, storage와 idempotency
-- unknown enum, identifier collision, symbol reuse와 partial detail negative test
-- live API 없음
-- 시작 조건: CP3-B 승인 및 full offline gate 통과
+- KR/US conservative universe, provider staging identity, lifecycle,
+  normalization, storage와 idempotency
+- continuity-first/no-rekey, semantic current identifier, complete-detail batch
+  collision planning, symbol reuse와 partial detail negative test
+- canonical Issuer/Security 생성과 `VERIFIED` mapping: 0
+- live API: 0
+
+### CP3-C2-A — Canonical Promotion Authority Contract
+
+- 상태: `PLANNING — AWAITING GPT INDEPENDENT REVIEW`
+- 상세 계약: `plans/PHASE_02_CP3_C2_PROMOTION_AUTHORITY.md`
+- OpenDART/KRX/인터넷등기소와 SEC/primary exchange/FINRA/CGS/GLEIF의
+  field-specific authority, limitation, conflict와 access/license 범위를
+  2026-08-26 public source로 재조사한다.
+- KR issuer/security와 US issuer/security decision matrix, fail-closed default,
+  evidence bundle, correction/revocation/history와 required scenarios를
+  고정한다.
+- final automatic promotion은 제안하지 않는다. machine은
+  `READY_FOR_MANUAL_REVIEW`까지만 만들고 비모순 authority bundle에 대한
+  authenticated human approval 뒤에만 canonical write를 허용한다.
+- provider identity/canonical identity를 분리하고 모든 provider/raw/source/
+  identifier/observation history와 allocation anchor를 rekey하지 않는다.
+- documentation-only: application/migration/fixture/test/script/API/frontend/
+  scheduler/connector/live request 변경 0.
+
+### CP3-C2-B — Canonical Issuer Authority / Mapping (proposed split)
+
+- 상태: `NOT STARTED`
+- 시작 조건: CP3-C2-A GPT independent review, 사용자 contract 승인과 별도
+  implementation 시작 승인
+- versioned authority evidence/bundle/approval과 KR OpenDART corp_code/US SEC
+  CIK registrant validation을 구현한다.
+- issuer가 승인돼도 security가 unresolved이면 final
+  `ProviderIdentityMapping`은 계속 `UNRESOLVED`다.
+- synthetic/fake corp_code/CIK, name-only/symbol-only merge와 automatic final
+  approval은 금지한다.
+
+### CP3-C2-C — Canonical Security Authority / Final Mapping (proposed split)
+
+- 상태: `NOT STARTED`
+- 시작 조건: CP3-C2-B 승인과 별도 사용자 시작 승인
+- KRX instrument/ISIN/class/listing과 SEC registered class/primary exchange
+  evidence, multi-class anchor, collision, correction/revocation을 구현한다.
+- CGS CUSIP/ISIN은 compliant license/access가 별도 승인된 경우에만 사용한다.
+- complete non-conflicting evidence bundle과 explicit human approval 뒤에만
+  canonical Security와 current `ProviderIdentityMapping(VERIFIED)`를 추가한다.
+- ticker/symbol은 canonical/regulatory anchor로 사용하지 않는다.
 
 ### CP3-D1 — Current Price Offline
 
@@ -532,7 +578,7 @@ CP2-A의 통과는 CP2 전체 통과가 아니며, 아래 기존 완료 조건�
 - raw/source trace, provider latest-state, duplicate/revision, last known-good 보존
 - price history SQLite 누적 금지; CP4 Parquet/DuckDB 범위 유지
 - full offline regression
-- 시작 조건: CP3-C 승인
+- 시작 조건: CP3-C2 implementation 승인/closeout과 별도 CP3-D1 시작 승인
 
 ### CP3-D2 — Separately Approved Minimal Live Verification
 
@@ -548,7 +594,7 @@ CP2-A의 통과는 CP2 전체 통과가 아니며, 아래 기존 완료 조건�
 - P0/P1/P2 분류와 문서 closeout
 - CP3 완료 여부는 D3 독립 검토와 사용자 승인 뒤에만 판정
 
-각 CP3 checkpoint는 앞 checkpoint 승인 뒤에만 시작한다. CP3-A 뒤 CP3-B/C/D를 자동 실행하지 않는다. 세부 계약과 test-case matrix는 `plans/PHASE_02_CP3_A_CONTRACT.md`를 따른다.
+각 CP3 checkpoint는 앞 checkpoint 승인 뒤에만 시작한다. CP3-A 또는 CP3-C2-A documentation 뒤 후속 implementation을 자동 실행하지 않는다. Security Master/Current Price foundation은 `plans/PHASE_02_CP3_A_CONTRACT.md`, canonical promotion authority 제안은 `plans/PHASE_02_CP3_C2_PROMOTION_AUTHORITY.md`를 따른다.
 
 ### CP4 — Candles + time-series storage
 
@@ -731,4 +777,4 @@ Phase 2 완료 선언에는 모두 필요하다.
 
 ## 최종 판정
 
-CP1은 `PASS`, CP2는 `COMPLETE`, CP3-A는 `PASS — CONTRACT APPROVED AND CLOSED`, CP3-B는 `PASS — CLOSED`다. ADR-010, ADR-011과 revised ADR-012는 `ACCEPTED`다. CP3-C1은 `REVISED AFTER INDEPENDENT REVIEW — AWAITING GPT RE-REVIEW`이며 full CP3-C `PASS`가 아니다. CP3-C2는 `NOT STARTED — USER DECISION REQUIRED`, CP3-D는 `NOT STARTED`, automatic checkpoint progression은 `PROHIBITED`다. Phase 2 전체는 `IMPLEMENTATION IN PROGRESS`다. `/stocks/all`·`/stocks` CP3-C1 semantics는 공식 문서 기반 offline fixture만 검증했고 LIVE_VERIFIED 범위는 확대하지 않았다. `/prices`, price timestamp-null/currency/freshness, natural 429와 actual 429/5xx production timing은 계속 `[LIVE_UNVERIFIED]`다.
+CP1은 `PASS`, CP2는 `COMPLETE`, CP3-A는 `PASS — CONTRACT APPROVED AND CLOSED`, CP3-B와 CP3-C1은 `PASS — CLOSED`다. ADR-010, ADR-011과 revised ADR-012는 `ACCEPTED`다. ADR-013과 CP3-C2-B/C split은 `PROPOSED`이며 CP3-C2-A는 `PLANNING — AWAITING GPT INDEPENDENT REVIEW`다. CP3-C2 implementation과 CP3-D는 `NOT STARTED`, automatic checkpoint progression은 `PROHIBITED`다. Phase 2 전체는 `IMPLEMENTATION IN PROGRESS`다. `/stocks/all`·`/stocks` CP3-C1 semantics는 공식 문서 기반 offline fixture만 검증했고 LIVE_VERIFIED 범위는 확대하지 않았다. CP3-C2-A research는 public documents만 사용했으며 OpenDART/SEC/KRX/exchange/CGS/Toss live request는 0이다. `/prices`, price timestamp-null/currency/freshness, natural 429와 actual 429/5xx production timing은 계속 `[LIVE_UNVERIFIED]`다.

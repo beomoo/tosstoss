@@ -330,6 +330,58 @@ Phase 1 `Issuer`는 KR corp_code 또는 US CIK를 요구하고 `Security`는 iss
 - schema는 이 logic correction에 충분하므로 migration은 추가하지 않는다. `0001`~`0004`는 byte-identical이고 canonical promotion authority, CP3-C2, CP3-D와 live scope는 변경하지 않는다.
 - CP3-C1 상태는 `REVISED AFTER INDEPENDENT REVIEW — AWAITING GPT RE-REVIEW`다. 이 기록은 re-review `PASS` 또는 다음 checkpoint 시작 승인이 아니다.
 
+### CP3-C1 독립 재검토 closeout 기록 — 2026-08-26
+
+- GPT independent re-review는 implementation SHA `ac2c194de9b9b413c3a83537b84e878ba579d3e6`에 대해 `PASS WITH CLOSEOUT CONDITION`, P0 0/P1 0, P1-01/P1-02 `CLOSED`로 판정했다.
+- documentation closeout 뒤 CP3-C1은 `PASS — CLOSED`다. 이 closeout은 canonical promotion, CP3-C2 implementation, CP3-D 또는 automatic checkpoint progression 권한이 아니다.
+- 이전 `CHANGES REQUIRED` 기록, 보완 self-report, 실패한 회귀 이력과 nonblocking secret-scan QA infrastructure P2는 삭제하거나 소급 수정하지 않는다.
+
+---
+
+## ADR-013 — canonical promotion은 field-owned authority bundle과 명시적 수동 승인을 요구
+
+- 상태: `PROPOSED`
+- 제안일: `2026-08-26`
+- 결정일: 미정
+- 상세 계약: `plans/PHASE_02_CP3_C2_PROMOTION_AUTHORITY.md`
+
+### 문제
+
+CP3-C1 provider staging은 Toss의 name/symbol/ISIN observation을 canonical Issuer/Security와 의도적으로 분리했다. 그러나 현행 저장소에는 OpenDART corp_code/SEC CIK, KRX/SEC·primary-exchange instrument evidence, authority revision·collision과 human approval을 하나의 검증 가능한 bundle로 표현하는 승인 계약이 없다. Toss symbol/ticker/name, synthetic corp_code/CIK 또는 단독 provider identifier로 빈칸을 채우면 issuer/class/security를 잘못 합치는 P0 mapping 오류가 발생한다.
+
+현행 `ProviderIdentityMapping(VERIFIED)`은 issuer/security/approved_at을 동시에 요구하므로 `issuer verified, security unresolved`를 표현하지 못한다. `MappingStatus`는 review/revocation/supersession을 표현하지 못하고 mapping row 한 개의 provider source만으로 cross-authority evidence를 보존할 수 없다. `ShareClass.COMMON`도 복수 common class를 안전하게 구분하지 못한다.
+
+### 제안
+
+- canonical promotion의 기본 상태는 `UNRESOLVED`다.
+- machine은 official evidence 수집·정규화·revision/collision 검증과 `READY_FOR_MANUAL_REVIEW` 후보까지만 만든다. canonical Issuer/Security 생성과 current `ProviderIdentityMapping(VERIFIED)`은 authenticated human data steward의 명시적 승인 event가 필수이며 자동 final promotion은 0이다.
+- human approval도 모순된 authority evidence의 임의 winner를 선택할 권한은 없다. field-owning authority의 correction이나 추가 근거로 conflict가 해소되지 않으면 unresolved/quarantine을 유지한다.
+- KR issuer authority는 OpenDART corp_code, KR instrument/listing/share-kind/ISIN authority는 KRX다. OpenDART→KRX issuer/instrument bridge와 provider observation이 모두 일치해야 한다.
+- US issuer authority는 SEC CIK와 accepted registrant filing이다. instrument/class authority는 accepted SEC class evidence이고 current listing/ticker status는 해당 primary exchange가 소유한다. SEC company ticker file은 discovery only다.
+- CGS CUSIP/US ISIN은 numbering authority지만 license와 승인된 access가 없으면 evidence가 없는 것으로 처리한다. provider-supplied CUSIP/ISIN으로 대체하지 않는다.
+- provider name/symbol/ticker는 canonical/regulatory identifier나 anchor로 사용하지 않는다. synthetic/fake corp_code/CIK, name-only/symbol-only merge, inferred exchange/share class, arbitrary collision winner를 금지한다.
+- promotion은 linkage만 추가한다. `provider_security_identity_id`, allocation anchor, provider/source/identifier/normalized/observation history를 rekey·rewrite하지 않는다.
+- implementation은 `CP3-C2-B canonical issuer authority/mapping`과 `CP3-C2-C canonical security authority/final mapping`으로 분리한다. issuer만 승인된 상태에서 provider final mapping은 계속 `UNRESOLVED`다.
+- correction/revocation은 append-only evidence/decision event로 보존하고 authority가 주지 않은 effective date를 `fetched_at`/approval time으로 만들지 않는다.
+
+### 대안
+
+1. Toss symbol/name만으로 canonical merge: regulatory/legal/instrument authority가 아니므로 거부한다.
+2. OpenDART/SEC issuer identifier 하나로 Security까지 생성: issuer와 share class/instrument를 혼동하므로 거부한다.
+3. 모든 official-looking source에 동일 precedence 부여: source마다 field authority scope가 달라 conflict를 숨기므로 거부한다.
+4. 전 근거 일치 시 무인 automatic VERIFIED: correction, ticker reuse, share class와 access/licensing 위험이 남으므로 이 계약에서는 거부한다.
+5. issuer와 security를 한 checkpoint에서 구현: `issuer verified, security unresolved`를 거짓 final mapping 없이 표현하기 어렵고 P0 blast radius가 커서 거부한다.
+
+### 영향
+
+CP3-C2-A는 planning 문서만 변경한다. application, migration, fixture, test, API, frontend, connector, scheduler와 live request는 0이다. ADR-013은 GPT independent review와 사용자 승인 전 `PROPOSED`이며 CP3-C2-B/C implementation 시작 권한이 아니다.
+
+기존 Phase 1 synthetic fixture identifier는 regression history로 보존하지만 신규 promotion evidence로 사용하지 않는다. 향후 구현은 authority evidence bundle, approver identity, issuer-only decision, multi-class instrument와 revocation을 위한 versioned additive contract/schema가 필요할 수 있으며 별도 checkpoint 승인 없이는 migration을 만들지 않는다. `0001`~`0004`는 변경하지 않는다.
+
+### 마이그레이션·롤백
+
+CP3-C2-A migration은 0이다. 문서 제안 rollback은 documentation commit revert뿐이며 provider/canonical data 영향은 없다. 후속 migration 설계가 승인되더라도 additive evidence/decision/linkage만 허용하고 기존 provider/canonical/raw/history row의 destructive rewrite나 rekey를 금지한다.
+
 ---
 
 ## 새 결정 기록 양식
