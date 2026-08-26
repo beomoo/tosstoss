@@ -1,5 +1,20 @@
 # Changelog
 
+## Unreleased — Phase 2 CP3-C1 Independent-Review P1 Remediation — 2026-08-26
+
+### Fixed
+
+- current identifier를 source chronology와 identifier history의 의미 상태로 해석한다. closed history는 current에서 제외하고, symbol-change observation은 provider가 제공하지 않은 변경일을 만들지 않은 채 새 open symbol을 current로 만든다. 둘 이상의 상충 current 값은 history ID/hash 순서로 winner를 고르지 않고 collision quarantine으로 fail closed한다.
+- 한 STOCK_DETAIL source의 전체 response를 publish 전에 분석해 duplicate non-null ISIN을 검출한다. 모든 affected observation을 처음부터 `QUARANTINED`/`UNRESOLVED_COLLISION`으로 기록하며 기존 identity는 source-consistent하게 함께 격리하고 신규 충돌 후보에는 identity를 할당하지 않는다.
+- C-M04/IR-F의 두 affected observation 검증을 강화하고 three-step rename, current lookup, discovery/detail missing, ambiguous current, new-candidate duplicate ISIN, response-order independence 회귀를 추가했다.
+
+### QA and Scope
+
+- GPT independent review 결과 `CHANGES REQUIRED`, P0 0/P1 2를 전사한 QA record와 Codex fix self-report를 분리해 추가했다.
+- Backend exact inventory는 `540 → 544`; frontend `43`, E2E `2`를 유지한다. migration은 0이며 `0001`~`0004`는 byte-identical이다.
+- actual credential, actual Toss API request, external provider network와 canonical auto-promotion은 각각 0이다.
+- 상태는 CP3-B `PASS — CLOSED`, CP3-C1 `REVISED AFTER INDEPENDENT REVIEW — AWAITING GPT RE-REVIEW`, CP3-C2 `NOT STARTED — USER DECISION REQUIRED`, CP3-D `NOT STARTED`; automatic progression은 `PROHIBITED`다.
+
 ## Unreleased — Phase 2 CP3-C1 Security Master Staging & Reconciliation — 2026-08-26
 
 ### Added

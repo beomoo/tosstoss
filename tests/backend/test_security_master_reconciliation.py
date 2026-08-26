@@ -18,6 +18,7 @@ from toss_dashboard_api.contracts.enums import (
     ProviderDataset,
     ProviderDetailBatchStatus,
     ProviderIdentifierKind,
+    ProviderIdentifierReason,
     ProviderIdentityState,
     ProviderListingMarket,
     ProviderReconciliationOutcome,
@@ -25,6 +26,10 @@ from toss_dashboard_api.contracts.enums import (
     ProviderSecurityStatus,
     ProviderSecurityType,
     RevisionStatus,
+)
+from toss_dashboard_api.contracts.provider_identity import (
+    PROVIDER_IDENTITY_CONTRACT_VERSION,
+    ProviderIdentifierHistory,
 )
 from toss_dashboard_api.contracts.provider_security_master import (
     TossKoreanMarketDetail,
@@ -319,11 +324,169 @@ def test_c_m03_symbol_change_with_unique_isin_reuses_identity(
         entry for entry in histories if entry.identifier_kind == ProviderIdentifierKind.SYMBOL
     ]
     assert {entry.identifier_value for entry in symbols} == {"KRT001", "KRT009"}
+    assert all(entry.valid_to is None for entry in symbols)
     assert any(
-        entry.valid_to == date(2020, 1, 2)
+        entry.identifier_value == "KRT009"
+        and entry.revision_reason == ProviderIdentifierReason.SYMBOL_CHANGE
+        and entry.valid_from is None
         for entry in symbols
-        if entry.identifier_value == "KRT001"
     )
+
+
+def test_p1_01_symbol_transition_uses_semantic_current_identity(
+    database_context, workspace_tmp_path: Path
+) -> None:
+    raw_root = workspace_tmp_path / "raw"
+    service = _service(database_context.engine)
+    source_old = _source(
+        database_context.engine,
+        raw_root,
+        symbols=("OLD",),
+        raw_token="rename-old",
+        minute=1,
+    )
+    first = _reconcile(service, source_old, _detail("OLD", isin=KR_ISIN_A))
+    repository = _repository(database_context.engine)
+    identity_before = repository.list_identities()[0]
+
+    source_new = _source(
+        database_context.engine,
+        raw_root,
+        symbols=("NEW",),
+        raw_token="rename-new",
+        minute=2,
+    )
+    second = _reconcile(service, source_new, _detail("NEW", isin=KR_ISIN_A))
+    source_partial = _source(
+        database_context.engine,
+        raw_root,
+        symbols=("NEW",),
+        raw_token="rename-new-partial",
+        minute=3,
+        prior=source_new,
+    )
+    third = _reconcile(
+        service,
+        source_partial,
+        _detail("NEW", isin=None, list_date=None),
+    )
+
+    identities = repository.list_identities()
+    identity_id = identity_before.provider_security_identity_id
+    assert len(identities) == 1
+    assert identities[0].provider_security_identity_id == identity_id
+    assert identities[0].allocation_anchor_hash == identity_before.allocation_anchor_hash
+    assert {
+        first.observations[0].provider_security_identity_id,
+        second.observations[0].provider_security_identity_id,
+        third.observations[0].provider_security_identity_id,
+    } == {identity_id}
+    rename_rows = [
+        entry
+        for entry in repository.list_identifier_history()
+        if entry.identifier_kind == ProviderIdentifierKind.SYMBOL
+        and entry.revision_reason == ProviderIdentifierReason.SYMBOL_CHANGE
+    ]
+    assert [(entry.identifier_value, entry.valid_from) for entry in rename_rows] == [("NEW", None)]
+
+    discovery = _source(
+        database_context.engine,
+        raw_root,
+        raw_token="rename-discovery",
+        minute=4,
+        discovery=True,
+    )
+    service.stage_discovery(
+        source_version_id=discovery.source_version_id,
+        market=Market.KR,
+        response=TossStockDiscoveryResponse(
+            result=[
+                _discovery_item("OLD", isin=KR_ISIN_A),
+                _discovery_item("NEW", isin=KR_ISIN_A),
+            ]
+        ),
+    )
+    discovery_missing = _source(
+        database_context.engine,
+        raw_root,
+        raw_token="rename-discovery-missing",
+        minute=5,
+        prior=discovery,
+        discovery=True,
+    )
+    missing = service.stage_discovery(
+        source_version_id=discovery_missing.source_version_id,
+        market=Market.KR,
+        response=TossStockDiscoveryResponse(result=[]),
+    )
+    missing_by_symbol = {item.symbol: item for item in missing.observations}
+    assert missing_by_symbol["NEW"].provider_security_identity_id == identity_id
+    assert missing_by_symbol["OLD"].provider_security_identity_id is None
+
+    missing_detail_source = _source(
+        database_context.engine,
+        raw_root,
+        symbols=("NEW",),
+        raw_token="rename-detail-missing",
+        minute=6,
+        prior=source_partial,
+    )
+    missing_detail = _reconcile(service, missing_detail_source)
+    assert missing_detail.observations[0].provider_security_identity_id == identity_id
+    assert (
+        missing_detail.observations[0].reconciliation_outcome
+        == ProviderReconciliationOutcome.DETAIL_MISSING
+    )
+
+
+def test_p1_01_ambiguous_current_symbol_fails_closed(
+    database_context, workspace_tmp_path: Path
+) -> None:
+    raw_root = workspace_tmp_path / "raw"
+    source = _source(
+        database_context.engine,
+        raw_root,
+        symbols=("OLD",),
+        raw_token="ambiguous-current-base",
+        minute=1,
+    )
+    service = _service(database_context.engine)
+    first = _reconcile(service, source, _detail("OLD", isin=KR_ISIN_A))
+    identity_id = first.observations[0].provider_security_identity_id
+    assert identity_id is not None
+
+    provider_repository = SQLiteProviderRepository(
+        session_factory(database_context.engine), ProviderRawStore(raw_root)
+    )
+    provider_repository.append_identifier_history(
+        ProviderIdentifierHistory(
+            identifier_history_id="pih_0000000000000000",
+            provider_security_identity_id=identity_id,
+            identifier_kind=ProviderIdentifierKind.SYMBOL,
+            identifier_value="CONFLICT",
+            valid_from=None,
+            valid_to=None,
+            source_version_id=source.source_version_id,
+            revision_reason=ProviderIdentifierReason.ENRICHMENT,
+            provider_contract_version=PROVIDER_IDENTITY_CONTRACT_VERSION,
+        )
+    )
+    followup = _source(
+        database_context.engine,
+        raw_root,
+        symbols=("OLD",),
+        raw_token="ambiguous-current-followup",
+        minute=2,
+        prior=source,
+    )
+    observation = _reconcile(service, followup, _detail("OLD", isin=KR_ISIN_A)).observations[0]
+
+    assert observation.eligible_for_mapping is False
+    assert observation.staging_state == ProviderSecurityMasterState.QUARANTINED
+    assert observation.reconciliation_outcome == ProviderReconciliationOutcome.UNRESOLVED_COLLISION
+    assert observation.collision_identity_ids == (identity_id,)
+    assert "AMBIGUOUS_CURRENT_IDENTIFIER" in observation.reason_codes
+    assert len(_repository(database_context.engine).list_identities()) == 1
 
 
 def test_c_m04_and_ir_f_duplicate_isin_quarantines_both_without_merge(
@@ -361,17 +524,134 @@ def test_c_m04_and_ir_f_duplicate_isin_quarantines_both_without_merge(
         _detail("KRT001", isin=KR_ISIN_C, list_date=None),
         _detail("KRT002", isin=KR_ISIN_C, list_date=None),
     )
-    identities = _repository(database_context.engine).list_identities()
+    repository = _repository(database_context.engine)
+    identities = repository.list_identities()
+    affected_observations = [
+        item
+        for item in repository.list_observations()
+        if item.source_version_id == source_b.source_version_id
+    ]
 
-    assert (
-        result.observations[1].reconciliation_outcome
-        == ProviderReconciliationOutcome.UNRESOLVED_COLLISION
+    assert len(result.observations) == len(affected_observations) == 2
+    assert all(
+        item.reconciliation_outcome == ProviderReconciliationOutcome.UNRESOLVED_COLLISION
+        and item.staging_state == ProviderSecurityMasterState.QUARANTINED
+        and item.eligible_for_mapping is False
+        and set(item.collision_identity_ids) == before_ids
+        for item in affected_observations
     )
-    assert set(result.observations[1].collision_identity_ids) == before_ids
     assert {item.provider_security_identity_id for item in identities} == before_ids
     assert {item.identity_state for item in identities} == {
         ProviderIdentityState.UNRESOLVED_COLLISION
     }
+    with database_context.engine.connect() as connection:
+        assert (
+            connection.exec_driver_sql(
+                "SELECT COUNT(*) FROM provider_identity_mappings"
+            ).scalar_one()
+            == 0
+        )
+
+
+def test_p1_02_same_source_duplicate_isin_quarantines_all_new_candidates(
+    database_context, workspace_tmp_path: Path
+) -> None:
+    source = _source(
+        database_context.engine,
+        workspace_tmp_path / "raw",
+        symbols=("KRT001", "KRT002"),
+        raw_token="same-source-new-collision",
+        minute=1,
+    )
+    result = _reconcile(
+        _service(database_context.engine),
+        source,
+        _detail("KRT001", isin=KR_ISIN_C),
+        _detail("KRT002", isin=KR_ISIN_C, name="테스트 베타"),
+    )
+    repository = _repository(database_context.engine)
+    affected = [
+        item
+        for item in repository.list_observations()
+        if item.source_version_id == source.source_version_id
+    ]
+
+    assert len(result.observations) == len(affected) == 2
+    assert sum(item.eligible_for_mapping for item in affected) == 0
+    assert all(
+        item.staging_state == ProviderSecurityMasterState.QUARANTINED
+        and item.reconciliation_outcome == ProviderReconciliationOutcome.UNRESOLVED_COLLISION
+        and item.provider_security_identity_id is None
+        and item.collision_identity_ids == ()
+        and "DUPLICATE_ISIN_IN_DETAIL_SOURCE" in item.reason_codes
+        for item in affected
+    )
+    assert repository.list_identities() == []
+    assert repository.list_identifier_history() == []
+    with database_context.engine.connect() as connection:
+        assert (
+            connection.exec_driver_sql(
+                "SELECT COUNT(*) FROM provider_identity_mappings"
+            ).scalar_one()
+            == 0
+        )
+
+
+def test_p1_02_duplicate_isin_batch_is_response_order_independent(
+    workspace_tmp_path: Path,
+) -> None:
+    dumps: list[bytes] = []
+    for suffix, items in (
+        (
+            "forward",
+            (
+                _detail("KRT001", isin=KR_ISIN_C),
+                _detail("KRT002", isin=KR_ISIN_C, name="테스트 베타"),
+            ),
+        ),
+        (
+            "reverse",
+            (
+                _detail("KRT002", isin=KR_ISIN_C, name="테스트 베타"),
+                _detail("KRT001", isin=KR_ISIN_C),
+            ),
+        ),
+    ):
+        database_path = workspace_tmp_path / f"collision-order-{suffix}.sqlite3"
+        url = f"sqlite:///{database_path.as_posix()}"
+        command.upgrade(alembic_config(url), "head")
+        engine = create_database_engine(url)
+        try:
+            source = _source(
+                engine,
+                workspace_tmp_path / f"raw-{suffix}",
+                symbols=("KRT001", "KRT002"),
+                raw_token="same-order-independent-collision",
+                minute=1,
+            )
+            _reconcile(_service(engine), source, *items)
+            repository = _repository(engine)
+            payload = {
+                "identities": [
+                    item.model_dump(mode="json") for item in repository.list_identities()
+                ],
+                "history": [
+                    item.model_dump(mode="json") for item in repository.list_identifier_history()
+                ],
+                "records": [item.model_dump(mode="json") for item in repository.list_records()],
+                "observations": [
+                    item.model_dump(mode="json") for item in repository.list_observations()
+                ],
+                "events": [item.model_dump(mode="json") for item in repository.list_state_events()],
+                "batches": [
+                    item.model_dump(mode="json") for item in repository.list_detail_batches()
+                ],
+            }
+            dumps.append(canonical_json_bytes(payload))
+        finally:
+            engine.dispose()
+
+    assert dumps[0] == dumps[1]
 
 
 def test_c_m05_and_ir_d_missing_isin_enriches_without_rekey(

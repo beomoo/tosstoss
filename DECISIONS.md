@@ -321,6 +321,15 @@ Phase 1 `Issuer`는 KR corp_code 또는 US CIK를 요구하고 `Security`는 iss
 - deterministic replay는 source를 `(fetched_at, source_version_id)`로 정렬하며 clock/run/job/attempt ID를 identity allocation에 사용하지 않는다.
 - CP3-C1은 `ELIGIBLE_FOR_MAPPING` candidate evidence에서 중단한다. canonical Issuer/Security 생성, fake corp_code/CIK, exchange 추정과 `VERIFIED` 승격 권한은 CP3-C2 사용자 결정 전까지 계속 금지한다. CP3-D 가격 구현과 live request도 시작하지 않았다.
 
+### CP3-C1 독립검토 P1 보완 기록 — 2026-08-26
+
+- GPT independent review는 P0 0/P1 2로, symbol transition 뒤 current identifier가 history hash/ID ordering에 의존할 수 있는 문제와 동일 STOCK_DETAIL source의 뒤늦은 duplicate ISIN이 앞선 observation을 eligible로 남길 수 있는 문제를 확인했다.
+- current identifier는 source chronology별 의미 상태로 해석한다. closed value를 current에서 제외하고 SYMBOL_CHANGE observation의 open replacement set을 사용하며, 상충하는 open current value가 둘 이상이면 arbitrary winner 없이 `UNRESOLVED_COLLISION`/`QUARANTINED`로 fail closed한다. `identifier_history_id`는 semantic winner를 결정하지 않는다.
+- provider가 symbol-change effective date를 제공하지 않으면 `listDate` 또는 `fetched_at`을 그 날짜로 대입하지 않는다. 기존 history와 immutable provider identity/allocation anchor는 보존한다.
+- 한 detail source는 complete response의 duplicate non-null ISIN과 existing continuity candidates를 publish 전에 분석한다. affected observation은 모두 처음부터 non-eligible collision quarantine으로 기록하며, new candidate collision에는 identity를 할당하지 않는다.
+- schema는 이 logic correction에 충분하므로 migration은 추가하지 않는다. `0001`~`0004`는 byte-identical이고 canonical promotion authority, CP3-C2, CP3-D와 live scope는 변경하지 않는다.
+- CP3-C1 상태는 `REVISED AFTER INDEPENDENT REVIEW — AWAITING GPT RE-REVIEW`다. 이 기록은 re-review `PASS` 또는 다음 checkpoint 시작 승인이 아니다.
+
 ---
 
 ## 새 결정 기록 양식

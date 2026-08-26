@@ -79,6 +79,12 @@ class SecurityMasterReplayInput:
     response: TossStockDiscoveryResponse | TossStockDetailResponse
 
 
+@dataclass(frozen=True)
+class _DetailCollisionPlan:
+    candidates: tuple[ProviderSecurityIdentity, ...]
+    reason_codes: tuple[str, ...]
+
+
 class SecurityMasterReconciliationService:
     """Offline-only CP3-C1 staging with continuity-first identity reconciliation."""
 
@@ -183,16 +189,25 @@ class SecurityMasterReconciliationService:
                 raise ProviderContractConflict(
                     "missing detail cannot be staged without discovery evidence"
                 )
+        details = {item.symbol: item for item in response.result}
+        collision_plans = self._detail_collision_plans(source, market, details)
         self._repository.record_detail_batch(batch)
         observations: list[ProviderSecurityMasterObservation] = []
-        details = {item.symbol: item for item in response.result}
         for symbol in batch.requested_symbols:
             item = details.get(symbol)
-            observation = (
-                self._stage_missing_detail(source, market, symbol)
-                if item is None
-                else self._reconcile_detail_item(source, market, item)
-            )
+            if item is None:
+                observation = self._stage_missing_detail(source, market, symbol)
+            elif (plan := collision_plans.get(symbol)) is not None:
+                observation = self._persist_collision(
+                    source,
+                    market,
+                    item,
+                    self._normalized_record(market, item),
+                    plan.candidates,
+                    list(plan.reason_codes),
+                )
+            else:
+                observation = self._reconcile_detail_item(source, market, item)
             observations.append(observation)
         return SecurityMasterStageResult(observations=tuple(observations), detail_batch=batch)
 
@@ -235,8 +250,15 @@ class SecurityMasterReconciliationService:
         record = self._normalized_record(market, item)
         identities = self._market_identities(market)
         history = self._history_by_identity()
-        candidates = self._continuity_candidates(source, item, identities, history)
         reason_codes = list(self._detail_reason_codes(market, item))
+        ambiguous = self._ambiguous_current_identities(item, identities, history)
+        if ambiguous:
+            reason_codes.append("AMBIGUOUS_CURRENT_IDENTIFIER")
+            return self._persist_collision(
+                source, market, item, record, tuple(ambiguous.values()), reason_codes
+            )
+
+        candidates = self._continuity_candidates(source, item, identities, history)
 
         if len(candidates) > 1:
             return self._persist_collision(
@@ -336,6 +358,40 @@ class SecurityMasterReconciliationService:
             )
         )
         return persisted.record
+
+    def _detail_collision_plans(
+        self,
+        source: ProviderSourceVersion,
+        market: Market,
+        details: dict[str, TossStockDetailItem],
+    ) -> dict[str, _DetailCollisionPlan]:
+        by_isin: defaultdict[str, list[TossStockDetailItem]] = defaultdict(list)
+        for item in details.values():
+            if item.isinCode is not None:
+                by_isin[item.isinCode].append(item)
+
+        identities = self._market_identities(market)
+        history = self._history_by_identity()
+        plans: dict[str, _DetailCollisionPlan] = {}
+        for _, items in sorted(by_isin.items()):
+            if len(items) < 2:
+                continue
+            affected: dict[str, ProviderSecurityIdentity] = {}
+            for item in items:
+                affected.update(self._ambiguous_current_identities(item, identities, history))
+                affected.update(self._continuity_candidates(source, item, identities, history))
+            ordered = tuple(
+                sorted(affected.values(), key=lambda value: value.provider_security_identity_id)
+            )
+            reasons = ("DUPLICATE_ISIN_IN_DETAIL_SOURCE",)
+            for item in items:
+                plans[item.symbol] = _DetailCollisionPlan(
+                    candidates=ordered,
+                    reason_codes=tuple(
+                        sorted((*self._detail_reason_codes(market, item), *reasons))
+                    ),
+                )
+        return plans
 
     def _persist_collision(
         self,
@@ -442,7 +498,10 @@ class SecurityMasterReconciliationService:
         candidates: dict[str, ProviderSecurityIdentity] = {}
         for identity in identities:
             entries = history.get(identity.provider_security_identity_id, ())
-            current_symbol = self._current_identifier(entries, ProviderIdentifierKind.SYMBOL)
+            current_symbols = self._semantic_current_identifiers(
+                entries, ProviderIdentifierKind.SYMBOL
+            )
+            current_symbol = current_symbols[0] if len(current_symbols) == 1 else None
             active = identity.identity_state == ProviderIdentityState.ACTIVE
             if (
                 active
@@ -480,6 +539,49 @@ class SecurityMasterReconciliationService:
             ):
                 candidates[identity.provider_security_identity_id] = identity
         return candidates
+
+    def _ambiguous_current_identities(
+        self,
+        item: TossStockDetailItem,
+        identities: tuple[ProviderSecurityIdentity, ...],
+        history: dict[str, tuple[ProviderIdentifierHistory, ...]],
+    ) -> dict[str, ProviderSecurityIdentity]:
+        ambiguous: dict[str, ProviderSecurityIdentity] = {}
+        for identity in identities:
+            if identity.identity_state != ProviderIdentityState.ACTIVE:
+                continue
+            entries = history.get(identity.provider_security_identity_id, ())
+            relevant = any(
+                entry.identifier_kind == ProviderIdentifierKind.SYMBOL
+                and entry.identifier_value == item.symbol
+                for entry in entries
+            ) or (
+                item.isinCode is not None
+                and any(
+                    entry.identifier_kind == ProviderIdentifierKind.ISIN
+                    and entry.identifier_value == item.isinCode
+                    for entry in entries
+                )
+            )
+            if item.listDate is not None:
+                relevant = relevant or any(
+                    entry.identifier_kind == ProviderIdentifierKind.LIST_DATE
+                    and entry.identifier_value == item.listDate.isoformat()
+                    for entry in entries
+                )
+            if not relevant:
+                continue
+            if any(
+                len(self._semantic_current_identifiers(entries, kind)) > 1
+                for kind in (
+                    ProviderIdentifierKind.SYMBOL,
+                    ProviderIdentifierKind.ISIN,
+                    ProviderIdentifierKind.LIST_DATE,
+                    ProviderIdentifierKind.MARKET,
+                )
+            ):
+                ambiguous[identity.provider_security_identity_id] = identity
+        return ambiguous
 
     def _identity_conflict_reason(
         self,
@@ -608,25 +710,18 @@ class SecurityMasterReconciliationService:
             ProviderIdentifierReason.INITIAL if initial else ProviderIdentifierReason.ENRICHMENT
         )
         if current_symbol is not None and current_symbol.identifier_value != item.symbol:
-            values.append(
-                (
-                    ProviderIdentifierKind.SYMBOL,
-                    current_symbol.identifier_value,
-                    current_symbol.valid_from,
-                    item.listDate,
-                    ProviderIdentifierReason.SYMBOL_CHANGE,
-                )
-            )
             symbol_reason = ProviderIdentifierReason.SYMBOL_CHANGE
+            symbol_valid_from = None
         else:
             symbol_reason = reason
+            symbol_valid_from = item.listDate
         valid_to = item.delistDate if item.status == ProviderSecurityStatus.DELISTED else None
         values.extend(
             [
                 (
                     ProviderIdentifierKind.SYMBOL,
                     item.symbol,
-                    item.listDate,
+                    symbol_valid_from,
                     valid_to,
                     symbol_reason,
                 ),
@@ -840,9 +935,18 @@ class SecurityMasterReconciliationService:
             for identity_id, entries in grouped.items()
         }
 
-    def _history_order(self, entry: ProviderIdentifierHistory) -> tuple[datetime, str, str]:
+    def _history_order(
+        self, entry: ProviderIdentifierHistory
+    ) -> tuple[datetime, str, str, str, str, str, str]:
         source = self._repository.source_version(entry.source_version_id)
-        return (*self._source_order(source), entry.identifier_history_id)
+        return (
+            *self._source_order(source),
+            entry.identifier_kind.value,
+            entry.identifier_value,
+            "" if entry.valid_from is None else entry.valid_from.isoformat(),
+            "" if entry.valid_to is None else entry.valid_to.isoformat(),
+            entry.revision_reason.value,
+        )
 
     @staticmethod
     def _source_order(source: ProviderSourceVersion) -> tuple[datetime, str]:
@@ -853,8 +957,47 @@ class SecurityMasterReconciliationService:
         entries: tuple[ProviderIdentifierHistory, ...],
         kind: ProviderIdentifierKind,
     ) -> ProviderIdentifierHistory | None:
-        matching = [entry for entry in entries if entry.identifier_kind == kind]
-        return None if not matching else max(matching, key=self._history_order)
+        current = self._semantic_current_identifiers(entries, kind)
+        if len(current) > 1:
+            raise ProviderContractConflict(
+                f"multiple contradictory current {kind.value} identifiers"
+            )
+        return None if not current else current[0]
+
+    def _semantic_current_identifiers(
+        self,
+        entries: tuple[ProviderIdentifierHistory, ...],
+        kind: ProviderIdentifierKind,
+    ) -> tuple[ProviderIdentifierHistory, ...]:
+        grouped: defaultdict[tuple[datetime, str], list[ProviderIdentifierHistory]] = defaultdict(
+            list
+        )
+        for entry in entries:
+            if entry.identifier_kind == kind:
+                source = self._repository.source_version(entry.source_version_id)
+                grouped[self._source_order(source)].append(entry)
+
+        current: dict[str, ProviderIdentifierHistory] = {}
+        for source_order in sorted(grouped):
+            source_entries = sorted(grouped[source_order], key=self._history_order)
+            symbol_changes = [
+                entry
+                for entry in source_entries
+                if entry.revision_reason == ProviderIdentifierReason.SYMBOL_CHANGE
+            ]
+            if kind == ProviderIdentifierKind.SYMBOL and symbol_changes:
+                current = {
+                    entry.identifier_value: entry
+                    for entry in symbol_changes
+                    if entry.valid_to is None
+                }
+                continue
+            for entry in source_entries:
+                if entry.valid_to is None:
+                    current[entry.identifier_value] = entry
+                else:
+                    current.pop(entry.identifier_value, None)
+        return tuple(current[value] for value in sorted(current))
 
     def _require_monotonic_source(
         self, source: ProviderSourceVersion, identity: ProviderSecurityIdentity
@@ -874,13 +1017,13 @@ class SecurityMasterReconciliationService:
             for identity in self._market_identities(market)
             if identity.identity_state == ProviderIdentityState.ACTIVE
             and (
-                current := self._current_identifier(
+                current := self._semantic_current_identifiers(
                     history.get(identity.provider_security_identity_id, ()),
                     ProviderIdentifierKind.SYMBOL,
                 )
             )
-            is not None
-            and current.identifier_value == symbol
+            and len(current) == 1
+            and current[0].identifier_value == symbol
         ]
         return matches[0] if len(matches) == 1 else None
 
