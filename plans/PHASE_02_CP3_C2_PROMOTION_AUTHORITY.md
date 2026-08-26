@@ -1,6 +1,6 @@
 # Phase 2 CP3-C2 Canonical Promotion Authority Contract
 
-- Contract status: `PROPOSED — CP3-C2-A REVISED AFTER INDEPENDENT REVIEW / AWAITING GPT RE-REVIEW`
+- Contract status: `ACCEPTED — CP3-C2-A CONTRACT APPROVED AND CLOSED`
 - Planning checkpoint: `CP3-C2-A`
 - Initial planning starting SHA: `42cfee25418251f998e6f79981352390d9bf2540`
 - Independent-review remediation starting SHA: `0a7463cfbc93b9f19f247577edd73b993efa2766`
@@ -596,8 +596,8 @@ without exact tests showing:
 ## 16. CP3-C2-A checkpoint result
 
 - CP3-C1: `PASS — CLOSED`
-- CP3-C2-A: `REVISED AFTER INDEPENDENT REVIEW — AWAITING GPT RE-REVIEW`
-- CP3-C2-B: `NOT STARTED`
+- CP3-C2-A: `PASS — CONTRACT APPROVED AND CLOSED`
+- CP3-C2-B: `NOT STARTED — REQUIRES SEPARATE USER START APPROVAL`
 - CP3-C2-C: `NOT STARTED`
 - CP3-D: `NOT STARTED`
 - Application changes: `0`

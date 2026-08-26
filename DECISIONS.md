@@ -340,9 +340,9 @@ Phase 1 `Issuer`는 KR corp_code 또는 US CIK를 요구하고 `Security`는 iss
 
 ## ADR-013 — canonical promotion은 field-owned authority bundle과 명시적 수동 승인을 요구
 
-- 상태: `PROPOSED`
+- 상태: `ACCEPTED`
 - 제안일: `2026-08-26`
-- 결정일: 미정
+- 결정일: `2026-08-26`
 - 상세 계약: `plans/PHASE_02_CP3_C2_PROMOTION_AUTHORITY.md`
 
 ### 문제
@@ -380,8 +380,8 @@ CP3-C1 provider staging은 Toss의 name/symbol/ISIN observation을 canonical Iss
   `registrant_cik` 권한을 갖고 login/agent CIK는 zero-authority provenance로
   분리하도록 제안을 보완했다.
 - P2: 24시간 기준을 repository conservative approval policy로 명시했다.
-- 이 보완 뒤에도 ADR-013 상태는 `PROPOSED`다. GPT re-review, 사용자 승인,
-  CP3-C2-B/C 별도 시작 승인 전에는 구현 권한이 없다.
+- 이 독립검토 보완 commit 당시에도 ADR-013 상태는 `PROPOSED`였다. GPT
+  re-review와 사용자 승인은 아직 없었고 CP3-C2-B/C 구현 권한도 없었다.
 
 ### 대안
 
@@ -393,13 +393,27 @@ CP3-C1 provider staging은 Toss의 name/symbol/ISIN observation을 canonical Iss
 
 ### 영향
 
-CP3-C2-A는 planning 문서만 변경한다. application, migration, fixture, test, API, frontend, connector, scheduler와 live request는 0이다. ADR-013은 GPT independent re-review와 사용자 승인 전 `PROPOSED`이며 CP3-C2-B/C implementation 시작 권한이 아니다.
+CP3-C2-A는 planning 문서만 변경한다. application, migration, fixture, test, API, frontend, connector, scheduler와 live request는 0이다. ADR-013은 아래 독립 재검토와 명시적 사용자 승인에 따라 `ACCEPTED`다. 이 승인은 CP3-C2-B/C implementation 시작 권한이 아니다.
 
 기존 Phase 1 synthetic fixture identifier는 regression history로 보존하지만 신규 promotion evidence로 사용하지 않는다. 향후 구현은 authority evidence bundle, approver identity, issuer-only decision, multi-class instrument와 revocation을 위한 versioned additive contract/schema가 필요할 수 있으며 별도 checkpoint 승인 없이는 migration을 만들지 않는다. `0001`~`0004`는 변경하지 않는다.
 
 ### 마이그레이션·롤백
 
 CP3-C2-A migration은 0이다. 문서 제안 rollback은 documentation commit revert뿐이며 provider/canonical data 영향은 없다. 후속 migration 설계가 승인되더라도 additive evidence/decision/linkage만 허용하고 기존 provider/canonical/raw/history row의 destructive rewrite나 rekey를 금지한다.
+
+### 승인 기록 — 2026-08-26
+
+- Reviewed SHA: `99bac1a7dc308414172e002496cd1e57f1c709c7`
+- GPT independent re-review: `PASS WITH CLOSEOUT CONDITION`.
+- P0: `0`.
+- P1: `0`.
+- P1-01: `CLOSED`.
+- P1-02: `CLOSED`.
+- P2-01: `CLOSED`.
+- 사용자 결정: revised CP3-C2 canonical promotion authority contract와
+  ADR-013을 명시적으로 승인했다.
+- 승인 범위: CP3-C2-A contract closeout만. CP3-C2-B는 별도 사용자 시작
+  승인이 필요하고 CP3-C2-C/CP3-D와 automatic progression도 승인되지 않았다.
 
 ---
 
