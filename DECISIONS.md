@@ -419,7 +419,7 @@ CP3-C2-A migration은 0이다. 문서 제안 rollback은 documentation commit re
 
 ## ADR-014 — issuer authority는 별도 append-only ledger와 issuer-only link로 표현
 
-- 상태: `PROPOSED — AWAITING GPT INDEPENDENT REVIEW`
+- 상태: `PROPOSED — AWAITING GPT INDEPENDENT RE-REVIEW`
 - 제안일: `2026-08-26`
 - 상세 설계: `plans/PHASE_02_CP3_C2_B1_RUNTIME_CONTRACT.md`
 
@@ -442,15 +442,26 @@ revocation을 표현하면 ADR-013의 append-only history를 잃는다.
 
 - 기존 `MappingStatus`, provider identity/history, `Issuer`/`Security` public
   contract와 `0001`~`0004`는 변경하지 않는다.
-- `AuthorityEvidence`, `AuthorityBundle`, `IssuerDecision`,
-  `IssuerApprovalEvent`, `IssuerAuthorityLink`에 독립 version을 부여한다.
+- `AuthorityEvidence`, `AuthorityEvidenceApplication`, `AuthoritySourcePolicy`,
+  `AuthorityBundle`, `IssuerDecision`, `IssuerApprovalEvent`,
+  `IssuerAuthorityLink`와 local steward authentication에 독립 version을
+  부여한다.
 - semantic ID/hash는 canonical UTF-8/NFC JSON과 SHA-256으로 만들고 retrieval
   time, run/job/DB row ID, insertion order와 current clock을 제외한다.
 - machine은 `UNRESOLVED`, `STALE`, `REVIEW_REQUIRED`, 최대 positive state
   `READY_FOR_MANUAL_REVIEW`만 생성한다. `APPROVED`, `REJECTED`, `REVOKED`,
   `SUPERSEDED`는 server-resolved authenticated human event로만 확정한다.
-- human approval event는 exact immutable decision/bundle/hash를 참조하고,
-  conflict override field를 제공하지 않는다.
+- human approval trust root는 exact `RP ID=localhost`, approval origin
+  `http://localhost:3000`, user verification required인 Windows Hello-backed
+  WebAuthn/passkey다. server-owned principal과 registered public-key
+  fingerprint를 사용하고, every disposition은 decision/bundle/content
+  hash/disposition에 bound된 CSPRNG one-time five-minute challenge와 새
+  assertion을 요구한다. caller-supplied principal/role/authentication status,
+  expired/reused/cross-bound challenge, invalid signature와 UV 없는 assertion은
+  fail closed한다.
+- human approval event는 exact immutable decision/bundle/hash와 성공한
+  server-side authentication event를 참조하고 conflict override field를
+  제공하지 않는다.
 - approved B link는 provider identity와 canonical issuer만 연결하고
   `security_resolution_state=UNRESOLVED`를 강제한다. canonical `Security`와
   `ProviderIdentityMapping(VERIFIED)` write는 0이다.
@@ -461,13 +472,52 @@ revocation을 표현하면 ADR-013의 append-only history를 잃는다.
   candidate fingerprint를 전역 검사한다. unique constraint의 first-writer를
   정답으로 사용하지 않고 모든 affected candidate를
   `UNRESOLVED`/`REVIEW_REQUIRED`로 만든다.
-- KR은 authoritative OpenDART corp_code와 independently established legal
-  jurisdiction을 분리한다. KRX/provider/OpenDART listing field로 관할권을
-  추론하지 않으며 unsupported foreign jurisdiction은 unresolved다.
-- US는 accepted evidence의 authoritative registrant metadata에서만
-  zero-padded CIK를 취한다. accession/login/filing-agent CIK는 별도
-  zero-authority provenance다. foreign private issuer의 실제 관할권이 현행
+- KR legal jurisdiction은 original verified 대한민국 대법원/인터넷등기소
+  법인등기 record와 OpenDART raw `jurir_no`의 exact bridge만 decisive하다.
+  OpenDART corp_code는 disclosure-filer authority로 분리하고
+  KRX/provider/OpenDART listing field, screenshot, search result와 manually
+  typed registration value는 관할권 authority가 아니다.
+- US legal jurisdiction은 issuer의 relevant formation-state registry가
+  field-owner다. Accepted SEC registrant evidence와 approved exact non-name-only
+  bridge는 필수 supporting/regulatory evidence지만 CIK, SEC, LEI와 US exchange가
+  state registry를 대체하지 않는다. accession/login/filing-agent CIK는 별도
+  zero-authority provenance이며 foreign private issuer의 실제 관할권이 현행
   KR/US contract로 표현되지 않으면 unresolved다.
+- immutable source-policy registry는 exact namespace/document kind/scope/role,
+  maximum weight, ingestion mode, production eligibility, access/license와
+  fixture/test taint를 고정한다. `SourceSystem.FIXTURE_*`, `DataMode.FIXTURE`,
+  legacy synthetic identifiers, test adapter, synthetic/relabelled payload는
+  production authority bundle에 들어갈 수 없다.
+- reusable raw evidence와 candidate application을 분리하고 bundle은 exact
+  evidence application을 참조한다. raw document hash는 exact
+  `raw_claim_value` 저장을 대신하지 않는다.
+
+### 독립검토 보완 기록 — 2026-08-26
+
+- Remediation starting SHA:
+  `adfb76285af7ae5884cfc60a0223591bb7e9c913`.
+- GPT independent review verdict: `CHANGES REQUIRED`, P0 `0`, P1 `4`, P2 `1`.
+- P1-01: Windows Hello-backed WebAuthn trust root, exact RP/origin, server-owned
+  principal/public credential, five-minute one-time exact-content-bound
+  challenge, fresh assertion per disposition와 replay/tamper/fail-closed
+  contract를 추가했다.
+- P1-02: KR Supreme Court/Internet Registry와 relevant US formation-state
+  registry만 legal-jurisdiction decisive field owner로 허용하고, exact
+  human-assisted verified-document ingestion과 source×scope×maximum-weight
+  matrix를 추가했다.
+- P1-03: exact source locator/document reference/raw claim value와 candidate
+  application disposition을 분리한 immutable
+  `AuthorityEvidenceApplication`을 추가하고 bundle membership을 application
+  기준으로 바꿨다.
+- P1-04: immutable `AuthoritySourcePolicy`, production admission/fixture-taint
+  boundary와 scenario별 exact write/rekey/approval acceptance matrix를
+  추가했다.
+- P2-01: reviewed SHA에는 GitHub status/workflow run이 없다. local
+  documentation safety gates만 Codex local evidence로 구분하며 CI evidence를
+  만들거나 추정하지 않는다.
+- 이 기록은 P1 closure나 PASS가 아니다. ADR-014는
+  `PROPOSED — AWAITING GPT INDEPENDENT RE-REVIEW`이고 CP3-C2-B implementation,
+  CP3-C2-C, CP3-D는 계속 `NOT STARTED`다.
 
 ### 대안
 
@@ -484,24 +534,26 @@ revocation을 표현하면 ADR-013의 append-only history를 잃는다.
 
 ### 영향
 
-CP3-C2-B1은 문서 설계만 작성한다. 이 ADR은 아직 `PROPOSED`이며 independent
-review와 사용자 승인을 통과하기 전 runtime 구현 권한이 아니다. CP3-C2-B
-implementation, CP3-C2-C, CP3-D와 automatic progression은 계속 시작되지
-않는다.
+CP3-C2-B1은 문서 설계만 작성한다. 이 ADR은 아직 `PROPOSED`이며 GPT
+independent re-review와 사용자 승인을 통과하기 전 runtime 구현 권한이
+아니다. CP3-C2-B implementation, CP3-C2-C, CP3-D와 automatic progression은
+계속 시작되지 않는다.
 
 향후 승인된 구현은 canonical issuer insert-or-verify와 issuer-only link를 한
 transaction으로 수행할 수 있지만, canonical Security 또는 VERIFIED provider
-mapping을 만들 수 없다. 정확한 local authentication/reauthentication policy도
-implementation 전에 별도 검증되어야 한다.
+mapping을 만들 수 없다. Local authentication/reauthentication은 이 proposal의
+`issuer-steward-webauthn/0.1.0`보다 약화할 수 없고 구현·독립검증은 별도
+CP3-C2-B authorization 뒤에만 가능하다.
 
 ### 마이그레이션·롤백
 
 후속 migration 후보는
 `0005_phase_02_cp3_c2_b_issuer_authority`이며 down revision은 정확히
-`0004_phase_02_cp3_c1_security_master`다. evidence, observation, relation,
-bundle/membership, identifier claim, decision, approval event, issuer-only link와
-rebuildable head table만 additive로 제안한다. B1에서는 migration file 생성·적용
-모두 0이다.
+`0004_phase_02_cp3_c1_security_master`다. source policy, reviewer public
+credential/challenge/authentication audit, evidence/application/observation/
+relation, bundle/membership, identifier claim, decision, approval event,
+issuer-only link와 rebuildable head table만 additive로 제안한다. B1에서는
+migration file 생성·적용 모두 0이다.
 
 `0001`~`0004` 수정, 기존 row backfill/rebuild/rekey, provider/canonical history
 삭제는 금지한다. 실제 운영 rollback은 신규 write 중지와 ledger 보존이
