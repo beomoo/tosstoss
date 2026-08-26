@@ -349,20 +349,39 @@ Phase 1 `Issuer`는 KR corp_code 또는 US CIK를 요구하고 `Security`는 iss
 
 CP3-C1 provider staging은 Toss의 name/symbol/ISIN observation을 canonical Issuer/Security와 의도적으로 분리했다. 그러나 현행 저장소에는 OpenDART corp_code/SEC CIK, KRX/SEC·primary-exchange instrument evidence, authority revision·collision과 human approval을 하나의 검증 가능한 bundle로 표현하는 승인 계약이 없다. Toss symbol/ticker/name, synthetic corp_code/CIK 또는 단독 provider identifier로 빈칸을 채우면 issuer/class/security를 잘못 합치는 P0 mapping 오류가 발생한다.
 
-현행 `ProviderIdentityMapping(VERIFIED)`은 issuer/security/approved_at을 동시에 요구하므로 `issuer verified, security unresolved`를 표현하지 못한다. `MappingStatus`는 review/revocation/supersession을 표현하지 못하고 mapping row 한 개의 provider source만으로 cross-authority evidence를 보존할 수 없다. `ShareClass.COMMON`도 복수 common class를 안전하게 구분하지 못한다.
+현행 `ProviderIdentityMapping(VERIFIED)`은 issuer/security/approved_at을 동시에 요구하므로 `issuer verified, security unresolved`를 표현하지 못한다. `MappingStatus`는 review/revocation/supersession을 표현하지 못하고 mapping row 한 개의 provider source만으로 cross-authority evidence를 보존할 수 없다. `ShareClass.COMMON`도 복수 common class를 안전하게 구분하지 못한다. `Jurisdiction`은 KR/US만 지원하므로 미국 또는 한국에 상장된 foreign issuer의 실제 법적 관할권을 listing market으로 강제하면 안 된다. 또한 EDGAR Next accession prefix는 registrant가 아니라 filing agent일 수 있는 login CIK를 반영하므로 별도 provenance 없이 registrant CIK로 해석하면 잘못된 issuer anchor가 된다.
 
 ### 제안
 
 - canonical promotion의 기본 상태는 `UNRESOLVED`다.
 - machine은 official evidence 수집·정규화·revision/collision 검증과 `READY_FOR_MANUAL_REVIEW` 후보까지만 만든다. canonical Issuer/Security 생성과 current `ProviderIdentityMapping(VERIFIED)`은 authenticated human data steward의 명시적 승인 event가 필수이며 자동 final promotion은 0이다.
 - human approval도 모순된 authority evidence의 임의 winner를 선택할 권한은 없다. field-owning authority의 correction이나 추가 근거로 conflict가 해소되지 않으면 unresolved/quarantine을 유지한다.
-- KR issuer authority는 OpenDART corp_code, KR instrument/listing/share-kind/ISIN authority는 KRX다. OpenDART→KRX issuer/instrument bridge와 provider observation이 모두 일치해야 한다.
-- US issuer authority는 SEC CIK와 accepted registrant filing이다. instrument/class authority는 accepted SEC class evidence이고 current listing/ticker status는 해당 primary exchange가 소유한다. SEC company ticker file은 discovery only다.
+- OpenDART corp_code는 DART disclosure issuer authority이고 KR instrument/listing/share-kind/ISIN authority는 KRX다. OpenDART→KRX issuer/instrument bridge와 provider observation이 모두 일치해야 하지만, KRX market과 OpenDART `corp_cls`/`stock_code`는 legal jurisdiction authority가 아니다. KRX-listed issuer의 actual jurisdiction이 독립적으로 확인되어 현행 KR/US enum으로 표현되지 않으면 `UNRESOLVED / jurisdiction-contract-required`를 유지한다.
+- US issuer authority는 accepted evidence의 authoritative registrant/filer metadata에서 얻은 SEC `registrant_cik`다. accession prefix/login CIK와 filing-agent CIK는 separate audit provenance일 뿐 issuer authority가 0이며 issuer ID, authority-bundle candidate identity와 SEC registered-class anchor에 사용할 수 없다. instrument/class authority는 accepted SEC class evidence이고 current listing/ticker status는 해당 primary exchange가 소유한다. SEC company ticker file은 discovery only다.
 - CGS CUSIP/US ISIN은 numbering authority지만 license와 승인된 access가 없으면 evidence가 없는 것으로 처리한다. provider-supplied CUSIP/ISIN으로 대체하지 않는다.
 - provider name/symbol/ticker는 canonical/regulatory identifier나 anchor로 사용하지 않는다. synthetic/fake corp_code/CIK, name-only/symbol-only merge, inferred exchange/share class, arbitrary collision winner를 금지한다.
 - promotion은 linkage만 추가한다. `provider_security_identity_id`, allocation anchor, provider/source/identifier/normalized/observation history를 rekey·rewrite하지 않는다.
 - implementation은 `CP3-C2-B canonical issuer authority/mapping`과 `CP3-C2-C canonical security authority/final mapping`으로 분리한다. issuer만 승인된 상태에서 provider final mapping은 계속 `UNRESOLVED`다.
 - correction/revocation은 append-only evidence/decision event로 보존하고 authority가 주지 않은 effective date를 `fetched_at`/approval time으로 만들지 않는다.
+- current evidence의 24-hour approval threshold는 `REPO_POLICY / CONSERVATIVE_APPROVAL_FRESHNESS`이며 외부 authority의 universal rule로 표현하지 않는다. authority publication/effective/as-of date와 `fetched_at`을 분리한다.
+
+### 독립검토 보완 제안 기록 — 2026-08-26
+
+- Reviewed SHA: `0a7463cfbc93b9f19f247577edd73b993efa2766`
+- GPT independent review: `CHANGES REQUIRED`, P0 `0`, P1 `2`, P2 `1`.
+- P1-01: KRX는 foreign corporation listing을 허용하므로 market=KR은 legal
+  jurisdiction=KR의 근거가 아니다. KOSPI/KOSDAQ/KONEX, `corp_cls`,
+  `stock_code`, provider market/name와 KR trading currency를 관할권 근거에서
+  제외하고, KRX-listed foreign issuer의 actual jurisdiction이 현행 enum으로
+  확인·표현되지 않으면 canonical write와 review-ready state를 모두 0으로
+  고정하도록 제안을 보완했다.
+- P1-02: EDGAR Next accession 첫 10자리는 login CIK이며 filing agent일 수
+  있다. accepted evidence의 authoritative registrant metadata만
+  `registrant_cik` 권한을 갖고 login/agent CIK는 zero-authority provenance로
+  분리하도록 제안을 보완했다.
+- P2: 24시간 기준을 repository conservative approval policy로 명시했다.
+- 이 보완 뒤에도 ADR-013 상태는 `PROPOSED`다. GPT re-review, 사용자 승인,
+  CP3-C2-B/C 별도 시작 승인 전에는 구현 권한이 없다.
 
 ### 대안
 
@@ -374,7 +393,7 @@ CP3-C1 provider staging은 Toss의 name/symbol/ISIN observation을 canonical Iss
 
 ### 영향
 
-CP3-C2-A는 planning 문서만 변경한다. application, migration, fixture, test, API, frontend, connector, scheduler와 live request는 0이다. ADR-013은 GPT independent review와 사용자 승인 전 `PROPOSED`이며 CP3-C2-B/C implementation 시작 권한이 아니다.
+CP3-C2-A는 planning 문서만 변경한다. application, migration, fixture, test, API, frontend, connector, scheduler와 live request는 0이다. ADR-013은 GPT independent re-review와 사용자 승인 전 `PROPOSED`이며 CP3-C2-B/C implementation 시작 권한이 아니다.
 
 기존 Phase 1 synthetic fixture identifier는 regression history로 보존하지만 신규 promotion evidence로 사용하지 않는다. 향후 구현은 authority evidence bundle, approver identity, issuer-only decision, multi-class instrument와 revocation을 위한 versioned additive contract/schema가 필요할 수 있으며 별도 checkpoint 승인 없이는 migration을 만들지 않는다. `0001`~`0004`는 변경하지 않는다.
 

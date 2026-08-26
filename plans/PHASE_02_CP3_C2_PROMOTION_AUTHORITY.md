@@ -1,8 +1,9 @@
 # Phase 2 CP3-C2 Canonical Promotion Authority Contract
 
-- Contract status: `PROPOSED — CP3-C2-A PLANNING / AWAITING GPT INDEPENDENT REVIEW`
+- Contract status: `PROPOSED — CP3-C2-A REVISED AFTER INDEPENDENT REVIEW / AWAITING GPT RE-REVIEW`
 - Planning checkpoint: `CP3-C2-A`
-- Authoritative starting SHA: `42cfee25418251f998e6f79981352390d9bf2540`
+- Initial planning starting SHA: `42cfee25418251f998e6f79981352390d9bf2540`
+- Independent-review remediation starting SHA: `0a7463cfbc93b9f19f247577edd73b993efa2766`
 - Branch: `feature/phase-02-toss`
 - Research and retrieval date: `2026-08-26` (`Asia/Seoul`)
 - Production implementation: `NOT STARTED`
@@ -50,6 +51,14 @@ approval are complete.
 9. CP3-C2 SHOULD be split into `CP3-C2-B` issuer authority/mapping and
    `CP3-C2-C` security authority/final mapping. The split materially reduces P0
    issuer/security conflation and share-class risk.
+10. A KRX listing establishes a listing venue, not the issuer's legal
+    jurisdiction. `market=KR`, KOSPI/KOSDAQ/KONEX membership, `corp_cls`,
+    `stock_code`, provider market/name, and Korean trading currency MUST NOT
+    imply `Issuer.jurisdiction=KR`.
+11. SEC `registrant_cik` MUST come from authoritative registrant/filer metadata
+    in accepted filing/submission evidence. The first ten accession-number
+    digits identify the EDGAR login CIK and MUST NOT be interpreted as the
+    registrant CIK.
 
 ## 2. Non-negotiable invariants
 
@@ -85,6 +94,12 @@ lexicographic order, job ID, clock value, or `fetched_at`.
 identifier effective date, listing date, symbol-change date, correction date,
 or mapping validity date.
 
+KRX market membership and OpenDART disclosure membership are likewise scoped
+observations, not legal-jurisdiction evidence. If the issuer's actual legal
+jurisdiction is not positively established and representable by the current
+canonical contract, even a valid DART `corp_code` and KRX ISIN cannot produce
+`READY_FOR_MANUAL_REVIEW` or any canonical write.
+
 ## 3. Current repository boundary discovered by CP3-C2-A
 
 The current repository is sufficient for CP3-C1 staging but not for the full
@@ -105,13 +120,19 @@ authority workflow proposed here:
 - `ShareClass` currently contains only `COMMON`, which cannot safely distinguish
   multiple registered common classes, preferred classes, ADRs, or other
   instruments; and
-- `Jurisdiction` currently contains only `KR` and `US`, so a foreign private
-  issuer listed in the US cannot be silently coerced to a US legal jurisdiction.
+- `Jurisdiction` currently contains only `KR` and `US`, so a foreign issuer
+  listed in either the United States or Korea cannot be silently coerced to the
+  listing market's legal jurisdiction. A KRX-listed foreign corporation whose
+  actual jurisdiction is not positively established as `KR` or `US` must remain
+  `UNRESOLVED / jurisdiction-contract-required` with canonical issuer/security,
+  `READY_FOR_MANUAL_REVIEW`, and `ProviderIdentityMapping(VERIFIED)` writes all
+  equal to zero.
 
-No schema or contract is changed in CP3-C2-A. Before CP3-C2-B or CP3-C2-C can
-implement this proposal, a separately authorized versioned contract and
-additive migration design MUST close the applicable gaps. Existing migrations
-`0001` through `0004` remain immutable.
+No schema, enum, migration, or production implementation is changed in
+CP3-C2-A. Before CP3-C2-B or CP3-C2-C can implement this proposal, a separately
+authorized versioned runtime contract and additive migration design MUST close
+the applicable gaps. Existing migrations `0001` through `0004` remain
+immutable.
 
 ## 4. Source classification method
 
@@ -141,6 +162,7 @@ made.
 | [Supreme Court Internet Registry](https://www.iros.go.kr/) | `UNSUITABLE_FOR_AUTOMATIC_PROMOTION` | 2026-08-26 | legal registered name, corporate registration number, legal events | Korean court-registry legal entity record | Interactive identity/security controls, document issuance workflow, possible fees, and no approved stable public bulk API in this checkpoint | May support exceptional human review only; screenshots, copied names, or search hits cannot drive unattended promotion |
 | [KRX Standard Code System](https://isin.krx.co.kr/main/main.do) | `OFFICIAL_AUTHORITY` | 2026-08-26 | Korean securities standard code/ISIN and issue reference | KRX-issued/maintained standard security identifiers within the Korean market | Access method and redistribution terms must be preserved; an identifier does not alone establish the provider-to-issuer bridge or current listing state | Duplicate active ISIN or an ISIN referring to a different issue/class quarantines every affected candidate |
 | [KRX Open API service list](https://openapi.krx.co.kr/contents/OPP/INFO/service/OPPINFO004.cmd) and [KOSPI issue-basic service](https://openapi.krx.co.kr/contents/OPP/USES/service/OPPUSES002_S2.cmd?BO_ID=PiwgMdTwmsenXhmqqxuj), with corresponding KOSDAQ/KONEX services | `OFFICIAL_AUTHORITY` | 2026-08-26 | issue code, short code, issue name, market, issue/security group, stock kind/share-kind, listing date | KRX-listed instrument and market metadata; public API coverage begins in 2010 for the listed services | Market-specific coverage and published fields must be checked per service version; it does not issue `corp_code` | Any DART/KRX bridge mismatch or multi-row ambiguity remains unresolved; no market or class is inferred |
+| [KRX foreign-company listing guidance](https://global.krx.co.kr/contents/GLB/03/0304/0304030000/GLB0304030000.jsp) and [KOSPI listing criteria](https://global.krx.co.kr/contents/GLB/03/0307/0307020000/GLB0307020000T02.jsp) | `OFFICIAL_AUTHORITY` | 2026-08-26 | domestic/foreign applicant distinction and KRX listing eligibility | KRX listing eligibility and venue membership | KRX expressly permits foreign corporations to list. Listing eligibility, market, Korean trading currency, and the foreign-applicant legal review do not establish the issuer's legal jurisdiction for this repository | KRX membership never coerces `Issuer.jurisdiction`; unrepresentable jurisdiction remains unresolved |
 | [KRX delisting information](https://data.krx.co.kr/contents/MDC/STAT/issue/MDCSTAT238.jsp) and [new-listing information](https://data.krx.co.kr/contents/MDC/STAT/issue/MDCSTAT200.jsp) | `OFFICIAL_AUTHORITY` | 2026-08-26 | listing date, delisting date, delisting reason, market, issue/stock kind | KRX listing lifecycle | Site data carries as-of/retrieval limitations and may be corrected; absence from one current page is not proof of delisting | Use explicit listing/delisting records and official dates; never substitute retrieval time or discovery disappearance |
 | [KRX KIND listed-company information](https://kind.krx.co.kr/corpgeneral/corpList.do?method=loadInitPage&scrnmode=1) | `SUPPORTING_EVIDENCE` | 2026-08-26 | listed company, issue and disclosure/corporate-action notices | KRX disclosure and listed-company context | Search/display data is not a replacement for standard-code or issue-basic authority | May explain names or corporate actions; cannot resolve a contradictory ISIN/class by itself |
 | [Korea Securities Depository](https://www.ksd.or.kr/en/) and [SEIBro](https://m.seibro.or.kr/cmmn/allView.do) | `SUPPORTING_EVIDENCE` | 2026-08-26 | depository/security reference data | Central securities depository and public security-information context | It is not the DART corp-code issuer and is not used here as the KRX standard-code authority | Agreement corroborates; disagreement requires review against the field-owning authority |
@@ -160,6 +182,11 @@ KRX cannot create or correct a `corp_code`, and OpenDART cannot settle a
 contradictory ISIN/share-class/listing record. A disagreement across authority
 scopes has no precedence winner; it blocks promotion.
 
+OpenDART `corp_code` identifies a DART disclosing company. OpenDART `corp_cls`
+and `stock_code`, and KRX market membership, do not establish Korean legal
+jurisdiction. Legal jurisdiction MUST NOT be inferred from KOSPI/KOSDAQ/KONEX,
+`corp_cls`, `stock_code`, provider market/name, or Korean trading currency.
+
 ## 6. United States authority registry
 
 All URLs below were re-checked on `2026-08-26`. No SEC, exchange, CGS, FINRA,
@@ -168,6 +195,7 @@ state-registry, or provider API request using credentials was made.
 | Source and URL | Classification | Retrieved | Relevant field | Authority scope | Limitations | Conflict behavior |
 |---|---|---|---|---|---|---|
 | [SEC Accessing EDGAR Data — CIK](https://www.sec.gov/search-filings/edgar-search-assistance/accessing-edgar-data) | `OFFICIAL_AUTHORITY` | 2026-08-26 | CIK, accepted submission accession, filer names/history | SEC filer identity. EDGAR states that CIK is unique to a filer and is not recycled | A CIK may belong to a fund, individual, filing agent, or inactive filer; CIK alone does not identify a listed instrument or prove legal incorporation | Require the candidate issuer to be the registrant in an accepted issuer filing; agent/fund/individual ambiguity blocks promotion |
+| [SEC EDGAR Next login CIK guidance](https://www.sec.gov/submit-filings/filer-support-resources/how-do-i-guides/understand-select-set-default-login-cik) and [EDGAR Next roles](https://www.sec.gov/submit-filings/filer-support-resources/how-do-i-guides/understand-edgar-next-roles) | `OFFICIAL_AUTHORITY` for submission provenance; `UNSUITABLE_FOR_AUTOMATIC_PROMOTION` for issuer identity | 2026-08-26 | accession prefix/login CIK, filer-agent role and delegated filing authority | Identifies the CIK used to log in and make the submission | SEC states that the first ten accession digits reflect the login CIK, which may be the filer or a filing agent. It does not identify the registrant by itself | Store login/agent CIK only as separate audit provenance if useful; it has zero issuer authority and cannot enter an issuer or registered-class anchor |
 | [SEC EDGAR APIs](https://www.sec.gov/search-filings/edgar-application-programming-interfaces) and `data.sec.gov/submissions/CIK##########.json` | `SUPPORTING_EVIDENCE` | 2026-08-26 | current/former names, recent filings, exchanges and ticker metadata | Official SEC submission metadata and discovery of accepted filings | Ticker/exchange metadata is not primary-exchange listing authority; a latest-submissions view can omit older registration evidence without following archival files | Use to locate and revision-check filings; disagreement with accepted filing or exchange authority blocks promotion |
 | [SEC company ticker files](https://www.sec.gov/files/company_tickers_exchange.json) | `DISCOVERY_ONLY` | 2026-08-26 | ticker↔CIK↔company name↔exchange association | EDGAR search convenience | SEC explicitly does not guarantee accuracy or scope; ticker reuse and class distinctions remain possible | Never promote, merge, or correct from this file alone |
 | Accepted [Form 8-A](https://www.sec.gov/files/form8a.pdf) under the candidate registrant CIK | `OFFICIAL_AUTHORITY` | 2026-08-26 | registered class title, Section 12(b)/(g) basis, exchange, filing accession and exhibits | SEC registration evidence for a specific class of securities | It proves the filed registration, not continuing exchange listing by itself; amendments/incorporated documents must be followed | Later amendment/Form 25 or class ambiguity blocks current promotion until reconciled |
@@ -185,7 +213,11 @@ state-registry, or provider API request using credentials was made.
 
 ### 6.1 US field ownership
 
-- CIK and accepted SEC registration/reporting record: SEC EDGAR authority.
+- registrant CIK and accepted SEC registration/reporting record: SEC EDGAR
+  authority, taken from authoritative registrant/filer metadata in the accepted
+  evidence rather than parsed from an accession prefix.
+- accession-prefix/login CIK and filing-agent CIK: submission provenance only,
+  with zero issuer authority.
 - current national-exchange ticker/listing status: the identified primary listing
   exchange, within that venue's scope.
 - registered class: accepted SEC class-registration/reporting evidence,
@@ -206,6 +238,9 @@ contain:
 
 - authority source identifier and classification;
 - exact public source URL or accepted filing accession;
+- authority-provided `registrant_cik` when SEC issuer identity is asserted;
+- optional login/accession-prefix or filing-agent CIK as separately typed audit
+  provenance with zero candidate-identity authority;
 - retrieval timestamp in UTC;
 - source-provided publication, acceptance, effective, or as-of date, nullable
   when not supplied;
@@ -224,12 +259,23 @@ scan result. A refetch of identical immutable evidence must not change the
 bundle identity merely because `fetched_at`, run ID, or database ID changed.
 Freshness and retrieval chronology remain separate fields.
 
+An accession-prefix/login CIK or filing-agent CIK MUST NOT be used in
+`issuer_id`, an authority-bundle candidate identity, or a SEC registered-class
+canonical security anchor. A parser that cannot independently resolve the
+registrant CIK from authoritative registrant/filer metadata must fail closed.
+
 A final approval event must include the authority bundle, authenticated human
 approver ID, approval UTC time, decision reason, contract version, and applicable
 validity interval. `approved_at` is an audit time and is not an instrument or
 mapping effective date.
 
-### 7.1 Freshness rule
+### 7.1 `REPO_POLICY / CONSERVATIVE_APPROVAL_FRESHNESS`
+
+The 24-hour threshold below is a conservative repository approval policy. It
+is not an OpenDART, KRX, SEC, Nasdaq, NYSE, or CGS mandated universal freshness
+requirement. Authority-supplied publication, acceptance, effective, and as-of
+dates remain separate from repository retrieval chronology; `fetched_at` never
+substitutes for an authority effective date.
 
 - Immutable accepted filings and historical registration/listing events do not
   expire by age, but the approval attempt must perform a latest-revision and
@@ -249,35 +295,37 @@ mapping effective date.
 
 | Decision dimension | Required contract |
 |---|---|
-| Minimum evidence | Unique, valid 8-digit OpenDART `corp_code`; matching current corporation-code row and company-overview response under that code; formal-name/history consistency or an explicit explained discrepancy; no existing current canonical issuer with a conflicting authority anchor |
+| Minimum evidence | Unique, valid 8-digit OpenDART `corp_code`; matching current corporation-code row and company-overview response under that code; formal-name/history consistency or an explicit explained discrepancy; independently established legal jurisdiction that maps exactly to the current canonical `Jurisdiction` enum; no existing current canonical issuer with a conflicting authority anchor |
 | Strong identifier | OpenDART `corp_code` in its disclosure-filer scope |
 | Supporting identifiers | OpenDART `jurir_no`, formal/English name, business registration number, establishment date; court-registry record or LEI when lawfully obtained |
-| Forbidden evidence | synthetic/fake corp_code, Toss symbol/name, KRX short code alone, name-only match, search result, guessed registration number |
-| Is one source sufficient? | OpenDART may be sufficient to establish an **issuer candidate** in its own disclosure scope. It is never sufficient for provider→canonical `VERIFIED`, which also requires instrument evidence and manual approval |
+| Forbidden evidence | synthetic/fake corp_code, Toss symbol/name, KRX short code alone, name-only match, search result, guessed registration number; legal-jurisdiction inference from KOSPI/KOSDAQ/KONEX, `corp_cls`, `stock_code`, provider market/name, or Korean trading currency |
+| Is one source sufficient? | OpenDART may identify a DART disclosure candidate in its own scope, but cannot by itself establish legal jurisdiction. It is never sufficient for `READY_FOR_MANUAL_REVIEW` or provider→canonical `VERIFIED` without independently established representable jurisdiction, instrument evidence, and manual approval |
 | Cross-source agreement | Required before final provider mapping: the OpenDART issuer-to-stock bridge and KRX instrument record must agree |
 | Collision behavior | Same corp_code mapped to contradictory current legal entities, or different corp_codes competing for one candidate, blocks all affected promotions; no merge/winner |
-| Missing behavior | Missing/unavailable corp_code keeps issuer and provider mapping unresolved; `jurir_no`, name, or symbol cannot backfill it |
+| Missing behavior | Missing/unavailable corp_code keeps issuer and provider mapping unresolved; `jurir_no`, name, or symbol cannot backfill it. Missing, ambiguous, or unrepresentable legal jurisdiction yields `UNRESOLVED / jurisdiction-contract-required`; canonical issuer/security, review-ready, and VERIFIED writes are zero |
 | Correction/revision | Append the corrected DART evidence and relationship; do not mutate the old evidence or issuer anchor. If the authority says two entities are legally distinct, create separate canonical candidates after approval rather than merge by name |
 | Historical preservation | Preserve every DART version, provider observation, former name, and prior mapping event |
 | Approval authority | Explicit authenticated human data-steward approval; automation may only produce a review candidate |
 | Automatic/manual boundary | Automatic final issuer creation and mapping: `NO`; manual approval only after machine validation |
 
-Canonical issuer anchor proposal for a new KR production issuer:
+Canonical issuer anchor proposal for a new production issuer whose legal
+jurisdiction is independently verified as Korean:
 `issuer-v1|KR|DART_CORP_CODE|<8-digit-corp-code>`. The display/legal name is
-mutable evidence and never part of the anchor.
+mutable evidence and never part of the anchor. A KRX listing or DART disclosure
+row cannot satisfy the jurisdiction precondition.
 
 ### 8.2 United States issuer path
 
 | Decision dimension | Required contract |
 |---|---|
-| Minimum evidence | Unique, zero-padded 10-digit CIK from EDGAR; at least one accepted issuer filing in which the candidate is the registrant, not merely a filing agent; current/former-name chain reconciled; no conflicting current canonical issuer anchor |
-| Strong identifier | SEC CIK in its filer/registrant scope |
+| Minimum evidence | Unique, zero-padded 10-digit `registrant_cik` obtained from authoritative registrant/filer metadata in accepted filing/submission evidence; at least one accepted issuer filing in which that candidate is the registrant, not merely the login CIK or a filing agent; current/former-name chain reconciled; no conflicting current canonical issuer anchor |
+| Strong identifier | SEC `registrant_cik` in its filer/registrant scope, independently resolved from accepted evidence |
 | Supporting identifiers | accepted-filing legal name and incorporation jurisdiction, state-registry identity, LEI and registration-authority reference |
-| Forbidden evidence | synthetic/fake CIK, Toss ticker/name, SEC company-ticker file alone, EIN guess, name-only match, CUSIP/ISIN as an issuer ID |
+| Forbidden evidence | synthetic/fake CIK, first ten accession-number digits, login CIK, filing-agent CIK, Toss ticker/name, SEC company-ticker file alone, EIN guess, name-only match, CUSIP/ISIN as an issuer ID |
 | Is one source sufficient? | SEC EDGAR may establish an **issuer candidate** in SEC-filer scope when registrant status is proven. It is never sufficient for final provider→security mapping |
 | Cross-source agreement | Required before final mapping: SEC class/ticker/exchange evidence and the primary exchange's current issue evidence must agree; state/LEI evidence is required only when legal-entity ambiguity remains |
 | Collision behavior | One CIK appearing to identify contradictory current registrants, a filing-agent CIK, or multiple canonical candidates blocks all affected promotions |
-| Missing behavior | Missing/unavailable CIK keeps issuer and provider mapping unresolved; ticker/name cannot substitute |
+| Missing behavior | Missing/unavailable or independently unresolvable registrant CIK keeps issuer and provider mapping unresolved with canonical writes zero; accession/login CIK, ticker, and name cannot substitute |
 | Correction/revision | Preserve prior SEC names/filings. Follow accepted amendments and later filings; never rekey the canonical issuer on a name/ticker change |
 | Historical preservation | Preserve CIK, former names, accessions, provider history, and every mapping decision |
 | Approval authority | Explicit authenticated human data-steward approval |
@@ -285,11 +333,14 @@ mutable evidence and never part of the anchor.
 
 Canonical issuer anchor proposal for a new US production issuer:
 `issuer-v1|US|SEC_CIK|<10-digit-zero-padded-CIK>`. CIK format validation does
-not prove registrant scope; the accepted-filing check remains mandatory.
+not prove registrant scope; the value MUST be the independently verified
+registrant CIK, and the accepted-filing check remains mandatory. An
+accession-prefix/login CIK has zero authority for this anchor.
 
-Foreign private issuers, funds, individuals, filing agents, and entities whose
-legal jurisdiction cannot be represented by the current contract remain
-unresolved until a separately approved jurisdiction/instrument contract exists.
+Foreign issuers listed in either the United States or Korea, funds, individuals,
+filing agents, and entities whose legal jurisdiction cannot be represented by
+the current contract remain unresolved until a separately approved
+jurisdiction/instrument contract exists.
 
 ## 9. Provider identity → canonical Security decision matrix
 
@@ -301,10 +352,10 @@ and security decisions are approved and consistent.
 
 | Decision dimension | Required contract |
 |---|---|
-| Minimum evidence | Approved canonical KR issuer; unique KRX ISIN/standard-code record; matching KRX issue-basic row for market, short code, stock/share kind and listing date; explicit current listing or historical interval; OpenDART `stock_code` bridge to that KRX issue; provider observation whose ISIN exactly matches the KRX ISIN; no collision or unresolved discrepancy |
+| Minimum evidence | Approved canonical issuer whose legal jurisdiction was independently established and is representable by the current contract; unique KRX ISIN/standard-code record; matching KRX issue-basic row for market, short code, stock/share kind and listing date; explicit current listing or historical interval; OpenDART `stock_code` bridge to that KRX issue; provider observation whose ISIN exactly matches the KRX ISIN; no collision or unresolved discrepancy |
 | Strong identifier | KRX ISIN/standard security code for the specific instrument |
 | Supporting identifiers | KRX short code, market, stock/share kind, list/delist dates; OpenDART stock code; provider symbol/name/list date |
-| Forbidden evidence | Toss symbol/name alone, DART stock code alone, inferred exchange, default `COMMON`, synthetic ISIN, name-only security merge |
+| Forbidden evidence | Toss symbol/name alone, DART stock code alone, inferred exchange or legal jurisdiction, default `COMMON`, synthetic ISIN, name-only security merge |
 | Is one source sufficient? | `NO`. KRX establishes the instrument, but OpenDART is required for the issuer bridge and provider evidence is required for the provider link |
 | Cross-source agreement | Required among OpenDART issuer/stock code, KRX ISIN/issue/class/market/status, and provider ISIN/current observation |
 | Collision behavior | Duplicate active ISIN, multiple KRX rows for one current class, or one provider identity with multiple current candidates quarantines all affected candidates; identities are not merged or rekeyed |
@@ -324,9 +375,9 @@ silent rekey; it follows section 12.
 | Decision dimension | Required contract |
 |---|---|
 | Minimum evidence | Approved canonical SEC issuer; an accepted SEC registered-class anchor (prefer Form 8-A, otherwise an explicitly approved equivalent filing contract); exact class title and exchange; a current primary-exchange row for the same ticker/class/exchange; no effective Form 25 or later contradictory filing; provider current ticker/market matching that official exchange row; no collision or unexplained discrepancy |
-| Strong identifier | A licensed CGS CUSIP/US ISIN when permitted, **or** the immutable accepted SEC class-registration anchor `CIK + accession + class-row identity` |
+| Strong identifier | A licensed CGS CUSIP/US ISIN when permitted, **or** the immutable accepted SEC class-registration anchor `verified registrant CIK + accession + class-row identity` |
 | Supporting identifiers | SEC periodic-filing ticker/exchange cover row, primary-exchange ticker/status/name, provider ISIN/ticker/name/market, LEI |
-| Forbidden evidence | ticker as CIK or canonical anchor, SEC company-ticker file alone, provider-supplied CUSIP/ISIN without authority verification, name-only merge, default share class, OpenFIGI/commercial portal alone |
+| Forbidden evidence | ticker as CIK or canonical anchor, accession-prefix/login CIK or filing-agent CIK as registrant/security anchor, SEC company-ticker file alone, provider-supplied CUSIP/ISIN without authority verification, name-only merge, default share class, OpenFIGI/commercial portal alone |
 | Is one source sufficient? | `NO`. SEC establishes filer/class registration; the primary exchange establishes current listing. CGS is separately required if CUSIP/ISIN is used as the strong identifier |
 | Cross-source agreement | Required between accepted SEC class evidence and the field-owning primary exchange; provider evidence must bridge to that exact current row. Licensed CGS evidence must also agree when used |
 | Collision behavior | Duplicate active CUSIP/ISIN, ticker reuse ambiguity, multiple classes under one ticker, or one provider identity with multiple current candidates blocks every affected promotion |
@@ -340,9 +391,13 @@ If a permitted licensed CGS identifier exists, the proposed security anchor is
 `security-v1|<issuer-id>|CGS_CUSIP|<CUSIP>` or
 `security-v1|<issuer-id>|CGS_ISIN|<ISIN>`. Without licensed CGS evidence, the
 only proposed free official anchor is
-`security-v1|<issuer-id>|SEC_REGISTERED_CLASS|<CIK>/<accepted-accession>/<class-row-id>`.
+`security-v1|<issuer-id>|SEC_REGISTERED_CLASS|<verified-registrant-CIK>/<accepted-accession>/<class-row-id>`.
 The class-row ID must be deterministically tied to the immutable accepted
 document and exact class row, not to mutable ticker text or parser iteration.
+The CIK component MUST be the independently verified registrant CIK, never the
+accession-prefix/login CIK or filing-agent CIK. Those provenance values have
+zero authority for the issuer ID, bundle candidate identity, and security
+anchor.
 This alternate anchor requires explicit CP3-C2-C review approval before
 implementation.
 
@@ -354,6 +409,8 @@ A later implementation must use the following order:
 provider staging remains UNRESOLVED
   -> collect authority evidence without mutating staging
   -> validate provenance, access rights, scope and freshness
+  -> establish legal jurisdiction independently from listing market
+  -> separate SEC registrant CIK from login/accession-prefix provenance
   -> resolve issuer candidate and scan issuer collisions
   -> resolve security candidate and scan instrument/class/listing collisions
   -> compare all field-owning authorities
@@ -413,13 +470,23 @@ versioned contract.
 7. **Manual review is not a conflict override.** A reviewer may accept explained
    aliases or authoritative corrections, but may not choose between unresolved
    contradictory official candidates.
+8. **Market is not legal jurisdiction.** KRX or US-exchange membership cannot
+   populate `Issuer.jurisdiction`. Missing/unrepresentable jurisdiction blocks
+   review-ready and canonical states.
+9. **SEC submission provenance is not registrant identity.** The accession
+   prefix/login CIK may identify a filing agent. It never substitutes for an
+   independently resolved registrant CIK or participates in an issuer/security
+   candidate anchor.
 
 ## 12. Required scenario decisions
 
 | Scenario | Required outcome |
 |---|---|
 | KR unique corp_code + instrument evidence | OpenDART may establish issuer candidate; only unique KRX ISIN/class/market/status + OpenDART bridge + provider ISIN agreement can reach manual review. After explicit approval, create linkage without rekey |
+| KRX-listed foreign corporation + valid OpenDART corp_code + valid KRX ISIN | Preserve provider staging and authority evidence. Do not fabricate `Jurisdiction.KR`; create no canonical issuer/security, no review-ready state, and no VERIFIED mapping. Remain `UNRESOLVED / jurisdiction-contract-required` until a separately approved jurisdiction model represents the actual legal jurisdiction |
 | US unique CIK + instrument evidence | SEC registrant/CIK plus accepted class evidence and primary-exchange agreement can reach manual review; ticker file alone cannot. Explicit approval required |
+| Accepted Form 8-A: registrant CIK A, accession/login CIK B belonging to filing agent | Canonical issuer candidate is A only. B is separate audit provenance with zero issuer authority; no A↔B merge. A parser that treats B as registrant fails closed, while the evidence bundle preserves both roles without substitution |
+| Registrant identity cannot be independently resolved | `UNRESOLVED`; canonical issuer/security and VERIFIED mapping writes are zero. Accession/login CIK cannot fill the gap |
 | Same company, multiple share classes | One canonical issuer, one distinct canonical security per authoritative class anchor; no merge by corp_code/CIK or name. Unsupported class stays unresolved |
 | Same ticker reused after delisting | Distinguish by official listing intervals and instrument/class anchors. Old and new securities remain separate; ambiguous provider identity is quarantined |
 | Ticker changed, legal issuer unchanged | Preserve canonical issuer/security and provider identity when official class continuity is explicit; append old/new ticker intervals and never use the new ticker to rekey |
@@ -509,6 +576,13 @@ without exact tests showing:
 - provider identity/allocation-anchor rekeys: `0`;
 - provider/source/identifier/observation history rewrites: `0`;
 - canonical Security created without approved instrument evidence: `0`;
+- legal jurisdiction inferred from KRX/US market, market class, provider fields,
+  or trading currency: `0`;
+- KRX-listed foreign issuer with unrepresentable jurisdiction reaching
+  `READY_FOR_MANUAL_REVIEW`, canonical write, or VERIFIED mapping: `0`;
+- accession-prefix/login or filing-agent CIK used as registrant, `issuer_id`,
+  authority-bundle candidate identity, or SEC registered-class anchor: `0`;
+- independently unresolved registrant CIK producing a canonical write: `0`;
 - duplicate-active-identifier affected candidates all quarantined;
 - response/input order produces identical canonical ordered evidence/decision
   dumps;
@@ -522,8 +596,9 @@ without exact tests showing:
 ## 16. CP3-C2-A checkpoint result
 
 - CP3-C1: `PASS — CLOSED`
-- CP3-C2-A: `PLANNING — AWAITING GPT INDEPENDENT REVIEW`
-- CP3-C2 implementation: `NOT STARTED`
+- CP3-C2-A: `REVISED AFTER INDEPENDENT REVIEW — AWAITING GPT RE-REVIEW`
+- CP3-C2-B: `NOT STARTED`
+- CP3-C2-C: `NOT STARTED`
 - CP3-D: `NOT STARTED`
 - Application changes: `0`
 - Migration changes: `0`
