@@ -1,5 +1,46 @@
 # Changelog
 
+## Unreleased — Phase 2 CP3-C2-B2-A Independent-Review Remediation — 2026-08-27
+
+### Fixed
+
+- corrected evidence may now produce a new immutable bundle and a successor
+  decision for the same provider authority subject, including a corrected issuer
+  candidate. The existing unique predecessor-child index rejects a competing
+  successor, and repository validation rejects unrelated-provider chain grafts.
+- B2-A now rejects every low-level `READY_FOR_MANUAL_REVIEW` decision insert
+  with typed `REVIEW_READY_ENGINE_NOT_IMPLEMENTED`; exact observation membership
+  is not treated as the independently proven provider-to-issuer bridge that the
+  separately gated B2-B engine must implement and pass independent review.
+- immutable credential state now stores `registration_sign_count`, while each
+  append-only authentication audit stores exact counter capability plus nullable
+  prior/asserted counts. Supported VERIFIED counters must strictly advance;
+  equality/rollback cannot verify, and no-counter authenticators retain null
+  counts without fake advancement.
+
+### Compatibility and boundary
+
+- additive revision/down-revision remain
+  `0005_phase_02_cp3_c2_b_issuer_authority` /
+  `0004_phase_02_cp3_c1_security_master`; the same approved 21 tables, 14 named
+  indexes, and 40 append-only triggers remain. Inline checks are hardened from
+  68 to 75.
+- migrations `0001`–`0004`, existing provider/canonical rows, MappingStatus,
+  identifier-claim non-winner semantics and immutable ledger history remain
+  unchanged.
+- operational WebAuthn verification, approval execution, canonical Issuer or
+  Security writes, VERIFIED mapping, provider rekey, link-head workflow and live
+  authority/provider requests remain `0`.
+
+### Status
+
+- Reviewed SHA `05eb70d8dfe488563757107c0697f1a7708018c9` received `CHANGES
+  REQUIRED`, P0 0 / P1 3 / P2 1. CP3-C2-B2-A is now
+  `REMEDIATED — AWAITING GPT INDEPENDENT RE-REVIEW`; it is not self-declared
+  PASS.
+- CP3-C2-B implementation remains `IN PROGRESS`. B2-B/B2-C/B2-D, CP3-C2-C and
+  CP3-D remain `NOT STARTED`; automatic progression remains `PROHIBITED`.
+
 ## Unreleased — Phase 2 CP3-C2-B2-A Authority Ledger Foundation — 2026-08-27
 
 ### Added
@@ -35,7 +76,7 @@
 
 ### QA and status
 
-- B2-A targeted offline tests `54`, full backend inventory `598`, frontend
+- Initial B2-A targeted offline tests `54`, full backend inventory `598`, frontend
   inventory `43`, E2E inventory `2`를 고정했다. Final staged full regression과
   migration/fixture/build/secret/policy 결과는
   `qa/PHASE_02_CP3_C2_B2_A_CODEX_REPORT.md`에 기록한다.
@@ -43,9 +84,11 @@
   `scripts/policy-scan.ps1`의 exact test allowlist/control-manifest count/digest만
   새 authorized files에 맞춰 갱신했다. scanner 조건이나 network guard는
   완화하지 않았다.
-- CP3-C2-B implementation은 `IN PROGRESS`, B2-A는
-  `IMPLEMENTED — AWAITING GPT INDEPENDENT REVIEW`다. B2-B/B2-C/B2-D,
-  CP3-C2-C와 CP3-D는 `NOT STARTED`, automatic progression은 `PROHIBITED`다.
+- At reviewed SHA `05eb70d8dfe488563757107c0697f1a7708018c9`, B2-A의
+  historical state는 `IMPLEMENTED — AWAITING GPT INDEPENDENT REVIEW`였다. 이
+  상태는 위 remediation record로 대체됐다. CP3-C2-B implementation은
+  `IN PROGRESS`; B2-B/B2-C/B2-D, CP3-C2-C와 CP3-D는 `NOT STARTED`, automatic
+  progression은 `PROHIBITED`다.
 
 ## Unreleased — Phase 2 CP3-C1 Independent-Review P1 Remediation — 2026-08-26
 

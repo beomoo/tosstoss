@@ -1068,12 +1068,20 @@ class ReviewerWebauthnCredentialRow(Base):
             "credential_id_fingerprint",
             "public_key_fingerprint",
             "rp_id",
+            "counter_capability",
         ),
         UniqueConstraint("credential_id_fingerprint"),
         CheckConstraint("authenticator_attachment = 'platform'"),
         CheckConstraint("resident_key_required = 1"),
         CheckConstraint("user_verification_required = 1"),
-        CheckConstraint("sign_count >= 0"),
+        CheckConstraint("counter_capability IN ('SIGN_COUNT_SUPPORTED', 'NO_USABLE_COUNTER')"),
+        CheckConstraint("registration_sign_count IS NULL OR registration_sign_count >= 0"),
+        CheckConstraint(
+            "(counter_capability = 'SIGN_COUNT_SUPPORTED' "
+            "AND registration_sign_count IS NOT NULL) "
+            "OR (counter_capability = 'NO_USABLE_COUNTER' "
+            "AND registration_sign_count IS NULL)"
+        ),
     )
 
     webauthn_credential_id: Mapped[str] = mapped_column(String(512), primary_key=True)
@@ -1089,7 +1097,7 @@ class ReviewerWebauthnCredentialRow(Base):
     authenticator_attachment: Mapped[str] = mapped_column(String(16), nullable=False)
     authenticator_transports_json: Mapped[str] = mapped_column(Text, nullable=False)
     counter_capability: Mapped[str] = mapped_column(String(32), nullable=False)
-    sign_count: Mapped[int] = mapped_column(Integer, nullable=False)
+    registration_sign_count: Mapped[int | None] = mapped_column(Integer)
     rp_id: Mapped[str] = mapped_column(String(255), nullable=False)
     resident_key_required: Mapped[int] = mapped_column(Integer, nullable=False)
     user_verification_required: Mapped[int] = mapped_column(Integer, nullable=False)
@@ -1270,6 +1278,7 @@ class ReviewerAuthenticationEventRow(Base):
                 "credential_id_fingerprint",
                 "public_key_fingerprint",
                 "rp_id",
+                "counter_capability",
             ],
             [
                 "reviewer_webauthn_credentials.webauthn_credential_id",
@@ -1277,6 +1286,7 @@ class ReviewerAuthenticationEventRow(Base):
                 "reviewer_webauthn_credentials.credential_id_fingerprint",
                 "reviewer_webauthn_credentials.public_key_fingerprint",
                 "reviewer_webauthn_credentials.rp_id",
+                "reviewer_webauthn_credentials.counter_capability",
             ],
         ),
         CheckConstraint("authentication_result IN ('VERIFIED', 'REJECTED')"),
@@ -1287,7 +1297,21 @@ class ReviewerAuthenticationEventRow(Base):
         CheckConstraint("origin_verified IN (0, 1)"),
         CheckConstraint("rp_id_hash_verified IN (0, 1)"),
         CheckConstraint("signature_verified IN (0, 1)"),
+        CheckConstraint("counter_capability IN ('SIGN_COUNT_SUPPORTED', 'NO_USABLE_COUNTER')"),
+        CheckConstraint("previous_sign_count IS NULL OR previous_sign_count >= 0"),
+        CheckConstraint("asserted_sign_count IS NULL OR asserted_sign_count >= 0"),
+        CheckConstraint(
+            "(counter_capability = 'SIGN_COUNT_SUPPORTED' "
+            "AND previous_sign_count IS NOT NULL AND asserted_sign_count IS NOT NULL) "
+            "OR (counter_capability = 'NO_USABLE_COUNTER' "
+            "AND previous_sign_count IS NULL AND asserted_sign_count IS NULL)"
+        ),
         CheckConstraint("counter_verified IN (0, 1)"),
+        CheckConstraint(
+            "counter_verified = 0 OR counter_capability = 'NO_USABLE_COUNTER' "
+            "OR (counter_capability = 'SIGN_COUNT_SUPPORTED' "
+            "AND asserted_sign_count > previous_sign_count)"
+        ),
         CheckConstraint("replay_rejected IN (0, 1)"),
         CheckConstraint(
             "authentication_result != 'VERIFIED' "
@@ -1341,6 +1365,9 @@ class ReviewerAuthenticationEventRow(Base):
     origin_verified: Mapped[int] = mapped_column(Integer, nullable=False)
     rp_id_hash_verified: Mapped[int] = mapped_column(Integer, nullable=False)
     signature_verified: Mapped[int] = mapped_column(Integer, nullable=False)
+    counter_capability: Mapped[str] = mapped_column(String(32), nullable=False)
+    previous_sign_count: Mapped[int | None] = mapped_column(Integer)
+    asserted_sign_count: Mapped[int | None] = mapped_column(Integer)
     counter_verified: Mapped[int] = mapped_column(Integer, nullable=False)
     replay_rejected: Mapped[int] = mapped_column(Integer, nullable=False)
     safe_result_code: Mapped[str] = mapped_column(String(128), nullable=False)

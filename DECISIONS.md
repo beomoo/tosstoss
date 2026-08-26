@@ -603,10 +603,42 @@ migration file 생성·적용 모두 0이다.
   `ProviderIdentityMapping(VERIFIED)` write, provider identity rekey와 automatic
   promotion은 각각 `0`이다.
 - CP3-C2-B implementation: `IN PROGRESS`.
-- CP3-C2-B2-A: `IMPLEMENTED — AWAITING GPT INDEPENDENT REVIEW`.
+- CP3-C2-B2-A initial state: `IMPLEMENTED — AWAITING GPT INDEPENDENT REVIEW`.
 - CP3-C2-B2-B, CP3-C2-B2-C, CP3-C2-B2-D, CP3-C2-C와 CP3-D:
   `NOT STARTED`.
 - Automatic checkpoint progression: `PROHIBITED`.
+
+### CP3-C2-B2-A independent-review remediation 기록 — 2026-08-27
+
+- Reviewed SHA: `05eb70d8dfe488563757107c0697f1a7708018c9`.
+- GPT independent review: `CHANGES REQUIRED`, P0 `0`, P1 `3`, P2 `1`.
+- P1-01: correction successor decision은 predecessor와 같은
+  `provider_security_identity_id` authority subject를 유지하면서 새 immutable
+  bundle과, authoritative correction이 요구하면 새 `proposed_issuer_id`를 가질
+  수 있다. Predecessor existence/self-reference/exact successor bundle 검증과
+  unique predecessor-child constraint는 유지해 fork를 막고 unrelated-provider
+  chain graft를 거부한다. Old bundle/decision은 update/delete하지 않는다.
+- P1-02: B2-A observation membership은 exact CP3-C1 bridge 증명이 아니다.
+  B2-B positive source-admission/bridge/decision engine이 구현되고 독립 검토될
+  때까지 low-level repository의 모든 `READY_FOR_MANUAL_REVIEW` persistence는
+  typed `REVIEW_READY_ENGINE_NOT_IMPLEMENTED`로 fail closed한다.
+- P1-03: `reviewer_webauthn_credentials`는 mutable current counter 대신 exact
+  capability와 immutable nullable `registration_sign_count`만 저장한다.
+  `reviewer_authentication_events`는 matching capability,
+  `previous_sign_count`, `asserted_sign_count`, `counter_verified`를 append-only로
+  저장한다. Supported VERIFIED counter는 strict advancement를 요구하고,
+  equality/rollback은 REJECTED audit만 가능하다. No-counter capability는 모든
+  count를 null로 유지한다. Restart 후 current counter는 registration value와
+  unique linear VERIFIED event chain에서 재구성하며 credential row update는 0이다.
+- P2: GitHub CI evidence status는 별도 확인 전까지 주장하지 않는다. Local gate
+  결과는 LOCAL Codex evidence만이다.
+- ADR-013과 ADR-014는 `ACCEPTED`, CP3-C2-B1은
+  `PASS — CONTRACT APPROVED AND CLOSED`로 유지한다.
+- CP3-C2-B implementation: `IN PROGRESS`.
+- CP3-C2-B2-A: `REMEDIATED — AWAITING GPT INDEPENDENT RE-REVIEW`.
+- CP3-C2-B2-B/B2-C/B2-D, CP3-C2-C, CP3-D: `NOT STARTED`.
+- Automatic checkpoint progression: `PROHIBITED`.
+- 이 기록은 B2-A PASS 또는 B2-B 시작 승인이 아니다.
 
 ---
 

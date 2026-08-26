@@ -7,36 +7,48 @@ from sqlalchemy.exc import DBAPIError
 
 from authority_test_helpers import (
     CORP_CODE,
+    CORRECTED_CORP_CODE,
     LATER,
     LATEST_REVISION_HASH,
     NOW,
     PROVIDER_ID,
+    PROVIDER_OBSERVATION_ID,
     RETRIEVAL_FINGERPRINT,
+    SECOND_CORRECTED_CORP_CODE,
     SECOND_PROVIDER_ID,
     SECOND_PROVIDER_OBSERVATION_ID,
     authority_bundle,
     authority_evidence,
     evidence_application,
     fixture_source_policy,
+    jurisdiction_evidence,
+    jurisdiction_evidence_application,
+    jurisdiction_source_policy,
     production_source_policy,
+    review_ready_foundation_bundle,
     seed_provider_lineage,
 )
 from toss_dashboard_api.contracts.authority import (
     AuthorityBundle,
+    AuthorityEvidenceRelationType,
     AuthorityFreshnessResult,
     AuthorityIdentifierKind,
     AuthorityRetrievalStatus,
     AuthoritySubjectRole,
+    AuthorityTimeMissingReason,
     IssuerMachineDecisionState,
     build_authority_evidence,
     build_authority_evidence_observation,
+    build_authority_evidence_relation,
     build_authority_identifier_claim,
     build_issuer_decision,
+    bundle_satisfies_review_ready_foundation,
 )
 from toss_dashboard_api.contracts.enums import Jurisdiction
 from toss_dashboard_api.repositories.authority import (
     AuthorityLedgerConflict,
     AuthorityLedgerMode,
+    AuthorityReviewReadyEngineNotImplemented,
     SQLiteAuthorityLedgerRepository,
 )
 from toss_dashboard_api.storage.database import session_factory
@@ -45,9 +57,11 @@ from toss_dashboard_api.storage.models import (
     AuthorityBundleProviderObservationRow,
     AuthorityBundleScopeResultRow,
     AuthorityIdentifierClaimRow,
+    IssuerDecisionRow,
     IssuerRow,
     ProviderIdentityMappingRow,
     ProviderSecurityIdentityRow,
+    ProviderSecurityMasterObservationRow,
     SecurityRow,
 )
 
@@ -56,11 +70,15 @@ def _repository(database_context, *, include_second: bool = False):
     sessions = session_factory(database_context.engine)
     seed_provider_lineage(sessions, include_second=include_second)
     policy = production_source_policy()
+    jurisdiction_policy = jurisdiction_source_policy()
     return (
         SQLiteAuthorityLedgerRepository(
             sessions,
             production_policy_registry={
-                policy.authority_source_policy_id: policy.policy_content_hash
+                policy.authority_source_policy_id: policy.policy_content_hash,
+                jurisdiction_policy.authority_source_policy_id: (
+                    jurisdiction_policy.policy_content_hash
+                ),
             },
         ),
         sessions,
@@ -90,6 +108,88 @@ def _persist_through_application(repository):
     assert repository.insert_or_verify_evidence_observation(observation).inserted is True
     assert repository.insert_or_verify_evidence_application(application).inserted is True
     return policy, evidence, observation, application
+
+
+def _persist_application(repository, policy, evidence, application):
+    observation = _observation(evidence)
+    repository.insert_or_verify_source_policy(policy)
+    repository.insert_or_verify_evidence(evidence)
+    repository.insert_or_verify_evidence_observation(observation)
+    repository.insert_or_verify_evidence_application(application)
+    return observation
+
+
+def _decision(bundle, *, supersedes_decision_id=None, reason="FOUNDATION_UNRESOLVED"):
+    return build_issuer_decision(
+        bundle=bundle,
+        decision_state=IssuerMachineDecisionState.UNRESOLVED,
+        reason_codes=(reason,),
+        latest_revision_check_hash=LATEST_REVISION_HASH,
+        freshness_policy_version="conservative-approval-freshness/0.1.0",
+        freshness_result=AuthorityFreshnessResult.CURRENT,
+        collision_scan_hash=bundle.collision_scan_hash,
+        evaluated_at=NOW,
+        supersedes_decision_id=supersedes_decision_id,
+    )
+
+
+def _canonical_write_snapshot(sessions):
+    with sessions() as session:
+        return {
+            "issuers": int(session.scalar(select(func.count()).select_from(IssuerRow)) or 0),
+            "securities": int(session.scalar(select(func.count()).select_from(SecurityRow)) or 0),
+            "verified_mappings": int(
+                session.scalar(
+                    select(func.count())
+                    .select_from(ProviderIdentityMappingRow)
+                    .where(ProviderIdentityMappingRow.mapping_status == "VERIFIED")
+                )
+                or 0
+            ),
+            "provider_anchors": tuple(
+                session.execute(
+                    select(
+                        ProviderSecurityIdentityRow.provider_security_identity_id,
+                        ProviderSecurityIdentityRow.allocation_anchor_hash,
+                    ).order_by(ProviderSecurityIdentityRow.provider_security_identity_id)
+                ).all()
+            ),
+        }
+
+
+def _persist_review_ready_foundation(
+    repository,
+    *,
+    provider_security_identity_id=PROVIDER_ID,
+    provider_observation_id=PROVIDER_OBSERVATION_ID,
+):
+    regulatory_policy = production_source_policy()
+    regulatory_evidence = authority_evidence(regulatory_policy)
+    regulatory_application = evidence_application(
+        regulatory_policy,
+        regulatory_evidence,
+        provider_security_identity_id=provider_security_identity_id,
+        provider_observation_ids=(provider_observation_id,),
+    )
+    _persist_application(
+        repository,
+        regulatory_policy,
+        regulatory_evidence,
+        regulatory_application,
+    )
+    jurisdiction_policy = jurisdiction_source_policy()
+    legal_evidence = jurisdiction_evidence(jurisdiction_policy)
+    legal_application = jurisdiction_evidence_application(
+        jurisdiction_policy,
+        legal_evidence,
+        provider_security_identity_id=provider_security_identity_id,
+        provider_observation_ids=(provider_observation_id,),
+    )
+    _persist_application(repository, jurisdiction_policy, legal_evidence, legal_application)
+    bundle = review_ready_foundation_bundle(regulatory_application, legal_application)
+    repository.insert_or_verify_bundle(bundle)
+    assert bundle_satisfies_review_ready_foundation(bundle) is True
+    return bundle
 
 
 def test_immutable_insert_or_verify_is_idempotent(database_context) -> None:
@@ -323,6 +423,205 @@ def test_deterministic_decision_storage_is_insert_or_verify(database_context) ->
     assert repository.insert_or_verify_decision(decision).inserted is True
     assert repository.insert_or_verify_decision(decision).inserted is False
     assert repository.issuer_decision(decision.issuer_decision_id) == decision
+
+
+def test_corrected_bundle_decision_can_supersede_prior_bundle_without_chain_fork(
+    database_context,
+) -> None:
+    repository, sessions = _repository(database_context, include_second=True)
+    before = _canonical_write_snapshot(sessions)
+    policy, original_evidence, _observation_value, original_application = (
+        _persist_through_application(repository)
+    )
+    original_bundle = authority_bundle(original_application)
+    repository.insert_or_verify_bundle(original_bundle)
+    original_decision = _decision(original_bundle, reason="ORIGINAL_EVIDENCE_UNRESOLVED")
+    repository.insert_or_verify_decision(original_decision)
+
+    corrected_evidence = authority_evidence(
+        policy,
+        raw_content_hash="sha256:" + ("6" * 64),
+        raw_claim_value=CORRECTED_CORP_CODE,
+        normalized_claim_value=CORRECTED_CORP_CODE,
+    )
+    repository.insert_or_verify_evidence(corrected_evidence)
+    repository.insert_or_verify_evidence_observation(_observation(corrected_evidence))
+    relation = build_authority_evidence_relation(
+        predecessor_evidence_id=original_evidence.evidence_id,
+        successor_evidence_id=corrected_evidence.evidence_id,
+        relation_type=AuthorityEvidenceRelationType.CORRECTS,
+        authority_effective_missing_reason=(AuthorityTimeMissingReason.NOT_SUPPLIED_BY_AUTHORITY),
+        recorded_at=LATER,
+    )
+    repository.insert_or_verify_evidence_relation(relation)
+    corrected_application = evidence_application(
+        policy,
+        corrected_evidence,
+        identifier_value=CORRECTED_CORP_CODE,
+        authority_relation_head_hash=relation.relation_content_hash,
+    )
+    repository.insert_or_verify_evidence_application(corrected_application)
+    corrected_bundle = authority_bundle(
+        corrected_application,
+        identifier_value=CORRECTED_CORP_CODE,
+    )
+    repository.insert_or_verify_bundle(corrected_bundle)
+    corrected_decision = _decision(
+        corrected_bundle,
+        supersedes_decision_id=original_decision.issuer_decision_id,
+        reason="AUTHORITATIVE_CORRECTION_UNRESOLVED",
+    )
+
+    assert corrected_bundle.proposed_issuer_id != original_bundle.proposed_issuer_id
+    assert repository.insert_or_verify_decision(corrected_decision).inserted is True
+    assert repository.authority_bundle(original_bundle.authority_bundle_id) == original_bundle
+    assert repository.authority_bundle(corrected_bundle.authority_bundle_id) == corrected_bundle
+    assert repository.issuer_decision(original_decision.issuer_decision_id) == original_decision
+    assert repository.issuer_decision(corrected_decision.issuer_decision_id) == corrected_decision
+
+    competing_evidence = authority_evidence(
+        policy,
+        raw_content_hash="sha256:" + ("7" * 64),
+        raw_claim_value=SECOND_CORRECTED_CORP_CODE,
+        normalized_claim_value=SECOND_CORRECTED_CORP_CODE,
+    )
+    repository.insert_or_verify_evidence(competing_evidence)
+    repository.insert_or_verify_evidence_observation(_observation(competing_evidence))
+    competing_relation = build_authority_evidence_relation(
+        predecessor_evidence_id=original_evidence.evidence_id,
+        successor_evidence_id=competing_evidence.evidence_id,
+        relation_type=AuthorityEvidenceRelationType.CORRECTS,
+        authority_effective_missing_reason=(AuthorityTimeMissingReason.NOT_SUPPLIED_BY_AUTHORITY),
+        recorded_at=LATER,
+    )
+    repository.insert_or_verify_evidence_relation(competing_relation)
+    competing_application = evidence_application(
+        policy,
+        competing_evidence,
+        identifier_value=SECOND_CORRECTED_CORP_CODE,
+        authority_relation_head_hash=competing_relation.relation_content_hash,
+    )
+    repository.insert_or_verify_evidence_application(competing_application)
+    competing_bundle = authority_bundle(
+        competing_application,
+        identifier_value=SECOND_CORRECTED_CORP_CODE,
+    )
+    repository.insert_or_verify_bundle(competing_bundle)
+    competing_decision = _decision(
+        competing_bundle,
+        supersedes_decision_id=original_decision.issuer_decision_id,
+        reason="COMPETING_CORRECTION_UNRESOLVED",
+    )
+    with pytest.raises(AuthorityLedgerConflict, match="persistence conflict"):
+        repository.insert_or_verify_decision(competing_decision)
+
+    unrelated_application = evidence_application(
+        policy,
+        corrected_evidence,
+        provider_security_identity_id=SECOND_PROVIDER_ID,
+        provider_observation_ids=(SECOND_PROVIDER_OBSERVATION_ID,),
+        identifier_value=CORRECTED_CORP_CODE,
+        authority_relation_head_hash=relation.relation_content_hash,
+    )
+    repository.insert_or_verify_evidence_application(unrelated_application)
+    unrelated_bundle = authority_bundle(
+        unrelated_application,
+        identifier_value=CORRECTED_CORP_CODE,
+    )
+    repository.insert_or_verify_bundle(unrelated_bundle)
+    unrelated_decision = _decision(
+        unrelated_bundle,
+        supersedes_decision_id=original_decision.issuer_decision_id,
+        reason="UNRELATED_PROVIDER_GRAFT",
+    )
+    with pytest.raises(AuthorityLedgerConflict, match="another provider subject"):
+        repository.insert_or_verify_decision(unrelated_decision)
+
+    with sessions() as session:
+        assert session.scalar(select(func.count()).select_from(IssuerDecisionRow)) == 2
+    assert _canonical_write_snapshot(sessions) == before
+
+
+def test_review_ready_repository_fails_closed_without_b2_b_bridge_engine(
+    database_context,
+) -> None:
+    repository, sessions = _repository(database_context)
+    before = _canonical_write_snapshot(sessions)
+    bundle = _persist_review_ready_foundation(repository)
+    ready = build_issuer_decision(
+        bundle=bundle,
+        decision_state=IssuerMachineDecisionState.READY_FOR_MANUAL_REVIEW,
+        reason_codes=("STRUCTURAL_FOUNDATION_ONLY",),
+        latest_revision_check_hash=LATEST_REVISION_HASH,
+        freshness_policy_version="conservative-approval-freshness/0.1.0",
+        freshness_result=AuthorityFreshnessResult.CURRENT,
+        collision_scan_hash=bundle.collision_scan_hash,
+        evaluated_at=NOW,
+    )
+
+    with pytest.raises(AuthorityReviewReadyEngineNotImplemented) as captured:
+        repository.insert_or_verify_decision(ready)
+    assert captured.value.code == "REVIEW_READY_ENGINE_NOT_IMPLEMENTED"
+    with sessions() as session:
+        assert session.get(IssuerDecisionRow, ready.issuer_decision_id) is None
+    assert _canonical_write_snapshot(sessions) == before
+
+
+def test_name_symbol_only_observation_cannot_enable_review_ready(
+    database_context,
+) -> None:
+    repository, sessions = _repository(database_context)
+    bundle = _persist_review_ready_foundation(repository)
+    with sessions() as session:
+        observation = session.get(
+            ProviderSecurityMasterObservationRow,
+            PROVIDER_OBSERVATION_ID,
+        )
+        assert observation is not None
+        assert observation.symbol == "005930"
+        assert observation.normalized_record_id is None
+    ready = build_issuer_decision(
+        bundle=bundle,
+        decision_state=IssuerMachineDecisionState.READY_FOR_MANUAL_REVIEW,
+        reason_codes=("NAME_SYMBOL_LINEAGE_ONLY",),
+        latest_revision_check_hash=LATEST_REVISION_HASH,
+        freshness_policy_version="conservative-approval-freshness/0.1.0",
+        freshness_result=AuthorityFreshnessResult.CURRENT,
+        collision_scan_hash=bundle.collision_scan_hash,
+        evaluated_at=NOW,
+    )
+
+    with pytest.raises(
+        AuthorityReviewReadyEngineNotImplemented,
+        match="REVIEW_READY_ENGINE_NOT_IMPLEMENTED",
+    ):
+        repository.insert_or_verify_decision(ready)
+
+
+def test_arbitrary_active_provider_observation_cannot_enable_review_ready(
+    database_context,
+) -> None:
+    repository, sessions = _repository(database_context, include_second=True)
+    before = _canonical_write_snapshot(sessions)
+    bundle = _persist_review_ready_foundation(
+        repository,
+        provider_security_identity_id=SECOND_PROVIDER_ID,
+        provider_observation_id=SECOND_PROVIDER_OBSERVATION_ID,
+    )
+    ready = build_issuer_decision(
+        bundle=bundle,
+        decision_state=IssuerMachineDecisionState.READY_FOR_MANUAL_REVIEW,
+        reason_codes=("ARBITRARY_ACTIVE_OBSERVATION",),
+        latest_revision_check_hash=LATEST_REVISION_HASH,
+        freshness_policy_version="conservative-approval-freshness/0.1.0",
+        freshness_result=AuthorityFreshnessResult.CURRENT,
+        collision_scan_hash=bundle.collision_scan_hash,
+        evaluated_at=NOW,
+    )
+
+    with pytest.raises(AuthorityReviewReadyEngineNotImplemented):
+        repository.insert_or_verify_decision(ready)
+    assert _canonical_write_snapshot(sessions) == before
 
 
 @pytest.mark.parametrize("operation", ["UPDATE", "DELETE"])

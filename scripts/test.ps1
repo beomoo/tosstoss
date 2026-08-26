@@ -208,8 +208,8 @@ function Assert-PhaseTwoCP3C2B2ATestInventory {
             )
     )
     $backendText = $backendCollection -join [Environment]::NewLine
-    if ($backendText -notmatch '(?m)^598 tests collected in ') {
-        throw "Backend test inventory is not exactly 598 collected tests."
+    if ($backendText -notmatch '(?m)^613 tests collected in ') {
+        throw "Backend test inventory is not exactly 613 collected tests."
     }
 
     $frontendTests = @(
@@ -240,7 +240,7 @@ function Assert-PhaseTwoCP3C2B2ATestInventory {
         throw "Playwright test inventory is not exactly 2 tests in 1 file."
     }
 
-    Write-Host "Test inventory verified: backend=598, frontend=43, e2e=2"
+    Write-Host "Test inventory verified: backend=613, frontend=43, e2e=2"
 }
 
 function Clear-StaleBackendTestDirectories {
@@ -364,4 +364,4 @@ Invoke-PhaseScript -Name "e2e.ps1"
 Invoke-PhaseScript -Name "secret-scan.ps1"
 Invoke-PhaseScript -Name "policy-scan.ps1"
 
-Write-Host "All Phase 2 CP3-C2-B2-A checks passed."
+Write-Host "All Phase 2 CP3-C2-B2-A remediation checks passed."

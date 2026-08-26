@@ -22,6 +22,7 @@ from authority_test_helpers import (
     production_source_policy,
 )
 from toss_dashboard_api.contracts.authority import (
+    LOCAL_DATA_STEWARD_AUTHENTICATION_CONTRACT_VERSION,
     AuthorityAccessDisposition,
     AuthorityBundleScopeStatus,
     AuthorityClassification,
@@ -41,6 +42,9 @@ from toss_dashboard_api.contracts.authority import (
     AuthoritySubjectRole,
     AuthorityWeight,
     IssuerMachineDecisionState,
+    ReviewerAuthenticationCounterAudit,
+    ReviewerAuthenticationResult,
+    ReviewerWebauthnCounterCapability,
     build_authority_bundle_scope_result,
     build_authority_evidence,
     build_authority_evidence_application,
@@ -48,6 +52,7 @@ from toss_dashboard_api.contracts.authority import (
     build_authority_source_policy,
     build_issuer_decision,
     build_production_authority_bundle,
+    reconstruct_current_webauthn_sign_count,
 )
 from toss_dashboard_api.contracts.enums import Jurisdiction, MappingStatus
 
@@ -550,6 +555,71 @@ def test_mapping_status_remains_exactly_two_value_phase_contract() -> None:
     assert tuple(status.value for status in MappingStatus) == (
         "VERIFIED",
         "UNRESOLVED",
+    )
+
+
+def test_append_only_counter_reconstruction_is_order_independent() -> None:
+    events = tuple(
+        ReviewerAuthenticationCounterAudit(
+            authentication_event_id=event_id,
+            contract_version=LOCAL_DATA_STEWARD_AUTHENTICATION_CONTRACT_VERSION,
+            counter_capability=ReviewerWebauthnCounterCapability.SIGN_COUNT_SUPPORTED,
+            previous_sign_count=previous,
+            asserted_sign_count=asserted,
+            counter_verified=True,
+            authentication_result=ReviewerAuthenticationResult.VERIFIED,
+            authenticated_at=authenticated_at,
+        )
+        for event_id, previous, asserted, authenticated_at in (
+            ("authentication_counter_7", 6, 7, LATER),
+            ("authentication_counter_6", 5, 6, NOW),
+        )
+    )
+
+    assert (
+        reconstruct_current_webauthn_sign_count(
+            counter_capability=ReviewerWebauthnCounterCapability.SIGN_COUNT_SUPPORTED,
+            registration_sign_count=5,
+            authentication_events=events,
+        )
+        == 7
+    )
+
+
+def test_counter_audit_rejects_verified_rollback_or_equality() -> None:
+    for asserted in (5, 4):
+        with pytest.raises(ValidationError, match="strictly advance"):
+            ReviewerAuthenticationCounterAudit(
+                authentication_event_id=f"authentication_counter_{asserted}",
+                contract_version=LOCAL_DATA_STEWARD_AUTHENTICATION_CONTRACT_VERSION,
+                counter_capability=(ReviewerWebauthnCounterCapability.SIGN_COUNT_SUPPORTED),
+                previous_sign_count=5,
+                asserted_sign_count=asserted,
+                counter_verified=True,
+                authentication_result=ReviewerAuthenticationResult.VERIFIED,
+                authenticated_at=NOW,
+            )
+
+
+def test_no_counter_authenticator_reconstructs_without_fake_advancement() -> None:
+    event = ReviewerAuthenticationCounterAudit(
+        authentication_event_id="authentication_no_counter",
+        contract_version=LOCAL_DATA_STEWARD_AUTHENTICATION_CONTRACT_VERSION,
+        counter_capability=ReviewerWebauthnCounterCapability.NO_USABLE_COUNTER,
+        previous_sign_count=None,
+        asserted_sign_count=None,
+        counter_verified=True,
+        authentication_result=ReviewerAuthenticationResult.VERIFIED,
+        authenticated_at=NOW,
+    )
+
+    assert (
+        reconstruct_current_webauthn_sign_count(
+            counter_capability=ReviewerWebauthnCounterCapability.NO_USABLE_COUNTER,
+            registration_sign_count=None,
+            authentication_events=(event,),
+        )
+        is None
     )
 
 

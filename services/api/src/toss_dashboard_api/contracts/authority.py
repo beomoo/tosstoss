@@ -13,6 +13,7 @@ from typing import Annotated, Any, Literal, Self
 from pydantic import (
     BaseModel,
     ConfigDict,
+    NonNegativeInt,
     StringConstraints,
     field_validator,
     model_validator,
@@ -29,6 +30,7 @@ AUTHORITY_SOURCE_POLICY_CONTRACT_VERSION = "issuer-authority-source-policy/0.1.0
 AUTHORITY_BUNDLE_CONTRACT_VERSION = "issuer-authority-bundle/0.1.0"
 AUTHORITY_IDENTIFIER_CLAIM_CONTRACT_VERSION = "issuer-authority-identifier-claim/0.1.0"
 ISSUER_DECISION_CONTRACT_VERSION = "issuer-decision/0.1.0"
+LOCAL_DATA_STEWARD_AUTHENTICATION_CONTRACT_VERSION = "issuer-steward-webauthn/0.1.0"
 AUTHORITY_RULE_VERSION = "issuer-authority-rules/0.1.0"
 AUTHORITY_SEMANTIC_ID_VERSION = "issuer-authority-id/1"
 
@@ -40,6 +42,7 @@ AuthoritySourcePolicyContractVersion = Literal["issuer-authority-source-policy/0
 AuthorityBundleContractVersion = Literal["issuer-authority-bundle/0.1.0"]
 AuthorityIdentifierClaimContractVersion = Literal["issuer-authority-identifier-claim/0.1.0"]
 IssuerDecisionContractVersion = Literal["issuer-decision/0.1.0"]
+LocalDataStewardAuthenticationContractVersion = Literal["issuer-steward-webauthn/0.1.0"]
 AuthorityRuleVersion = Literal["issuer-authority-rules/0.1.0"]
 
 AuthorityToken = Annotated[
@@ -240,6 +243,11 @@ class ReviewerAuthenticationResult(StrEnum):
     REJECTED = "REJECTED"
 
 
+class ReviewerWebauthnCounterCapability(StrEnum):
+    SIGN_COUNT_SUPPORTED = "SIGN_COUNT_SUPPORTED"
+    NO_USABLE_COUNTER = "NO_USABLE_COUNTER"
+
+
 class IssuerAuthorityLinkState(StrEnum):
     APPROVED = "APPROVED"
     REVIEW_REQUIRED = "REVIEW_REQUIRED"
@@ -380,6 +388,76 @@ class AuthorityStrictModel(BaseModel):
     @classmethod
     def normalize_unicode(cls, value: Any) -> Any:
         return _nfc_value(value)
+
+
+class ReviewerAuthenticationCounterAudit(AuthorityStrictModel):
+    """Non-secret append-only signature-counter audit projection."""
+
+    authentication_event_id: SafeId
+    contract_version: LocalDataStewardAuthenticationContractVersion
+    counter_capability: ReviewerWebauthnCounterCapability
+    previous_sign_count: NonNegativeInt | None
+    asserted_sign_count: NonNegativeInt | None
+    counter_verified: bool
+    authentication_result: ReviewerAuthenticationResult
+    authenticated_at: UtcDatetime
+
+    @model_validator(mode="after")
+    def validate_counter_relation(self) -> Self:
+        if self.counter_capability == ReviewerWebauthnCounterCapability.SIGN_COUNT_SUPPORTED:
+            if self.previous_sign_count is None or self.asserted_sign_count is None:
+                raise ValueError("counter-capable authentication requires both sign counts")
+            if self.counter_verified and self.asserted_sign_count <= self.previous_sign_count:
+                raise ValueError("verified signature counter must strictly advance")
+        elif self.previous_sign_count is not None or self.asserted_sign_count is not None:
+            raise ValueError("no-counter authentication must not fabricate sign counts")
+        if (
+            self.authentication_result == ReviewerAuthenticationResult.VERIFIED
+            and not self.counter_verified
+        ):
+            raise ValueError("verified authentication requires counter policy verification")
+        return self
+
+
+def reconstruct_current_webauthn_sign_count(
+    *,
+    counter_capability: ReviewerWebauthnCounterCapability,
+    registration_sign_count: int | None,
+    authentication_events: Sequence[ReviewerAuthenticationCounterAudit],
+) -> int | None:
+    """Rebuild the current counter from immutable registration and event history."""
+
+    events = tuple(authentication_events)
+    if any(event.counter_capability != counter_capability for event in events):
+        raise ValueError("authentication counter capability conflicts with credential")
+    if counter_capability == ReviewerWebauthnCounterCapability.NO_USABLE_COUNTER:
+        if registration_sign_count is not None:
+            raise ValueError("no-counter credential must not have a registration sign count")
+        return None
+    if (
+        registration_sign_count is None
+        or isinstance(registration_sign_count, bool)
+        or registration_sign_count < 0
+    ):
+        raise ValueError("counter-capable credential requires a non-negative registration count")
+
+    pending = [
+        event
+        for event in events
+        if event.authentication_result == ReviewerAuthenticationResult.VERIFIED
+        and event.counter_verified
+    ]
+    current = registration_sign_count
+    while pending:
+        successors = [event for event in pending if event.previous_sign_count == current]
+        if len(successors) != 1:
+            raise ValueError("verified signature-counter history is forked or discontinuous")
+        successor = successors[0]
+        if successor.asserted_sign_count is None or successor.asserted_sign_count <= current:
+            raise ValueError("verified signature counter must strictly advance")
+        current = successor.asserted_sign_count
+        pending.remove(successor)
+    return current
 
 
 class AuthorityScopeRoleWeight(AuthorityStrictModel):

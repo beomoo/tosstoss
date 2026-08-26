@@ -21,7 +21,6 @@ from toss_dashboard_api.contracts.authority import (
     IssuerDecision,
     IssuerMachineDecisionState,
     authority_sha256,
-    bundle_satisfies_review_ready_foundation,
     canonical_authority_json_bytes,
 )
 from toss_dashboard_api.contracts.base import utc_to_string
@@ -54,6 +53,18 @@ class AuthorityLedgerError(RuntimeError):
 
 class AuthorityLedgerConflict(AuthorityLedgerError):
     pass
+
+
+class AuthorityReviewReadyEngineNotImplemented(AuthorityLedgerConflict):
+    """Fail-closed B2-A boundary for the separately gated positive engine."""
+
+    code = "REVIEW_READY_ENGINE_NOT_IMPLEMENTED"
+
+    def __init__(self) -> None:
+        super().__init__(
+            f"{self.code}: B2-B provider-to-issuer bridge and positive decision "
+            "engine have not been implemented or independently approved"
+        )
 
 
 @dataclass(frozen=True)
@@ -385,13 +396,8 @@ class SQLiteAuthorityLedgerRepository:
                     raise AuthorityLedgerConflict(
                         "issuer decision does not match exact authority bundle"
                     )
-                if (
-                    decision.decision_state == IssuerMachineDecisionState.READY_FOR_MANUAL_REVIEW
-                    and not bundle_satisfies_review_ready_foundation(bundle)
-                ):
-                    raise AuthorityLedgerConflict(
-                        "review-ready decision requires complete decisive bundle"
-                    )
+                if decision.decision_state == IssuerMachineDecisionState.READY_FOR_MANUAL_REVIEW:
+                    raise AuthorityReviewReadyEngineNotImplemented()
                 if decision.supersedes_decision_id is not None:
                     predecessor = session.get(
                         IssuerDecisionRow,
@@ -399,8 +405,15 @@ class SQLiteAuthorityLedgerRepository:
                     )
                     if predecessor is None:
                         raise AuthorityLedgerConflict("issuer decision predecessor does not exist")
-                    if predecessor.authority_bundle_id != decision.authority_bundle_id:
-                        raise AuthorityLedgerConflict("issuer decision chain cannot change bundle")
+                    if predecessor.issuer_decision_id == decision.issuer_decision_id:
+                        raise AuthorityLedgerConflict("issuer decision cannot supersede itself")
+                    if (
+                        predecessor.provider_security_identity_id
+                        != decision.provider_security_identity_id
+                    ):
+                        raise AuthorityLedgerConflict(
+                            "issuer decision predecessor belongs to another provider subject"
+                        )
                 existing = session.get(
                     IssuerDecisionRow,
                     decision.issuer_decision_id,

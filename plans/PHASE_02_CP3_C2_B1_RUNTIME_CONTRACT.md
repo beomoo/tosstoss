@@ -15,7 +15,7 @@
 - B1 closeout production-implementation snapshot:
   `NOT STARTED — REQUIRES SEPARATE USER START APPROVAL`
 - Current implementation status: `IN PROGRESS`
-- CP3-C2-B2-A: `IMPLEMENTED — AWAITING GPT INDEPENDENT REVIEW`
+- CP3-C2-B2-A: `REMEDIATED — AWAITING GPT INDEPENDENT RE-REVIEW`
 - CP3-C2-B2-B / B2-C / B2-D: `NOT STARTED`
 - Migration implementation: additive `0005` implemented in B2-A; production
   database application `0`
@@ -619,6 +619,16 @@ It excludes `evaluated_at` and execution identity.
   through the predecessor relation; it is not updated.
 - Only the unique current decision-chain leaf may be approved.
 
+B2-A implementation note: the low-level ledger deliberately rejects every
+attempt to persist `READY_FOR_MANUAL_REVIEW` with the typed code
+`REVIEW_READY_ENGINE_NOT_IMPLEMENTED`. Exact observation membership and
+decisive regulatory-ID/jurisdiction scope rows do not by themselves prove the
+provider-to-issuer bridge. B2-B must implement the full positive source-
+admission, exact CP3-C1 observation-lineage bridge, collision, and decision
+engine and pass separate independent review before this persistence gate may be
+enabled. `UNRESOLVED`, `STALE`, and `REVIEW_REQUIRED` remain available in the
+B2-A foundation.
+
 ## 9. IssuerApprovalEvent contract
 
 `IssuerApprovalEvent` is an append-only authenticated-human disposition. Codex,
@@ -649,7 +659,8 @@ caller assertion of identity/role is not approval authentication.
   verification or without the platform-authenticator result is rejected.
 - The server stores the public credential ID, canonical COSE public key,
   algorithm, authenticator AAGUID/attachment metadata, public-key fingerprint,
-  credential-ID fingerprint, counter capability/current counter, RP ID,
+  credential-ID fingerprint, counter capability and immutable registration
+  counter, RP ID,
   principal binding, registration policy version, and non-secret verification
   audit. The public-key fingerprint is SHA-256 of canonical COSE-key bytes.
 - The Windows Hello/private credential and private signing key never leave the
@@ -664,6 +675,24 @@ Enrollment and credential lifecycle are append-only audit events. Credential
 revocation or supersession does not delete the registered public-key history.
 The enrollment bootstrap cannot approve, reject, revoke, or supersede an issuer
 decision.
+
+`reviewer_webauthn_credentials.registration_sign_count` is the immutable
+registration-time value, not a mutable current counter. Exact counter
+capability is either `SIGN_COUNT_SUPPORTED` with a non-negative registration
+count, or `NO_USABLE_COUNTER` with a null registration count. Each
+`reviewer_authentication_events` row records the same server-owned capability,
+`previous_sign_count`, `asserted_sign_count`, and `counter_verified`. Supported
+counter values are non-negative; a `VERIFIED` event requires
+`asserted_sign_count > previous_sign_count`. Equality and rollback can only be
+append-only rejected audit facts. A no-counter authenticator stores both event
+counts as null and never fabricates zero or advancement.
+
+After process restart, the current supported counter is reconstructed from the
+immutable registration count followed by the unique linear set of append-only
+`VERIFIED` counter-bearing events. Each event's previous value must equal the
+prior reconstructed value; a gap or fork fails closed. For
+`NO_USABLE_COUNTER`, the reconstructed counter remains null. No credential-row
+`UPDATE` is required or permitted.
 
 #### 9.1.2 Exact relying party and origin
 
@@ -734,8 +763,11 @@ following against server-owned state:
    user-verification flags are both set, and authenticator data is well formed;
 5. assertion signature over the exact authenticator data and client-data hash
    verifies with the registered COSE public key and algorithm;
-6. a supported positive signature counter strictly advances; counter rollback
-   or cloned-credential indication rejects and review-locks the credential; and
+6. a supported positive signature counter strictly advances relative to the
+   reconstructed append-only prior counter; equality, rollback, a gap/fork, or
+   cloned-credential indication rejects and review-locks the credential. An
+   explicitly registered no-counter credential preserves null prior/asserted
+   values and does not fabricate advancement; and
 7. the challenge consumption insert succeeds exactly once.
 
 For an authenticator whose registered metadata explicitly reports no usable
@@ -761,7 +793,8 @@ The immutable authentication audit stores only non-secret fields:
 - challenge digest, decision/bundle IDs and expected content hashes,
   disposition, issue/expiry/consumption times;
 - RP ID, exact origin, user-presence/user-verification outcomes;
-- signature/counter verification outcomes and safe error code; and
+- signature/counter verification outcomes, exact counter capability, nullable
+  prior/asserted counter values, and safe error code; and
 - an opaque server-generated `authentication_event_id` for a successful
   assertion.
 
@@ -1142,8 +1175,12 @@ approval audit times in their distinct fields. It does not invent
   forks.
 - One link root per provider identity and a unique non-null
   `supersedes_link_id` produce one append-only link chain.
-- Cycle detection and same-subject/same-bundle predecessor validation are
-  mandatory repository checks. A deterministic child ID includes its parent.
+- Cycle detection and same-provider-authority-subject predecessor validation
+  are mandatory repository checks. A correction successor decision may bind a
+  new immutable bundle and may change `proposed_issuer_id`; its exact new bundle
+  and content hashes must validate. A predecessor from another provider subject
+  is a forbidden chain graft. A deterministic child ID includes its parent, and
+  the unique predecessor-child constraint prevents forks.
 - Source policies, principal/credential lifecycle, challenges/consumptions,
   authentication audits, evidence applications, and all authority ledger rows
   reject destructive rewrite/delete through repository policy and proposed
@@ -1257,11 +1294,11 @@ bundle event cannot satisfy the FK/check set.
 |---|---|
 | `authority_source_policies` | immutable exact source/document/scope/role admission registry; PK policy ID, source namespace, maximum weight, ingestion mode, production eligibility and access/license requirements |
 | `reviewer_principals` | server-created stable local steward principal; exact role, OS-owner SID hash and enrollment policy; no caller-owned identity field |
-| `reviewer_webauthn_credentials` | registered credential ID, COSE public key, public fingerprints, RP/principal binding and non-secret authenticator metadata; no private credential material |
+| `reviewer_webauthn_credentials` | registered credential ID, COSE public key, public fingerprints, RP/principal binding, exact counter capability and immutable nullable registration counter; no private credential material or mutable current counter |
 | `reviewer_webauthn_credential_events` | append-only register/revoke/supersede lifecycle for public credentials |
 | `issuer_approval_challenges` | immutable CSPRNG challenge digest and exact principal/decision/bundle/hash/disposition/RP/origin binding with five-minute expiry |
 | `issuer_approval_challenge_consumptions` | one append-only terminal attempt per challenge; unique challenge FK provides replay rejection |
-| `reviewer_authentication_events` | append-only safe WebAuthn verification audit; successful row bound to exact challenge/principal/credential/decision/bundle/disposition |
+| `reviewer_authentication_events` | append-only safe WebAuthn verification audit with capability plus nullable prior/asserted counter values; successful row bound to exact challenge/principal/credential/decision/bundle/disposition |
 | `authority_evidence` | immutable reusable source facts; PK `evidence_id`, unique semantic/provenance hashes, exact locator/document reference, raw document hash, raw and normalized claim values, source-policy FK |
 | `authority_evidence_observations` | append-only retrieval/freshness audit for evidence; FK evidence, fetched UTC, exact raw/ref metadata; never a semantic bundle member |
 | `authority_evidence_relations` | append-only `CORRECTS`/`REVOKES`/`SUPERSEDES` edges between evidence rows |
@@ -1311,8 +1348,11 @@ generation time and OS/account metadata do not.
 - Event composite foreign keys bind the exact decision/bundle pair.
 - A successful reviewer-authentication row requires one registered active
   Windows Hello credential, exact RP/origin/user-verification/signature results,
-  and the unique terminal challenge consumption. One authentication event may
-  authorize at most one exact matching approval disposition.
+  counter capability matching that credential, and the unique terminal
+  challenge consumption. A supported counter requires non-negative prior and
+  asserted values with strict advancement; a no-counter credential requires
+  both values null. One authentication event may authorize at most one exact
+  matching approval disposition.
 - Challenge rows are server-bound to principal, decision, bundle, decision and
   bundle content hashes, disposition, RP/origin, issue/expiry, and policy. The
   consumption table has a unique challenge FK; expired or cross-bound use
@@ -1519,7 +1559,7 @@ Foundation`. This later status record does not alter the approved B1 technical
 contract or retroactively broaden the B1 closeout approval.
 
 - CP3-C2-B implementation: `IN PROGRESS`
-- CP3-C2-B2-A: `IMPLEMENTED — AWAITING GPT INDEPENDENT REVIEW`
+- CP3-C2-B2-A: `REMEDIATED — AWAITING GPT INDEPENDENT RE-REVIEW`
 - Additive `0005_phase_02_cp3_c2_b_issuer_authority`: implemented and exercised
   only against disposable QA databases; persistent production application `0`
 - CP3-C2-B2-B: `NOT STARTED`
@@ -1529,7 +1569,11 @@ contract or retroactively broaden the B1 closeout approval.
 - CP3-D: `NOT STARTED`
 - Automatic progression: `PROHIBITED`
 
-B2-A adds only the immutable ledger contract/schema/storage foundation. It does
-not implement WebAuthn verification, approval execution, canonical Issuer or
-Security promotion, VERIFIED provider mapping, provider rekey, live source
-collection, or link-head workflow.
+B2-A adds only the immutable ledger contract/schema/storage foundation. Its
+independent-review remediation permits corrected evidence to create a new
+bundle and same-provider successor decision, blocks all review-ready persistence
+until the separately reviewed B2-B positive engine exists, and reconstructs
+WebAuthn counters from immutable registration state plus append-only audit
+events. It does not implement WebAuthn cryptographic verification, approval
+execution, canonical Issuer or Security promotion, VERIFIED provider mapping,
+provider rekey, live source collection, or link-head workflow.

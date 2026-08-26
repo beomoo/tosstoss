@@ -1652,8 +1652,8 @@ $phaseControlFiles = @(
         Where-Object { $_.Name -cne "policy-scan.ps1" }
 )
 $approvedPhaseControlDigest = [string]::Concat(
-    "a5eda2dc", "36e4279f", "4e43e3e7", "89bcd91b",
-    "7e4e8f14", "86024e7a", "365df9f0", "a325289b"
+    "7d276ec6", "e8be3c35", "2d608026", "ddbc5663",
+    "d3f8fad6", "468e71d4", "ccb39b71", "7cb8ec3d"
 )
 if (
     $phaseControlFiles.Count -ne 75 -or
@@ -2403,4 +2403,4 @@ Assert-NoRawPattern `
     -Message "A public token-manager or raw-token extraction surface was found." `
     -Files $applicationRuntimeSourceFiles
 
-Write-Host "Phase 2 CP3-C2-B2-A scope policy scan passed."
+Write-Host "Phase 2 CP3-C2-B2-A remediation scope policy scan passed."
