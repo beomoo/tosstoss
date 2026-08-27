@@ -1495,6 +1495,7 @@ $expectedBackendTestFiles = @(
     "tests/backend/test_api_error_contract.py",
     "tests/backend/test_api_health_status.py",
     "tests/backend/test_authority_contracts.py",
+    "tests/backend/test_authority_decision_engine.py",
     "tests/backend/test_authority_migration.py",
     "tests/backend/test_authority_repository.py",
     "tests/backend/test_contract_decimal.py",
@@ -1652,11 +1653,11 @@ $phaseControlFiles = @(
         Where-Object { $_.Name -cne "policy-scan.ps1" }
 )
 $approvedPhaseControlDigest = [string]::Concat(
-    "7d276ec6", "e8be3c35", "2d608026", "ddbc5663",
-    "d3f8fad6", "468e71d4", "ccb39b71", "7cb8ec3d"
+    "6f606957", "c186e887", "5a18c2e0", "8f105912",
+    "04494363", "f3cd2d4e", "1a53fb74", "a14540af"
 )
 if (
-    $phaseControlFiles.Count -ne 75 -or
+    $phaseControlFiles.Count -ne 76 -or
     (Get-FileSetManifestSha256 -Files $phaseControlFiles) -cne
         $approvedPhaseControlDigest
 ) {
@@ -1682,6 +1683,14 @@ $nonLocalUrlPattern = '(?i)(?:(?:https?|wss?)://(?!(?:127\.0\.0\.1|localhost)(?=
 $approvedTossOrigin = [string]::Concat("http", "s://openapi.tossinvest.com")
 $approvedTossOriginPattern = [regex]::Escape($approvedTossOrigin) +
     '(?=(?:[/?#]|[\s"''`\),;\]\}]|$))'
+$issuerAuthoritySourceRegistryPath = [System.IO.Path]::GetFullPath(
+    (Join-Path $repoRoot `
+        "services\api\src\toss_dashboard_api\authority_source_registry.py")
+)
+$approvedAuthorityLocatorRoots = @(
+    [string]::Concat("http", "s://opendart.fss.or.kr/"),
+    [string]::Concat("http", "s://www.sec.gov/Archives/edgar/data/")
+)
 
 function Get-NormalizedConstantStringContent {
     param([Parameter(Mandatory = $true)][string] $Content)
@@ -1716,6 +1725,14 @@ function Assert-ExternalUrlTextAllowed {
                 "http://127.0.0.1",
                 [System.Text.RegularExpressions.RegexOptions]::IgnoreCase
             )
+        }
+        if (
+            [System.IO.Path]::GetFullPath($Path) -ceq
+                $issuerAuthoritySourceRegistryPath
+        ) {
+            foreach ($locatorRoot in $approvedAuthorityLocatorRoots) {
+                $inspected = $inspected.Replace($locatorRoot, "http://127.0.0.1/")
+            }
         }
         if ($inspected -match $nonLocalUrlPattern) {
             throw "An unapproved external URL was found in runtime source: $Path"
@@ -2028,6 +2045,44 @@ foreach ($canary in $tossUrlBoundaryCanaries) {
             Assert-ExternalUrlTextAllowed -Path $canary.Path -Content $canary.Content
         } `
         -Message "The exact Toss origin policy accepted a host, scheme, credential, or frontend bypass canary."
+}
+$authorityRegistryAllowedContent = $approvedAuthorityLocatorRoots |
+    ForEach-Object { 'ROOT = "' + $_ + '"' }
+Assert-ExternalUrlTextAllowed `
+    -Path $issuerAuthoritySourceRegistryPath `
+    -Content ($authorityRegistryAllowedContent -join [Environment]::NewLine)
+$authorityRegistryBoundaryCanaries = @(
+    [pscustomobject]@{
+        Path = Join-Path $repoRoot "services\api\src\toss_dashboard_api\domain\issuer.py"
+        Content = [string]::Concat('ROOT = "http', 's://opendart.fss.or.kr/"')
+    },
+    [pscustomobject]@{
+        Path = $issuerAuthoritySourceRegistryPath
+        Content = [string]::Concat('ROOT = "http', 's://evil.example/"')
+    },
+    [pscustomobject]@{
+        Path = $issuerAuthoritySourceRegistryPath
+        Content = [string]::Concat(
+            'ROOT = "http',
+            's://opendart.fss.or.kr.evil.example/"'
+        )
+    },
+    [pscustomobject]@{
+        Path = $issuerAuthoritySourceRegistryPath
+        Content = [string]::Concat(
+            'ROOT = "http',
+            's://us',
+            'er:pass',
+            'word@www.sec.gov/Archives/edgar/data/"'
+        )
+    }
+)
+foreach ($canary in $authorityRegistryBoundaryCanaries) {
+    Assert-PolicyCanaryRejected `
+        -Action {
+            Assert-ExternalUrlTextAllowed -Path $canary.Path -Content $canary.Content
+        } `
+        -Message "The exact issuer-authority locator policy accepted a path, host, or credential bypass canary."
 }
 $httpxImportCanary = [string]::Concat("import http", "x")
 Assert-RawPatternRejectsCanary `
@@ -2403,4 +2458,4 @@ Assert-NoRawPattern `
     -Message "A public token-manager or raw-token extraction surface was found." `
     -Files $applicationRuntimeSourceFiles
 
-Write-Host "Phase 2 CP3-C2-B2-A remediation scope policy scan passed."
+Write-Host "Phase 2 CP3-C2-B2-B implementation scope policy scan passed."

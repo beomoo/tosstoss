@@ -670,6 +670,49 @@ migration file 생성·적용 모두 0이다.
   `0`; `0006` creation은 `0`, `0001`~`0004`는 unchanged다.
 - Automatic checkpoint progression: `PROHIBITED`.
 
+### CP3-C2-B2-B implementation entry record — 2026-08-27
+
+- The user explicitly authorized only `CP3-C2-B2-B — Production Source
+  Admission, Exact Issuer Bridge, Collision/Freshness Evaluation, and Machine
+  Decision Engine` from starting SHA
+  `dd86aeb195222fa94e9bd0ec48a5f1d942825c14`.
+- Production authority policy is now an immutable server-owned exact registry.
+  A caller/parser cannot register an unlisted namespace/scope/role/version,
+  raise a weight, supply a jurisdiction, or use a wildcard state registry.
+  Fixture/test/synthetic lineage remains permanently zero-authority.
+- KR positive evaluation requires exact OpenDART corp-code authority, current
+  overview `jurir_no`, a verified domestic IROS record with the same official
+  registration reference, and an exact non-name CP3-C1 provider bridge. KRX,
+  market, currency, language, `corp_cls`, or stock code alone owns no legal
+  jurisdiction.
+- US positive evaluation requires accepted SEC issuer-registrant CIK/role and
+  filing evidence, a current registrant-status check, an individually admitted
+  domestic formation-state registry record, exact state-entity reconciliation,
+  and exact non-name CP3-C1 provider lineage. Login/agent/accession provenance
+  stays structured weight-zero provenance.
+- The engine reconstructs stored correction/revocation heads, distinguishes
+  historical authority facts from 24-hour repository latest-status freshness,
+  and scans current identifier claims, positive applications, canonical
+  identifiers, and provider collision/quarantine state without choosing a
+  first writer.
+- `BEGIN IMMEDIATE` serializes positive evaluation and transaction-time
+  revalidation. Only the server-owned engine path may persist
+  `READY_FOR_MANUAL_REVIEW`; the generic repository continues to raise typed
+  `REVIEW_READY_ENGINE_NOT_IMPLEMENTED` for arbitrary READY writes.
+- Machine states remain exactly `UNRESOLVED`, `READY_FOR_MANUAL_REVIEW`,
+  `STALE`, and `REVIEW_REQUIRED`. B2-B implements no human disposition,
+  WebAuthn operation, canonical/link write, or live collection.
+- Migrations `0001`–`0005` are unchanged and `0006` is not created. Local
+  implementation tests use disposable databases only; persistent/runtime
+  application of `0005` remains `0`.
+- CP3-C2-B implementation: `IN PROGRESS`.
+- CP3-C2-B2-A: `PASS — CLOSED`.
+- CP3-C2-B2-B: `IMPLEMENTED — AWAITING GPT INDEPENDENT REVIEW`.
+- CP3-C2-B2-C/B2-D, CP3-C2-C, CP3-D: `NOT STARTED`.
+- Automatic checkpoint progression: `PROHIBITED`.
+- This record is Codex self-QA and does not declare GPT PASS or authorize a
+  later checkpoint.
+
 ---
 
 ## 새 결정 기록 양식

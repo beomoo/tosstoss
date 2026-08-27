@@ -69,18 +69,8 @@ from toss_dashboard_api.storage.models import (
 def _repository(database_context, *, include_second: bool = False):
     sessions = session_factory(database_context.engine)
     seed_provider_lineage(sessions, include_second=include_second)
-    policy = production_source_policy()
-    jurisdiction_policy = jurisdiction_source_policy()
     return (
-        SQLiteAuthorityLedgerRepository(
-            sessions,
-            production_policy_registry={
-                policy.authority_source_policy_id: policy.policy_content_hash,
-                jurisdiction_policy.authority_source_policy_id: (
-                    jurisdiction_policy.policy_content_hash
-                ),
-            },
-        ),
+        SQLiteAuthorityLedgerRepository(sessions),
         sessions,
     )
 
@@ -665,9 +655,11 @@ def test_production_policy_requires_exact_server_owned_registry_entry(
 ) -> None:
     sessions = session_factory(database_context.engine)
     repository = SQLiteAuthorityLedgerRepository(sessions)
+    changed = production_source_policy(registered_at=LATER)
 
-    with pytest.raises(AuthorityLedgerConflict, match="server-owned registry"):
-        repository.insert_or_verify_source_policy(production_source_policy())
+    with pytest.raises(AuthorityLedgerConflict, match="server-owned registry entry"):
+        repository.insert_or_verify_source_policy(changed)
+    assert repository.insert_or_verify_source_policy(production_source_policy()).inserted is True
 
 
 def test_repository_has_no_approval_or_canonical_write_methods() -> None:

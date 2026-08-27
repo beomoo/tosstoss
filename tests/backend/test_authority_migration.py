@@ -127,10 +127,7 @@ def _seed_authentication_counter_ledger(engine):
     sessions = session_factory(engine)
     seed_provider_lineage(sessions)
     policy = production_source_policy()
-    repository = SQLiteAuthorityLedgerRepository(
-        sessions,
-        production_policy_registry={policy.authority_source_policy_id: policy.policy_content_hash},
-    )
+    repository = SQLiteAuthorityLedgerRepository(sessions)
     evidence = authority_evidence(policy)
     observation = build_authority_evidence_observation(
         evidence_id=evidence.evidence_id,
@@ -896,10 +893,7 @@ def test_append_only_trigger_fails_closed_for_persisted_ledger_row(
     engine = create_database_engine(url)
     sessions = session_factory(engine)
     policy = production_source_policy()
-    SQLiteAuthorityLedgerRepository(
-        sessions,
-        production_policy_registry={policy.authority_source_policy_id: policy.policy_content_hash},
-    ).insert_or_verify_source_policy(policy)
+    SQLiteAuthorityLedgerRepository(sessions).insert_or_verify_source_policy(policy)
     statement = (
         "UPDATE authority_source_policies SET field_owner = 'tampered' "
         "WHERE authority_source_policy_id = :policy_id"

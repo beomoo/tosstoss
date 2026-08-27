@@ -16,7 +16,7 @@
   `NOT STARTED — REQUIRES SEPARATE USER START APPROVAL`
 - Current implementation status: `IN PROGRESS`
 - CP3-C2-B2-A: `PASS — CLOSED`
-- CP3-C2-B2-B: `NOT STARTED — REQUIRES SEPARATE USER START APPROVAL`
+- CP3-C2-B2-B: `IMPLEMENTED — AWAITING GPT INDEPENDENT REVIEW`
 - CP3-C2-B2-C / B2-D: `NOT STARTED`
 - Migration implementation: additive `0005` implemented in B2-A; production
   database application `0`
@@ -1552,7 +1552,7 @@ evidence. The user explicitly approved the revised B1 contract and ADR-014 on
 CP3-C2-C, CP3-D, and automatic progression were not authorized by that
 closeout.
 
-## 19. Later B2-A implementation status — non-normative
+## 19. Later B2 implementation status — non-normative
 
 On `2026-08-27`, the user separately authorized entry into CP3-C2-B
 implementation, limited to `CP3-C2-B2-A — Authority Ledger & Additive 0005
@@ -1563,7 +1563,7 @@ contract or retroactively broaden the B1 closeout approval.
 - CP3-C2-B2-A: `PASS — CLOSED`
 - Additive `0005_phase_02_cp3_c2_b_issuer_authority`: implemented and exercised
   only against disposable QA databases; persistent production application `0`
-- CP3-C2-B2-B: `NOT STARTED — REQUIRES SEPARATE USER START APPROVAL`
+- CP3-C2-B2-B: `IMPLEMENTED — AWAITING GPT INDEPENDENT REVIEW`
 - CP3-C2-B2-C: `NOT STARTED`
 - CP3-C2-B2-D: `NOT STARTED`
 - CP3-C2-C: `NOT STARTED`
@@ -1585,3 +1585,14 @@ CONDITION`, P0 `0`, P1 `0`; P1-01 through P1-03 are `CLOSED`. P2-01, absence
 of GitHub CI execution evidence, remains non-blocking. Documentation closeout
 does not authorize B2-B, B2-C, B2-D, CP3-C2-C, CP3-D, or automatic
 progression.
+
+The user separately authorized B2-B on `2026-08-27`. B2-B implements the
+server-owned exact KR/US source-policy registry, candidate-specific admission,
+exact non-name provider-to-issuer bridges, current correction/revocation-head
+evaluation, conservative latest-status freshness, non-winner collision scans,
+and controlled machine-only READY persistence over the approved B1/B2-A
+ledger. The generic repository READY path remains fail closed. B2-B does not
+alter this approved technical contract, migrations `0001`–`0005`, or any human
+approval/canonical/link semantics. Its status is `IMPLEMENTED — AWAITING GPT
+INDEPENDENT REVIEW`; B2-C/B2-D, CP3-C2-C, CP3-D and automatic progression
+remain unauthorized/not started.

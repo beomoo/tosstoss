@@ -1,5 +1,44 @@
 # Changelog
 
+## Unreleased — Phase 2 CP3-C2-B2-B Issuer Authority Decision Engine — 2026-08-27
+
+### Added
+
+- Added an immutable server-owned exact authority-source registry for OpenDART
+  corp-code/company-overview, verified Korean IROS records, SEC accepted issuer
+  filing/latest-status metadata, weight-zero SEC login/agent provenance, and
+  the individually admitted Delaware formation registry. There is no wildcard
+  production namespace or caller-controlled authority escalation.
+- Added strict versioned B2-B evaluation/bridge contracts and an offline
+  `IssuerAuthorityDecisionEngine` that loads immutable ledger state itself.
+- Added exact KR OpenDART `corp_code` + raw `jurir_no` + verified domestic IROS
+  + non-name CP3-C1 provider bridge evaluation, and exact US registrant CIK/
+  accepted filing + domestic state record + non-name provider bridge
+  evaluation. Listing market, exchange, currency, language, name, and ticker
+  remain zero jurisdiction/issuer authority by themselves.
+- Added current correction/revocation-head reconstruction, conservative
+  repository latest-status freshness, deterministic identifier/application/
+  canonical/provider collision scanning, and append-only machine transitions.
+- Added controlled READY persistence under SQLite `BEGIN IMMEDIATE` with
+  transaction-time revalidation. Arbitrary generic repository READY remains
+  typed fail closed.
+
+### Verification and boundaries
+
+- Added 46 offline B2-B tests; retained 69/69 B2-A authority tests. Exact full
+  inventory is backend 659, frontend 43, E2E 2.
+- Migrations `0001`–`0005` are unchanged; `0006` creation and persistent/runtime
+  application of `0005` are 0.
+- Automatic promotion, canonical Issuer/Security writes, VERIFIED mapping,
+  provider rekey, human approval, WebAuthn operation, link-head mutation, live
+  authority/provider requests, and credential use remain 0.
+- CP3-C2-B implementation remains `IN PROGRESS`; B2-B is `IMPLEMENTED —
+  AWAITING GPT INDEPENDENT REVIEW`. B2-C/B2-D, CP3-C2-C and CP3-D remain `NOT
+  STARTED`; automatic progression remains `PROHIBITED`.
+- All reported checks are LOCAL Codex evidence. GitHub CI evidence is absent
+  unless independently produced after push; this entry does not declare GPT
+  PASS.
+
 ## Unreleased — Phase 2 CP3-C2-B2-A Documentation Closeout — 2026-08-27
 
 ### Independent re-review

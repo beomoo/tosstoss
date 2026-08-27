@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from collections.abc import Mapping
 from dataclasses import dataclass
 from enum import StrEnum
 from typing import Any
@@ -10,6 +9,9 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError, OperationalError
 from sqlalchemy.orm import Session, sessionmaker
 
+from toss_dashboard_api.authority_source_registry import (
+    is_exact_server_owned_production_policy,
+)
 from toss_dashboard_api.contracts.authority import (
     AuthorityBundle,
     AuthorityEvidence,
@@ -56,14 +58,13 @@ class AuthorityLedgerConflict(AuthorityLedgerError):
 
 
 class AuthorityReviewReadyEngineNotImplemented(AuthorityLedgerConflict):
-    """Fail-closed B2-A boundary for the separately gated positive engine."""
+    """Fail-closed boundary for callers outside the controlled B2-B engine."""
 
     code = "REVIEW_READY_ENGINE_NOT_IMPLEMENTED"
 
     def __init__(self) -> None:
         super().__init__(
-            f"{self.code}: B2-B provider-to-issuer bridge and positive decision "
-            "engine have not been implemented or independently approved"
+            f"{self.code}: READY persistence is restricted to the server-owned B2-B decision engine"
         )
 
 
@@ -90,7 +91,7 @@ def _verify_payload[ContractT: BaseModel](
 
 
 class SQLiteAuthorityLedgerRepository:
-    """Low-level immutable CP3-C2-B2-A ledger persistence only.
+    """Low-level immutable CP3-C2-B ledger persistence.
 
     This class deliberately exposes no approval execution, link-head mutation,
     canonical issuer/security write, or ProviderIdentityMapping operation.
@@ -101,11 +102,9 @@ class SQLiteAuthorityLedgerRepository:
         sessions: sessionmaker[Session],
         *,
         mode: AuthorityLedgerMode = AuthorityLedgerMode.PRODUCTION_AUTHORITY,
-        production_policy_registry: Mapping[str, str] | None = None,
     ) -> None:
         self._sessions = sessions
         self._mode = mode
-        self._production_policy_registry = dict(production_policy_registry or {})
 
     def source_policy(self, policy_id: str) -> AuthoritySourcePolicy:
         with self._sessions() as session:
@@ -149,12 +148,11 @@ class SQLiteAuthorityLedgerRepository:
             raise AuthorityLedgerConflict(
                 "test-isolated repository cannot register production authority policy"
             )
-        if policy.production_authority_eligible and (
-            self._production_policy_registry.get(policy.authority_source_policy_id)
-            != policy.policy_content_hash
+        if policy.production_authority_eligible and not is_exact_server_owned_production_policy(
+            policy
         ):
             raise AuthorityLedgerConflict(
-                "production authority policy is absent from server-owned registry"
+                "production authority policy is not an exact server-owned registry entry"
             )
         payload = _payload_json(policy)
         try:
