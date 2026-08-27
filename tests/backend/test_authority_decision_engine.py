@@ -114,6 +114,7 @@ KR_LEGAL_NAME = "Exact Korean Corporation"
 US_CIK = "0000789019"
 US_ACCESSION = "0000789019-26-000001"
 US_SECOND_ACCESSION = "0000789019-26-000003"
+US_THIRD_ACCESSION = "0000789019-26-000004"
 US_LATEST_ACCESSION = "0000789019-26-000002"
 US_STATE_ENTITY_NUMBER = "1234567"
 US_SYMBOL = "MSFT"
@@ -894,6 +895,11 @@ def _seed_decisive_legal_name_history(
     role: AuthoritySubjectRole,
     claim_field: str,
     former_name: str,
+    kr_jurir_no: str = KR_JURIR_NO,
+    us_formation_state: str = "DE",
+    us_state_entity_number: str = US_STATE_ENTITY_NUMBER,
+    relation_type: AuthorityEvidenceRelationType = AuthorityEvidenceRelationType.SUPERSEDES,
+    relation_order: tuple[str, ...] = ("subject", "name"),
 ) -> AuthorityEvidence:
     former = _evidence(
         policy=policy,
@@ -905,15 +911,102 @@ def _seed_decisive_legal_name_history(
         claim_field=claim_field,
         value=former_name,
     )
-    _persist_evidence(harness.repository, former, fetched_at=HISTORICAL_FETCHED_AT)
-    relation = build_authority_evidence_relation(
+    historical_facts = [former]
+    subject_relations = []
+    if policy == KR_IROS_COMPLETE_POLICY:
+        former_jurisdiction = _evidence(
+            policy=policy,
+            document_kind=document_kind,
+            document_reference=document_reference,
+            document_group=document_group,
+            scope=AuthorityScope.LEGAL_JURISDICTION,
+            role=role,
+            claim_field="registry.legal_entity_status",
+            value={
+                "corporate_registration_reference": kr_jurir_no,
+                "entity_kind": "DOMESTIC_CORPORATION",
+                "jurisdiction": "KR",
+                "verification_reference": document_reference,
+            },
+        )
+        former_bridge = _evidence(
+            policy=policy,
+            document_kind=document_kind,
+            document_reference=document_reference,
+            document_group=document_group,
+            scope=AuthorityScope.LEGAL_ENTITY_BRIDGE,
+            role=role,
+            claim_field="registry.corporate_registration_reference",
+            value=kr_jurir_no,
+        )
+        historical_facts.extend((former_jurisdiction, former_bridge))
+        subject_relations.extend(
+            (
+                build_authority_evidence_relation(
+                    predecessor_evidence_id=former_jurisdiction.evidence_id,
+                    successor_evidence_id=harness.evidence["iros_jurisdiction"].evidence_id,
+                    relation_type=relation_type,
+                    recorded_at=EVALUATED_AT,
+                    authority_effective_missing_reason=(
+                        AuthorityTimeMissingReason.NOT_SUPPLIED_BY_AUTHORITY
+                    ),
+                ),
+                build_authority_evidence_relation(
+                    predecessor_evidence_id=former_bridge.evidence_id,
+                    successor_evidence_id=harness.evidence["iros_bridge"].evidence_id,
+                    relation_type=relation_type,
+                    recorded_at=EVALUATED_AT,
+                    authority_effective_missing_reason=(
+                        AuthorityTimeMissingReason.NOT_SUPPLIED_BY_AUTHORITY
+                    ),
+                ),
+            )
+        )
+    elif policy == US_STATE_REGISTRY_DE_POLICY:
+        former_jurisdiction = _evidence(
+            policy=policy,
+            document_kind=document_kind,
+            document_reference=document_reference,
+            document_group=document_group,
+            scope=AuthorityScope.LEGAL_JURISDICTION,
+            role=role,
+            claim_field="registry.legal_entity_status",
+            value={
+                "formation_state": us_formation_state,
+                "jurisdiction": "US",
+                "record_kind": "DOMESTIC_FORMATION",
+                "state_entity_number": us_state_entity_number,
+                "status": "ACTIVE",
+                "verification_reference": document_reference,
+            },
+        )
+        historical_facts.append(former_jurisdiction)
+        subject_relations.append(
+            build_authority_evidence_relation(
+                predecessor_evidence_id=former_jurisdiction.evidence_id,
+                successor_evidence_id=harness.evidence["state"].evidence_id,
+                relation_type=relation_type,
+                recorded_at=EVALUATED_AT,
+                authority_effective_missing_reason=(
+                    AuthorityTimeMissingReason.NOT_SUPPLIED_BY_AUTHORITY
+                ),
+            )
+        )
+    else:
+        raise AssertionError("legal-name history helper requires a decisive registry policy")
+    for item in historical_facts:
+        _persist_evidence(harness.repository, item, fetched_at=HISTORICAL_FETCHED_AT)
+    name_relation = build_authority_evidence_relation(
         predecessor_evidence_id=former.evidence_id,
         successor_evidence_id=current.evidence_id,
-        relation_type=AuthorityEvidenceRelationType.SUPERSEDES,
+        relation_type=relation_type,
         recorded_at=EVALUATED_AT,
         authority_effective_missing_reason=(AuthorityTimeMissingReason.NOT_SUPPLIED_BY_AUTHORITY),
     )
-    seed_preadmitted_authority_snapshot(harness.sessions, relations=(relation,))
+    relation_groups = {"subject": tuple(subject_relations), "name": (name_relation,)}
+    assert set(relation_order) == set(relation_groups)
+    relations = tuple(relation for group in relation_order for relation in relation_groups[group])
+    seed_preadmitted_authority_snapshot(harness.sessions, relations=relations)
     return former
 
 
@@ -994,8 +1087,13 @@ def test_kr_unexplained_official_legal_name_mismatch_blocks_ready(database_conte
     assert "KR_OFFICIAL_LEGAL_NAME_CONFLICT" in result.decision.reason_codes
 
 
-def test_kr_official_registry_name_history_reconciles_old_and_current_name(
+@pytest.mark.parametrize(
+    "relation_order",
+    [("subject", "name"), ("name", "subject")],
+)
+def test_kr_same_subject_registry_name_history_reconciles_regardless_of_relation_order(
     database_context,
+    relation_order: tuple[str, ...],
 ) -> None:
     former_name = "Former Korean Corporation"
     harness = _kr_harness(
@@ -1013,6 +1111,7 @@ def test_kr_official_registry_name_history_reconciles_old_and_current_name(
         role=AuthoritySubjectRole.KOREAN_REGISTERED_LEGAL_ENTITY,
         claim_field="registry.legal_name",
         former_name=former_name,
+        relation_order=relation_order,
     )
 
     result = harness.engine.evaluate(_kr_request(harness))
@@ -1071,8 +1170,13 @@ def test_us_unexplained_official_legal_name_mismatch_blocks_ready(database_conte
     assert "US_OFFICIAL_LEGAL_NAME_CONFLICT" in result.decision.reason_codes
 
 
-def test_us_official_state_name_history_reconciles_former_sec_name(
+@pytest.mark.parametrize(
+    "relation_order",
+    [("subject", "name"), ("name", "subject")],
+)
+def test_us_same_subject_state_name_history_reconciles_regardless_of_relation_order(
     database_context,
+    relation_order: tuple[str, ...],
 ) -> None:
     former_name = "Former U.S. Corporation"
     harness = _us_harness(
@@ -1090,12 +1194,245 @@ def test_us_official_state_name_history_reconciles_former_sec_name(
         role=AuthoritySubjectRole.US_STATE_REGISTERED_LEGAL_ENTITY,
         claim_field="registry.legal_name",
         former_name=former_name,
+        relation_order=relation_order,
     )
 
     result = harness.engine.evaluate(_us_request(harness))
 
     assert result.decision.decision_state == IssuerMachineDecisionState.READY_FOR_MANUAL_REVIEW
     assert "US_LEGAL_NAME_OFFICIAL_HISTORY_RECONCILED" in result.decision.reason_codes
+
+
+@pytest.mark.parametrize(
+    "relation_type",
+    [AuthorityEvidenceRelationType.CORRECTS, AuthorityEvidenceRelationType.SUPERSEDES],
+)
+def test_kr_cross_entity_name_relation_cannot_reconcile_official_names(
+    database_context,
+    relation_type: AuthorityEvidenceRelationType,
+) -> None:
+    former_name = "Former Korean Corporation"
+    harness = _kr_harness(
+        database_context,
+        opendart_legal_name=former_name,
+        iros_legal_name="Current Korean Corporation",
+    )
+    _seed_decisive_legal_name_history(
+        harness,
+        current=harness.evidence["iros_name"],
+        policy=KR_IROS_COMPLETE_POLICY,
+        document_kind="VERIFIED_CORPORATE_REGISTRY_EXTRACT_V1",
+        document_reference="iros-name-history:1101119999999",
+        document_group="iros-name-history-different-entity",
+        role=AuthoritySubjectRole.KOREAN_REGISTERED_LEGAL_ENTITY,
+        claim_field="registry.legal_name",
+        former_name=former_name,
+        kr_jurir_no="1101119999999",
+        relation_type=relation_type,
+    )
+
+    result = harness.engine.evaluate(_kr_request(harness))
+
+    assert result.decision.decision_state == IssuerMachineDecisionState.UNRESOLVED
+    assert "KR_LEGAL_NAME_HISTORY_SUBJECT_BINDING_FAILED" in result.decision.reason_codes
+
+
+@pytest.mark.parametrize(
+    "relation_type",
+    [AuthorityEvidenceRelationType.CORRECTS, AuthorityEvidenceRelationType.SUPERSEDES],
+)
+def test_us_other_delaware_entity_name_relation_cannot_reconcile_official_names(
+    database_context,
+    relation_type: AuthorityEvidenceRelationType,
+) -> None:
+    former_name = "Former U.S. Corporation"
+    harness = _us_harness(
+        database_context,
+        sec_legal_name=former_name,
+        state_legal_name="Current U.S. Corporation",
+    )
+    _seed_decisive_legal_name_history(
+        harness,
+        current=harness.evidence["state_name"],
+        policy=US_STATE_REGISTRY_DE_POLICY,
+        document_kind="VERIFIED_DOMESTIC_ENTITY_RECORD_V1",
+        document_reference="de-name-history:7654321",
+        document_group="de-name-history-different-entity",
+        role=AuthoritySubjectRole.US_STATE_REGISTERED_LEGAL_ENTITY,
+        claim_field="registry.legal_name",
+        former_name=former_name,
+        us_state_entity_number="7654321",
+        relation_type=relation_type,
+    )
+
+    result = harness.engine.evaluate(_us_request(harness))
+
+    assert result.decision.decision_state == IssuerMachineDecisionState.UNRESOLVED
+    assert "US_LEGAL_NAME_HISTORY_SUBJECT_BINDING_FAILED" in result.decision.reason_codes
+
+
+@pytest.mark.parametrize(
+    ("primary_accession", "primary_name", "secondary_accession", "secondary_name", "order"),
+    [
+        (
+            US_ACCESSION,
+            "Former U.S. Corporation",
+            US_SECOND_ACCESSION,
+            "Current U.S. Corporation",
+            ("cik", "role", "bridge", "name"),
+        ),
+        (
+            US_SECOND_ACCESSION,
+            "Current U.S. Corporation",
+            US_ACCESSION,
+            "Former U.S. Corporation",
+            ("name", "bridge", "role", "cik"),
+        ),
+    ],
+)
+def test_every_historical_sec_name_can_be_reconciled_by_same_subject_state_history(
+    database_context,
+    primary_accession: str,
+    primary_name: str,
+    secondary_accession: str,
+    secondary_name: str,
+    order: tuple[str, ...],
+) -> None:
+    current_name = "Current U.S. Corporation"
+    former_name = "Former U.S. Corporation"
+    harness = _us_harness(
+        database_context,
+        label=f"us_multi_name_{primary_accession[-6:]}",
+        accession=primary_accession,
+        sec_legal_name=primary_name,
+        state_legal_name=current_name,
+    )
+    _append_us_accepted_filing(
+        harness,
+        accession=secondary_accession,
+        legal_name=secondary_name,
+        insertion_order=order,
+    )
+    _seed_decisive_legal_name_history(
+        harness,
+        current=harness.evidence["state_name"],
+        policy=US_STATE_REGISTRY_DE_POLICY,
+        document_kind="VERIFIED_DOMESTIC_ENTITY_RECORD_V1",
+        document_reference=f"de-name-history:{US_STATE_ENTITY_NUMBER}",
+        document_group="de-name-history-multiple-sec-filings",
+        role=AuthoritySubjectRole.US_STATE_REGISTERED_LEGAL_ENTITY,
+        claim_field="registry.legal_name",
+        former_name=former_name,
+        relation_order=("name", "subject"),
+    )
+
+    result = harness.engine.evaluate(_us_request(harness))
+
+    assert result.decision.decision_state == IssuerMachineDecisionState.READY_FOR_MANUAL_REVIEW
+    assert "US_LEGAL_NAME_OFFICIAL_HISTORY_RECONCILED" in result.decision.reason_codes
+    assert result.decision.freshness_result == AuthorityFreshnessResult.CURRENT
+
+
+def test_one_unexplained_name_among_multiple_sec_filings_blocks_ready(database_context) -> None:
+    current_name = "Current U.S. Corporation"
+    former_name = "Former U.S. Corporation"
+    harness = _us_harness(
+        database_context,
+        sec_legal_name=current_name,
+        state_legal_name=current_name,
+    )
+    _append_us_accepted_filing(
+        harness,
+        accession=US_SECOND_ACCESSION,
+        legal_name=former_name,
+    )
+    _append_us_accepted_filing(
+        harness,
+        accession=US_THIRD_ACCESSION,
+        legal_name="Unknown U.S. Corporation",
+    )
+    _seed_decisive_legal_name_history(
+        harness,
+        current=harness.evidence["state_name"],
+        policy=US_STATE_REGISTRY_DE_POLICY,
+        document_kind="VERIFIED_DOMESTIC_ENTITY_RECORD_V1",
+        document_reference=f"de-name-history:{US_STATE_ENTITY_NUMBER}",
+        document_group="de-name-history-does-not-explain-unknown",
+        role=AuthoritySubjectRole.US_STATE_REGISTERED_LEGAL_ENTITY,
+        claim_field="registry.legal_name",
+        former_name=former_name,
+    )
+
+    result = harness.engine.evaluate(_us_request(harness))
+
+    assert result.decision.decision_state == IssuerMachineDecisionState.UNRESOLVED
+    assert "US_OFFICIAL_LEGAL_NAME_CONFLICT" in result.decision.reason_codes
+
+
+def test_multiple_sec_legal_names_without_official_state_history_conflict(
+    database_context,
+) -> None:
+    harness = _us_harness(
+        database_context,
+        sec_legal_name="Current U.S. Corporation",
+        state_legal_name="Current U.S. Corporation",
+    )
+    _append_us_accepted_filing(
+        harness,
+        accession=US_SECOND_ACCESSION,
+        legal_name="Former U.S. Corporation",
+    )
+
+    result = harness.engine.evaluate(_us_request(harness))
+
+    assert result.decision.decision_state == IssuerMachineDecisionState.UNRESOLVED
+    assert "US_OFFICIAL_LEGAL_NAME_CONFLICT" in result.decision.reason_codes
+
+
+def test_multiple_opendart_names_all_require_same_iros_subject_history(
+    database_context,
+) -> None:
+    current_name = "Current Korean Corporation"
+    former_name = "Former Korean Corporation"
+    harness = _kr_harness(
+        database_context,
+        opendart_legal_name=current_name,
+        iros_legal_name=current_name,
+    )
+    historical_overview_name = _evidence(
+        policy=OPENDART_COMPANY_OVERVIEW_POLICY,
+        document_kind="COMPANY_OVERVIEW_JSON_V1",
+        document_reference=f"company-overview:{KR_CORP_CODE}",
+        document_group=f"company-overview-{KR_CORP_CODE}",
+        scope=AuthorityScope.LEGAL_NAME,
+        role=AuthoritySubjectRole.DART_DISCLOSURE_FILER,
+        claim_field="company.corp_name",
+        value=former_name,
+    )
+    _persist_evidence(
+        harness.repository,
+        historical_overview_name,
+        fetched_at=CURRENT_FETCHED_AT,
+    )
+    _seed_decisive_legal_name_history(
+        harness,
+        current=harness.evidence["iros_name"],
+        policy=KR_IROS_COMPLETE_POLICY,
+        document_kind="VERIFIED_CORPORATE_REGISTRY_EXTRACT_V1",
+        document_reference=f"iros-name-history:{KR_JURIR_NO}",
+        document_group="iros-name-history-multiple-opendart-names",
+        role=AuthoritySubjectRole.KOREAN_REGISTERED_LEGAL_ENTITY,
+        claim_field="registry.legal_name",
+        former_name=former_name,
+    )
+    reversed_seed_ids = tuple(
+        reversed(tuple(item.evidence_id for item in harness.evidence.values()))
+    )
+
+    result = harness.engine.evaluate(_kr_request(harness, evidence_ids=reversed_seed_ids))
+
+    assert result.decision.decision_state == IssuerMachineDecisionState.READY_FOR_MANUAL_REVIEW
+    assert "KR_LEGAL_NAME_OFFICIAL_HISTORY_RECONCILED" in result.decision.reason_codes
 
 
 def test_us_provider_name_and_ticker_cannot_repair_official_name_conflict(

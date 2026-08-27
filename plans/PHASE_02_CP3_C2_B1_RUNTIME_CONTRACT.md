@@ -1621,3 +1621,20 @@ requires deterministic authority acceptance chronology. Historical filing age
 remains separate from the repository current/latest-status freshness gate.
 This is implementation-status synchronization only and does not change the
 approved B1 technical meaning, authorize B2-C/B2-D, or declare B2-B PASS.
+
+The second independent re-review of B2-B SHA
+`8093ee9389d4f7ae716482a87de5eae252e08eff` confirmed P1-01 through P1-07
+`CLOSED` and identified two further implementation gaps. The third remediation
+does not alter this approved contract: it enforces its existing same-legal-
+entity requirement by binding every decisive official legal-name history
+member to independently stored field-owner subject facts. KR uses the exact
+IROS corporate-registration reference/`jurir_no`; US uses the exact state-
+registry namespace, formation state, and state entity number. A relation edge
+alone cannot establish subject sameness. It also evaluates every relevant
+supporting OpenDART/accepted SEC name separately, allowing exact current names
+or names in the same-subject decisive registry history and rejecting any
+unexplained or cross-entity name. NFC remains the only normalization; provider
+name/ticker and fuzzy or lossy normalization remain zero authority. B2-B stays
+`REMEDIATED — AWAITING GPT INDEPENDENT RE-REVIEW`; this synchronization does
+not declare PASS or authorize B2-C/B2-D, CP3-C2-C, CP3-D, or automatic
+progression.

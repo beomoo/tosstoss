@@ -157,6 +157,7 @@ class _EvidenceSnapshot:
     observations: tuple[AuthorityEvidenceObservation, ...]
     relation_head: _RelationHead
     relation_component_evidence: tuple[AuthorityEvidence, ...]
+    relation_component_document_evidence: tuple[AuthorityEvidence, ...]
 
 
 @dataclass(frozen=True)
@@ -764,14 +765,25 @@ class IssuerAuthorityDecisionEngine:
                 "AUTHORITY_RELATION_DEPENDENCY_MISSING",
                 "authority relation component references missing immutable evidence",
             )
+        component_evidence = tuple(
+            AuthorityEvidence.model_validate_json(row.payload_json, strict=False)
+            for row in component_rows
+        )
+        component_document_ids = {item.authority_source_document_id for item in component_evidence}
+        document_rows = session.scalars(
+            select(AuthorityEvidenceRow)
+            .where(AuthorityEvidenceRow.authority_source_document_id.in_(component_document_ids))
+            .order_by(AuthorityEvidenceRow.evidence_id)
+        ).all()
         return _EvidenceSnapshot(
             evidence=evidence,
             policy=policy,
             observations=observations,
             relation_head=relation_head,
-            relation_component_evidence=tuple(
+            relation_component_evidence=component_evidence,
+            relation_component_document_evidence=tuple(
                 AuthorityEvidence.model_validate_json(row.payload_json, strict=False)
-                for row in component_rows
+                for row in document_rows
             ),
         )
 
@@ -1377,16 +1389,432 @@ class IssuerAuthorityDecisionEngine:
         return unicodedata.normalize("NFC", value)
 
     @classmethod
-    def _official_name_history_explains(
+    def _same_admitted_document_contract(
+        cls,
+        *,
+        policy: AuthoritySourcePolicy,
+        name_evidence: AuthorityEvidence,
+        evidence: AuthorityEvidence,
+    ) -> bool:
+        return (
+            is_exact_server_owned_production_policy(policy)
+            and policy.production_authority_eligible
+            and not policy.permanent_fixture_test_taint
+            and evidence.authority_source_policy_id == policy.authority_source_policy_id
+            and evidence.authority_source_policy_id == name_evidence.authority_source_policy_id
+            and evidence.authority_source_identifier == policy.source_namespace
+            and evidence.authority_source_identifier == name_evidence.authority_source_identifier
+            and evidence.authority_classification == policy.authority_classification
+            and evidence.authority_source_document_id == name_evidence.authority_source_document_id
+            and evidence.authority_document_reference == name_evidence.authority_document_reference
+            and evidence.authority_external_key == name_evidence.authority_external_key
+            and evidence.authority_external_key == evidence.authority_document_reference
+            and evidence.source_document_kind == name_evidence.source_document_kind
+            and evidence.source_document_kind in policy.allowed_document_kinds
+            and evidence.parser_contract_version in policy.admitted_parser_contract_versions
+            and evidence.origin_adapter_class in policy.admitted_adapter_contract_versions
+            and evidence.access_disposition == policy.required_access_disposition
+            and evidence.license_disposition == policy.required_license_disposition
+            and evidence.origin_data_mode in policy.allowed_origin_data_modes
+            and any(
+                evidence.authority_source_locator.startswith(root)
+                for root in policy.credential_free_locator_roots
+            )
+            and not evidence.lineage_tainted
+            and not evidence.lineage_ancestor_tainted
+            and evidence.evidence_kind
+            in {AuthorityEvidenceKind.ASSERTION, AuthorityEvidenceKind.CORRECTION}
+            and evidence.policy_maximum_issuer_authority_weight
+            == policy.maximum_weight_for(evidence.authority_scope, evidence.subject_role)
+            and evidence.raw_claim_value == evidence.normalized_claim_value
+        )
+
+    @classmethod
+    def _exact_registry_name_contract(
+        cls,
+        *,
+        item: _AssessedEvidence,
+        evidence: AuthorityEvidence,
+        jurisdiction_prefix: str,
+    ) -> bool:
+        policy = item.snapshot.policy
+        current = item.snapshot.evidence
+        expected = (
+            (
+                "KR_SUPREME_COURT_IROS",
+                "VERIFIED_CORPORATE_REGISTRY_EXTRACT_V1",
+                AuthoritySubjectRole.KOREAN_REGISTERED_LEGAL_ENTITY,
+            )
+            if jurisdiction_prefix == "KR"
+            else (
+                current.authority_source_identifier,
+                "VERIFIED_DOMESTIC_ENTITY_RECORD_V1",
+                AuthoritySubjectRole.US_STATE_REGISTERED_LEGAL_ENTITY,
+            )
+        )
+        source, document_kind, role = expected
+        return (
+            cls._same_admitted_document_contract(
+                policy=policy,
+                name_evidence=evidence,
+                evidence=evidence,
+            )
+            and evidence.authority_source_identifier == source
+            and (jurisdiction_prefix == "KR" or source.startswith("US_STATE_REGISTRY_"))
+            and evidence.source_document_kind == document_kind
+            and evidence.authority_scope == AuthorityScope.LEGAL_NAME
+            and evidence.subject_role == role
+            and evidence.claim_field == "registry.legal_name"
+            and evidence.policy_maximum_issuer_authority_weight == AuthorityWeight.DECISIVE
+            and isinstance(evidence.normalized_claim_value, str)
+            and bool(evidence.normalized_claim_value)
+            and evidence.authority_external_key == evidence.authority_document_reference
+        )
+
+    @classmethod
+    def _registry_name_subject_key(
+        cls,
+        item: _AssessedEvidence,
+        name_evidence: AuthorityEvidence,
+        *,
+        jurisdiction_prefix: str,
+    ) -> tuple[str, ...] | None:
+        if not cls._exact_registry_name_contract(
+            item=item,
+            evidence=name_evidence,
+            jurisdiction_prefix=jurisdiction_prefix,
+        ):
+            return None
+        policy = item.snapshot.policy
+        document_evidence = tuple(
+            evidence
+            for evidence in item.snapshot.relation_component_document_evidence
+            if evidence.authority_source_document_id == name_evidence.authority_source_document_id
+        )
+        if jurisdiction_prefix == "KR":
+            bridge_candidates = tuple(
+                evidence
+                for evidence in document_evidence
+                if evidence.authority_scope == AuthorityScope.LEGAL_ENTITY_BRIDGE
+                and evidence.claim_field == "registry.corporate_registration_reference"
+            )
+            jurisdiction_candidates = tuple(
+                evidence
+                for evidence in document_evidence
+                if evidence.authority_scope == AuthorityScope.LEGAL_JURISDICTION
+                and evidence.claim_field == "registry.legal_entity_status"
+            )
+            if not bridge_candidates or not jurisdiction_candidates:
+                return None
+            bridge_values: set[str] = set()
+            for evidence in bridge_candidates:
+                value = evidence.normalized_claim_value
+                if not (
+                    cls._same_admitted_document_contract(
+                        policy=policy,
+                        name_evidence=name_evidence,
+                        evidence=evidence,
+                    )
+                    and evidence.subject_role == AuthoritySubjectRole.KOREAN_REGISTERED_LEGAL_ENTITY
+                    and evidence.policy_maximum_issuer_authority_weight == AuthorityWeight.DECISIVE
+                    and isinstance(value, str)
+                    and _KR_REGISTRATION_PATTERN.fullmatch(value) is not None
+                ):
+                    return None
+                bridge_values.add(value)
+            jurisdiction_values: set[str] = set()
+            for evidence in jurisdiction_candidates:
+                value = _exact_dict(
+                    evidence.normalized_claim_value,
+                    {
+                        "corporate_registration_reference",
+                        "entity_kind",
+                        "jurisdiction",
+                        "verification_reference",
+                    },
+                )
+                if not (
+                    cls._same_admitted_document_contract(
+                        policy=policy,
+                        name_evidence=name_evidence,
+                        evidence=evidence,
+                    )
+                    and evidence.subject_role == AuthoritySubjectRole.KOREAN_REGISTERED_LEGAL_ENTITY
+                    and evidence.policy_maximum_issuer_authority_weight == AuthorityWeight.DECISIVE
+                    and value is not None
+                    and value["jurisdiction"] == "KR"
+                    and value["entity_kind"] == "DOMESTIC_CORPORATION"
+                    and isinstance(value["corporate_registration_reference"], str)
+                    and _KR_REGISTRATION_PATTERN.fullmatch(
+                        value["corporate_registration_reference"]
+                    )
+                    is not None
+                    and value["verification_reference"] == evidence.authority_document_reference
+                ):
+                    return None
+                jurisdiction_values.add(value["corporate_registration_reference"])
+            if (
+                len(bridge_values) != 1
+                or len(jurisdiction_values) != 1
+                or bridge_values != jurisdiction_values
+            ):
+                return None
+            return ("KR", "KR_SUPREME_COURT_IROS", next(iter(bridge_values)))
+
+        state = name_evidence.authority_source_identifier.removeprefix("US_STATE_REGISTRY_")
+        jurisdiction_candidates = tuple(
+            evidence
+            for evidence in document_evidence
+            if evidence.authority_scope == AuthorityScope.LEGAL_JURISDICTION
+            and evidence.claim_field == "registry.legal_entity_status"
+        )
+        if not jurisdiction_candidates:
+            return None
+        entity_values: set[str] = set()
+        for evidence in jurisdiction_candidates:
+            value = _exact_dict(
+                evidence.normalized_claim_value,
+                {
+                    "formation_state",
+                    "jurisdiction",
+                    "record_kind",
+                    "state_entity_number",
+                    "status",
+                    "verification_reference",
+                },
+            )
+            if not (
+                cls._same_admitted_document_contract(
+                    policy=policy,
+                    name_evidence=name_evidence,
+                    evidence=evidence,
+                )
+                and evidence.subject_role == AuthoritySubjectRole.US_STATE_REGISTERED_LEGAL_ENTITY
+                and evidence.policy_maximum_issuer_authority_weight == AuthorityWeight.DECISIVE
+                and value is not None
+                and state == "DE"
+                and value["formation_state"] == state
+                and value["jurisdiction"] == "US"
+                and value["record_kind"] == "DOMESTIC_FORMATION"
+                and value["status"] == "ACTIVE"
+                and isinstance(value["state_entity_number"], str)
+                and _US_STATE_ENTITY_PATTERN.fullmatch(value["state_entity_number"]) is not None
+                and value["verification_reference"] == evidence.authority_document_reference
+            ):
+                return None
+            entity_values.add(value["state_entity_number"])
+        if len(entity_values) != 1:
+            return None
+        return (
+            "US",
+            name_evidence.authority_source_identifier,
+            state,
+            next(iter(entity_values)),
+        )
+
+    @classmethod
+    def _supporting_name_subject_key(
+        cls,
+        item: _AssessedEvidence,
+        *,
+        jurisdiction_prefix: str,
+    ) -> tuple[str, ...] | None:
+        evidence = item.snapshot.evidence
+        policy = item.snapshot.policy
+        document_evidence = tuple(
+            candidate
+            for candidate in item.snapshot.relation_component_document_evidence
+            if candidate.authority_source_document_id == evidence.authority_source_document_id
+        )
+        if jurisdiction_prefix == "KR":
+            if not (
+                cls._same_admitted_document_contract(
+                    policy=policy,
+                    name_evidence=evidence,
+                    evidence=evidence,
+                )
+                and evidence.authority_source_identifier == "OPENDART_COMPANY_OVERVIEW"
+                and evidence.source_document_kind == "COMPANY_OVERVIEW_JSON_V1"
+                and evidence.authority_scope == AuthorityScope.LEGAL_NAME
+                and evidence.subject_role == AuthoritySubjectRole.DART_DISCLOSURE_FILER
+                and evidence.claim_field == "company.corp_name"
+                and evidence.policy_maximum_issuer_authority_weight == AuthorityWeight.SUPPORTING
+            ):
+                return None
+            bridge_candidates = tuple(
+                candidate
+                for candidate in document_evidence
+                if candidate.authority_scope == AuthorityScope.LEGAL_ENTITY_BRIDGE
+                and candidate.claim_field == "company.identity_bridge"
+            )
+            if not bridge_candidates:
+                return None
+            subjects: set[str] = set()
+            for candidate in bridge_candidates:
+                value = _exact_dict(
+                    candidate.normalized_claim_value,
+                    {"corp_code", "jurir_no", "stock_code"},
+                )
+                if not (
+                    cls._same_admitted_document_contract(
+                        policy=policy,
+                        name_evidence=evidence,
+                        evidence=candidate,
+                    )
+                    and candidate.subject_role == AuthoritySubjectRole.DART_DISCLOSURE_FILER
+                    and candidate.policy_maximum_issuer_authority_weight
+                    == AuthorityWeight.SUPPORTING
+                    and value is not None
+                    and isinstance(value["corp_code"], str)
+                    and re.fullmatch(r"[0-9]{8}", value["corp_code"]) is not None
+                    and isinstance(value["jurir_no"], str)
+                    and _KR_REGISTRATION_PATTERN.fullmatch(value["jurir_no"]) is not None
+                    and isinstance(value["stock_code"], str)
+                    and _KR_STOCK_CODE_PATTERN.fullmatch(value["stock_code"]) is not None
+                    and evidence.authority_document_reference
+                    == f"company-overview:{value['corp_code']}"
+                ):
+                    return None
+                subjects.add(value["jurir_no"])
+            if len(subjects) != 1:
+                return None
+            return ("KR", "KR_SUPREME_COURT_IROS", next(iter(subjects)))
+
+        if not (
+            cls._same_admitted_document_contract(
+                policy=policy,
+                name_evidence=evidence,
+                evidence=evidence,
+            )
+            and evidence.authority_source_identifier == "SEC_EDGAR_ACCEPTED_FILING"
+            and evidence.source_document_kind == "SEC_ACCEPTED_ISSUER_FILING_JSON_V1"
+            and evidence.authority_scope == AuthorityScope.LEGAL_NAME
+            and evidence.subject_role == AuthoritySubjectRole.SEC_REGISTRANT
+            and evidence.claim_field == "filing.legal_name"
+            and evidence.policy_maximum_issuer_authority_weight == AuthorityWeight.SUPPORTING
+            and _SEC_ACCESSION_PATTERN.fullmatch(evidence.authority_document_reference) is not None
+        ):
+            return None
+        cik_values: set[str] = set()
+        role_values: set[tuple[str, str]] = set()
+        bridge_values: set[tuple[str, str, str]] = set()
+        for candidate in document_evidence:
+            relevant_field = (candidate.authority_scope, candidate.claim_field) in {
+                (AuthorityScope.ISSUER_REGULATORY_ID, "filing.registrant_cik"),
+                (AuthorityScope.REGISTRANT_ROLE, "filing.registrant_role"),
+                (AuthorityScope.LEGAL_ENTITY_BRIDGE, "filing.legal_entity_bridge"),
+            }
+            if not cls._same_admitted_document_contract(
+                policy=policy,
+                name_evidence=evidence,
+                evidence=candidate,
+            ):
+                if relevant_field:
+                    return None
+                continue
+            value = candidate.normalized_claim_value
+            if (
+                candidate.authority_scope == AuthorityScope.ISSUER_REGULATORY_ID
+                and candidate.claim_field == "filing.registrant_cik"
+            ):
+                if not (
+                    candidate.subject_role == AuthoritySubjectRole.SEC_REGISTRANT
+                    and candidate.policy_maximum_issuer_authority_weight == AuthorityWeight.DECISIVE
+                    and isinstance(value, str)
+                    and re.fullmatch(r"[0-9]{10}", value) is not None
+                ):
+                    return None
+                cik_values.add(value)
+            elif (
+                candidate.authority_scope == AuthorityScope.REGISTRANT_ROLE
+                and candidate.claim_field == "filing.registrant_role"
+            ):
+                role = _exact_dict(value, {"accepted_accession", "registrant_cik", "role"})
+                if not (
+                    candidate.subject_role == AuthoritySubjectRole.SEC_REGISTRANT
+                    and candidate.policy_maximum_issuer_authority_weight == AuthorityWeight.DECISIVE
+                    and role is not None
+                    and role["accepted_accession"] == evidence.authority_document_reference
+                    and role["role"] == "ISSUER_REGISTRANT"
+                    and isinstance(role["registrant_cik"], str)
+                ):
+                    return None
+                role_values.add((role["accepted_accession"], role["registrant_cik"]))
+            elif (
+                candidate.authority_scope == AuthorityScope.LEGAL_ENTITY_BRIDGE
+                and candidate.claim_field == "filing.legal_entity_bridge"
+            ):
+                bridge = _exact_dict(
+                    value,
+                    {
+                        "accepted_accession",
+                        "formation_state",
+                        "provider_symbol",
+                        "registrant_cik",
+                        "state_entity_number",
+                    },
+                )
+                if not (
+                    candidate.subject_role == AuthoritySubjectRole.SEC_REGISTRANT
+                    and candidate.policy_maximum_issuer_authority_weight
+                    == AuthorityWeight.SUPPORTING
+                    and bridge is not None
+                    and bridge["accepted_accession"] == evidence.authority_document_reference
+                    and isinstance(bridge["formation_state"], str)
+                    and re.fullmatch(r"[A-Z]{2}", bridge["formation_state"]) is not None
+                    and isinstance(bridge["state_entity_number"], str)
+                    and _US_STATE_ENTITY_PATTERN.fullmatch(bridge["state_entity_number"])
+                    is not None
+                    and isinstance(bridge["registrant_cik"], str)
+                    and isinstance(bridge["provider_symbol"], str)
+                    and bool(bridge["provider_symbol"])
+                ):
+                    return None
+                bridge_values.add(
+                    (
+                        bridge["formation_state"],
+                        bridge["state_entity_number"],
+                        bridge["registrant_cik"],
+                    )
+                )
+        if len(cik_values) != 1 or len(role_values) != 1 or len(bridge_values) != 1:
+            return None
+        cik = next(iter(cik_values))
+        accession, role_cik = next(iter(role_values))
+        formation_state, state_entity_number, bridge_cik = next(iter(bridge_values))
+        if (
+            accession != evidence.authority_document_reference
+            or len({cik, role_cik, bridge_cik}) != 1
+        ):
+            return None
+        return (
+            "US",
+            f"US_STATE_REGISTRY_{formation_state}",
+            formation_state,
+            state_entity_number,
+        )
+
+    @classmethod
+    def _official_name_history_names(
         cls,
         decisive_item: _AssessedEvidence,
-        supporting_name: str,
-    ) -> bool:
+        *,
+        jurisdiction_prefix: str,
+    ) -> frozenset[str] | None:
         head = decisive_item.snapshot.relation_head
+        current = decisive_item.snapshot.evidence
+        current_subject = cls._registry_name_subject_key(
+            decisive_item,
+            current,
+            jurisdiction_prefix=jurisdiction_prefix,
+        )
+        if current_subject is None:
+            return None
+        if not head.relation_types:
+            return frozenset()
         if (
             head.conflict
             or not head.current
-            or not head.relation_types
             or AuthorityEvidenceRelationType.REVOKES in head.relation_types
             or not set(head.relation_types).issubset(
                 {
@@ -1395,28 +1823,22 @@ class IssuerAuthorityDecisionEngine:
                 }
             )
         ):
-            return False
-        current = decisive_item.snapshot.evidence
-        if any(
-            item.authority_source_identifier != current.authority_source_identifier
-            or item.authority_scope != AuthorityScope.LEGAL_NAME
-            or item.subject_role != current.subject_role
-            for item in decisive_item.snapshot.relation_component_evidence
-        ):
-            return False
-        for historical in decisive_item.snapshot.relation_component_evidence:
-            if historical.evidence_id == current.evidence_id:
-                continue
-            if (
-                historical.authority_source_identifier == current.authority_source_identifier
-                and historical.authority_scope == AuthorityScope.LEGAL_NAME
-                and historical.subject_role == current.subject_role
-                and isinstance(historical.normalized_claim_value, str)
-                and unicodedata.normalize("NFC", historical.normalized_claim_value)
-                == supporting_name
-            ):
-                return True
-        return False
+            return None
+        history_names: set[str] = set()
+        for member in decisive_item.snapshot.relation_component_evidence:
+            subject = cls._registry_name_subject_key(
+                decisive_item,
+                member,
+                jurisdiction_prefix=jurisdiction_prefix,
+            )
+            if subject is None or subject != current_subject:
+                return None
+            if not isinstance(member.normalized_claim_value, str):
+                return None
+            name = unicodedata.normalize("NFC", member.normalized_claim_value)
+            if member.evidence_id != current.evidence_id:
+                history_names.add(name)
+        return frozenset(history_names)
 
     @classmethod
     def _name_reconciliation(
@@ -1455,15 +1877,11 @@ class IssuerAuthorityDecisionEngine:
                 reason_codes=_sorted(reasons),
             )
 
-        supporting_names = {
-            value
-            for item in supporting_current
-            if (value := cls._legal_name_value(item)) is not None
-        }
+        supporting_names = tuple(cls._legal_name_value(item) for item in supporting_current)
         decisive_names = {
             value for item in decisive_current if (value := cls._legal_name_value(item)) is not None
         }
-        if len(supporting_names) != 1 or len(decisive_names) != 1:
+        if any(value is None for value in supporting_names) or len(decisive_names) != 1:
             reasons.add(f"{jurisdiction_prefix}_CO_CURRENT_LEGAL_NAME_CONFLICT")
             return _NameReconciliation(
                 established=False,
@@ -1473,14 +1891,84 @@ class IssuerAuthorityDecisionEngine:
                 reason_codes=_sorted(reasons),
             )
 
-        supporting_name = next(iter(supporting_names))
         decisive_name = next(iter(decisive_names))
-        explained_by_history = supporting_name != decisive_name and any(
-            cls._official_name_history_explains(item, supporting_name)
+        decisive_subjects = {
+            subject
             for item in decisive_current
-            if cls._legal_name_value(item) == decisive_name
+            if (
+                subject := cls._registry_name_subject_key(
+                    item,
+                    item.snapshot.evidence,
+                    jurisdiction_prefix=jurisdiction_prefix,
+                )
+            )
+            is not None
+        }
+        if len(decisive_subjects) != 1 or len(decisive_subjects) != len(
+            {
+                cls._registry_name_subject_key(
+                    item,
+                    item.snapshot.evidence,
+                    jurisdiction_prefix=jurisdiction_prefix,
+                )
+                for item in decisive_current
+            }
+        ):
+            reasons.add(f"{jurisdiction_prefix}_LEGAL_NAME_SUBJECT_BINDING_FAILED")
+            return _NameReconciliation(
+                established=False,
+                conflict=True,
+                scope_status=AuthorityBundleScopeStatus.CONFLICT,
+                evidence_ids=(),
+                reason_codes=_sorted(reasons),
+            )
+        decisive_subject = next(iter(decisive_subjects))
+        if any(
+            cls._supporting_name_subject_key(
+                item,
+                jurisdiction_prefix=jurisdiction_prefix,
+            )
+            != decisive_subject
+            for item in supporting_current
+        ):
+            reasons.add(f"{jurisdiction_prefix}_LEGAL_NAME_SUBJECT_BINDING_FAILED")
+            return _NameReconciliation(
+                established=False,
+                conflict=True,
+                scope_status=AuthorityBundleScopeStatus.CONFLICT,
+                evidence_ids=(),
+                reason_codes=_sorted(reasons),
+            )
+
+        history_results = tuple(
+            cls._official_name_history_names(
+                item,
+                jurisdiction_prefix=jurisdiction_prefix,
+            )
+            for item in decisive_current
         )
-        if supporting_name != decisive_name and not explained_by_history:
+        if any(result is None for result in history_results):
+            reasons.add(f"{jurisdiction_prefix}_LEGAL_NAME_HISTORY_SUBJECT_BINDING_FAILED")
+            return _NameReconciliation(
+                established=False,
+                conflict=True,
+                scope_status=AuthorityBundleScopeStatus.CONFLICT,
+                evidence_ids=(),
+                reason_codes=_sorted(reasons),
+            )
+        official_history_names = frozenset(
+            name for result in history_results if result is not None for name in result
+        )
+        unexplained_names = {
+            supporting_name
+            for supporting_name in supporting_names
+            if supporting_name is not None
+            and supporting_name != decisive_name
+            and supporting_name not in official_history_names
+        }
+        if unexplained_names:
+            if len(set(supporting_names)) > 1:
+                reasons.add(f"{jurisdiction_prefix}_CO_CURRENT_LEGAL_NAME_CONFLICT")
             reasons.add(f"{jurisdiction_prefix}_OFFICIAL_LEGAL_NAME_CONFLICT")
             return _NameReconciliation(
                 established=False,
@@ -1489,6 +1977,9 @@ class IssuerAuthorityDecisionEngine:
                 evidence_ids=(),
                 reason_codes=_sorted(reasons),
             )
+        explained_by_history = any(
+            supporting_name != decisive_name for supporting_name in supporting_names
+        )
 
         all_current = supporting_current + decisive_current
         if any(

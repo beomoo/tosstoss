@@ -2,6 +2,29 @@
 
 ## Unreleased — Phase 2 CP3-C2-B2-B Issuer Authority Decision Engine — 2026-08-27
 
+### Third independent-review remediation
+
+- Second independently reviewed SHA
+  `8093ee9389d4f7ae716482a87de5eae252e08eff` received `CHANGES REQUIRED`,
+  P0 0 / P1 2 new / P2 1. P1-01 through P1-07 remain independently verified
+  `CLOSED`; P2 remains the non-blocking absence of GitHub CI execution evidence.
+- Bound every decisive KR IROS legal-name history member to the same exact
+  official `corporate_registration_reference`/`jurir_no`, and every US state-
+  registry member to the same exact namespace, formation state, and state
+  entity number. These bindings come from independently stored same-document
+  registry subject facts; a correction/supersession edge alone cannot bridge
+  different legal entities.
+- Reconciled every relevant supporting OpenDART/accepted SEC legal name rather
+  than requiring one global supporting-name value. Multiple exact current and
+  officially explained former names may coexist, while one unknown or cross-
+  entity name blocks READY. No fuzzy, case, punctuation, suffix, whitespace,
+  provider-name, or ticker reconciliation was added.
+- Retained same-document SEC CIK/role/bridge/name completeness, compatible
+  accession semantics, authority-accepted former-symbol chronology, historical-
+  filing/freshness separation, complete current-state discovery, generic
+  production admission/READY rejection, and transaction-wide impacted-READY
+  invalidation.
+
 ### Second independent-review remediation
 
 - Re-reviewed SHA `722a5036d7d05ad6b8de0314ff6ac5ee8dafacc2`
@@ -63,9 +86,9 @@
 
 ### Verification and boundaries
 
-- B2-B targeted coverage is now 78 offline tests (63 prior plus 15 second-
-  remediation cases); retained 69/69 B2-A authority tests. Exact full inventory
-  is backend 691, frontend 43, E2E 2.
+- B2-B targeted coverage is now 89 offline tests; retained 69/69 B2-A authority
+  tests and executable non-regression proof for P1-01 through P1-07. Exact full
+  inventory is backend 702, frontend 43, E2E 2.
 - Migrations `0001`–`0005` are unchanged; `0006` creation and persistent/runtime
   application of `0005` are 0.
 - Automatic promotion, canonical Issuer/Security writes, VERIFIED mapping,
