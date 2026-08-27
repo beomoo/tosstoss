@@ -1603,3 +1603,21 @@ approved technical contract, migrations `0001`–`0005`, or any human approval/
 canonical/link semantics. Its status is `REMEDIATED — AWAITING GPT INDEPENDENT
 RE-REVIEW`; B2-C/B2-D, CP3-C2-C, CP3-D and automatic progression remain
 unauthorized/not started.
+
+The second B2-B independent review of SHA
+`722a5036d7d05ad6b8de0314ff6ac5ee8dafacc2` confirmed P1-01 through P1-05
+`CLOSED` and identified two new implementation gaps. The remediation now makes
+the already-approved `LEGAL_NAME` scope a required KR/US positive bundle scope:
+OpenDART/IROS and accepted SEC/field-owning state-registry names must be NFC-
+exact or reconciled by a conflict-free immutable official `CORRECTS`/
+`SUPERSEDES` history owned by the decisive registry. Provider name/ticker and
+fuzzy or lossy normalization remain zero authority. SEC accepted-filing
+accession remains exact document provenance but no longer creates an issuer
+conflict when multiple filings independently assert the same stable CIK,
+formation state, state entity number, and compatible provider bridge. Each
+filing still independently requires same-document CIK/issuer-role/bridge/name
+facts; incompatible entity facts fail closed, and former-symbol history
+requires deterministic authority acceptance chronology. Historical filing age
+remains separate from the repository current/latest-status freshness gate.
+This is implementation-status synchronization only and does not change the
+approved B1 technical meaning, authorize B2-C/B2-D, or declare B2-B PASS.

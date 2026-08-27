@@ -754,6 +754,48 @@ migration file 생성·적용 모두 0이다.
 - This remediation record does not declare GPT PASS and does not authorize a
   later checkpoint.
 
+### CP3-C2-B2-B second independent-review remediation record — 2026-08-27
+
+- GPT independent re-review of SHA
+  `722a5036d7d05ad6b8de0314ff6ac5ee8dafacc2` returned `CHANGES REQUIRED`,
+  P0 `0`, P1 `2` new findings, P2 `1`. P1-01 through P1-05 remain independently
+  verified `CLOSED`; P2 remains the non-blocking absence of GitHub CI execution
+  evidence.
+- P1-06: `LEGAL_NAME` is now a required positive bundle scope. KR requires a
+  current admitted OpenDART company-overview name and decisive verified IROS
+  name for the same exact registry/provider path. US requires accepted-filing
+  SEC name evidence and the decisive exact formation-state registry name for
+  the same filing/entity path. Only exact NFC equality or an immutable,
+  conflict-free, linear `CORRECTS`/`SUPERSEDES` history owned by the decisive
+  legal-name registry reconciles a difference. Provider names, symbols,
+  tickers, fuzzy matching, case folding, punctuation/suffix removal, and
+  whitespace heuristics have zero reconciliation authority.
+- P1-07: accepted SEC filing accession/document identity remains exact
+  provenance but is excluded from the stable issuer/entity compatibility key.
+  Every filing independently requires same-document registrant CIK, issuer
+  role, state/entity bridge and legal-name facts. Compatible filings with the
+  same CIK/formation state/state entity number can coexist across accessions;
+  incompatible state/entity facts remain conflicts. A former provider symbol
+  is accepted only when authority-supplied acceptance chronology produces one
+  deterministic latest bridge matching current CP3-C1 provider lineage.
+  Historical filing age remains separate from the current latest-status
+  freshness check.
+- Generic production admission, generic READY persistence, the server UTC
+  clock, complete current-state discovery, same-canonical-subject semantics,
+  impacted READY invalidation and `BEGIN IMMEDIATE` remain unchanged and
+  fail-closed.
+- Migrations `0001`–`0005` remain byte-identical; `0006` creation is `0`.
+  Canonical Issuer/Security writes, VERIFIED mapping writes, provider rekeys,
+  WebAuthn/human approval/link execution, credentials, and live requests remain
+  `0`.
+- CP3-C2-B implementation: `IN PROGRESS`.
+- CP3-C2-B2-A: `PASS — CLOSED`.
+- CP3-C2-B2-B: `REMEDIATED — AWAITING GPT INDEPENDENT RE-REVIEW`.
+- CP3-C2-B2-C/B2-D, CP3-C2-C, CP3-D: `NOT STARTED`.
+- Automatic checkpoint progression: `PROHIBITED`.
+- This second remediation record is LOCAL Codex self-QA and does not declare
+  GPT PASS or authorize a later checkpoint.
+
 ---
 
 ## 새 결정 기록 양식

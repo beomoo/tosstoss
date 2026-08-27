@@ -110,11 +110,14 @@ STALE_FETCHED_AT = EVALUATED_AT - timedelta(hours=25)
 KR_CORP_CODE = "00126380"
 KR_JURIR_NO = "1101110000000"
 KR_SYMBOL = "005930"
+KR_LEGAL_NAME = "Exact Korean Corporation"
 US_CIK = "0000789019"
 US_ACCESSION = "0000789019-26-000001"
+US_SECOND_ACCESSION = "0000789019-26-000003"
 US_LATEST_ACCESSION = "0000789019-26-000002"
 US_STATE_ENTITY_NUMBER = "1234567"
 US_SYMBOL = "MSFT"
+US_LEGAL_NAME = "Exact U.S. Corporation"
 
 
 @dataclass
@@ -277,7 +280,11 @@ def _evidence(
     value: Any,
     raw_value: Any | None = None,
     evidence_kind: AuthorityEvidenceKind = AuthorityEvidenceKind.ASSERTION,
+    authority_accepted_at: datetime | None = None,
 ) -> AuthorityEvidence:
+    missing_times = _missing_times()
+    if authority_accepted_at is not None:
+        missing_times.pop("authority_accepted_at")
     return build_authority_evidence(
         authority_source_policy_id=policy.authority_source_policy_id,
         authority_source_identifier=policy.source_namespace,
@@ -296,11 +303,11 @@ def _evidence(
         raw_claim_value=value if raw_value is None else raw_value,
         normalized_claim_value=value,
         authority_published_at=None,
-        authority_accepted_at=None,
+        authority_accepted_at=authority_accepted_at,
         authority_as_of_date=None,
         authority_effective_at=None,
         authority_effective_date=None,
-        authority_time_missing_reasons=_missing_times(),
+        authority_time_missing_reasons=missing_times,
         access_disposition=policy.required_access_disposition,
         license_disposition=policy.required_license_disposition,
         origin_data_mode=AuthorityOriginDataMode.PRODUCTION_AUTHORITY,
@@ -368,6 +375,8 @@ def _kr_harness(
     current_status: AuthorityRetrievalStatus = AuthorityRetrievalStatus.SUCCEEDED,
     overview_mode: str = "EXACT",
     corp_code: str = KR_CORP_CODE,
+    opendart_legal_name: str = KR_LEGAL_NAME,
+    iros_legal_name: str = KR_LEGAL_NAME,
 ) -> _Harness:
     sessions, repository, engine, clock = _repository_and_engine(database_context)
     provider_id, observation_id = _seed_exact_provider(
@@ -438,6 +447,23 @@ def _kr_harness(
         fetched_at=current_fetched_at,
         retrieval_status=current_status,
     )
+    if overview_mode != "NAME_ONLY":
+        evidence["overview_name"] = _evidence(
+            policy=OPENDART_COMPANY_OVERVIEW_POLICY,
+            document_kind="COMPANY_OVERVIEW_JSON_V1",
+            document_reference=f"company-overview:{corp_code}",
+            document_group=f"company-overview-{corp_code}",
+            scope=AuthorityScope.LEGAL_NAME,
+            role=AuthoritySubjectRole.DART_DISCLOSURE_FILER,
+            claim_field="company.corp_name",
+            value=opendart_legal_name,
+        )
+        _persist_evidence(
+            repository,
+            evidence["overview_name"],
+            fetched_at=current_fetched_at,
+            retrieval_status=current_status,
+        )
     if include_iros:
         verification_reference = f"iros-verified-original:{iros_jurir}"
         evidence["iros_jurisdiction"] = _evidence(
@@ -467,7 +493,17 @@ def _kr_harness(
             claim_field="registry.corporate_registration_reference",
             value=iros_jurir,
         )
-        for key in ("iros_jurisdiction", "iros_bridge"):
+        evidence["iros_name"] = _evidence(
+            policy=KR_IROS_COMPLETE_POLICY,
+            document_kind="VERIFIED_CORPORATE_REGISTRY_EXTRACT_V1",
+            document_reference=verification_reference,
+            document_group=f"iros-record-{iros_jurir}",
+            scope=AuthorityScope.LEGAL_NAME,
+            role=AuthoritySubjectRole.KOREAN_REGISTERED_LEGAL_ENTITY,
+            claim_field="registry.legal_name",
+            value=iros_legal_name,
+        )
+        for key in ("iros_jurisdiction", "iros_bridge", "iros_name"):
             _persist_evidence(
                 repository,
                 evidence[key],
@@ -499,6 +535,10 @@ def _us_harness(
     include_latest_status: bool = True,
     sec_bridge_mode: str = "EXACT",
     cik: str = US_CIK,
+    sec_legal_name: str = US_LEGAL_NAME,
+    state_legal_name: str = US_LEGAL_NAME,
+    accession: str = US_ACCESSION,
+    filing_accepted_at: datetime | None = None,
 ) -> _Harness:
     sessions, repository, engine, clock = _repository_and_engine(database_context)
     provider_id, observation_id = _seed_exact_provider(
@@ -511,34 +551,36 @@ def _us_harness(
     for policy in (SEC_ACCEPTED_FILING_POLICY, US_STATE_REGISTRY_DE_POLICY):
         seed_preadmitted_authority_snapshot(sessions, policies=(policy,))
     evidence: dict[str, AuthorityEvidence] = {}
-    filing_group = f"sec-filing-{US_ACCESSION}"
+    filing_group = f"sec-filing-{accession}"
     evidence["cik"] = _evidence(
         policy=SEC_ACCEPTED_FILING_POLICY,
         document_kind="SEC_ACCEPTED_ISSUER_FILING_JSON_V1",
-        document_reference=US_ACCESSION,
+        document_reference=accession,
         document_group=filing_group,
         scope=AuthorityScope.ISSUER_REGULATORY_ID,
         role=AuthoritySubjectRole.SEC_REGISTRANT,
         claim_field="filing.registrant_cik",
         value=cik,
+        authority_accepted_at=filing_accepted_at,
     )
     evidence["role"] = _evidence(
         policy=SEC_ACCEPTED_FILING_POLICY,
         document_kind="SEC_ACCEPTED_ISSUER_FILING_JSON_V1",
-        document_reference=US_ACCESSION,
+        document_reference=accession,
         document_group=filing_group,
         scope=AuthorityScope.REGISTRANT_ROLE,
         role=AuthoritySubjectRole.SEC_REGISTRANT,
         claim_field="filing.registrant_role",
         value={
-            "accepted_accession": US_ACCESSION,
+            "accepted_accession": accession,
             "registrant_cik": cik,
             "role": "ISSUER_REGISTRANT",
         },
+        authority_accepted_at=filing_accepted_at,
     )
     if sec_bridge_mode == "EXACT":
         bridge_value: Any = {
-            "accepted_accession": US_ACCESSION,
+            "accepted_accession": accession,
             "formation_state": state_value,
             "provider_symbol": provider_symbol,
             "registrant_cik": cik,
@@ -554,7 +596,7 @@ def _us_harness(
     evidence["bridge"] = _evidence(
         policy=SEC_ACCEPTED_FILING_POLICY,
         document_kind="SEC_ACCEPTED_ISSUER_FILING_JSON_V1",
-        document_reference=US_ACCESSION,
+        document_reference=accession,
         document_group=filing_group,
         scope=(
             AuthorityScope.LEGAL_ENTITY_BRIDGE
@@ -564,8 +606,23 @@ def _us_harness(
         role=AuthoritySubjectRole.SEC_REGISTRANT,
         claim_field=bridge_field,
         value=bridge_value,
+        authority_accepted_at=filing_accepted_at,
     )
-    for key in ("cik", "role", "bridge"):
+    if sec_bridge_mode != "NAME_ONLY":
+        evidence["sec_name"] = _evidence(
+            policy=SEC_ACCEPTED_FILING_POLICY,
+            document_kind="SEC_ACCEPTED_ISSUER_FILING_JSON_V1",
+            document_reference=accession,
+            document_group=filing_group,
+            scope=AuthorityScope.LEGAL_NAME,
+            role=AuthoritySubjectRole.SEC_REGISTRANT,
+            claim_field="filing.legal_name",
+            value=sec_legal_name,
+            authority_accepted_at=filing_accepted_at,
+        )
+    for key in ("cik", "role", "bridge", "sec_name"):
+        if key not in evidence:
+            continue
         _persist_evidence(repository, evidence[key], fetched_at=HISTORICAL_FETCHED_AT)
     if include_latest_status:
         evidence["latest"] = _evidence(
@@ -607,12 +664,23 @@ def _us_harness(
                 "verification_reference": verification_reference,
             },
         )
-        _persist_evidence(
-            repository,
-            evidence["state"],
-            fetched_at=current_fetched_at,
-            retrieval_status=current_status,
+        evidence["state_name"] = _evidence(
+            policy=US_STATE_REGISTRY_DE_POLICY,
+            document_kind="VERIFIED_DOMESTIC_ENTITY_RECORD_V1",
+            document_reference=verification_reference,
+            document_group=f"de-entity-{US_STATE_ENTITY_NUMBER}",
+            scope=AuthorityScope.LEGAL_NAME,
+            role=AuthoritySubjectRole.US_STATE_REGISTERED_LEGAL_ENTITY,
+            claim_field="registry.legal_name",
+            value=state_legal_name,
         )
+        for key in ("state", "state_name"):
+            _persist_evidence(
+                repository,
+                evidence[key],
+                fetched_at=current_fetched_at,
+                retrieval_status=current_status,
+            )
     return _Harness(
         sessions=sessions,
         repository=repository,
@@ -622,6 +690,84 @@ def _us_harness(
         provider_observation_id=observation_id,
         evidence=evidence,
     )
+
+
+def _append_us_accepted_filing(
+    harness: _Harness,
+    *,
+    accession: str,
+    formation_state: str = "DE",
+    state_entity_number: str = US_STATE_ENTITY_NUMBER,
+    provider_symbol: str = US_SYMBOL,
+    legal_name: str = US_LEGAL_NAME,
+    accepted_at: datetime | None = None,
+    insertion_order: tuple[str, ...] = ("cik", "role", "bridge", "name"),
+) -> dict[str, AuthorityEvidence]:
+    document_group = f"sec-filing-{accession}"
+    evidence = {
+        "cik": _evidence(
+            policy=SEC_ACCEPTED_FILING_POLICY,
+            document_kind="SEC_ACCEPTED_ISSUER_FILING_JSON_V1",
+            document_reference=accession,
+            document_group=document_group,
+            scope=AuthorityScope.ISSUER_REGULATORY_ID,
+            role=AuthoritySubjectRole.SEC_REGISTRANT,
+            claim_field="filing.registrant_cik",
+            value=US_CIK,
+            authority_accepted_at=accepted_at,
+        ),
+        "role": _evidence(
+            policy=SEC_ACCEPTED_FILING_POLICY,
+            document_kind="SEC_ACCEPTED_ISSUER_FILING_JSON_V1",
+            document_reference=accession,
+            document_group=document_group,
+            scope=AuthorityScope.REGISTRANT_ROLE,
+            role=AuthoritySubjectRole.SEC_REGISTRANT,
+            claim_field="filing.registrant_role",
+            value={
+                "accepted_accession": accession,
+                "registrant_cik": US_CIK,
+                "role": "ISSUER_REGISTRANT",
+            },
+            authority_accepted_at=accepted_at,
+        ),
+        "bridge": _evidence(
+            policy=SEC_ACCEPTED_FILING_POLICY,
+            document_kind="SEC_ACCEPTED_ISSUER_FILING_JSON_V1",
+            document_reference=accession,
+            document_group=document_group,
+            scope=AuthorityScope.LEGAL_ENTITY_BRIDGE,
+            role=AuthoritySubjectRole.SEC_REGISTRANT,
+            claim_field="filing.legal_entity_bridge",
+            value={
+                "accepted_accession": accession,
+                "formation_state": formation_state,
+                "provider_symbol": provider_symbol,
+                "registrant_cik": US_CIK,
+                "state_entity_number": state_entity_number,
+            },
+            authority_accepted_at=accepted_at,
+        ),
+        "name": _evidence(
+            policy=SEC_ACCEPTED_FILING_POLICY,
+            document_kind="SEC_ACCEPTED_ISSUER_FILING_JSON_V1",
+            document_reference=accession,
+            document_group=document_group,
+            scope=AuthorityScope.LEGAL_NAME,
+            role=AuthoritySubjectRole.SEC_REGISTRANT,
+            claim_field="filing.legal_name",
+            value=legal_name,
+            authority_accepted_at=accepted_at,
+        ),
+    }
+    assert set(insertion_order) == set(evidence)
+    for key in insertion_order:
+        _persist_evidence(
+            harness.repository,
+            evidence[key],
+            fetched_at=HISTORICAL_FETCHED_AT,
+        )
+    return evidence
 
 
 def _request(
@@ -737,6 +883,40 @@ def _insert_canonical_issuer(
         )
 
 
+def _seed_decisive_legal_name_history(
+    harness: _Harness,
+    *,
+    current: AuthorityEvidence,
+    policy,
+    document_kind: str,
+    document_reference: str,
+    document_group: str,
+    role: AuthoritySubjectRole,
+    claim_field: str,
+    former_name: str,
+) -> AuthorityEvidence:
+    former = _evidence(
+        policy=policy,
+        document_kind=document_kind,
+        document_reference=document_reference,
+        document_group=document_group,
+        scope=AuthorityScope.LEGAL_NAME,
+        role=role,
+        claim_field=claim_field,
+        value=former_name,
+    )
+    _persist_evidence(harness.repository, former, fetched_at=HISTORICAL_FETCHED_AT)
+    relation = build_authority_evidence_relation(
+        predecessor_evidence_id=former.evidence_id,
+        successor_evidence_id=current.evidence_id,
+        relation_type=AuthorityEvidenceRelationType.SUPERSEDES,
+        recorded_at=EVALUATED_AT,
+        authority_effective_missing_reason=(AuthorityTimeMissingReason.NOT_SUPPLIED_BY_AUTHORITY),
+    )
+    seed_preadmitted_authority_snapshot(harness.sessions, relations=(relation,))
+    return former
+
+
 def test_server_owned_registry_is_exact_and_has_no_wildcard_namespace() -> None:
     namespaces = {policy.source_namespace for policy in PRODUCTION_AUTHORITY_SOURCE_POLICIES}
 
@@ -759,6 +939,9 @@ def test_exact_kr_complete_path_reaches_ready_only_through_engine(database_conte
     assert result.decision.decision_state == IssuerMachineDecisionState.READY_FOR_MANUAL_REVIEW
     assert result.bridge_result.bridge_status == AuthorityBridgeStatus.ESTABLISHED
     assert result.bundle.collision_scan_result.value == "CLEAR"
+    assert {
+        item.authority_scope: item.scope_status for item in result.bundle.required_scope_results
+    }[AuthorityScope.LEGAL_NAME].value == "SATISFIED"
     assert _zero_snapshot(harness.sessions) == before
     with pytest.raises(AuthorityReviewReadyEngineNotImplemented):
         harness.repository.insert_or_verify_decision(
@@ -785,6 +968,9 @@ def test_exact_us_complete_path_reaches_ready_and_old_filing_age_is_not_stale(
     assert result.decision.decision_state == IssuerMachineDecisionState.READY_FOR_MANUAL_REVIEW
     assert result.decision.freshness_result == AuthorityFreshnessResult.CURRENT
     assert result.bridge_result.bridge_status == AuthorityBridgeStatus.ESTABLISHED
+    assert {
+        item.authority_scope: item.scope_status for item in result.bundle.required_scope_results
+    }[AuthorityScope.LEGAL_NAME].value == "SATISFIED"
     assert all(
         application.application_status
         in {
@@ -793,6 +979,281 @@ def test_exact_us_complete_path_reaches_ready_and_old_filing_age_is_not_stale(
         }
         for application in result.applications
     )
+
+
+def test_kr_unexplained_official_legal_name_mismatch_blocks_ready(database_context) -> None:
+    harness = _kr_harness(
+        database_context,
+        opendart_legal_name="Former Korean Corporation",
+        iros_legal_name="Current Korean Corporation",
+    )
+
+    result = harness.engine.evaluate(_kr_request(harness))
+
+    assert result.decision.decision_state == IssuerMachineDecisionState.UNRESOLVED
+    assert "KR_OFFICIAL_LEGAL_NAME_CONFLICT" in result.decision.reason_codes
+
+
+def test_kr_official_registry_name_history_reconciles_old_and_current_name(
+    database_context,
+) -> None:
+    former_name = "Former Korean Corporation"
+    harness = _kr_harness(
+        database_context,
+        opendart_legal_name=former_name,
+        iros_legal_name="Current Korean Corporation",
+    )
+    _seed_decisive_legal_name_history(
+        harness,
+        current=harness.evidence["iros_name"],
+        policy=KR_IROS_COMPLETE_POLICY,
+        document_kind="VERIFIED_CORPORATE_REGISTRY_EXTRACT_V1",
+        document_reference=f"iros-name-history:{KR_JURIR_NO}",
+        document_group="iros-name-history-former",
+        role=AuthoritySubjectRole.KOREAN_REGISTERED_LEGAL_ENTITY,
+        claim_field="registry.legal_name",
+        former_name=former_name,
+    )
+
+    result = harness.engine.evaluate(_kr_request(harness))
+
+    assert result.decision.decision_state == IssuerMachineDecisionState.READY_FOR_MANUAL_REVIEW
+    assert "KR_LEGAL_NAME_OFFICIAL_HISTORY_RECONCILED" in result.decision.reason_codes
+
+
+def test_kr_provider_name_cannot_repair_conflicting_official_legal_names(
+    database_context,
+) -> None:
+    harness = _kr_harness(
+        database_context,
+        opendart_legal_name="Korean authority subject",
+        iros_legal_name="Different Court Registry Corporation",
+    )
+
+    result = harness.engine.evaluate(_kr_request(harness))
+
+    assert result.decision.decision_state == IssuerMachineDecisionState.UNRESOLVED
+    assert "KR_OFFICIAL_LEGAL_NAME_CONFLICT" in result.decision.reason_codes
+
+
+def test_kr_omitted_co_current_legal_name_conflict_is_discovered(database_context) -> None:
+    harness = _kr_harness(database_context)
+    contradictory = _evidence(
+        policy=OPENDART_COMPANY_OVERVIEW_POLICY,
+        document_kind="COMPANY_OVERVIEW_JSON_V1",
+        document_reference=f"company-overview:{KR_CORP_CODE}",
+        document_group=f"company-overview-{KR_CORP_CODE}",
+        scope=AuthorityScope.LEGAL_NAME,
+        role=AuthoritySubjectRole.DART_DISCLOSURE_FILER,
+        claim_field="company.corp_name",
+        value="Contradictory OpenDART Corporation",
+    )
+    _persist_evidence(harness.repository, contradictory, fetched_at=CURRENT_FETCHED_AT)
+    requested_ids = tuple(item.evidence_id for item in harness.evidence.values())
+    assert contradictory.evidence_id not in requested_ids
+
+    result = harness.engine.evaluate(_kr_request(harness, evidence_ids=requested_ids))
+
+    assert result.decision.decision_state == IssuerMachineDecisionState.UNRESOLVED
+    assert "KR_CO_CURRENT_LEGAL_NAME_CONFLICT" in result.decision.reason_codes
+
+
+def test_us_unexplained_official_legal_name_mismatch_blocks_ready(database_context) -> None:
+    harness = _us_harness(
+        database_context,
+        sec_legal_name="Former U.S. Corporation",
+        state_legal_name="Current U.S. Corporation",
+    )
+
+    result = harness.engine.evaluate(_us_request(harness))
+
+    assert result.decision.decision_state == IssuerMachineDecisionState.UNRESOLVED
+    assert "US_OFFICIAL_LEGAL_NAME_CONFLICT" in result.decision.reason_codes
+
+
+def test_us_official_state_name_history_reconciles_former_sec_name(
+    database_context,
+) -> None:
+    former_name = "Former U.S. Corporation"
+    harness = _us_harness(
+        database_context,
+        sec_legal_name=former_name,
+        state_legal_name="Current U.S. Corporation",
+    )
+    _seed_decisive_legal_name_history(
+        harness,
+        current=harness.evidence["state_name"],
+        policy=US_STATE_REGISTRY_DE_POLICY,
+        document_kind="VERIFIED_DOMESTIC_ENTITY_RECORD_V1",
+        document_reference=f"de-name-history:{US_STATE_ENTITY_NUMBER}",
+        document_group="de-name-history-former",
+        role=AuthoritySubjectRole.US_STATE_REGISTERED_LEGAL_ENTITY,
+        claim_field="registry.legal_name",
+        former_name=former_name,
+    )
+
+    result = harness.engine.evaluate(_us_request(harness))
+
+    assert result.decision.decision_state == IssuerMachineDecisionState.READY_FOR_MANUAL_REVIEW
+    assert "US_LEGAL_NAME_OFFICIAL_HISTORY_RECONCILED" in result.decision.reason_codes
+
+
+def test_us_provider_name_and_ticker_cannot_repair_official_name_conflict(
+    database_context,
+) -> None:
+    harness = _us_harness(
+        database_context,
+        sec_legal_name="U.S. authority subject",
+        state_legal_name="Different State Registry Corporation",
+        provider_symbol=US_SYMBOL,
+    )
+
+    result = harness.engine.evaluate(_us_request(harness))
+
+    assert result.decision.decision_state == IssuerMachineDecisionState.UNRESOLVED
+    assert "US_OFFICIAL_LEGAL_NAME_CONFLICT" in result.decision.reason_codes
+
+
+def test_us_omitted_co_current_state_legal_name_conflict_is_discovered(
+    database_context,
+) -> None:
+    harness = _us_harness(database_context)
+    reference = f"de-verified-entity:{US_STATE_ENTITY_NUMBER}"
+    contradictory = _evidence(
+        policy=US_STATE_REGISTRY_DE_POLICY,
+        document_kind="VERIFIED_DOMESTIC_ENTITY_RECORD_V1",
+        document_reference=reference,
+        document_group=f"de-entity-{US_STATE_ENTITY_NUMBER}",
+        scope=AuthorityScope.LEGAL_NAME,
+        role=AuthoritySubjectRole.US_STATE_REGISTERED_LEGAL_ENTITY,
+        claim_field="registry.legal_name",
+        value="Contradictory Delaware Corporation",
+    )
+    _persist_evidence(harness.repository, contradictory, fetched_at=CURRENT_FETCHED_AT)
+    requested_ids = tuple(item.evidence_id for item in harness.evidence.values())
+    assert contradictory.evidence_id not in requested_ids
+
+    result = harness.engine.evaluate(_us_request(harness, evidence_ids=requested_ids))
+
+    assert result.decision.decision_state == IssuerMachineDecisionState.UNRESOLVED
+    assert "US_CO_CURRENT_LEGAL_NAME_CONFLICT" in result.decision.reason_codes
+
+
+@pytest.mark.parametrize(
+    ("primary_accession", "secondary_accession", "secondary_fact_order"),
+    [
+        (US_ACCESSION, US_SECOND_ACCESSION, ("cik", "role", "bridge", "name")),
+        (US_SECOND_ACCESSION, US_ACCESSION, ("name", "bridge", "role", "cik")),
+    ],
+)
+def test_compatible_historical_sec_filings_do_not_conflict_by_accession_or_order(
+    database_context,
+    primary_accession: str,
+    secondary_accession: str,
+    secondary_fact_order: tuple[str, ...],
+) -> None:
+    harness = _us_harness(
+        database_context,
+        label="us_compatible_multiple_filings",
+        accession=primary_accession,
+    )
+    second = _append_us_accepted_filing(
+        harness,
+        accession=secondary_accession,
+        insertion_order=secondary_fact_order,
+    )
+    requested_ids = tuple(item.evidence_id for item in harness.evidence.values())
+    assert not {item.evidence_id for item in second.values()}.intersection(requested_ids)
+
+    result = harness.engine.evaluate(_us_request(harness, evidence_ids=requested_ids))
+
+    assert result.decision.decision_state == IssuerMachineDecisionState.READY_FOR_MANUAL_REVIEW
+    assert "US_CO_CURRENT_AUTHORITY_CONFLICT" not in result.decision.reason_codes
+    assert result.bridge_result.bridge_status == AuthorityBridgeStatus.ESTABLISHED
+
+
+def test_historical_sec_filings_with_different_state_entity_numbers_conflict(
+    database_context,
+) -> None:
+    harness = _us_harness(database_context)
+    _append_us_accepted_filing(
+        harness,
+        accession=US_SECOND_ACCESSION,
+        state_entity_number="7654321",
+    )
+
+    result = harness.engine.evaluate(_us_request(harness))
+
+    assert result.decision.decision_state == IssuerMachineDecisionState.UNRESOLVED
+    assert "US_SEC_BRIDGE_IDENTITY_CONFLICT" in result.decision.reason_codes
+
+
+def test_historical_sec_filings_with_incompatible_formation_states_conflict(
+    database_context,
+) -> None:
+    harness = _us_harness(database_context)
+    _append_us_accepted_filing(
+        harness,
+        accession=US_SECOND_ACCESSION,
+        formation_state="CA",
+    )
+
+    result = harness.engine.evaluate(_us_request(harness))
+
+    assert result.decision.decision_state == IssuerMachineDecisionState.UNRESOLVED
+    assert "US_SEC_BRIDGE_IDENTITY_CONFLICT" in result.decision.reason_codes
+
+
+def test_historical_former_symbol_is_reconciled_by_authority_acceptance_history(
+    database_context,
+) -> None:
+    current_accepted_at = datetime(2026, 8, 1, tzinfo=UTC)
+    harness = _us_harness(
+        database_context,
+        accession=US_SECOND_ACCESSION,
+        filing_accepted_at=current_accepted_at,
+    )
+    _append_us_accepted_filing(
+        harness,
+        accession=US_ACCESSION,
+        provider_symbol="FORMER",
+        accepted_at=datetime(2024, 8, 1, tzinfo=UTC),
+    )
+
+    result = harness.engine.evaluate(_us_request(harness))
+
+    assert result.decision.decision_state == IssuerMachineDecisionState.READY_FOR_MANUAL_REVIEW
+    assert "US_PROVIDER_SYMBOL_HISTORY_UNRECONCILED" not in result.decision.reason_codes
+
+
+def test_unreconciled_multiple_sec_provider_symbols_fail_closed(database_context) -> None:
+    harness = _us_harness(database_context)
+    _append_us_accepted_filing(
+        harness,
+        accession=US_SECOND_ACCESSION,
+        provider_symbol="FORMER",
+    )
+
+    result = harness.engine.evaluate(_us_request(harness))
+
+    assert result.decision.decision_state == IssuerMachineDecisionState.UNRESOLVED
+    assert "US_PROVIDER_SYMBOL_HISTORY_UNRECONCILED" in result.decision.reason_codes
+
+
+def test_historical_filing_age_and_accession_are_separate_from_latest_status_freshness(
+    database_context,
+) -> None:
+    harness = _us_harness(
+        database_context,
+        filing_accepted_at=datetime(2010, 1, 1, tzinfo=UTC),
+        current_fetched_at=CURRENT_FETCHED_AT,
+    )
+
+    result = harness.engine.evaluate(_us_request(harness))
+
+    assert result.decision.decision_state == IssuerMachineDecisionState.READY_FOR_MANUAL_REVIEW
+    assert result.decision.freshness_result == AuthorityFreshnessResult.CURRENT
+    assert harness.evidence["bridge"].authority_accepted_at == datetime(2010, 1, 1, tzinfo=UTC)
 
 
 @pytest.mark.parametrize(
@@ -1335,7 +1796,7 @@ def _append_corrected_iros(
     harness: _Harness,
     *,
     suffix: str,
-) -> tuple[AuthorityEvidence, AuthorityEvidence]:
+) -> tuple[AuthorityEvidence, AuthorityEvidence, AuthorityEvidence]:
     reference = f"iros-verified-original:{KR_JURIR_NO}:{suffix}"
     jurisdiction = _evidence(
         policy=KR_IROS_COMPLETE_POLICY,
@@ -1364,7 +1825,18 @@ def _append_corrected_iros(
         value=KR_JURIR_NO,
         evidence_kind=AuthorityEvidenceKind.CORRECTION,
     )
-    for item in (jurisdiction, bridge):
+    legal_name = _evidence(
+        policy=KR_IROS_COMPLETE_POLICY,
+        document_kind="VERIFIED_CORPORATE_REGISTRY_EXTRACT_V1",
+        document_reference=reference,
+        document_group=f"iros-corrected-{suffix}",
+        scope=AuthorityScope.LEGAL_NAME,
+        role=AuthoritySubjectRole.KOREAN_REGISTERED_LEGAL_ENTITY,
+        claim_field="registry.legal_name",
+        value=KR_LEGAL_NAME,
+        evidence_kind=AuthorityEvidenceKind.CORRECTION,
+    )
+    for item in (jurisdiction, bridge, legal_name):
         _persist_evidence(harness.repository, item, fetched_at=CURRENT_FETCHED_AT)
     relations = tuple(
         build_authority_evidence_relation(
@@ -1379,13 +1851,14 @@ def _append_corrected_iros(
         for predecessor, successor in (
             (harness.evidence["iros_jurisdiction"], jurisdiction),
             (harness.evidence["iros_bridge"], bridge),
+            (harness.evidence["iros_name"], legal_name),
         )
     )
     seed_preadmitted_authority_snapshot(
         harness.sessions,
         relations=relations,
     )
-    return jurisdiction, bridge
+    return jurisdiction, bridge, legal_name
 
 
 def test_correction_recomputes_relation_head_and_appends_new_bundle_decision_chain(
@@ -1393,7 +1866,9 @@ def test_correction_recomputes_relation_head_and_appends_new_bundle_decision_cha
 ) -> None:
     harness = _kr_harness(database_context)
     initial = harness.engine.evaluate(_kr_request(harness))
-    corrected_jurisdiction, corrected_bridge = _append_corrected_iros(harness, suffix="v2")
+    corrected_jurisdiction, corrected_bridge, corrected_name = _append_corrected_iros(
+        harness, suffix="v2"
+    )
 
     harness.clock.value = EVALUATED_AT + timedelta(minutes=1)
     invalidated = harness.engine.evaluate(_kr_request(harness))
@@ -1401,10 +1876,11 @@ def test_correction_recomputes_relation_head_and_appends_new_bundle_decision_cha
         *(
             item.evidence_id
             for key, item in harness.evidence.items()
-            if key not in {"iros_jurisdiction", "iros_bridge"}
+            if key not in {"iros_jurisdiction", "iros_bridge", "iros_name"}
         ),
         corrected_jurisdiction.evidence_id,
         corrected_bridge.evidence_id,
+        corrected_name.evidence_id,
     )
     harness.clock.value = EVALUATED_AT + timedelta(minutes=2)
     corrected = harness.engine.evaluate(_kr_request(harness, evidence_ids=corrected_ids))

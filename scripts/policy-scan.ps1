@@ -1653,8 +1653,8 @@ $phaseControlFiles = @(
         Where-Object { $_.Name -cne "policy-scan.ps1" }
 )
 $approvedPhaseControlDigest = [string]::Concat(
-    "24812ab3", "709a698e", "69ba3ccc", "a7cb7cc3",
-    "c52baaf0", "0b188dad", "73baaea6", "85f3f64e"
+    "75c1c8dc", "e0ff5042", "7dbeb15c", "675aca4d",
+    "af47722f", "43064b02", "2a525c62", "39a4ef42"
 )
 if (
     $phaseControlFiles.Count -ne 77 -or

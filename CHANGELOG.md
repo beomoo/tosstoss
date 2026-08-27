@@ -2,6 +2,24 @@
 
 ## Unreleased — Phase 2 CP3-C2-B2-B Issuer Authority Decision Engine — 2026-08-27
 
+### Second independent-review remediation
+
+- Re-reviewed SHA `722a5036d7d05ad6b8de0314ff6ac5ee8dafacc2`
+  received `CHANGES REQUIRED`, P0 0 / P1 2 new / P2 1. P1-01 through P1-05
+  remain independently verified `CLOSED`; P2 remains the non-blocking absence
+  of GitHub CI execution evidence.
+- Added required KR OpenDART/IROS and US accepted SEC/exact-state-registry
+  `LEGAL_NAME` evaluation. Official names must be NFC-exact or reconciled by a
+  conflict-free immutable field-owner correction/supersession history. Provider
+  name/ticker, fuzzy matching, and lossy normalization cannot repair a conflict.
+- Separated accepted-filing accession provenance from stable SEC issuer/entity
+  bridge semantics. Compatible historical filings can coexist across different
+  accessions only when every filing independently has exact same-document CIK,
+  issuer role, bridge, and legal-name facts. Formation-state/entity conflicts
+  still fail closed; former symbols require deterministic authority acceptance
+  chronology, and historical filing age remains separate from latest-status
+  freshness.
+
 ### Independent-review remediation
 
 - Reviewed SHA `d4f84c4bfb83f2396161eea913f2c119ecb17dac` received
@@ -45,9 +63,9 @@
 
 ### Verification and boundaries
 
-- B2-B targeted coverage is now 63 offline tests (46 initial plus 17
-  remediation tests); retained 69/69 B2-A authority tests. Exact full inventory
-  is backend 676, frontend 43, E2E 2.
+- B2-B targeted coverage is now 78 offline tests (63 prior plus 15 second-
+  remediation cases); retained 69/69 B2-A authority tests. Exact full inventory
+  is backend 691, frontend 43, E2E 2.
 - Migrations `0001`–`0005` are unchanged; `0006` creation and persistent/runtime
   application of `0005` are 0.
 - Automatic promotion, canonical Issuer/Security writes, VERIFIED mapping,
