@@ -1,17 +1,17 @@
 # Project Status
 
-- 프로젝트 상태: `PHASE 2 IMPLEMENTATION IN PROGRESS — CP2 COMPLETE / CP3-A PASS — CONTRACT APPROVED AND CLOSED / CP3-B PASS — CLOSED / CP3-C1 PASS — CLOSED / CP3-C2-A PASS — CONTRACT APPROVED AND CLOSED / CP3-C2-B1 PASS — CONTRACT APPROVED AND CLOSED / CP3-C2-B IMPLEMENTATION IN PROGRESS / CP3-C2-B2-A PASS — CLOSED / CP3-C2-B2-B IMPLEMENTED — AWAITING GPT INDEPENDENT REVIEW / CP3-C2-B2-C·B2-D NOT STARTED / CP3-C2-C NOT STARTED / CP3-D NOT STARTED`
-- 현재 Phase: `Phase 2 — CP3-C2-B2-A PASS — CLOSED; CP3-C2-B implementation IN PROGRESS; CP3-C2-B2-B IMPLEMENTED — AWAITING GPT INDEPENDENT REVIEW`
+- 프로젝트 상태: `PHASE 2 IMPLEMENTATION IN PROGRESS — CP2 COMPLETE / CP3-A PASS — CONTRACT APPROVED AND CLOSED / CP3-B PASS — CLOSED / CP3-C1 PASS — CLOSED / CP3-C2-A PASS — CONTRACT APPROVED AND CLOSED / CP3-C2-B1 PASS — CONTRACT APPROVED AND CLOSED / CP3-C2-B IMPLEMENTATION IN PROGRESS / CP3-C2-B2-A PASS — CLOSED / CP3-C2-B2-B REMEDIATED — AWAITING GPT INDEPENDENT RE-REVIEW / CP3-C2-B2-C·B2-D NOT STARTED / CP3-C2-C NOT STARTED / CP3-D NOT STARTED`
+- 현재 Phase: `Phase 2 — CP3-C2-B2-A PASS — CLOSED; CP3-C2-B implementation IN PROGRESS; CP3-C2-B2-B REMEDIATED — AWAITING GPT INDEPENDENT RE-REVIEW`
 - 현재 버전: `0.1.0`
 - Phase 1 최종 검증 commit: `57b2a63ead06d03191d8094e1689b8d2ab3d7764`
 - Phase 1 PR: `#1`
 - Phase 1 merge commit: `b1829a7375704271a21267e1fcf62808147be593`
 - Release baseline tag: `v0.1.0`
-- 최종 QA일: `2026-08-27 (CP3-C2-B2-B implementation local full regression)`
+- 최종 QA일: `2026-08-27 (CP3-C2-B2-B independent-review remediation local full regression)`
 - 실제 API 연결: `CP2-D2 one-shot PASS — OAuth + GET /api/v1/stocks만 검증`
 - 실제 주문 기능: `비활성 / 비범위`
 - OpenAI API 사용: `아니오`
-- Phase 2 상태: `CP1 PASS / CP2 COMPLETE / CP3-A PASS — CONTRACT APPROVED AND CLOSED / CP3-B PASS — CLOSED / CP3-C1 PASS — CLOSED / CP3-C2-A PASS — CONTRACT APPROVED AND CLOSED / CP3-C2-B1 PASS — CONTRACT APPROVED AND CLOSED / CP3-C2-B IMPLEMENTATION IN PROGRESS / CP3-C2-B2-A PASS — CLOSED / CP3-C2-B2-B IMPLEMENTED — AWAITING GPT INDEPENDENT REVIEW / CP3-C2-B2-C·B2-D NOT STARTED / CP3-C2-C NOT STARTED / CP3-D NOT STARTED`
+- Phase 2 상태: `CP1 PASS / CP2 COMPLETE / CP3-A PASS — CONTRACT APPROVED AND CLOSED / CP3-B PASS — CLOSED / CP3-C1 PASS — CLOSED / CP3-C2-A PASS — CONTRACT APPROVED AND CLOSED / CP3-C2-B1 PASS — CONTRACT APPROVED AND CLOSED / CP3-C2-B IMPLEMENTATION IN PROGRESS / CP3-C2-B2-A PASS — CLOSED / CP3-C2-B2-B REMEDIATED — AWAITING GPT INDEPENDENT RE-REVIEW / CP3-C2-B2-C·B2-D NOT STARTED / CP3-C2-C NOT STARTED / CP3-D NOT STARTED`
 - CP3-B: `PASS — CLOSED`
 - CP3-C1: `PASS — CLOSED`
 - CP3-C2-A: `PASS — CONTRACT APPROVED AND CLOSED`
@@ -20,7 +20,7 @@
 - CP3-C2-B1: `PASS — CONTRACT APPROVED AND CLOSED`
 - CP3-C2-B implementation: `IN PROGRESS`
 - CP3-C2-B2-A: `PASS — CLOSED`
-- CP3-C2-B2-B: `IMPLEMENTED — AWAITING GPT INDEPENDENT REVIEW`
+- CP3-C2-B2-B: `REMEDIATED — AWAITING GPT INDEPENDENT RE-REVIEW`
 - CP3-C2-B2-C: `NOT STARTED`
 - CP3-C2-B2-D: `NOT STARTED`
 - CP3-C2-C: `NOT STARTED`
@@ -133,7 +133,14 @@
 - [x] B2-B KR OpenDART/IROS 및 US SEC/exact-state-registry issuer bridge와 conservative freshness/current-head 평가
 - [x] B2-B non-winner global collision scan, `BEGIN IMMEDIATE` transaction revalidation과 engine-only READY persistence
 - [x] B2-B targeted 46, B2-A authority 69, backend exact inventory/full run 659
-- [ ] CP3-C2-B2-B GPT independent review
+- [x] CP3-C2-B2-B GPT independent review: `CHANGES REQUIRED`, P0 0 / P1 5 / P2 1
+- [x] P1-01 generic production admission fail-closed와 tests-only pre-admitted snapshot 분리
+- [x] P1-02 caller evaluation time 제거와 engine-injected aware UTC server clock
+- [x] P1-03 omitted current authority/provider state discovery와 co-current conflict fail-closed
+- [x] P1-04 exact same deterministic canonical issuer non-collision / inconsistent subject conflict
+- [x] P1-05 duplicate corp_code/CIK collision transaction의 impacted READY leaf 즉시 invalidation
+- [x] B2-B remediation targeted 63, B2-A authority 69, backend exact inventory/full run 676
+- [ ] CP3-C2-B2-B GPT independent re-review
 - [ ] CP3-C2-B2-C 별도 시작 승인
 - [ ] CP3-C2-B2-D 별도 시작 승인
 - [ ] CP3-C2-C 별도 시작 승인
@@ -161,7 +168,7 @@ CP3-C2-A는 2026-08-26 현재 OpenDART·KRX·대한민국 인터넷등기소·SE
 
 CP3-C2-B1은 accepted ADR-013을 변경하지 않고 issuer-authority runtime contract와 additive schema를 설계한다. 첫 GPT independent review는 P0 0 / P1 4 / P2 1로 authenticated-human trust root, exact legal-jurisdiction field owner, ADR-013 provenance minimum과 production source-admission/acceptance isolation의 보완을 요구했다. Revised contract는 exact `localhost` RP/origin의 Windows Hello-backed WebAuthn, fresh five-minute one-time decision/bundle/hash/disposition-bound assertion, KR Supreme Court/Internet Registry와 relevant US formation-state registry의 decisive jurisdiction authority, immutable `AuthorityEvidenceApplication`, exact raw claim/source locator/document reference, immutable `AuthoritySourcePolicy`와 permanent fixture/test taint를 추가했다. Bundle은 bare evidence가 아니라 exact candidate application을 참조하고, expanded matrix는 scenario별 Issuer/Security/VERIFIED/rekey count와 human disposition 가능 여부를 고정한다. issuer-only link는 `security_resolution_state=UNRESOLVED`를 강제하고 기존 `MappingStatus`를 확장하지 않는다. GPT independent re-review는 SHA `f3a7a3c4cc99de9cd9656544c1b29e3d03df6911`에 `PASS WITH CLOSEOUT CONDITION`, P0 0 / P1 0을 판정해 P1-01~P1-04를 모두 `CLOSED` 처리했다. P2-01 GitHub CI execution evidence 부재는 non-blocking이며 local safety-gate 결과는 GitHub CI evidence가 아니다. 사용자는 revised contract와 ADR-014를 documentation closeout 범위로 명시적으로 승인했다. 따라서 ADR-014는 `ACCEPTED`, CP3-C2-B1은 `PASS — CONTRACT APPROVED AND CLOSED`다. B1 closeout 당시 `0005_phase_02_cp3_c2_b_issuer_authority`는 proposal뿐이고 파일 생성·적용 0, 기존 `0001`~`0004`는 byte-identical이었으며 CP3-C2-B implementation도 별도 시작 승인 전이었다.
 
-별도 사용자 승인으로 CP3-C2-B implementation에 진입했고 B2-A foundation은 독립 재검토와 closeout 뒤 `PASS — CLOSED`다. B2-A는 canonical UTF-8/NFC JSON과 SHA-256 기반 versioned authority ledger, permanent fixture/test taint, exact candidate/application membership, non-winner identifier collision 보존, additive 21-table `0005`와 append-only storage를 제공한다. 별도 B2-B 시작 승인에 따라 immutable server-owned exact source registry, caller-escalation 없는 source admission, KR OpenDART corp-code/overview ↔ verified IROS exact `jurir_no` ↔ CP3-C1 symbol bridge, US accepted SEC registrant/filer metadata ↔ individually admitted Delaware domestic-formation registry ↔ CP3-C1 non-name bridge를 구현했다. Historical authority fact age와 repository latest-status freshness를 분리하고, stored correction/revocation relation graph의 actual current head, identifier/application/canonical/provider collision을 order-independent하게 재계산한다. `BEGIN IMMEDIATE` transaction 안에서 provider state, relation head, source policy와 collision을 다시 확인한 engine-owned 경로만 `READY_FOR_MANUAL_REVIEW`를 저장하며 generic repository READY는 계속 `REVIEW_READY_ENGINE_NOT_IMPLEMENTED`로 거부된다. Machine output은 `UNRESOLVED`, `READY_FOR_MANUAL_REVIEW`, `STALE`, `REVIEW_REQUIRED`뿐이다. B2-B local self-QA는 targeted `46`, B2-A authority `69`, backend `659`, frontend `43`, E2E `2`를 통과했으며 external authority/provider request와 credential use는 0이다. B2-B는 `IMPLEMENTED — AWAITING GPT INDEPENDENT REVIEW`; B2-C/B2-D와 CP3-C2-C/CP3-D는 `NOT STARTED`, automatic progression은 `PROHIBITED`다.
+별도 사용자 승인으로 CP3-C2-B implementation에 진입했고 B2-A foundation은 독립 재검토와 closeout 뒤 `PASS — CLOSED`다. B2-A는 canonical UTF-8/NFC JSON과 SHA-256 기반 versioned authority ledger, permanent fixture/test taint, exact candidate/application membership, non-winner identifier collision 보존, additive 21-table `0005`와 append-only storage를 제공한다. 별도 B2-B 시작 승인에 따라 immutable server-owned exact source registry, KR OpenDART corp-code/overview ↔ verified IROS exact `jurir_no` ↔ CP3-C1 symbol bridge, US accepted SEC registrant/filer metadata ↔ individually admitted Delaware domestic-formation registry ↔ CP3-C1 non-name bridge를 구현했다. 첫 independent review는 P0 0 / P1 5 / P2 1을 판정했다. Remediation은 generic repository에서 신규 production policy/evidence/observation/relation admission을 typed fail-closed하고, runtime에 존재하지 않는 향후 trusted ingestion과 tests-only pre-admitted snapshot을 분리했다. Freshness time은 transaction 진입 뒤 engine-owned aware UTC clock에서 얻는다. Caller evidence/observation membership은 seed일 뿐이며 engine은 relevant current authority/provider state 전체와 correction/revocation head를 찾아 co-current conflict를 차단한다. Exact deterministic canonical issuer는 동일 subject로 취급하되 inconsistent/different issuer는 conflict이며, duplicate corp_code/CIK collision transaction은 모든 affected READY leaf에 append-only `REVIEW_REQUIRED` successor를 즉시 추가한다. Generic READY는 계속 `REVIEW_READY_ENGINE_NOT_IMPLEMENTED`로 거부된다. Machine output은 `UNRESOLVED`, `READY_FOR_MANUAL_REVIEW`, `STALE`, `REVIEW_REQUIRED`뿐이다. Remediation local self-QA는 targeted `63`, B2-A authority `69`, backend `676`, frontend `43`, E2E `2`를 통과했으며 external authority/provider request와 credential use는 0이다. B2-B는 `REMEDIATED — AWAITING GPT INDEPENDENT RE-REVIEW`; B2-C/B2-D와 CP3-C2-C/CP3-D는 `NOT STARTED`, automatic progression은 `PROHIBITED`다.
 
 `[LIVE_VERIFIED]` 범위는 canonical provider contract, actual OAuth token issuance와 credential acceptance, allowed-IP 실행 경로, actual `GET /api/v1/stocks` 구조, 성공 응답의 Limit/Remaining/Reset header다. natural 429 `Retry-After`, actual 429/5xx, production retry timing, 나머지 Phase 2 market endpoint, CP3 이후 데이터 semantics/freshness는 계속 `[LIVE_UNVERIFIED]`다. Phase 2 전체 완료나 CP3 시작을 의미하지 않는다.
 
@@ -170,5 +177,5 @@ CP3-C2-B1은 accepted ADR-013을 변경하지 않고 issuer-authority runtime co
 - Node.js 지원 범위는 24.16 이상 25 미만이며 QA 기준은 24.19.0이다.
 - ADR-009는 아직 `PROPOSED`이며 독립 리뷰·승인 대상이다.
 - 모든 표시 데이터는 합성 fixture이고 실제 투자 판단 자료가 아니다.
-- Toss market connector는 CP2 범위에서 구현됐고 CP3-C1은 호출 없는 offline Security Master staging/reconciliation만 추가했다. CP3-C2-A와 B1은 approved authority/runtime-schema contract를 확정했고, B2-A는 immutable authority ledger와 additive `0005` foundation, B2-B는 already-stored evidence만 평가하는 offline source-admission/bridge/collision/freshness machine engine을 구현했다. Reviewer/WebAuthn/approval/link table은 존재하지만 WebAuthn runtime, approval route/execution, canonical Issuer/Security promotion, VERIFIED mapping, Current Price normalization/storage, scheduler와 화면 연결은 구현하지 않았다. CP3-C2-B2-A는 `PASS — CLOSED`, B2-B는 `IMPLEMENTED — AWAITING GPT INDEPENDENT REVIEW`, B2-C/B2-D와 CP3-C2-C/CP3-D는 `NOT STARTED`, automatic checkpoint progression은 `PROHIBITED`다. OpenDART/SEC/IROS/US state registry/news/macro live connector, 계좌와 주문도 구현하지 않았다.
+- Toss market connector는 CP2 범위에서 구현됐고 CP3-C1은 호출 없는 offline Security Master staging/reconciliation만 추가했다. CP3-C2-A와 B1은 approved authority/runtime-schema contract를 확정했고, B2-A는 immutable authority ledger와 additive `0005` foundation, B2-B는 trusted pre-admitted immutable evidence만 평가하는 offline bridge/collision/freshness machine engine을 구현했다. 신규 production evidence operational admission은 fail closed이며 live ingestion은 구현하지 않았다. Reviewer/WebAuthn/approval/link table은 존재하지만 WebAuthn runtime, approval route/execution, canonical Issuer/Security promotion, VERIFIED mapping, Current Price normalization/storage, scheduler와 화면 연결은 구현하지 않았다. CP3-C2-B2-A는 `PASS — CLOSED`, B2-B는 `REMEDIATED — AWAITING GPT INDEPENDENT RE-REVIEW`, B2-C/B2-D와 CP3-C2-C/CP3-D는 `NOT STARTED`, automatic checkpoint progression은 `PROHIBITED`다. OpenDART/SEC/IROS/US state registry/news/macro live connector, 계좌와 주문도 구현하지 않았다.
 - Windows 개발·QA 저장소는 현재 ASCII-only parent path를 사용한다. non-ASCII parent path의 setuptools editable build 실패는 `P2 DEFERRED / ENVIRONMENT CONSTRAINT`이며 CP2 business logic 결함으로 분류하지 않는다.

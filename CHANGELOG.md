@@ -2,6 +2,26 @@
 
 ## Unreleased — Phase 2 CP3-C2-B2-B Issuer Authority Decision Engine — 2026-08-27
 
+### Independent-review remediation
+
+- Reviewed SHA `d4f84c4bfb83f2396161eea913f2c119ecb17dac` received
+  `CHANGES REQUIRED`, P0 0 / P1 5 / P2 1. P2 remains the non-blocking absence
+  of GitHub CI execution evidence.
+- Generic repository admission of every new production policy, evidence fact,
+  retrieval observation, and correction/revocation relation now fails closed.
+  Offline evaluator tests use a tests-only white-box pre-admitted snapshot;
+  production code cannot import it and no operational trusted ingestion path is
+  claimed.
+- Freshness now uses an engine-owned aware UTC clock read inside the writer
+  transaction. Caller request timestamps cannot backdate or force READY.
+- The engine discovers all relevant current provider observations and KR/US
+  authority state instead of trusting caller-selected memberships. Omitted
+  co-current official conflicts and unsafe provider observations block READY.
+- Exact deterministic canonical issuer rows are recognized as the same subject;
+  different or inconsistent rows remain collisions. Duplicate corp-code/CIK
+  transactions append `REVIEW_REQUIRED` successors for every impacted READY
+  leaf before commit.
+
 ### Added
 
 - Added an immutable server-owned exact authority-source registry for OpenDART
@@ -25,16 +45,17 @@
 
 ### Verification and boundaries
 
-- Added 46 offline B2-B tests; retained 69/69 B2-A authority tests. Exact full
-  inventory is backend 659, frontend 43, E2E 2.
+- B2-B targeted coverage is now 63 offline tests (46 initial plus 17
+  remediation tests); retained 69/69 B2-A authority tests. Exact full inventory
+  is backend 676, frontend 43, E2E 2.
 - Migrations `0001`–`0005` are unchanged; `0006` creation and persistent/runtime
   application of `0005` are 0.
 - Automatic promotion, canonical Issuer/Security writes, VERIFIED mapping,
   provider rekey, human approval, WebAuthn operation, link-head mutation, live
   authority/provider requests, and credential use remain 0.
-- CP3-C2-B implementation remains `IN PROGRESS`; B2-B is `IMPLEMENTED —
-  AWAITING GPT INDEPENDENT REVIEW`. B2-C/B2-D, CP3-C2-C and CP3-D remain `NOT
-  STARTED`; automatic progression remains `PROHIBITED`.
+- CP3-C2-B implementation remains `IN PROGRESS`; B2-B is `REMEDIATED —
+  AWAITING GPT INDEPENDENT RE-REVIEW`. B2-C/B2-D, CP3-C2-C and CP3-D remain
+  `NOT STARTED`; automatic progression remains `PROHIBITED`.
 - All reported checks are LOCAL Codex evidence. GitHub CI evidence is absent
   unless independently produced after push; this entry does not declare GPT
   PASS.

@@ -16,7 +16,7 @@
   `NOT STARTED — REQUIRES SEPARATE USER START APPROVAL`
 - Current implementation status: `IN PROGRESS`
 - CP3-C2-B2-A: `PASS — CLOSED`
-- CP3-C2-B2-B: `IMPLEMENTED — AWAITING GPT INDEPENDENT REVIEW`
+- CP3-C2-B2-B: `REMEDIATED — AWAITING GPT INDEPENDENT RE-REVIEW`
 - CP3-C2-B2-C / B2-D: `NOT STARTED`
 - Migration implementation: additive `0005` implemented in B2-A; production
   database application `0`
@@ -1563,7 +1563,7 @@ contract or retroactively broaden the B1 closeout approval.
 - CP3-C2-B2-A: `PASS — CLOSED`
 - Additive `0005_phase_02_cp3_c2_b_issuer_authority`: implemented and exercised
   only against disposable QA databases; persistent production application `0`
-- CP3-C2-B2-B: `IMPLEMENTED — AWAITING GPT INDEPENDENT REVIEW`
+- CP3-C2-B2-B: `REMEDIATED — AWAITING GPT INDEPENDENT RE-REVIEW`
 - CP3-C2-B2-C: `NOT STARTED`
 - CP3-C2-B2-D: `NOT STARTED`
 - CP3-C2-C: `NOT STARTED`
@@ -1587,12 +1587,19 @@ does not authorize B2-B, B2-C, B2-D, CP3-C2-C, CP3-D, or automatic
 progression.
 
 The user separately authorized B2-B on `2026-08-27`. B2-B implements the
-server-owned exact KR/US source-policy registry, candidate-specific admission,
+server-owned exact KR/US source-policy registry, candidate-specific evaluation,
 exact non-name provider-to-issuer bridges, current correction/revocation-head
 evaluation, conservative latest-status freshness, non-winner collision scans,
 and controlled machine-only READY persistence over the approved B1/B2-A
-ledger. The generic repository READY path remains fail closed. B2-B does not
-alter this approved technical contract, migrations `0001`–`0005`, or any human
-approval/canonical/link semantics. Its status is `IMPLEMENTED — AWAITING GPT
-INDEPENDENT REVIEW`; B2-C/B2-D, CP3-C2-C, CP3-D and automatic progression
-remain unauthorized/not started.
+ledger. Independent-review remediation makes the generic repository reject all
+new production policy/evidence/observation/relation admission until a future
+trusted ingestion mechanism exists; a tests-only white-box helper seeds an
+already admitted snapshot solely for offline algorithm tests. The engine owns
+its evaluation clock, discovers all relevant current stored facts, distinguishes
+the exact same canonical subject from a collision, and invalidates all impacted
+READY leaves transactionally when a duplicate identifier is detected. The
+generic repository READY path remains fail closed. B2-B does not alter this
+approved technical contract, migrations `0001`–`0005`, or any human approval/
+canonical/link semantics. Its status is `REMEDIATED — AWAITING GPT INDEPENDENT
+RE-REVIEW`; B2-C/B2-D, CP3-C2-C, CP3-D and automatic progression remain
+unauthorized/not started.

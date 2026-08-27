@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 from threading import Event, Thread
 from typing import Any
 
@@ -10,6 +11,7 @@ from pydantic import ValidationError
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, sessionmaker
 
+from authority_preadmitted_ledger import seed_preadmitted_authority_snapshot
 from authority_test_helpers import fixture_source_policy
 from toss_dashboard_api.authority_source_registry import (
     KR_IROS_COMPLETE_POLICY,
@@ -47,22 +49,27 @@ from toss_dashboard_api.contracts.authority import (
     build_authority_identifier_claim,
     build_authority_source_policy,
     build_issuer_decision,
+    proposed_issuer_anchor,
+    proposed_issuer_id,
 )
 from toss_dashboard_api.contracts.authority_decision import (
     AuthorityBridgeStatus,
     IssuerAuthorityEvaluationRequest,
     build_issuer_authority_evaluation_request,
 )
+from toss_dashboard_api.contracts.base import normalized_hash
 from toss_dashboard_api.contracts.enums import (
     Jurisdiction,
     MappingStatus,
     Market,
+    MissingReason,
     ProviderIdentityState,
     ProviderReconciliationOutcome,
     ProviderSecurityMasterState,
     ProviderSecurityType,
     ProviderSystem,
 )
+from toss_dashboard_api.contracts.issuer import Issuer
 from toss_dashboard_api.contracts.provider_identity import (
     PROVIDER_IDENTITY_CONTRACT_VERSION,
     ProviderSecurityIdentity,
@@ -76,6 +83,7 @@ from toss_dashboard_api.domain.issuer_authority import (
 )
 from toss_dashboard_api.repositories.authority import (
     AuthorityLedgerConflict,
+    AuthorityProductionAdmissionUnavailable,
     AuthorityReviewReadyEngineNotImplemented,
     SQLiteAuthorityLedgerRepository,
 )
@@ -109,11 +117,20 @@ US_STATE_ENTITY_NUMBER = "1234567"
 US_SYMBOL = "MSFT"
 
 
+@dataclass
+class _TestClock:
+    value: datetime
+
+    def __call__(self) -> datetime:
+        return self.value
+
+
 @dataclass(frozen=True)
 class _Harness:
     sessions: sessionmaker[Session]
     repository: SQLiteAuthorityLedgerRepository
     engine: IssuerAuthorityDecisionEngine
+    clock: _TestClock
     provider_id: str
     provider_observation_id: str
     evidence: dict[str, AuthorityEvidence]
@@ -302,31 +319,39 @@ def _persist_evidence(
     fetched_at: datetime,
     retrieval_status: AuthorityRetrievalStatus = AuthorityRetrievalStatus.SUCCEEDED,
 ) -> None:
-    repository.insert_or_verify_evidence(evidence)
-    repository.insert_or_verify_evidence_observation(
-        build_authority_evidence_observation(
-            evidence_id=evidence.evidence_id,
-            fetched_at=fetched_at,
-            raw_content_hash=evidence.raw_content_hash,
-            authority_source_locator=evidence.authority_source_locator,
-            authority_document_reference=evidence.authority_document_reference,
-            retrieval_status=retrieval_status,
-            secret_free_retrieval_fingerprint=authority_sha256(
-                {"safe_retrieval": evidence.evidence_id, "at": fetched_at}
-            ),
-            safe_status_code=(
-                "OK" if retrieval_status == AuthorityRetrievalStatus.SUCCEEDED else "UNAVAILABLE"
-            ),
-        )
+    observation = build_authority_evidence_observation(
+        evidence_id=evidence.evidence_id,
+        fetched_at=fetched_at,
+        raw_content_hash=evidence.raw_content_hash,
+        authority_source_locator=evidence.authority_source_locator,
+        authority_document_reference=evidence.authority_document_reference,
+        retrieval_status=retrieval_status,
+        secret_free_retrieval_fingerprint=authority_sha256(
+            {"safe_retrieval": evidence.evidence_id, "at": fetched_at}
+        ),
+        safe_status_code=(
+            "OK" if retrieval_status == AuthorityRetrievalStatus.SUCCEEDED else "UNAVAILABLE"
+        ),
+    )
+    seed_preadmitted_authority_snapshot(
+        repository._sessions,
+        evidence=(evidence,),
+        observations=(observation,),
     )
 
 
 def _repository_and_engine(
     database_context,
-) -> tuple[sessionmaker[Session], SQLiteAuthorityLedgerRepository, IssuerAuthorityDecisionEngine]:
+) -> tuple[
+    sessionmaker[Session],
+    SQLiteAuthorityLedgerRepository,
+    IssuerAuthorityDecisionEngine,
+    _TestClock,
+]:
     sessions = session_factory(database_context.engine)
     repository = SQLiteAuthorityLedgerRepository(sessions)
-    return sessions, repository, IssuerAuthorityDecisionEngine(sessions)
+    clock = _TestClock(EVALUATED_AT)
+    return sessions, repository, IssuerAuthorityDecisionEngine(sessions, clock=clock), clock
 
 
 def _kr_harness(
@@ -344,7 +369,7 @@ def _kr_harness(
     overview_mode: str = "EXACT",
     corp_code: str = KR_CORP_CODE,
 ) -> _Harness:
-    sessions, repository, engine = _repository_and_engine(database_context)
+    sessions, repository, engine, clock = _repository_and_engine(database_context)
     provider_id, observation_id = _seed_exact_provider(
         sessions,
         label=label,
@@ -357,7 +382,7 @@ def _kr_harness(
         OPENDART_COMPANY_OVERVIEW_POLICY,
         KR_IROS_COMPLETE_POLICY,
     ):
-        repository.insert_or_verify_source_policy(policy)
+        seed_preadmitted_authority_snapshot(sessions, policies=(policy,))
     evidence: dict[str, AuthorityEvidence] = {}
     evidence["corp"] = _evidence(
         policy=OPENDART_CORP_CODE_POLICY,
@@ -453,6 +478,7 @@ def _kr_harness(
         sessions=sessions,
         repository=repository,
         engine=engine,
+        clock=clock,
         provider_id=provider_id,
         provider_observation_id=observation_id,
         evidence=evidence,
@@ -474,7 +500,7 @@ def _us_harness(
     sec_bridge_mode: str = "EXACT",
     cik: str = US_CIK,
 ) -> _Harness:
-    sessions, repository, engine = _repository_and_engine(database_context)
+    sessions, repository, engine, clock = _repository_and_engine(database_context)
     provider_id, observation_id = _seed_exact_provider(
         sessions,
         label=label,
@@ -483,7 +509,7 @@ def _us_harness(
         name="U.S. authority subject",
     )
     for policy in (SEC_ACCEPTED_FILING_POLICY, US_STATE_REGISTRY_DE_POLICY):
-        repository.insert_or_verify_source_policy(policy)
+        seed_preadmitted_authority_snapshot(sessions, policies=(policy,))
     evidence: dict[str, AuthorityEvidence] = {}
     filing_group = f"sec-filing-{US_ACCESSION}"
     evidence["cik"] = _evidence(
@@ -591,6 +617,7 @@ def _us_harness(
         sessions=sessions,
         repository=repository,
         engine=engine,
+        clock=clock,
         provider_id=provider_id,
         provider_observation_id=observation_id,
         evidence=evidence,
@@ -603,7 +630,6 @@ def _request(
     jurisdiction: Jurisdiction,
     identifier_kind: AuthorityIdentifierKind,
     identifier_value: str,
-    evaluated_at: datetime = EVALUATED_AT,
     evidence_ids: tuple[str, ...] | None = None,
 ):
     return build_issuer_authority_evaluation_request(
@@ -617,7 +643,6 @@ def _request(
             if evidence_ids is None
             else evidence_ids
         ),
-        evaluated_at=evaluated_at,
     )
 
 
@@ -663,6 +688,53 @@ def _zero_snapshot(sessions: sessionmaker[Session]) -> dict[str, Any]:
                 ).all()
             ),
         }
+
+
+def _canonical_issuer(
+    *,
+    jurisdiction: Jurisdiction,
+    identifier_value: str,
+) -> Issuer:
+    identifier_kind = (
+        AuthorityIdentifierKind.DART_CORP_CODE
+        if jurisdiction == Jurisdiction.KR
+        else AuthorityIdentifierKind.SEC_REGISTRANT_CIK
+    )
+    values: dict[str, Any] = {
+        "contract_version": "0.1.0",
+        "missing_reasons": (
+            {"cik": MissingReason.NOT_APPLICABLE}
+            if jurisdiction == Jurisdiction.KR
+            else {"corp_code": MissingReason.NOT_APPLICABLE}
+        ),
+        "issuer_id": proposed_issuer_id(
+            proposed_issuer_anchor(jurisdiction, identifier_kind, identifier_value)
+        ),
+        "legal_name": "Exact canonical authority subject",
+        "display_name": "Exact canonical authority subject",
+        "jurisdiction": jurisdiction,
+        "corp_code": identifier_value if jurisdiction == Jurisdiction.KR else None,
+        "cik": identifier_value if jurisdiction == Jurisdiction.US else None,
+    }
+    values["normalized_content_hash"] = normalized_hash(values)
+    return Issuer.model_validate(values)
+
+
+def _insert_canonical_issuer(
+    sessions: sessionmaker[Session],
+    issuer: Issuer,
+) -> None:
+    with sessions.begin() as session:
+        session.add(
+            IssuerRow(
+                issuer_id=issuer.issuer_id,
+                jurisdiction=issuer.jurisdiction.value,
+                corp_code=issuer.corp_code,
+                cik=issuer.cik,
+                normalized_content_hash=issuer.normalized_content_hash,
+                payload_json=issuer.model_dump_json(),
+            )
+        )
 
 
 def test_server_owned_registry_is_exact_and_has_no_wildcard_namespace() -> None:
@@ -840,6 +912,45 @@ def test_unavailable_required_current_check_is_stale(database_context) -> None:
     assert result.decision.freshness_result == AuthorityFreshnessResult.UNAVAILABLE
 
 
+@pytest.mark.parametrize(
+    "caller_time",
+    [EVALUATED_AT - timedelta(days=30), EVALUATED_AT + timedelta(days=30)],
+)
+def test_caller_time_cannot_backdate_or_force_freshness(
+    database_context,
+    caller_time: datetime,
+) -> None:
+    harness = _kr_harness(database_context, current_fetched_at=STALE_FETCHED_AT)
+    request_values = _kr_request(harness).model_dump(mode="python")
+
+    with pytest.raises(ValidationError):
+        IssuerAuthorityEvaluationRequest.model_validate(
+            {**request_values, "evaluated_at": caller_time}
+        )
+
+    result = harness.engine.evaluate(_kr_request(harness))
+
+    assert result.decision.decision_state == IssuerMachineDecisionState.STALE
+    assert result.decision.freshness_result == AuthorityFreshnessResult.STALE
+    assert result.decision.evaluated_at == EVALUATED_AT
+
+
+def test_server_clock_is_injected_once_and_never_becomes_authority_effective_time(
+    database_context,
+) -> None:
+    harness = _kr_harness(database_context)
+    evidence_before = harness.repository.evidence(harness.evidence["overview"].evidence_id)
+    harness.clock.value = EVALUATED_AT + timedelta(minutes=7)
+
+    result = harness.engine.evaluate(_kr_request(harness))
+    evidence_after = harness.repository.evidence(harness.evidence["overview"].evidence_id)
+
+    assert result.decision.evaluated_at == EVALUATED_AT + timedelta(minutes=7)
+    assert evidence_after == evidence_before
+    assert evidence_after.authority_effective_at is None
+    assert evidence_after.authority_effective_date is None
+
+
 def test_format_valid_unproven_identifiers_and_known_synthetic_values_fail_closed(
     database_context,
 ) -> None:
@@ -853,10 +964,87 @@ def test_format_valid_unproven_identifiers_and_known_synthetic_values_fail_close
         harness.engine.evaluate(_kr_request(harness, identifier_value="90000001", evidence_ids=()))
 
 
+def test_normal_repository_cannot_select_or_create_production_admission(
+    database_context,
+) -> None:
+    sessions = session_factory(database_context.engine)
+    repository = SQLiteAuthorityLedgerRepository(sessions)
+
+    with pytest.raises(TypeError):
+        SQLiteAuthorityLedgerRepository(sessions, mode="PRODUCTION_AUTHORITY")  # type: ignore[call-arg]
+    with pytest.raises(
+        AuthorityProductionAdmissionUnavailable,
+        match="PRODUCTION_AUTHORITY_ADMISSION_UNAVAILABLE",
+    ):
+        repository.insert_or_verify_source_policy(OPENDART_CORP_CODE_POLICY)
+
+    seed_preadmitted_authority_snapshot(
+        sessions,
+        policies=(OPENDART_CORP_CODE_POLICY,),
+    )
+    locally_constructed = _evidence(
+        policy=OPENDART_CORP_CODE_POLICY,
+        document_kind="CORP_CODE_XML_V1",
+        document_reference=f"corp-code:{KR_CORP_CODE}",
+        document_group="caller-constructed-production-fact",
+        scope=AuthorityScope.ISSUER_REGULATORY_ID,
+        role=AuthoritySubjectRole.DART_DISCLOSURE_FILER,
+        claim_field="corp_list.corp.corp_code",
+        value=KR_CORP_CODE,
+    )
+    with pytest.raises(
+        AuthorityProductionAdmissionUnavailable,
+        match="PRODUCTION_AUTHORITY_ADMISSION_UNAVAILABLE",
+    ):
+        repository.insert_or_verify_evidence(locally_constructed)
+    seed_preadmitted_authority_snapshot(sessions, evidence=(locally_constructed,))
+    observation = build_authority_evidence_observation(
+        evidence_id=locally_constructed.evidence_id,
+        fetched_at=CURRENT_FETCHED_AT,
+        raw_content_hash=locally_constructed.raw_content_hash,
+        authority_source_locator=locally_constructed.authority_source_locator,
+        authority_document_reference=locally_constructed.authority_document_reference,
+        retrieval_status=AuthorityRetrievalStatus.SUCCEEDED,
+        secret_free_retrieval_fingerprint=authority_sha256({"caller_observation": True}),
+        safe_status_code="OK",
+    )
+    with pytest.raises(AuthorityProductionAdmissionUnavailable):
+        repository.insert_or_verify_evidence_observation(observation)
+
+    corrected = _evidence(
+        policy=OPENDART_CORP_CODE_POLICY,
+        document_kind="CORP_CODE_XML_V1",
+        document_reference=f"corp-code:{KR_CORP_CODE}:corrected",
+        document_group="caller-constructed-correction",
+        scope=AuthorityScope.ISSUER_REGULATORY_ID,
+        role=AuthoritySubjectRole.DART_DISCLOSURE_FILER,
+        claim_field="corp_list.corp.corp_code",
+        value=KR_CORP_CODE,
+        evidence_kind=AuthorityEvidenceKind.CORRECTION,
+    )
+    seed_preadmitted_authority_snapshot(sessions, evidence=(corrected,))
+    relation = build_authority_evidence_relation(
+        predecessor_evidence_id=locally_constructed.evidence_id,
+        successor_evidence_id=corrected.evidence_id,
+        relation_type=AuthorityEvidenceRelationType.CORRECTS,
+        recorded_at=EVALUATED_AT,
+        authority_effective_missing_reason=(AuthorityTimeMissingReason.NOT_SUPPLIED_BY_AUTHORITY),
+    )
+    with pytest.raises(AuthorityProductionAdmissionUnavailable):
+        repository.insert_or_verify_evidence_relation(relation)
+
+    production_root = Path("services/api/src")
+    assert all(
+        "authority_preadmitted_ledger" not in path.read_text(encoding="utf-8")
+        for path in production_root.rglob("*.py")
+    )
+
+
 def test_fixture_and_relabelled_fixture_lineage_cannot_enter_ready(database_context) -> None:
     harness = _kr_harness(database_context)
     policy = fixture_source_policy()
     harness.repository.insert_or_verify_source_policy(policy)
+    fixture_only_code = "00126381"
     tainted = build_authority_evidence(
         authority_source_policy_id=policy.authority_source_policy_id,
         authority_source_identifier=policy.source_namespace,
@@ -872,8 +1060,8 @@ def test_fixture_and_relabelled_fixture_lineage_cannot_enter_ready(database_cont
         subject_role=AuthoritySubjectRole.DART_DISCLOSURE_FILER,
         policy_maximum_issuer_authority_weight=AuthorityWeight.ZERO,
         claim_field="corp_list.corp.corp_code",
-        raw_claim_value=KR_CORP_CODE,
-        normalized_claim_value=KR_CORP_CODE,
+        raw_claim_value=fixture_only_code,
+        normalized_claim_value=fixture_only_code,
         authority_published_at=None,
         authority_accepted_at=None,
         authority_as_of_date=None,
@@ -890,7 +1078,13 @@ def test_fixture_and_relabelled_fixture_lineage_cannot_enter_ready(database_cont
         lineage_ancestor_hashes=(authority_sha256({"fixture_ancestor": 1}),),
     )
     _persist_evidence(harness.repository, tainted, fetched_at=CURRENT_FETCHED_AT)
-    result = harness.engine.evaluate(_kr_request(harness, evidence_ids=(tainted.evidence_id,)))
+    result = harness.engine.evaluate(
+        _kr_request(
+            harness,
+            identifier_value=fixture_only_code,
+            evidence_ids=(tainted.evidence_id,),
+        )
+    )
 
     assert result.decision.decision_state == IssuerMachineDecisionState.UNRESOLVED
     assert not result.bundle.evidence_application_members
@@ -898,7 +1092,10 @@ def test_fixture_and_relabelled_fixture_lineage_cannot_enter_ready(database_cont
 
 def test_login_and_filing_agent_cik_remain_zero_weight_provenance(database_context) -> None:
     harness = _us_harness(database_context)
-    harness.repository.insert_or_verify_source_policy(SEC_LOGIN_PROVENANCE_POLICY)
+    seed_preadmitted_authority_snapshot(
+        harness.sessions,
+        policies=(SEC_LOGIN_PROVENANCE_POLICY,),
+    )
     provenance = _evidence(
         policy=SEC_LOGIN_PROVENANCE_POLICY,
         document_kind="SEC_SUBMISSION_PROVENANCE_JSON_V1",
@@ -943,6 +1140,7 @@ def test_request_rejects_force_override_and_caller_authority_fields(database_con
         ("authority_weight", "DECISIVE"),
         ("bridge_ok", True),
         ("is_ready", True),
+        ("evaluated_at", EVALUATED_AT - timedelta(days=30)),
     ):
         with pytest.raises(ValidationError):
             IssuerAuthorityEvaluationRequest.model_validate({**values, field: value})
@@ -956,13 +1154,8 @@ def test_input_order_and_evaluation_clock_do_not_change_semantic_identity(
     first = harness.engine.evaluate(
         _kr_request(harness, evidence_ids=tuple(reversed(evidence_ids)))
     )
-    replay = harness.engine.evaluate(
-        _kr_request(
-            harness,
-            evidence_ids=evidence_ids,
-            evaluated_at=EVALUATED_AT + timedelta(minutes=1),
-        )
-    )
+    harness.clock.value = EVALUATED_AT + timedelta(minutes=1)
+    replay = harness.engine.evaluate(_kr_request(harness, evidence_ids=evidence_ids))
 
     assert first.bundle.authority_bundle_id == replay.bundle.authority_bundle_id
     assert first.decision.issuer_decision_id == replay.decision.issuer_decision_id
@@ -996,6 +1189,146 @@ def test_all_global_write_counters_remain_zero(database_context) -> None:
     harness.engine.evaluate(_kr_request(harness))
 
     assert _zero_snapshot(harness.sessions) == before
+
+
+@pytest.mark.parametrize("reverse_seed_order", [False, True])
+def test_kr_co_current_overview_conflict_is_discovered_when_omitted_from_request(
+    database_context,
+    reverse_seed_order: bool,
+) -> None:
+    harness = _kr_harness(database_context)
+    contradictory = _evidence(
+        policy=OPENDART_COMPANY_OVERVIEW_POLICY,
+        document_kind="COMPANY_OVERVIEW_JSON_V1",
+        document_reference=f"company-overview:{KR_CORP_CODE}",
+        document_group="company-overview-conflicting-jurir",
+        scope=AuthorityScope.LEGAL_ENTITY_BRIDGE,
+        role=AuthoritySubjectRole.DART_DISCLOSURE_FILER,
+        claim_field="company.identity_bridge",
+        value={
+            "corp_code": KR_CORP_CODE,
+            "jurir_no": "1101119999999",
+            "stock_code": KR_SYMBOL,
+        },
+    )
+    _persist_evidence(harness.repository, contradictory, fetched_at=CURRENT_FETCHED_AT)
+    seed_ids = tuple(item.evidence_id for item in harness.evidence.values())
+    if reverse_seed_order:
+        seed_ids = tuple(reversed(seed_ids))
+
+    result = harness.engine.evaluate(_kr_request(harness, evidence_ids=seed_ids))
+
+    assert contradictory.evidence_id not in seed_ids
+    assert result.decision.decision_state == IssuerMachineDecisionState.UNRESOLVED
+    assert "KR_CO_CURRENT_AUTHORITY_CONFLICT" in result.decision.reason_codes
+
+
+def test_kr_co_current_iros_disagreement_blocks_matching_path(database_context) -> None:
+    harness = _kr_harness(database_context)
+    reference = f"iros-verified-original:{KR_JURIR_NO}:conflicting-status"
+    contradictory = _evidence(
+        policy=KR_IROS_COMPLETE_POLICY,
+        document_kind="VERIFIED_CORPORATE_REGISTRY_EXTRACT_V1",
+        document_reference=reference,
+        document_group="iros-conflicting-current-status",
+        scope=AuthorityScope.LEGAL_JURISDICTION,
+        role=AuthoritySubjectRole.KOREAN_REGISTERED_LEGAL_ENTITY,
+        claim_field="registry.legal_entity_status",
+        value={
+            "corporate_registration_reference": KR_JURIR_NO,
+            "entity_kind": "FOREIGN_COMPANY_BRANCH",
+            "jurisdiction": "KR",
+            "verification_reference": reference,
+        },
+    )
+    _persist_evidence(harness.repository, contradictory, fetched_at=CURRENT_FETCHED_AT)
+
+    result = harness.engine.evaluate(_kr_request(harness))
+
+    assert contradictory.evidence_id not in _kr_request(harness).evidence_ids
+    assert result.decision.decision_state == IssuerMachineDecisionState.UNRESOLVED
+    assert "KR_CO_CURRENT_AUTHORITY_CONFLICT" in result.decision.reason_codes
+
+
+def test_us_co_current_sec_bridge_conflict_blocks_one_matching_state_record(
+    database_context,
+) -> None:
+    harness = _us_harness(database_context)
+    contradictory = _evidence(
+        policy=SEC_ACCEPTED_FILING_POLICY,
+        document_kind="SEC_ACCEPTED_ISSUER_FILING_JSON_V1",
+        document_reference=US_ACCESSION,
+        document_group="sec-conflicting-current-bridge",
+        scope=AuthorityScope.LEGAL_ENTITY_BRIDGE,
+        role=AuthoritySubjectRole.SEC_REGISTRANT,
+        claim_field="filing.legal_entity_bridge",
+        value={
+            "accepted_accession": US_ACCESSION,
+            "formation_state": "CA",
+            "provider_symbol": US_SYMBOL,
+            "registrant_cik": US_CIK,
+            "state_entity_number": "7654321",
+        },
+    )
+    _persist_evidence(harness.repository, contradictory, fetched_at=HISTORICAL_FETCHED_AT)
+
+    result = harness.engine.evaluate(_us_request(harness))
+
+    assert result.decision.decision_state == IssuerMachineDecisionState.UNRESOLVED
+    assert "US_CO_CURRENT_AUTHORITY_CONFLICT" in result.decision.reason_codes
+
+
+def test_us_conflicting_latest_status_facts_block_ready(database_context) -> None:
+    harness = _us_harness(database_context)
+    accession = "0000789019-26-000003"
+    contradictory = _evidence(
+        policy=SEC_ACCEPTED_FILING_POLICY,
+        document_kind="SEC_REGISTRANT_LATEST_STATUS_JSON_V1",
+        document_reference=accession,
+        document_group="sec-conflicting-latest-status",
+        scope=AuthorityScope.REGISTRANT_ROLE,
+        role=AuthoritySubjectRole.SEC_REGISTRANT,
+        claim_field="registrant.latest_filing_status",
+        value={
+            "latest_accession": accession,
+            "registrant_cik": US_CIK,
+            "status": "CURRENT",
+        },
+    )
+    _persist_evidence(harness.repository, contradictory, fetched_at=CURRENT_FETCHED_AT)
+
+    result = harness.engine.evaluate(_us_request(harness))
+
+    assert result.decision.decision_state == IssuerMachineDecisionState.UNRESOLVED
+    assert "US_CO_CURRENT_AUTHORITY_CONFLICT" in result.decision.reason_codes
+
+
+def test_us_conflicting_current_state_registry_fact_blocks_ready(database_context) -> None:
+    harness = _us_harness(database_context)
+    reference = f"de-verified-entity:{US_STATE_ENTITY_NUMBER}:foreign-qualification"
+    contradictory = _evidence(
+        policy=US_STATE_REGISTRY_DE_POLICY,
+        document_kind="VERIFIED_DOMESTIC_ENTITY_RECORD_V1",
+        document_reference=reference,
+        document_group="de-conflicting-current-record",
+        scope=AuthorityScope.LEGAL_JURISDICTION,
+        role=AuthoritySubjectRole.US_STATE_REGISTERED_LEGAL_ENTITY,
+        claim_field="registry.legal_entity_status",
+        value={
+            "formation_state": "DE",
+            "jurisdiction": "US",
+            "record_kind": "FOREIGN_QUALIFICATION",
+            "state_entity_number": US_STATE_ENTITY_NUMBER,
+            "status": "ACTIVE",
+            "verification_reference": reference,
+        },
+    )
+    _persist_evidence(harness.repository, contradictory, fetched_at=CURRENT_FETCHED_AT)
+
+    result = harness.engine.evaluate(_us_request(harness))
+
+    assert result.decision.decision_state == IssuerMachineDecisionState.UNRESOLVED
+    assert "US_CO_CURRENT_AUTHORITY_CONFLICT" in result.decision.reason_codes
 
 
 def _append_corrected_iros(
@@ -1033,21 +1366,25 @@ def _append_corrected_iros(
     )
     for item in (jurisdiction, bridge):
         _persist_evidence(harness.repository, item, fetched_at=CURRENT_FETCHED_AT)
-    for predecessor, successor in (
-        (harness.evidence["iros_jurisdiction"], jurisdiction),
-        (harness.evidence["iros_bridge"], bridge),
-    ):
-        harness.repository.insert_or_verify_evidence_relation(
-            build_authority_evidence_relation(
-                predecessor_evidence_id=predecessor.evidence_id,
-                successor_evidence_id=successor.evidence_id,
-                relation_type=AuthorityEvidenceRelationType.CORRECTS,
-                recorded_at=EVALUATED_AT,
-                authority_effective_missing_reason=(
-                    AuthorityTimeMissingReason.NOT_SUPPLIED_BY_AUTHORITY
-                ),
-            )
+    relations = tuple(
+        build_authority_evidence_relation(
+            predecessor_evidence_id=predecessor.evidence_id,
+            successor_evidence_id=successor.evidence_id,
+            relation_type=AuthorityEvidenceRelationType.CORRECTS,
+            recorded_at=EVALUATED_AT,
+            authority_effective_missing_reason=(
+                AuthorityTimeMissingReason.NOT_SUPPLIED_BY_AUTHORITY
+            ),
         )
+        for predecessor, successor in (
+            (harness.evidence["iros_jurisdiction"], jurisdiction),
+            (harness.evidence["iros_bridge"], bridge),
+        )
+    )
+    seed_preadmitted_authority_snapshot(
+        harness.sessions,
+        relations=relations,
+    )
     return jurisdiction, bridge
 
 
@@ -1058,9 +1395,8 @@ def test_correction_recomputes_relation_head_and_appends_new_bundle_decision_cha
     initial = harness.engine.evaluate(_kr_request(harness))
     corrected_jurisdiction, corrected_bridge = _append_corrected_iros(harness, suffix="v2")
 
-    invalidated = harness.engine.evaluate(
-        _kr_request(harness, evaluated_at=EVALUATED_AT + timedelta(minutes=1))
-    )
+    harness.clock.value = EVALUATED_AT + timedelta(minutes=1)
+    invalidated = harness.engine.evaluate(_kr_request(harness))
     corrected_ids = (
         *(
             item.evidence_id
@@ -1070,13 +1406,8 @@ def test_correction_recomputes_relation_head_and_appends_new_bundle_decision_cha
         corrected_jurisdiction.evidence_id,
         corrected_bridge.evidence_id,
     )
-    corrected = harness.engine.evaluate(
-        _kr_request(
-            harness,
-            evidence_ids=corrected_ids,
-            evaluated_at=EVALUATED_AT + timedelta(minutes=2),
-        )
-    )
+    harness.clock.value = EVALUATED_AT + timedelta(minutes=2)
+    corrected = harness.engine.evaluate(_kr_request(harness, evidence_ids=corrected_ids))
 
     assert initial.decision.decision_state == IssuerMachineDecisionState.READY_FOR_MANUAL_REVIEW
     assert invalidated.decision.decision_state == IssuerMachineDecisionState.REVIEW_REQUIRED
@@ -1089,12 +1420,12 @@ def test_correction_recomputes_relation_head_and_appends_new_bundle_decision_cha
                 corrected.bundle.authority_bundle_id,
             }
         )
-        == 3
+        == 2
     )
     assert invalidated.decision.supersedes_decision_id == initial.decision.issuer_decision_id
     assert corrected.decision.supersedes_decision_id == invalidated.decision.issuer_decision_id
     with harness.sessions() as session:
-        assert session.scalar(select(func.count()).select_from(AuthorityBundleRow)) == 3
+        assert session.scalar(select(func.count()).select_from(AuthorityBundleRow)) == 2
         assert session.scalar(select(func.count()).select_from(IssuerDecisionRow)) == 3
 
 
@@ -1120,21 +1451,17 @@ def test_later_revocation_preserves_history_and_appends_review_required(database
         evidence_kind=AuthorityEvidenceKind.REVOCATION,
     )
     _persist_evidence(harness.repository, revocation, fetched_at=CURRENT_FETCHED_AT)
-    harness.repository.insert_or_verify_evidence_relation(
-        build_authority_evidence_relation(
-            predecessor_evidence_id=old.evidence_id,
-            successor_evidence_id=revocation.evidence_id,
-            relation_type=AuthorityEvidenceRelationType.REVOKES,
-            recorded_at=EVALUATED_AT,
-            authority_effective_missing_reason=(
-                AuthorityTimeMissingReason.NOT_SUPPLIED_BY_AUTHORITY
-            ),
-        )
+    relation = build_authority_evidence_relation(
+        predecessor_evidence_id=old.evidence_id,
+        successor_evidence_id=revocation.evidence_id,
+        relation_type=AuthorityEvidenceRelationType.REVOKES,
+        recorded_at=EVALUATED_AT,
+        authority_effective_missing_reason=(AuthorityTimeMissingReason.NOT_SUPPLIED_BY_AUTHORITY),
     )
+    seed_preadmitted_authority_snapshot(harness.sessions, relations=(relation,))
 
-    result = harness.engine.evaluate(
-        _kr_request(harness, evaluated_at=EVALUATED_AT + timedelta(minutes=1))
-    )
+    harness.clock.value = EVALUATED_AT + timedelta(minutes=1)
+    result = harness.engine.evaluate(_kr_request(harness))
 
     assert result.decision.decision_state == IssuerMachineDecisionState.REVIEW_REQUIRED
     assert "AUTHORITY_EVIDENCE_NOT_CURRENT_HEAD" in result.decision.reason_codes
@@ -1150,15 +1477,16 @@ def test_duplicate_corp_code_claims_are_both_preserved_and_no_first_writer_wins(
     first_ready = first.engine.evaluate(_kr_request(first))
     second = _kr_harness(database_context, label="kr_duplicate_b")
     second_result = second.engine.evaluate(_kr_request(second))
-    first_recheck = first.engine.evaluate(
-        _kr_request(first, evaluated_at=EVALUATED_AT + timedelta(minutes=1))
-    )
 
     assert first_ready.decision.decision_state == IssuerMachineDecisionState.READY_FOR_MANUAL_REVIEW
     assert second_result.decision.decision_state == IssuerMachineDecisionState.UNRESOLVED
-    assert first_recheck.decision.decision_state == IssuerMachineDecisionState.REVIEW_REQUIRED
     assert "IDENTIFIER_PROVIDER_SUBJECT_COLLISION" in second_result.decision.reason_codes
     with first.sessions() as session:
+        first_leaf = IssuerAuthorityDecisionEngine._decision_leaf(session, first.provider_id)
+        assert first_leaf is not None
+        assert first_leaf.decision_state == IssuerMachineDecisionState.REVIEW_REQUIRED
+        assert first_leaf.supersedes_decision_id == first_ready.decision.issuer_decision_id
+        assert "IMPACTED_READY_INVALIDATED_IN_COLLISION_TRANSACTION" in first_leaf.reason_codes
         claims = session.scalars(
             select(AuthorityIdentifierClaimRow).where(
                 AuthorityIdentifierClaimRow.normalized_identifier_value == KR_CORP_CODE
@@ -1173,13 +1501,17 @@ def test_duplicate_corp_code_claims_are_both_preserved_and_no_first_writer_wins(
 
 def test_duplicate_registrant_cik_claims_are_both_preserved(database_context) -> None:
     first = _us_harness(database_context, label="us_duplicate_a")
-    first.engine.evaluate(_us_request(first))
+    first_ready = first.engine.evaluate(_us_request(first))
     second = _us_harness(database_context, label="us_duplicate_b")
     result = second.engine.evaluate(_us_request(second))
 
     assert result.decision.decision_state == IssuerMachineDecisionState.UNRESOLVED
     assert "IDENTIFIER_PROVIDER_SUBJECT_COLLISION" in result.decision.reason_codes
     with first.sessions() as session:
+        first_leaf = IssuerAuthorityDecisionEngine._decision_leaf(session, first.provider_id)
+        assert first_leaf is not None
+        assert first_leaf.decision_state == IssuerMachineDecisionState.REVIEW_REQUIRED
+        assert first_leaf.supersedes_decision_id == first_ready.decision.issuer_decision_id
         assert (
             session.scalar(
                 select(func.count())
@@ -1188,6 +1520,61 @@ def test_duplicate_registrant_cik_claims_are_both_preserved(database_context) ->
             )
             == 2
         )
+
+
+@pytest.mark.parametrize("jurisdiction", [Jurisdiction.KR, Jurisdiction.US])
+@pytest.mark.parametrize("reverse_start_order", [False, True])
+def test_concurrent_duplicate_identifier_writers_leave_no_ready_leaf(
+    database_context,
+    jurisdiction: Jurisdiction,
+    reverse_start_order: bool,
+) -> None:
+    if jurisdiction == Jurisdiction.KR:
+        first = _kr_harness(database_context, label="kr_concurrent_duplicate_a")
+        second = _kr_harness(database_context, label="kr_concurrent_duplicate_b")
+        request_factory = _kr_request
+    else:
+        first = _us_harness(database_context, label="us_concurrent_duplicate_a")
+        second = _us_harness(database_context, label="us_concurrent_duplicate_b")
+        request_factory = _us_request
+    release = Event()
+    failures: list[BaseException] = []
+
+    def evaluate(harness: _Harness) -> None:
+        try:
+            assert release.wait(timeout=2)
+            harness.engine.evaluate(request_factory(harness))
+        except BaseException as error:
+            failures.append(error)
+
+    harnesses = [first, second]
+    if reverse_start_order:
+        harnesses.reverse()
+    workers = [Thread(target=evaluate, args=(harness,)) for harness in harnesses]
+    for worker in workers:
+        worker.start()
+    release.set()
+    for worker in workers:
+        worker.join(timeout=10)
+
+    assert all(not worker.is_alive() for worker in workers)
+    assert not failures
+    with first.sessions() as session:
+        leaves = (
+            IssuerAuthorityDecisionEngine._decision_leaf(session, first.provider_id),
+            IssuerAuthorityDecisionEngine._decision_leaf(session, second.provider_id),
+        )
+        assert all(leaf is not None for leaf in leaves)
+        assert {leaf.decision_state for leaf in leaves if leaf is not None} == {
+            IssuerMachineDecisionState.UNRESOLVED,
+            IssuerMachineDecisionState.REVIEW_REQUIRED,
+        }
+        assert all(
+            leaf.decision_state != IssuerMachineDecisionState.READY_FOR_MANUAL_REVIEW
+            for leaf in leaves
+            if leaf is not None
+        )
+    assert _zero_snapshot(first.sessions)["verified"] == 0
 
 
 def test_same_provider_contradictory_candidate_is_review_required(database_context) -> None:
@@ -1231,7 +1618,6 @@ def test_same_provider_contradictory_candidate_is_review_required(database_conte
             harness,
             identifier_value=alternate_code,
             evidence_ids=evidence_ids,
-            evaluated_at=EVALUATED_AT + timedelta(minutes=1),
         )
     )
 
@@ -1310,6 +1696,7 @@ def test_same_provider_contradictory_registrant_cik_is_review_required(
             item,
             fetched_at=(HISTORICAL_FETCHED_AT if index < 3 else CURRENT_FETCHED_AT),
         )
+    harness.clock.value = EVALUATED_AT + timedelta(minutes=1)
     request = build_issuer_authority_evaluation_request(
         provider_security_identity_id=harness.provider_id,
         provider_observation_ids=(harness.provider_observation_id,),
@@ -1320,7 +1707,6 @@ def test_same_provider_contradictory_registrant_cik_is_review_required(
             *(item.evidence_id for item in facts),
             harness.evidence["state"].evidence_id,
         ),
-        evaluated_at=EVALUATED_AT + timedelta(minutes=1),
     )
 
     result = harness.engine.evaluate(request)
@@ -1353,44 +1739,110 @@ def test_existing_canonical_identifier_conflict_blocks_ready_without_writing_can
     assert _zero_snapshot(harness.sessions) == before
 
 
+def test_exact_same_deterministic_canonical_issuer_is_not_a_collision(
+    database_context,
+) -> None:
+    harness = _kr_harness(database_context)
+    issuer = _canonical_issuer(jurisdiction=Jurisdiction.KR, identifier_value=KR_CORP_CODE)
+    _insert_canonical_issuer(harness.sessions, issuer)
+    before = _zero_snapshot(harness.sessions)
+
+    result = harness.engine.evaluate(_kr_request(harness))
+
+    assert result.decision.decision_state == IssuerMachineDecisionState.READY_FOR_MANUAL_REVIEW
+    assert "EXISTING_CANONICAL_IDENTIFIER_CONFLICT" not in result.decision.reason_codes
+    assert _zero_snapshot(harness.sessions) == before
+
+
+@pytest.mark.parametrize(
+    ("stored_jurisdiction", "stored_corp_code"),
+    [("US", KR_CORP_CODE), ("KR", "00126381")],
+)
+def test_same_canonical_issuer_id_with_contradictory_identity_is_a_collision(
+    database_context,
+    stored_jurisdiction: str,
+    stored_corp_code: str,
+) -> None:
+    harness = _kr_harness(database_context)
+    issuer = _canonical_issuer(jurisdiction=Jurisdiction.KR, identifier_value=KR_CORP_CODE)
+    with harness.sessions.begin() as session:
+        session.add(
+            IssuerRow(
+                issuer_id=issuer.issuer_id,
+                jurisdiction=stored_jurisdiction,
+                corp_code=stored_corp_code,
+                cik=None,
+                normalized_content_hash=issuer.normalized_content_hash,
+                payload_json=issuer.model_dump_json(),
+            )
+        )
+    before = _zero_snapshot(harness.sessions)
+
+    result = harness.engine.evaluate(_kr_request(harness))
+
+    assert result.decision.decision_state == IssuerMachineDecisionState.UNRESOLVED
+    assert "EXISTING_CANONICAL_IDENTIFIER_CONFLICT" in result.decision.reason_codes
+    assert _zero_snapshot(harness.sessions) == before
+
+
 def test_arbitrary_active_provider_observation_membership_cannot_enable_ready(
     database_context,
 ) -> None:
     harness = _kr_harness(database_context)
-    arbitrary_id = "provider_observation_arbitrary_active_membership"
-    with harness.sessions.begin() as session:
+    with harness.sessions() as session:
         identity = session.get(ProviderSecurityIdentityRow, harness.provider_id)
         assert identity is not None
+        source_version_id = identity.latest_source_version_id
+    collision_id = "tpsi_" + "f" * 64
+    unsafe = build_security_master_observation(
+        source_version_id=source_version_id,
+        normalized_record_id=None,
+        provider_security_identity_id=harness.provider_id,
+        provider=ProviderSystem.TOSS_OPEN_API,
+        market=Market.KR,
+        symbol=KR_SYMBOL,
+        name="Conflicting current provider observation",
+        security_type=ProviderSecurityType.STOCK,
+        is_common_share=True,
+        isin=None,
+        staging_state=ProviderSecurityMasterState.QUARANTINED,
+        reconciliation_outcome=ProviderReconciliationOutcome.UNRESOLVED_COLLISION,
+        identity_state_after=ProviderIdentityState.QUARANTINED,
+        eligible_for_mapping=False,
+        collision_identity_ids=(collision_id,),
+        reason_codes=("CURRENT_PROVIDER_COLLISION",),
+    )
+    with harness.sessions.begin() as session:
         session.add(
             ProviderSecurityMasterObservationRow(
-                observation_id=arbitrary_id,
-                source_version_id=identity.latest_source_version_id,
-                normalized_record_id=None,
-                provider_security_identity_id=harness.provider_id,
-                provider="TOSS_OPEN_API",
-                market="KR",
-                symbol=KR_SYMBOL,
-                staging_state="DISCOVERED",
-                reconciliation_outcome="DISCOVERY_RECORDED",
-                eligible_for_mapping=0,
-                provider_contract_version="toss-security-master/0.1.0",
-                payload_json="{}",
+                observation_id=unsafe.observation_id,
+                source_version_id=unsafe.source_version_id,
+                normalized_record_id=unsafe.normalized_record_id,
+                provider_security_identity_id=unsafe.provider_security_identity_id,
+                provider=unsafe.provider.value,
+                market=unsafe.market.value,
+                symbol=unsafe.symbol,
+                staging_state=unsafe.staging_state.value,
+                reconciliation_outcome=unsafe.reconciliation_outcome.value,
+                eligible_for_mapping=int(unsafe.eligible_for_mapping),
+                provider_contract_version=unsafe.provider_contract_version,
+                payload_json=unsafe.model_dump_json(),
             )
         )
     request = build_issuer_authority_evaluation_request(
         provider_security_identity_id=harness.provider_id,
-        provider_observation_ids=(arbitrary_id,),
+        provider_observation_ids=(harness.provider_observation_id,),
         candidate_jurisdiction=Jurisdiction.KR,
         candidate_identifier_kind=AuthorityIdentifierKind.DART_CORP_CODE,
         candidate_identifier_value=KR_CORP_CODE,
         evidence_ids=tuple(item.evidence_id for item in harness.evidence.values()),
-        evaluated_at=EVALUATED_AT,
     )
 
     result = harness.engine.evaluate(request)
 
     assert result.decision.decision_state == IssuerMachineDecisionState.UNRESOLVED
-    assert "PROVIDER_OBSERVATION_CONTRACT_INVALID" in result.decision.reason_codes
+    assert unsafe.observation_id not in request.provider_observation_ids
+    assert "PROVIDER_OBSERVATION_NOT_BRIDGE_ELIGIBLE" in result.decision.reason_codes
 
 
 def test_parser_cannot_raise_weight_or_relax_access_policy(database_context) -> None:
@@ -1502,21 +1954,32 @@ def test_login_agent_and_accession_prefix_cannot_become_registrant(
     role: AuthoritySubjectRole,
 ) -> None:
     harness = _us_harness(database_context)
-    harness.repository.insert_or_verify_source_policy(SEC_LOGIN_PROVENANCE_POLICY)
+    seed_preadmitted_authority_snapshot(
+        harness.sessions,
+        policies=(SEC_LOGIN_PROVENANCE_POLICY,),
+    )
+    provenance_only_cik = "0000320193"
+    provenance_accession = "0000320193-26-000001"
     provenance = _evidence(
         policy=SEC_LOGIN_PROVENANCE_POLICY,
         document_kind="SEC_SUBMISSION_PROVENANCE_JSON_V1",
-        document_reference=US_ACCESSION,
+        document_reference=provenance_accession,
         document_group=f"sec-provenance-{role.value}",
         scope=AuthorityScope.SUBMISSION_PROVENANCE,
         role=role,
         claim_field="submission.provenance_cik",
-        value=US_ACCESSION[:10],
+        value=provenance_only_cik,
         evidence_kind=AuthorityEvidenceKind.PROVENANCE_ONLY,
     )
     _persist_evidence(harness.repository, provenance, fetched_at=CURRENT_FETCHED_AT)
 
-    result = harness.engine.evaluate(_us_request(harness, evidence_ids=(provenance.evidence_id,)))
+    result = harness.engine.evaluate(
+        _us_request(
+            harness,
+            identifier_value=provenance_only_cik,
+            evidence_ids=(provenance.evidence_id,),
+        )
+    )
 
     assert result.decision.decision_state == IssuerMachineDecisionState.UNRESOLVED
     assert not result.identifier_claims
@@ -1617,11 +2080,7 @@ def test_collision_inserted_by_competing_writer_is_seen_before_ready_recheck(
     def evaluate_after_lock() -> None:
         started.set()
         try:
-            results.append(
-                first.engine.evaluate(
-                    _kr_request(first, evaluated_at=EVALUATED_AT + timedelta(minutes=1))
-                )
-            )
+            results.append(first.engine.evaluate(_kr_request(first)))
         except BaseException as error:
             failures.append(error)
         finally:
@@ -1686,11 +2145,7 @@ def test_relation_inserted_by_competing_writer_is_seen_before_ready_recheck(
     def evaluate_after_lock() -> None:
         started.set()
         try:
-            results.append(
-                harness.engine.evaluate(
-                    _kr_request(harness, evaluated_at=EVALUATED_AT + timedelta(minutes=1))
-                )
-            )
+            results.append(harness.engine.evaluate(_kr_request(harness)))
         except BaseException as error:
             failures.append(error)
         finally:

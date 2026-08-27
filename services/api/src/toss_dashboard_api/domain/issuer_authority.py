@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from pydantic import ValidationError
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.exc import IntegrityError, OperationalError
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -44,6 +45,8 @@ from toss_dashboard_api.contracts.authority import (
     build_issuer_decision,
     build_production_authority_bundle,
     bundle_satisfies_review_ready_foundation,
+    proposed_issuer_anchor,
+    proposed_issuer_id,
 )
 from toss_dashboard_api.contracts.authority_decision import (
     AuthorityBridgeResult,
@@ -51,7 +54,9 @@ from toss_dashboard_api.contracts.authority_decision import (
     IssuerAuthorityEvaluationRequest,
     build_authority_bridge_result,
 )
+from toss_dashboard_api.contracts.base import normalized_hash
 from toss_dashboard_api.contracts.enums import MappingStatus, ProviderIdentityState
+from toss_dashboard_api.contracts.issuer import Issuer
 from toss_dashboard_api.contracts.provider_security_master import (
     ProviderSecurityMasterObservation,
 )
@@ -198,6 +203,7 @@ class _CollisionScan:
     result: AuthorityCollisionScanResult
     candidate_fingerprints: tuple[str, ...]
     reason_codes: tuple[str, ...]
+    affected_provider_ids: tuple[str, ...]
 
 
 def _utc(value: str) -> datetime:
@@ -225,6 +231,10 @@ def _exact_dict(value: Any, keys: set[str]) -> dict[str, Any] | None:
     return value
 
 
+def _server_utc_now() -> datetime:
+    return datetime.now(UTC)
+
+
 class IssuerAuthorityDecisionEngine:
     """Offline B2-B issuer-side machine evaluation over the immutable ledger.
 
@@ -233,8 +243,14 @@ class IssuerAuthorityDecisionEngine:
     bridge booleans, collision results, overrides, or READY state.
     """
 
-    def __init__(self, sessions: sessionmaker[Session]) -> None:
+    def __init__(
+        self,
+        sessions: sessionmaker[Session],
+        *,
+        clock: Callable[[], datetime] = _server_utc_now,
+    ) -> None:
         self._sessions = sessions
+        self._clock = clock
 
     def evaluate(
         self, request: IssuerAuthorityEvaluationRequest
@@ -247,7 +263,8 @@ class IssuerAuthorityDecisionEngine:
         session = self._sessions()
         try:
             session.connection().exec_driver_sql("BEGIN IMMEDIATE")
-            result = self._evaluate_locked(session, request)
+            evaluated_at = self._evaluation_time()
+            result = self._evaluate_locked(session, request, evaluated_at)
             session.commit()
             return result
         except IssuerAuthorityDecisionEngineError:
@@ -267,18 +284,50 @@ class IssuerAuthorityDecisionEngine:
         finally:
             session.close()
 
+    def _evaluation_time(self) -> datetime:
+        try:
+            value = self._clock()
+        except Exception as error:
+            raise IssuerAuthorityDecisionEngineError(
+                "SERVER_CLOCK_UNAVAILABLE",
+                "server-owned evaluation clock failed",
+            ) from error
+        if value.tzinfo is None or value.utcoffset() is None:
+            raise IssuerAuthorityDecisionEngineError(
+                "SERVER_CLOCK_INVALID",
+                "server-owned evaluation clock must return an aware timestamp",
+            )
+        return value.astimezone(UTC)
+
     def _evaluate_locked(
         self,
         session: Session,
         request: IssuerAuthorityEvaluationRequest,
+        evaluated_at: datetime,
     ) -> IssuerAuthorityDecisionEngineResult:
-        provider = self._provider_snapshot(session, request)
-        relations = self._all_relations(session)
-        evidence = tuple(
-            self._evidence_snapshot(session, evidence_id, relations)
-            for evidence_id in request.evidence_ids
+        provider = self._provider_snapshot(
+            session,
+            provider_security_identity_id=request.provider_security_identity_id,
+            seed_observation_ids=request.provider_observation_ids,
         )
-        assessments = tuple(self._assess_evidence(snapshot, request) for snapshot in evidence)
+        relations = self._all_relations(session)
+        evidence = self._discover_relevant_evidence(
+            session,
+            request,
+            relations,
+        )
+        provider_observation_ids = tuple(
+            observation.observation_id for observation in provider.observations
+        )
+        assessments = tuple(
+            self._assess_evidence(
+                snapshot,
+                request,
+                evaluated_at,
+                provider_observation_ids,
+            )
+            for snapshot in evidence
+        )
 
         inserted_applications = 0
         persisted_assessments: list[_AssessedEvidence] = []
@@ -323,7 +372,7 @@ class IssuerAuthorityDecisionEngine:
         )
         bundle = build_production_authority_bundle(
             provider_security_identity_id=request.provider_security_identity_id,
-            provider_observation_ids=request.provider_observation_ids,
+            provider_observation_ids=provider_observation_ids,
             candidate_jurisdiction=request.candidate_jurisdiction,
             candidate_identifier_kind=request.candidate_identifier_kind,
             candidate_identifier_value=request.candidate_identifier_value,
@@ -332,7 +381,7 @@ class IssuerAuthorityDecisionEngine:
             legal_jurisdiction_result=path.legal_jurisdiction_result,
             collision_scan_result=collision.result,
             collision_claim_candidate_fingerprints=collision.candidate_fingerprints,
-            built_at=request.evaluated_at,
+            built_at=evaluated_at,
         )
         bundle, bundle_inserted = self._insert_or_reuse_bundle(session, bundle)
         session.flush()
@@ -361,7 +410,7 @@ class IssuerAuthorityDecisionEngine:
             freshness_policy_version=FRESHNESS_POLICY_VERSION,
             freshness_result=path.freshness_result,
             collision_scan_hash=bundle.collision_scan_hash,
-            evaluated_at=request.evaluated_at,
+            evaluated_at=evaluated_at,
             supersedes_decision_id=(
                 None if predecessor is None else predecessor.issuer_decision_id
             ),
@@ -371,6 +420,13 @@ class IssuerAuthorityDecisionEngine:
             decision_inserted = False
         else:
             decision, decision_inserted = self._insert_engine_decision(session, decision)
+        session.flush()
+        self._invalidate_impacted_ready_leaves(
+            session,
+            collision=collision,
+            evaluated_provider_id=request.provider_security_identity_id,
+            evaluated_at=evaluated_at,
+        )
 
         return IssuerAuthorityDecisionEngineResult(
             applications=tuple(
@@ -391,11 +447,13 @@ class IssuerAuthorityDecisionEngine:
     @staticmethod
     def _provider_snapshot(
         session: Session,
-        request: IssuerAuthorityEvaluationRequest,
+        *,
+        provider_security_identity_id: str,
+        seed_observation_ids: tuple[str, ...],
     ) -> _ProviderSnapshot:
         row = session.get(
             ProviderSecurityIdentityRow,
-            request.provider_security_identity_id,
+            provider_security_identity_id,
         )
         if row is None:
             raise IssuerAuthorityDecisionEngineError(
@@ -406,19 +464,35 @@ class IssuerAuthorityDecisionEngine:
             reasons.add("PROVIDER_IDENTITY_NOT_ACTIVE")
         if row.mapping_status != MappingStatus.UNRESOLVED.value:
             reasons.add("PROVIDER_MAPPING_STATE_NOT_UNRESOLVED")
-        observations: list[ProviderSecurityMasterObservation] = []
-        for observation_id in request.provider_observation_ids:
+        for observation_id in seed_observation_ids:
             stored = session.get(ProviderSecurityMasterObservationRow, observation_id)
             if stored is None:
                 raise IssuerAuthorityDecisionEngineError(
                     "PROVIDER_OBSERVATION_MISSING",
-                    "exact CP3-C1 provider observation does not exist",
+                    "seed CP3-C1 provider observation does not exist",
                 )
-            if stored.provider_security_identity_id != request.provider_security_identity_id:
+            if stored.provider_security_identity_id != provider_security_identity_id:
                 raise IssuerAuthorityDecisionEngineError(
                     "PROVIDER_OBSERVATION_SUBJECT_MISMATCH",
                     "provider observation belongs to another provider identity",
                 )
+            if stored.source_version_id != row.latest_source_version_id:
+                reasons.add("PROVIDER_SEED_OBSERVATION_NOT_CURRENT")
+
+        current_rows = session.scalars(
+            select(ProviderSecurityMasterObservationRow)
+            .where(
+                ProviderSecurityMasterObservationRow.provider_security_identity_id
+                == provider_security_identity_id,
+                ProviderSecurityMasterObservationRow.source_version_id
+                == row.latest_source_version_id,
+            )
+            .order_by(ProviderSecurityMasterObservationRow.observation_id)
+        ).all()
+        if not current_rows:
+            reasons.add("PROVIDER_CURRENT_OBSERVATION_MISSING")
+        observations: list[ProviderSecurityMasterObservation] = []
+        for stored in current_rows:
             try:
                 observation = ProviderSecurityMasterObservation.model_validate_json(
                     stored.payload_json, strict=False
@@ -447,11 +521,8 @@ class IssuerAuthorityDecisionEngine:
             ):
                 reasons.add("PROVIDER_OBSERVATION_NOT_BRIDGE_ELIGIBLE")
             observations.append(observation)
-        if not any(
-            observation.source_version_id == row.latest_source_version_id
-            for observation in observations
-        ):
-            reasons.add("PROVIDER_OBSERVATION_NOT_CURRENT")
+        if len({observation.symbol for observation in observations}) > 1:
+            reasons.add("PROVIDER_CURRENT_SYMBOL_AMBIGUITY")
         return _ProviderSnapshot(
             row=row,
             observations=tuple(sorted(observations, key=lambda item: item.observation_id)),
@@ -469,6 +540,130 @@ class IssuerAuthorityDecisionEngine:
             AuthorityEvidenceRelation.model_validate_json(row.payload_json, strict=False)
             for row in rows
         )
+
+    def _discover_relevant_evidence(
+        self,
+        session: Session,
+        request: IssuerAuthorityEvaluationRequest,
+        relations: tuple[AuthorityEvidenceRelation, ...],
+    ) -> tuple[_EvidenceSnapshot, ...]:
+        """Treat caller memberships as seeds and discover complete current state."""
+
+        rows = session.scalars(
+            select(AuthorityEvidenceRow).order_by(AuthorityEvidenceRow.evidence_id)
+        ).all()
+        snapshots: dict[str, _EvidenceSnapshot] = {}
+        facts: dict[str, _MatrixFact] = {}
+        for row in rows:
+            try:
+                snapshot = self._evidence_snapshot(session, row.evidence_id, relations)
+            except ValidationError as error:
+                raise IssuerAuthorityDecisionEngineError(
+                    "STORED_EVIDENCE_CONTRACT_INVALID",
+                    "stored authority evidence failed its immutable contract",
+                ) from error
+            snapshots[row.evidence_id] = snapshot
+            facts[row.evidence_id] = self._matrix_fact(snapshot, request)
+
+        missing_seeds = set(request.evidence_ids) - set(snapshots)
+        if missing_seeds:
+            raise IssuerAuthorityDecisionEngineError(
+                "AUTHORITY_EVIDENCE_MISSING",
+                "seed immutable authority evidence does not exist",
+            )
+
+        candidate_fingerprint = authority_candidate_fingerprint(
+            jurisdiction=request.candidate_jurisdiction,
+            identifier_kind=request.candidate_identifier_kind,
+            identifier_value=request.candidate_identifier_value,
+        )
+        relevant: set[str] = set(request.evidence_ids)
+
+        for evidence_id, fact in facts.items():
+            value = snapshots[evidence_id].evidence.normalized_claim_value
+            if request.candidate_jurisdiction.value == "KR":
+                direct = (
+                    fact.kind == _KR_CORP_CODE and value == request.candidate_identifier_value
+                ) or (
+                    fact.kind == _KR_OVERVIEW_BRIDGE
+                    and isinstance(value, dict)
+                    and value.get("corp_code") == request.candidate_identifier_value
+                )
+            else:
+                direct = (
+                    fact.kind == _US_SEC_CIK and value == request.candidate_identifier_value
+                ) or (
+                    fact.kind
+                    in {
+                        _US_SEC_REGISTRANT_ROLE,
+                        _US_SEC_BRIDGE,
+                        _US_SEC_LATEST_STATUS,
+                    }
+                    and isinstance(value, dict)
+                    and value.get("registrant_cik") == request.candidate_identifier_value
+                )
+            if direct:
+                relevant.add(evidence_id)
+
+        application_rows = session.scalars(
+            select(AuthorityEvidenceApplicationRow).where(
+                AuthorityEvidenceApplicationRow.candidate_fingerprint == candidate_fingerprint
+            )
+        ).all()
+        relevant.update(row.evidence_id for row in application_rows)
+
+        if request.candidate_jurisdiction.value == "KR":
+            registration_references = {
+                value["jurir_no"]
+                for evidence_id in tuple(relevant)
+                if facts[evidence_id].kind == _KR_OVERVIEW_BRIDGE
+                and isinstance(
+                    (value := snapshots[evidence_id].evidence.normalized_claim_value),
+                    dict,
+                )
+                and isinstance(value.get("jurir_no"), str)
+            }
+            for evidence_id, fact in facts.items():
+                value = snapshots[evidence_id].evidence.normalized_claim_value
+                reference = (
+                    value.get("corporate_registration_reference")
+                    if fact.kind == _KR_IROS_JURISDICTION and isinstance(value, dict)
+                    else value
+                    if fact.kind == _KR_IROS_BRIDGE
+                    else None
+                )
+                if reference in registration_references:
+                    relevant.add(evidence_id)
+        else:
+            state_keys = {
+                (value["formation_state"], value["state_entity_number"])
+                for evidence_id in tuple(relevant)
+                if facts[evidence_id].kind == _US_SEC_BRIDGE
+                and isinstance(
+                    (value := snapshots[evidence_id].evidence.normalized_claim_value),
+                    dict,
+                )
+                and isinstance(value.get("formation_state"), str)
+                and isinstance(value.get("state_entity_number"), str)
+            }
+            for evidence_id, fact in facts.items():
+                value = snapshots[evidence_id].evidence.normalized_claim_value
+                if fact.kind != _US_STATE_JURISDICTION or not isinstance(value, dict):
+                    continue
+                if (value.get("formation_state"), value.get("state_entity_number")) in state_keys:
+                    relevant.add(evidence_id)
+
+        selected = []
+        seed_ids = set(request.evidence_ids)
+        for evidence_id in sorted(relevant):
+            snapshot = snapshots[evidence_id]
+            if (
+                evidence_id in seed_ids
+                or snapshot.relation_head.current
+                or snapshot.relation_head.conflict
+            ):
+                selected.append(snapshot)
+        return tuple(selected)
 
     def _evidence_snapshot(
         self,
@@ -587,9 +782,11 @@ class IssuerAuthorityDecisionEngine:
         self,
         snapshot: _EvidenceSnapshot,
         request: IssuerAuthorityEvaluationRequest,
+        evaluated_at: datetime,
+        provider_observation_ids: tuple[str, ...],
     ) -> _AssessedEvidence:
         fact = self._matrix_fact(snapshot, request)
-        freshness = self._freshness(snapshot, request.evaluated_at, fact.current_check)
+        freshness = self._freshness(snapshot, evaluated_at, fact.current_check)
         reasons = set(fact.reason_codes) | set(snapshot.relation_head.reason_codes)
         status = fact.requested_status
         weight = fact.requested_weight
@@ -630,7 +827,7 @@ class IssuerAuthorityDecisionEngine:
                 policy=snapshot.policy,
                 evidence=snapshot.evidence,
                 provider_security_identity_id=request.provider_security_identity_id,
-                provider_observation_ids=request.provider_observation_ids,
+                provider_observation_ids=provider_observation_ids,
                 candidate_jurisdiction=request.candidate_jurisdiction,
                 candidate_identifier_kind=request.candidate_identifier_kind,
                 candidate_identifier_value=request.candidate_identifier_value,
@@ -639,7 +836,7 @@ class IssuerAuthorityDecisionEngine:
                 requested_effective_weight=weight,
                 reason_codes=_sorted(reasons or {"EVIDENCE_UNUSABLE"}),
                 authority_relation_head_hash=snapshot.relation_head.content_hash,
-                evaluated_at=request.evaluated_at,
+                evaluated_at=evaluated_at,
             )
         return _AssessedEvidence(
             snapshot=snapshot,
@@ -988,6 +1185,22 @@ class IssuerAuthorityDecisionEngine:
     ) -> tuple[_AssessedEvidence, ...]:
         return tuple(item for item in assessments if item.fact.kind == kind)
 
+    @staticmethod
+    def _co_current_values(
+        items: tuple[_AssessedEvidence, ...],
+    ) -> tuple[str, ...]:
+        values = {
+            authority_sha256(item.snapshot.evidence.normalized_claim_value)
+            for item in items
+            if item.snapshot.relation_head.current
+            and not item.snapshot.relation_head.conflict
+            and any(
+                observation.retrieval_status == AuthorityRetrievalStatus.SUCCEEDED
+                for observation in item.snapshot.observations
+            )
+        }
+        return _sorted(values)
+
     def _path_evaluation(
         self,
         request: IssuerAuthorityEvaluationRequest,
@@ -1018,11 +1231,32 @@ class IssuerAuthorityDecisionEngine:
         structural = all(
             any(item.structurally_usable for item in items) for items in required.values()
         )
+        co_current_conflict = any(
+            len(self._co_current_values(required[kind])) > 1
+            for kind in (
+                _KR_OVERVIEW_BRIDGE,
+                _KR_IROS_JURISDICTION,
+                _KR_IROS_BRIDGE,
+            )
+        )
+        recognized_current_unusable = any(
+            item.snapshot.relation_head.current
+            and bool(item.snapshot.observations)
+            and item.freshness == AuthorityFreshnessResult.CURRENT
+            and not item.positively_applied
+            for items in required.values()
+            for item in items
+        )
+        if co_current_conflict:
+            reasons.add("KR_CO_CURRENT_AUTHORITY_CONFLICT")
+        if recognized_current_unusable:
+            reasons.add("KR_CURRENT_AUTHORITY_FACT_UNUSABLE")
         relation_safety = any(
             item.snapshot.relation_head.reason_codes for item in assessments if item.fact.kind
         )
         matched_evidence: set[str] = set()
         bridge_match = False
+        coherent_paths: set[str] = set()
         if structural and provider.safe:
             for overview in required[_KR_OVERVIEW_BRIDGE]:
                 for jurisdiction in required[_KR_IROS_JURISDICTION]:
@@ -1047,6 +1281,17 @@ class IssuerAuthorityDecisionEngine:
                         )
                         if exact:
                             bridge_match = True
+                            coherent_paths.add(
+                                authority_sha256(
+                                    {
+                                        "registration_reference": registration,
+                                        "provider_stock_code": overview_value.get("stock_code"),
+                                        "registry_document_id": (
+                                            jurisdiction.snapshot.evidence.authority_source_document_id
+                                        ),
+                                    }
+                                )
+                            )
                             matched_evidence.update(
                                 {
                                     overview.snapshot.evidence.evidence_id,
@@ -1056,6 +1301,9 @@ class IssuerAuthorityDecisionEngine:
                             )
             if not bridge_match:
                 reasons.add("KR_EXACT_REGISTRY_PROVIDER_BRIDGE_MISMATCH")
+            if len(coherent_paths) > 1:
+                co_current_conflict = True
+                reasons.add("KR_MULTIPLE_COHERENT_CURRENT_PATHS")
         elif not provider.safe:
             reasons.add("PROVIDER_LINEAGE_NOT_EXACT_BRIDGE_ELIGIBLE")
 
@@ -1073,6 +1321,8 @@ class IssuerAuthorityDecisionEngine:
         freshness = self._aggregate_freshness(current_items)
         positive = (
             core_structural
+            and not co_current_conflict
+            and not recognized_current_unusable
             and freshness == AuthorityFreshnessResult.CURRENT
             and all(any(item.positively_applied for item in items) for items in required.values())
         )
@@ -1083,6 +1333,8 @@ class IssuerAuthorityDecisionEngine:
 
         safety = (
             relation_safety
+            or co_current_conflict
+            or recognized_current_unusable
             or (structural and not bridge_match and provider.safe)
             or bool(provider.reason_codes)
         )
@@ -1098,7 +1350,9 @@ class IssuerAuthorityDecisionEngine:
             candidate_identifier_value=request.candidate_identifier_value,
             bridge_status=bridge_status,
             authority_evidence_ids=_sorted(matched_evidence),
-            provider_observation_ids=request.provider_observation_ids,
+            provider_observation_ids=tuple(
+                observation.observation_id for observation in provider.observations
+            ),
             reason_codes=_sorted(reasons or {"KR_AUTHORITY_PATH_UNRESOLVED"}),
         )
         scope_results = (
@@ -1167,11 +1421,32 @@ class IssuerAuthorityDecisionEngine:
         structural = all(
             any(item.structurally_usable for item in required[kind]) for kind in core_kinds
         )
+        co_current_conflict = any(
+            len(self._co_current_values(required[kind])) > 1
+            for kind in (
+                _US_SEC_BRIDGE,
+                _US_SEC_LATEST_STATUS,
+                _US_STATE_JURISDICTION,
+            )
+        )
+        recognized_current_unusable = any(
+            item.snapshot.relation_head.current
+            and bool(item.snapshot.observations)
+            and item.freshness == AuthorityFreshnessResult.CURRENT
+            and not item.positively_applied
+            for items in required.values()
+            for item in items
+        )
+        if co_current_conflict:
+            reasons.add("US_CO_CURRENT_AUTHORITY_CONFLICT")
+        if recognized_current_unusable:
+            reasons.add("US_CURRENT_AUTHORITY_FACT_UNUSABLE")
         relation_safety = any(
             item.snapshot.relation_head.reason_codes for item in assessments if item.fact.kind
         )
         matched_evidence: set[str] = set()
         bridge_match = False
+        coherent_paths: set[str] = set()
         if structural and provider.safe:
             for cik in required[_US_SEC_CIK]:
                 for role in required[_US_SEC_REGISTRANT_ROLE]:
@@ -1209,12 +1484,26 @@ class IssuerAuthorityDecisionEngine:
                             )
                             if exact:
                                 bridge_match = True
+                                coherent_paths.add(
+                                    authority_sha256(
+                                        {
+                                            "formation_state": bridge_value.get("formation_state"),
+                                            "state_entity_number": bridge_value.get(
+                                                "state_entity_number"
+                                            ),
+                                            "provider_symbol": bridge_value.get("provider_symbol"),
+                                        }
+                                    )
+                                )
                                 matched_evidence.update(
                                     item.snapshot.evidence.evidence_id
                                     for item in (cik, role, bridge_item, state)
                                 )
             if not bridge_match:
                 reasons.add("US_EXACT_STATE_SEC_PROVIDER_BRIDGE_MISMATCH")
+            if len(coherent_paths) > 1:
+                co_current_conflict = True
+                reasons.add("US_MULTIPLE_COHERENT_CURRENT_PATHS")
         elif not provider.safe:
             reasons.add("PROVIDER_LINEAGE_NOT_EXACT_BRIDGE_ELIGIBLE")
 
@@ -1235,6 +1524,8 @@ class IssuerAuthorityDecisionEngine:
         core_structural = structural and bridge_match and provider.safe
         positive = (
             core_structural
+            and not co_current_conflict
+            and not recognized_current_unusable
             and latest_structural
             and freshness == AuthorityFreshnessResult.CURRENT
             and all(any(item.positively_applied for item in required[kind]) for kind in required)
@@ -1245,6 +1536,8 @@ class IssuerAuthorityDecisionEngine:
             reasons.add("US_EXACT_NON_NAME_PROVIDER_BRIDGE_ESTABLISHED")
         safety = (
             relation_safety
+            or co_current_conflict
+            or recognized_current_unusable
             or (structural and not bridge_match and provider.safe)
             or bool(provider.reason_codes)
         )
@@ -1260,7 +1553,9 @@ class IssuerAuthorityDecisionEngine:
             candidate_identifier_value=request.candidate_identifier_value,
             bridge_status=bridge_status,
             authority_evidence_ids=_sorted(matched_evidence),
-            provider_observation_ids=request.provider_observation_ids,
+            provider_observation_ids=tuple(
+                observation.observation_id for observation in provider.observations
+            ),
             reason_codes=_sorted(reasons or {"US_AUTHORITY_PATH_UNRESOLVED"}),
         )
         scope_results = (
@@ -1433,7 +1728,9 @@ class IssuerAuthorityDecisionEngine:
         relations: tuple[AuthorityEvidenceRelation, ...],
     ) -> _CollisionScan:
         reasons: set[str] = set(provider.reason_codes)
+        affected_provider_ids: set[str] = set()
         current_claims: list[AuthorityIdentifierClaim] = []
+        conflicting_claim_heads: list[AuthorityIdentifierClaim] = []
         claim_rows = session.scalars(
             select(AuthorityIdentifierClaimRow).order_by(
                 AuthorityIdentifierClaimRow.authority_identifier_claim_id
@@ -1445,7 +1742,7 @@ class IssuerAuthorityDecisionEngine:
             )
             head = self._relation_head(claim.evidence_id, relations)
             if head.conflict:
-                reasons.add("CLAIM_RELATION_HEAD_CONFLICT")
+                conflicting_claim_heads.append(claim)
             if head.current and not head.conflict:
                 current_claims.append(claim)
         current_applications: list[tuple[AuthorityEvidenceApplication, AuthorityEvidence]] = []
@@ -1466,10 +1763,11 @@ class IssuerAuthorityDecisionEngine:
                 ) from error
             if (
                 application.application_status
-                != AuthorityEvidenceApplicationStatus.APPLIED_DECISIVE
-                or application.effective_issuer_authority_weight != AuthorityWeight.DECISIVE
-                or application.authority_scope != AuthorityScope.ISSUER_REGULATORY_ID
-                or application.claim_target_field not in {"issuer.corp_code", "issuer.cik"}
+                not in {
+                    AuthorityEvidenceApplicationStatus.APPLIED_DECISIVE,
+                    AuthorityEvidenceApplicationStatus.APPLIED_SUPPORTING,
+                }
+                or application.effective_issuer_authority_weight == AuthorityWeight.ZERO
                 or not application.production_authority_admitted
                 or application.lineage_tainted
             ):
@@ -1506,6 +1804,16 @@ class IssuerAuthorityDecisionEngine:
             if claim.identifier_kind == request.candidate_identifier_kind
             and claim.normalized_identifier_value == request.candidate_identifier_value
         ]
+        affected_provider_ids.update(
+            claim.provider_security_identity_id for claim in same_identifier
+        )
+        for claim in conflicting_claim_heads:
+            if (
+                claim.identifier_kind == request.candidate_identifier_kind
+                and claim.normalized_identifier_value == request.candidate_identifier_value
+            ) or claim.provider_security_identity_id == request.provider_security_identity_id:
+                reasons.add("CLAIM_RELATION_HEAD_CONFLICT")
+                affected_provider_ids.add(claim.provider_security_identity_id)
         if len({claim.candidate_fingerprint for claim in same_identifier}) > 1:
             reasons.add("IDENTIFIER_CANDIDATE_FINGERPRINT_COLLISION")
         if len({claim.provider_security_identity_id for claim in same_identifier}) > 1:
@@ -1521,6 +1829,10 @@ class IssuerAuthorityDecisionEngine:
             if application.claim_target_field == expected_target
             and evidence.normalized_claim_value == request.candidate_identifier_value
         ]
+        affected_provider_ids.update(
+            application.provider_security_identity_id
+            for application, _ in same_identifier_applications
+        )
         if (
             len(
                 {
@@ -1546,6 +1858,8 @@ class IssuerAuthorityDecisionEngine:
             for claim in current_claims
             if claim.provider_security_identity_id == request.provider_security_identity_id
         ]
+        if same_provider:
+            affected_provider_ids.add(request.provider_security_identity_id)
         if (
             len(
                 {
@@ -1566,15 +1880,79 @@ class IssuerAuthorityDecisionEngine:
             > 1
         ):
             reasons.add("APPLICATION_PROVIDER_CANDIDATE_COLLISION")
-        canonical = session.scalar(
-            select(IssuerRow).where(
-                IssuerRow.corp_code == request.candidate_identifier_value
-                if request.candidate_identifier_kind == AuthorityIdentifierKind.DART_CORP_CODE
-                else IssuerRow.cik == request.candidate_identifier_value
+
+        bridge_groups: dict[tuple[str, str, str], list[AuthorityEvidenceApplication]] = {}
+        for application, evidence in current_applications:
+            if application.authority_scope not in {
+                AuthorityScope.LEGAL_ENTITY_BRIDGE,
+                AuthorityScope.LEGAL_JURISDICTION,
+            }:
+                continue
+            key = (
+                application.authority_scope.value,
+                evidence.authority_source_identifier,
+                authority_sha256(evidence.normalized_claim_value),
             )
+            bridge_groups.setdefault(key, []).append(application)
+        for applications in bridge_groups.values():
+            candidate_count = len(
+                {application.candidate_fingerprint for application in applications}
+            )
+            provider_count = len(
+                {application.provider_security_identity_id for application in applications}
+            )
+            if candidate_count > 1 or provider_count > 1:
+                reasons.add("GLOBAL_BRIDGE_JURISDICTION_COLLISION")
+                affected_provider_ids.update(
+                    application.provider_security_identity_id for application in applications
+                )
+
+        anchor = proposed_issuer_anchor(
+            request.candidate_jurisdiction,
+            request.candidate_identifier_kind,
+            request.candidate_identifier_value,
         )
-        if canonical is not None:
-            reasons.add("EXISTING_CANONICAL_IDENTIFIER_CONFLICT")
+        expected_issuer_id = proposed_issuer_id(anchor)
+        identifier_predicate = (
+            IssuerRow.corp_code == request.candidate_identifier_value
+            if request.candidate_identifier_kind == AuthorityIdentifierKind.DART_CORP_CODE
+            else IssuerRow.cik == request.candidate_identifier_value
+        )
+        canonical_rows = session.scalars(
+            select(IssuerRow)
+            .where(or_(IssuerRow.issuer_id == expected_issuer_id, identifier_predicate))
+            .order_by(IssuerRow.issuer_id)
+        ).all()
+        if len(canonical_rows) > 1:
+            reasons.add("MULTIPLE_CANONICAL_SUBJECTS_COMPETE")
+        for canonical in canonical_rows:
+            identifier_matches = (
+                canonical.corp_code == request.candidate_identifier_value
+                if request.candidate_identifier_kind == AuthorityIdentifierKind.DART_CORP_CODE
+                else canonical.cik == request.candidate_identifier_value
+            )
+            relational_exact = (
+                canonical.issuer_id == expected_issuer_id
+                and canonical.jurisdiction == request.candidate_jurisdiction.value
+                and identifier_matches
+            )
+            payload_exact = False
+            try:
+                issuer = Issuer.model_validate_json(canonical.payload_json, strict=False)
+                payload_exact = (
+                    issuer.issuer_id == canonical.issuer_id
+                    and issuer.jurisdiction.value == canonical.jurisdiction
+                    and issuer.corp_code == canonical.corp_code
+                    and issuer.cik == canonical.cik
+                    and issuer.normalized_content_hash == canonical.normalized_content_hash
+                    and normalized_hash(issuer) == issuer.normalized_content_hash
+                )
+            except ValidationError:
+                payload_exact = False
+            if not relational_exact or not payload_exact:
+                reasons.add("EXISTING_CANONICAL_IDENTIFIER_CONFLICT")
+                reasons.add("EXISTING_CANONICAL_SUBJECT_INCONSISTENT")
+
         fingerprints = _sorted(
             {claim.candidate_fingerprint for claim in same_identifier}
             | {application.candidate_fingerprint for application, _ in same_identifier_applications}
@@ -1586,6 +1964,8 @@ class IssuerAuthorityDecisionEngine:
                 )
             }
         )
+        if reasons:
+            affected_provider_ids.add(request.provider_security_identity_id)
         return _CollisionScan(
             result=(
                 AuthorityCollisionScanResult.CONFLICT
@@ -1594,7 +1974,102 @@ class IssuerAuthorityDecisionEngine:
             ),
             candidate_fingerprints=fingerprints,
             reason_codes=_sorted(reasons or {"GLOBAL_COLLISION_SCAN_CLEAR"}),
+            affected_provider_ids=_sorted(affected_provider_ids),
         )
+
+    def _invalidate_impacted_ready_leaves(
+        self,
+        session: Session,
+        *,
+        collision: _CollisionScan,
+        evaluated_provider_id: str,
+        evaluated_at: datetime,
+    ) -> None:
+        """Append safety successors for every other READY subject in one writer lock."""
+
+        if collision.result != AuthorityCollisionScanResult.CONFLICT:
+            return
+        for provider_id in collision.affected_provider_ids:
+            if provider_id == evaluated_provider_id:
+                continue
+            predecessor = self._decision_leaf(session, provider_id)
+            if (
+                predecessor is None
+                or predecessor.decision_state != IssuerMachineDecisionState.READY_FOR_MANUAL_REVIEW
+            ):
+                continue
+            old_bundle = SQLiteAuthorityLedgerRepository._required_bundle(
+                session,
+                predecessor.authority_bundle_id,
+            )
+            applications: list[AuthorityEvidenceApplication] = []
+            provider_observation_ids = set(old_bundle.provider_observation_ids)
+            for member in old_bundle.evidence_application_members:
+                application = SQLiteAuthorityLedgerRepository._required_application(
+                    session,
+                    member.evidence_application_id,
+                )
+                if application.application_content_hash != member.application_content_hash:
+                    raise AuthorityLedgerConflict(
+                        "impacted READY bundle application content changed"
+                    )
+                applications.append(application)
+                provider_observation_ids.update(application.provider_observation_ids)
+
+            provider_row = session.get(ProviderSecurityIdentityRow, provider_id)
+            if provider_row is None:
+                raise AuthorityLedgerConflict("impacted READY provider subject no longer exists")
+            current_observation_ids = session.scalars(
+                select(ProviderSecurityMasterObservationRow.observation_id).where(
+                    ProviderSecurityMasterObservationRow.provider_security_identity_id
+                    == provider_id,
+                    ProviderSecurityMasterObservationRow.source_version_id
+                    == provider_row.latest_source_version_id,
+                )
+            ).all()
+            provider_observation_ids.update(current_observation_ids)
+
+            safety_bundle = build_production_authority_bundle(
+                provider_security_identity_id=provider_id,
+                provider_observation_ids=_sorted(provider_observation_ids),
+                candidate_jurisdiction=old_bundle.candidate_jurisdiction,
+                candidate_identifier_kind=old_bundle.candidate_identifier_kind,
+                candidate_identifier_value=old_bundle.candidate_identifier_value,
+                applications=applications,
+                required_scope_results=old_bundle.required_scope_results,
+                legal_jurisdiction_result=old_bundle.legal_jurisdiction_result,
+                collision_scan_result=AuthorityCollisionScanResult.CONFLICT,
+                collision_claim_candidate_fingerprints=collision.candidate_fingerprints,
+                built_at=evaluated_at,
+            )
+            safety_bundle, _ = self._insert_or_reuse_bundle(session, safety_bundle)
+            latest_revision_check_hash = authority_sha256(
+                {
+                    "invalidated_predecessor_decision_id": predecessor.issuer_decision_id,
+                    "collision_scan_hash": safety_bundle.collision_scan_hash,
+                    "collision_reason_codes": collision.reason_codes,
+                    "invalidation_rule": "impacted-ready-collision/0.1.0",
+                }
+            )
+            safety_decision = build_issuer_decision(
+                bundle=safety_bundle,
+                decision_state=IssuerMachineDecisionState.REVIEW_REQUIRED,
+                reason_codes=_sorted(
+                    set(collision.reason_codes)
+                    | {
+                        "IMPACTED_READY_INVALIDATED_IN_COLLISION_TRANSACTION",
+                        "MACHINE_STATE_REVIEW_REQUIRED",
+                    }
+                ),
+                latest_revision_check_hash=latest_revision_check_hash,
+                freshness_policy_version=FRESHNESS_POLICY_VERSION,
+                freshness_result=predecessor.freshness_result,
+                collision_scan_hash=safety_bundle.collision_scan_hash,
+                evaluated_at=evaluated_at,
+                supersedes_decision_id=predecessor.issuer_decision_id,
+            )
+            self._insert_engine_decision(session, safety_decision)
+            session.flush()
 
     @staticmethod
     def _decision_state(
@@ -1672,7 +2147,11 @@ class IssuerAuthorityDecisionEngine:
         collision: _CollisionScan,
         bundle: AuthorityBundle,
     ) -> None:
-        reloaded_provider = self._provider_snapshot(session, request)
+        reloaded_provider = self._provider_snapshot(
+            session,
+            provider_security_identity_id=request.provider_security_identity_id,
+            seed_observation_ids=request.provider_observation_ids,
+        )
         if reloaded_provider.reason_codes or reloaded_provider.symbols != provider.symbols:
             raise IssuerAuthorityDecisionEngineError(
                 "READY_PROVIDER_REVALIDATION_FAILED",

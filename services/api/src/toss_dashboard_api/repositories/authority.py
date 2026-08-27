@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from enum import StrEnum
 from typing import Any
 
 from pydantic import BaseModel
@@ -9,9 +8,6 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError, OperationalError
 from sqlalchemy.orm import Session, sessionmaker
 
-from toss_dashboard_api.authority_source_registry import (
-    is_exact_server_owned_production_policy,
-)
 from toss_dashboard_api.contracts.authority import (
     AuthorityBundle,
     AuthorityEvidence,
@@ -44,11 +40,6 @@ from toss_dashboard_api.storage.models import (
 )
 
 
-class AuthorityLedgerMode(StrEnum):
-    PRODUCTION_AUTHORITY = "PRODUCTION_AUTHORITY"
-    TEST_ISOLATED = "TEST_ISOLATED"
-
-
 class AuthorityLedgerError(RuntimeError):
     pass
 
@@ -65,6 +56,17 @@ class AuthorityReviewReadyEngineNotImplemented(AuthorityLedgerConflict):
     def __init__(self) -> None:
         super().__init__(
             f"{self.code}: READY persistence is restricted to the server-owned B2-B decision engine"
+        )
+
+
+class AuthorityProductionAdmissionUnavailable(AuthorityLedgerConflict):
+    """Fail closed until an authenticated/server-owned ingestion path exists."""
+
+    code = "PRODUCTION_AUTHORITY_ADMISSION_UNAVAILABLE"
+
+    def __init__(self, record_kind: str) -> None:
+        super().__init__(
+            f"{self.code}: generic ledger repository cannot admit new production {record_kind}"
         )
 
 
@@ -97,14 +99,8 @@ class SQLiteAuthorityLedgerRepository:
     canonical issuer/security write, or ProviderIdentityMapping operation.
     """
 
-    def __init__(
-        self,
-        sessions: sessionmaker[Session],
-        *,
-        mode: AuthorityLedgerMode = AuthorityLedgerMode.PRODUCTION_AUTHORITY,
-    ) -> None:
+    def __init__(self, sessions: sessionmaker[Session]) -> None:
         self._sessions = sessions
-        self._mode = mode
 
     def source_policy(self, policy_id: str) -> AuthoritySourcePolicy:
         with self._sessions() as session:
@@ -144,16 +140,6 @@ class SQLiteAuthorityLedgerRepository:
     def insert_or_verify_source_policy(
         self, policy: AuthoritySourcePolicy
     ) -> AuthorityInsertResult[AuthoritySourcePolicy]:
-        if self._mode == AuthorityLedgerMode.TEST_ISOLATED and policy.production_authority_eligible:
-            raise AuthorityLedgerConflict(
-                "test-isolated repository cannot register production authority policy"
-            )
-        if policy.production_authority_eligible and not is_exact_server_owned_production_policy(
-            policy
-        ):
-            raise AuthorityLedgerConflict(
-                "production authority policy is not an exact server-owned registry entry"
-            )
         payload = _payload_json(policy)
         try:
             with self._sessions.begin() as session:
@@ -166,6 +152,8 @@ class SQLiteAuthorityLedgerRepository:
                         _verify_payload(existing.payload_json, payload, policy),
                         False,
                     )
+                if policy.production_authority_eligible:
+                    raise AuthorityProductionAdmissionUnavailable("source policy")
                 if policy.predecessor_policy_id is not None:
                     predecessor = session.get(
                         AuthoritySourcePolicyRow,
@@ -197,6 +185,8 @@ class SQLiteAuthorityLedgerRepository:
                         _verify_payload(existing.payload_json, payload, evidence),
                         False,
                     )
+                if policy.production_authority_eligible:
+                    raise AuthorityProductionAdmissionUnavailable("evidence")
                 session.add(self._evidence_row(evidence, payload))
             return AuthorityInsertResult(evidence, True)
         except AuthorityLedgerError:
@@ -236,6 +226,12 @@ class SQLiteAuthorityLedgerRepository:
                         _verify_payload(existing.payload_json, payload, observation),
                         False,
                     )
+                policy = self._required_policy(
+                    session,
+                    evidence.authority_source_policy_id,
+                )
+                if policy.production_authority_eligible:
+                    raise AuthorityProductionAdmissionUnavailable("evidence observation")
                 session.add(self._observation_row(observation, payload))
             return AuthorityInsertResult(observation, True)
         except AuthorityLedgerError:
@@ -251,12 +247,17 @@ class SQLiteAuthorityLedgerRepository:
         payload = _payload_json(relation)
         try:
             with self._sessions.begin() as session:
+                endpoints: list[AuthorityEvidence] = []
                 for evidence_id in (
                     relation.predecessor_evidence_id,
                     relation.successor_evidence_id,
                 ):
-                    if session.get(AuthorityEvidenceRow, evidence_id) is None:
+                    row = session.get(AuthorityEvidenceRow, evidence_id)
+                    if row is None:
                         raise AuthorityLedgerConflict("evidence relation endpoint does not exist")
+                    endpoints.append(
+                        AuthorityEvidence.model_validate_json(row.payload_json, strict=False)
+                    )
                 existing = session.get(
                     AuthorityEvidenceRelationRow,
                     relation.authority_evidence_relation_id,
@@ -266,6 +267,14 @@ class SQLiteAuthorityLedgerRepository:
                         _verify_payload(existing.payload_json, payload, relation),
                         False,
                     )
+                if any(
+                    self._required_policy(
+                        session,
+                        endpoint.authority_source_policy_id,
+                    ).production_authority_eligible
+                    for endpoint in endpoints
+                ):
+                    raise AuthorityProductionAdmissionUnavailable("evidence relation")
                 session.add(self._relation_row(relation, payload))
             return AuthorityInsertResult(relation, True)
         except AuthorityLedgerError:

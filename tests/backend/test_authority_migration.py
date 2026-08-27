@@ -12,6 +12,7 @@ from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.exc import DBAPIError, IntegrityError, OperationalError
 from tests.backend.conftest import FIXTURE_DIR, alembic_config
 
+from authority_preadmitted_ledger import seed_preadmitted_authority_snapshot
 from authority_test_helpers import (
     LATEST_REVISION_HASH,
     NOW,
@@ -151,9 +152,12 @@ def _seed_authentication_counter_ledger(engine):
         collision_scan_hash=bundle.collision_scan_hash,
         evaluated_at=NOW,
     )
-    repository.insert_or_verify_source_policy(policy)
-    repository.insert_or_verify_evidence(evidence)
-    repository.insert_or_verify_evidence_observation(observation)
+    seed_preadmitted_authority_snapshot(
+        sessions,
+        policies=(policy,),
+        evidence=(evidence,),
+        observations=(observation,),
+    )
     repository.insert_or_verify_evidence_application(application)
     repository.insert_or_verify_bundle(bundle)
     repository.insert_or_verify_decision(decision)
@@ -893,7 +897,6 @@ def test_append_only_trigger_fails_closed_for_persisted_ledger_row(
     engine = create_database_engine(url)
     sessions = session_factory(engine)
     policy = production_source_policy()
-    SQLiteAuthorityLedgerRepository(sessions).insert_or_verify_source_policy(policy)
     statement = (
         "UPDATE authority_source_policies SET field_owner = 'tampered' "
         "WHERE authority_source_policy_id = :policy_id"
@@ -901,6 +904,7 @@ def test_append_only_trigger_fails_closed_for_persisted_ledger_row(
         else "DELETE FROM authority_source_policies WHERE authority_source_policy_id = :policy_id"
     )
     try:
+        seed_preadmitted_authority_snapshot(sessions, policies=(policy,))
         with pytest.raises(DBAPIError, match="append-only"):
             with engine.begin() as connection:
                 connection.execute(

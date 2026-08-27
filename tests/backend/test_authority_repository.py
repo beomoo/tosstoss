@@ -5,6 +5,7 @@ from pydantic import ValidationError
 from sqlalchemy import func, select, text
 from sqlalchemy.exc import DBAPIError
 
+from authority_preadmitted_ledger import seed_preadmitted_authority_snapshot
 from authority_test_helpers import (
     CORP_CODE,
     CORRECTED_CORP_CODE,
@@ -47,7 +48,7 @@ from toss_dashboard_api.contracts.authority import (
 from toss_dashboard_api.contracts.enums import Jurisdiction
 from toss_dashboard_api.repositories.authority import (
     AuthorityLedgerConflict,
-    AuthorityLedgerMode,
+    AuthorityProductionAdmissionUnavailable,
     AuthorityReviewReadyEngineNotImplemented,
     SQLiteAuthorityLedgerRepository,
 )
@@ -93,18 +94,27 @@ def _persist_through_application(repository):
     evidence = authority_evidence(policy)
     observation = _observation(evidence)
     application = evidence_application(policy, evidence)
-    assert repository.insert_or_verify_source_policy(policy).inserted is True
-    assert repository.insert_or_verify_evidence(evidence).inserted is True
-    assert repository.insert_or_verify_evidence_observation(observation).inserted is True
+    seed_preadmitted_authority_snapshot(
+        repository._sessions,
+        policies=(policy,),
+        evidence=(evidence,),
+        observations=(observation,),
+    )
+    assert repository.insert_or_verify_source_policy(policy).inserted is False
+    assert repository.insert_or_verify_evidence(evidence).inserted is False
+    assert repository.insert_or_verify_evidence_observation(observation).inserted is False
     assert repository.insert_or_verify_evidence_application(application).inserted is True
     return policy, evidence, observation, application
 
 
 def _persist_application(repository, policy, evidence, application):
     observation = _observation(evidence)
-    repository.insert_or_verify_source_policy(policy)
-    repository.insert_or_verify_evidence(evidence)
-    repository.insert_or_verify_evidence_observation(observation)
+    seed_preadmitted_authority_snapshot(
+        repository._sessions,
+        policies=(policy,),
+        evidence=(evidence,),
+        observations=(observation,),
+    )
     repository.insert_or_verify_evidence_application(application)
     return observation
 
@@ -212,8 +222,11 @@ def test_same_evidence_id_with_different_immutable_provenance_is_conflict(
     assert changed.evidence_id == evidence.evidence_id
     assert changed.evidence_provenance_hash != evidence.evidence_provenance_hash
 
-    repository.insert_or_verify_source_policy(policy)
-    repository.insert_or_verify_evidence(evidence)
+    seed_preadmitted_authority_snapshot(
+        repository._sessions,
+        policies=(policy,),
+        evidence=(evidence,),
+    )
     with pytest.raises(AuthorityLedgerConflict, match="conflicting immutable"):
         repository.insert_or_verify_evidence(changed)
 
@@ -223,8 +236,11 @@ def test_application_requires_retrieval_observation(database_context) -> None:
     policy = production_source_policy()
     evidence = authority_evidence(policy)
     application = evidence_application(policy, evidence)
-    repository.insert_or_verify_source_policy(policy)
-    repository.insert_or_verify_evidence(evidence)
+    seed_preadmitted_authority_snapshot(
+        repository._sessions,
+        policies=(policy,),
+        evidence=(evidence,),
+    )
 
     with pytest.raises(AuthorityLedgerConflict, match="retrieval observation"):
         repository.insert_or_verify_evidence_application(application)
@@ -434,8 +450,7 @@ def test_corrected_bundle_decision_can_supersede_prior_bundle_without_chain_fork
         raw_claim_value=CORRECTED_CORP_CODE,
         normalized_claim_value=CORRECTED_CORP_CODE,
     )
-    repository.insert_or_verify_evidence(corrected_evidence)
-    repository.insert_or_verify_evidence_observation(_observation(corrected_evidence))
+    corrected_observation = _observation(corrected_evidence)
     relation = build_authority_evidence_relation(
         predecessor_evidence_id=original_evidence.evidence_id,
         successor_evidence_id=corrected_evidence.evidence_id,
@@ -443,7 +458,12 @@ def test_corrected_bundle_decision_can_supersede_prior_bundle_without_chain_fork
         authority_effective_missing_reason=(AuthorityTimeMissingReason.NOT_SUPPLIED_BY_AUTHORITY),
         recorded_at=LATER,
     )
-    repository.insert_or_verify_evidence_relation(relation)
+    seed_preadmitted_authority_snapshot(
+        repository._sessions,
+        evidence=(corrected_evidence,),
+        observations=(corrected_observation,),
+        relations=(relation,),
+    )
     corrected_application = evidence_application(
         policy,
         corrected_evidence,
@@ -475,8 +495,7 @@ def test_corrected_bundle_decision_can_supersede_prior_bundle_without_chain_fork
         raw_claim_value=SECOND_CORRECTED_CORP_CODE,
         normalized_claim_value=SECOND_CORRECTED_CORP_CODE,
     )
-    repository.insert_or_verify_evidence(competing_evidence)
-    repository.insert_or_verify_evidence_observation(_observation(competing_evidence))
+    competing_observation = _observation(competing_evidence)
     competing_relation = build_authority_evidence_relation(
         predecessor_evidence_id=original_evidence.evidence_id,
         successor_evidence_id=competing_evidence.evidence_id,
@@ -484,7 +503,12 @@ def test_corrected_bundle_decision_can_supersede_prior_bundle_without_chain_fork
         authority_effective_missing_reason=(AuthorityTimeMissingReason.NOT_SUPPLIED_BY_AUTHORITY),
         recorded_at=LATER,
     )
-    repository.insert_or_verify_evidence_relation(competing_relation)
+    seed_preadmitted_authority_snapshot(
+        repository._sessions,
+        evidence=(competing_evidence,),
+        observations=(competing_observation,),
+        relations=(competing_relation,),
+    )
     competing_application = evidence_application(
         policy,
         competing_evidence,
@@ -621,7 +645,7 @@ def test_append_only_trigger_rejects_source_policy_mutation(
 ) -> None:
     repository, _sessions = _repository(database_context)
     policy = production_source_policy()
-    repository.insert_or_verify_source_policy(policy)
+    seed_preadmitted_authority_snapshot(repository._sessions, policies=(policy,))
     statement = (
         "UPDATE authority_source_policies SET field_owner = 'tampered' "
         "WHERE authority_source_policy_id = :policy_id"
@@ -637,14 +661,14 @@ def test_append_only_trigger_rejects_source_policy_mutation(
             )
 
 
-def test_test_repository_cannot_register_production_policy(database_context) -> None:
+def test_generic_repository_cannot_register_production_policy(database_context) -> None:
     sessions = session_factory(database_context.engine)
-    repository = SQLiteAuthorityLedgerRepository(
-        sessions,
-        mode=AuthorityLedgerMode.TEST_ISOLATED,
-    )
+    repository = SQLiteAuthorityLedgerRepository(sessions)
 
-    with pytest.raises(AuthorityLedgerConflict, match="test-isolated"):
+    with pytest.raises(
+        AuthorityProductionAdmissionUnavailable,
+        match="PRODUCTION_AUTHORITY_ADMISSION_UNAVAILABLE",
+    ):
         repository.insert_or_verify_source_policy(production_source_policy())
     result = repository.insert_or_verify_source_policy(fixture_source_policy())
     assert result.inserted is True
@@ -655,11 +679,18 @@ def test_production_policy_requires_exact_server_owned_registry_entry(
 ) -> None:
     sessions = session_factory(database_context.engine)
     repository = SQLiteAuthorityLedgerRepository(sessions)
+    exact = production_source_policy()
     changed = production_source_policy(registered_at=LATER)
 
-    with pytest.raises(AuthorityLedgerConflict, match="server-owned registry entry"):
+    with pytest.raises(
+        AuthorityProductionAdmissionUnavailable,
+        match="PRODUCTION_AUTHORITY_ADMISSION_UNAVAILABLE",
+    ):
         repository.insert_or_verify_source_policy(changed)
-    assert repository.insert_or_verify_source_policy(production_source_policy()).inserted is True
+    seed_preadmitted_authority_snapshot(sessions, policies=(exact,))
+    with pytest.raises(AuthorityLedgerConflict, match="conflicting immutable"):
+        repository.insert_or_verify_source_policy(changed)
+    assert repository.insert_or_verify_source_policy(exact).inserted is False
 
 
 def test_repository_has_no_approval_or_canonical_write_methods() -> None:

@@ -713,6 +713,47 @@ migration file 생성·적용 모두 0이다.
 - This record is Codex self-QA and does not declare GPT PASS or authorize a
   later checkpoint.
 
+### CP3-C2-B2-B independent-review remediation record — 2026-08-27
+
+- GPT independent review of SHA
+  `d4f84c4bfb83f2396161eea913f2c119ecb17dac` returned `CHANGES REQUIRED`,
+  P0 `0`, P1 `5`, P2 `1`. P2 is the non-blocking absence of GitHub CI
+  execution evidence; LOCAL Codex results are not GitHub CI evidence.
+- P1-01: the generic ledger repository no longer accepts caller-selected modes
+  or any new production policy/evidence/observation/relation. It returns typed
+  `PRODUCTION_AUTHORITY_ADMISSION_UNAVAILABLE` until a separately authorized
+  trusted ingestion mechanism exists. Decision tests use only a helper under
+  `tests/` to seed an explicitly pre-admitted snapshot; production code does
+  not import or expose that helper.
+- P1-02: `evaluated_at` is removed from the evaluation request. The engine reads
+  an aware UTC server clock after `BEGIN IMMEDIATE`; deterministic tests inject
+  the clock into the engine constructor.
+- P1-03: request evidence/observation memberships are seeds, not completeness
+  assertions. The engine discovers all relevant current provider observations,
+  candidate authority facts, current relation heads and prior exact
+  applications inside the writer transaction. Incompatible co-current KR or US
+  official facts and omitted unsafe provider observations block READY.
+- P1-04: an existing canonical row is not a collision solely when its issuer ID
+  is the deterministic proposed ID and its jurisdiction, authoritative
+  identifier, immutable payload and normalized hash are all exact. Different or
+  inconsistent canonical subjects remain fail-closed conflicts and read-only.
+- P1-05: duplicate corp-code/registrant-CIK evaluation identifies all affected
+  provider subjects and appends `REVIEW_REQUIRED` successors to any impacted
+  READY leaves in the same `BEGIN IMMEDIATE` transaction. Old bundles and
+  decisions remain immutable; no first-writer winner or human disposition is
+  created.
+- Migrations `0001`–`0005` remain byte-identical and `0006` is not created.
+  Canonical Issuer/Security writes, VERIFIED mapping writes, provider rekeys,
+  WebAuthn/human approval/link execution, credentials, and live requests remain
+  `0`.
+- CP3-C2-B implementation: `IN PROGRESS`.
+- CP3-C2-B2-A: `PASS — CLOSED`.
+- CP3-C2-B2-B: `REMEDIATED — AWAITING GPT INDEPENDENT RE-REVIEW`.
+- CP3-C2-B2-C/B2-D, CP3-C2-C, CP3-D: `NOT STARTED`.
+- Automatic checkpoint progression: `PROHIBITED`.
+- This remediation record does not declare GPT PASS and does not authorize a
+  later checkpoint.
+
 ---
 
 ## 새 결정 기록 양식

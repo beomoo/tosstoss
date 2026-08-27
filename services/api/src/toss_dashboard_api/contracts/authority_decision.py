@@ -14,7 +14,7 @@ from toss_dashboard_api.contracts.authority import (
     authority_sha256,
     proposed_issuer_anchor,
 )
-from toss_dashboard_api.contracts.base import SafeId, Sha256, UtcDatetime
+from toss_dashboard_api.contracts.base import SafeId, Sha256
 from toss_dashboard_api.contracts.enums import Jurisdiction
 
 ISSUER_AUTHORITY_DECISION_ENGINE_CONTRACT_VERSION = "issuer-authority-decision-engine/0.1.0"
@@ -37,7 +37,6 @@ class IssuerAuthorityEvaluationRequest(AuthorityStrictModel):
     candidate_identifier_kind: AuthorityIdentifierKind
     candidate_identifier_value: str
     evidence_ids: tuple[SafeId, ...]
-    evaluated_at: UtcDatetime
 
     @field_validator("provider_observation_ids", "evidence_ids")
     @classmethod
@@ -68,7 +67,6 @@ def build_issuer_authority_evaluation_request(
     candidate_identifier_kind: AuthorityIdentifierKind,
     candidate_identifier_value: str,
     evidence_ids: Sequence[SafeId],
-    evaluated_at: UtcDatetime,
 ) -> IssuerAuthorityEvaluationRequest:
     return IssuerAuthorityEvaluationRequest.model_validate(
         {
@@ -79,7 +77,6 @@ def build_issuer_authority_evaluation_request(
             "candidate_identifier_kind": candidate_identifier_kind,
             "candidate_identifier_value": candidate_identifier_value,
             "evidence_ids": tuple(sorted(set(evidence_ids))),
-            "evaluated_at": evaluated_at,
         }
     )
 
