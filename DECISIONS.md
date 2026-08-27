@@ -843,6 +843,38 @@ migration file 생성·적용 모두 0이다.
 - This third remediation record does not declare GPT PASS or authorize a later
   checkpoint.
 
+### CP3-C2-B2-B independent-review closeout record — 2026-08-27
+
+- GPT independently reviewed SHA
+  `d81148636c237ac8ab6b85e930d3926fae19c855` and returned `PASS WITH
+  CLOSEOUT CONDITION`, P0 `0`, P1 `0`, P2 `1`.
+- P1-01 through P1-09 are `CLOSED`. Production authority admission and generic
+  repository READY persistence remain fail closed. The machine maximum positive
+  state remains `READY_FOR_MANUAL_REVIEW`.
+- The server-owned aware UTC clock, complete current-state discovery, exact KR/
+  US provider-to-issuer bridges, exact same-subject legal-name history,
+  all-supporting-name reconciliation, collision detection and transaction-wide
+  impacted-READY invalidation remain enforced.
+- P2-01 is `NON-BLOCKING — GitHub CI execution evidence absent`. LOCAL Codex
+  test and documentation-gate results are not GitHub CI evidence.
+- ADR-013 and ADR-014 remain `ACCEPTED`; CP3-C2-B1 remains `PASS — CONTRACT
+  APPROVED AND CLOSED`.
+- CP3-C2-B implementation remains `IN PROGRESS`; CP3-C2-B2-A and CP3-C2-B2-B
+  are `PASS — CLOSED`.
+- CP3-C2-B2-C, CP3-C2-B2-D, CP3-C2-C and CP3-D remain `NOT STARTED`.
+  B2-C requires independent verification of this closeout commit and a new,
+  separate explicit user start approval.
+- Canonical Issuer writes, canonical Security writes,
+  `ProviderIdentityMapping(VERIFIED)` writes, provider rekeys, automatic final
+  promotion, human approval/WebAuthn operational execution, issuer-authority
+  link execution, link-head mutation, credentials, live authority requests and
+  Toss live requests remain `0`.
+- Migrations `0001`–`0005` remain byte-identical to the reviewed SHA; migration
+  changes, persistent/runtime application of `0005`, and `0006` creation remain
+  `0`.
+- Automatic checkpoint progression remains `PROHIBITED`. This documentation
+  closeout does not authorize or start any later checkpoint.
+
 ---
 
 ## 새 결정 기록 양식

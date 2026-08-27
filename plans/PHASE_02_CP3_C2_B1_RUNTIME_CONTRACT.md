@@ -16,7 +16,7 @@
   `NOT STARTED — REQUIRES SEPARATE USER START APPROVAL`
 - Current implementation status: `IN PROGRESS`
 - CP3-C2-B2-A: `PASS — CLOSED`
-- CP3-C2-B2-B: `REMEDIATED — AWAITING GPT INDEPENDENT RE-REVIEW`
+- CP3-C2-B2-B: `PASS — CLOSED`
 - CP3-C2-B2-C / B2-D: `NOT STARTED`
 - Migration implementation: additive `0005` implemented in B2-A; production
   database application `0`
@@ -1563,7 +1563,7 @@ contract or retroactively broaden the B1 closeout approval.
 - CP3-C2-B2-A: `PASS — CLOSED`
 - Additive `0005_phase_02_cp3_c2_b_issuer_authority`: implemented and exercised
   only against disposable QA databases; persistent production application `0`
-- CP3-C2-B2-B: `REMEDIATED — AWAITING GPT INDEPENDENT RE-REVIEW`
+- CP3-C2-B2-B: `PASS — CLOSED`
 - CP3-C2-B2-C: `NOT STARTED`
 - CP3-C2-B2-D: `NOT STARTED`
 - CP3-C2-C: `NOT STARTED`
@@ -1600,9 +1600,9 @@ the exact same canonical subject from a collision, and invalidates all impacted
 READY leaves transactionally when a duplicate identifier is detected. The
 generic repository READY path remains fail closed. B2-B does not alter this
 approved technical contract, migrations `0001`–`0005`, or any human approval/
-canonical/link semantics. Its status is `REMEDIATED — AWAITING GPT INDEPENDENT
-RE-REVIEW`; B2-C/B2-D, CP3-C2-C, CP3-D and automatic progression remain
-unauthorized/not started.
+canonical/link semantics. At that remediation stage its status remained
+`REMEDIATED — AWAITING GPT INDEPENDENT RE-REVIEW`; B2-C/B2-D, CP3-C2-C,
+CP3-D and automatic progression remained unauthorized/not started.
 
 The second B2-B independent review of SHA
 `722a5036d7d05ad6b8de0314ff6ac5ee8dafacc2` confirmed P1-01 through P1-05
@@ -1634,7 +1634,20 @@ alone cannot establish subject sameness. It also evaluates every relevant
 supporting OpenDART/accepted SEC name separately, allowing exact current names
 or names in the same-subject decisive registry history and rejecting any
 unexplained or cross-entity name. NFC remains the only normalization; provider
-name/ticker and fuzzy or lossy normalization remain zero authority. B2-B stays
-`REMEDIATED — AWAITING GPT INDEPENDENT RE-REVIEW`; this synchronization does
-not declare PASS or authorize B2-C/B2-D, CP3-C2-C, CP3-D, or automatic
-progression.
+name/ticker and fuzzy or lossy normalization remain zero authority. At that
+remediation stage B2-B stayed `REMEDIATED — AWAITING GPT INDEPENDENT RE-REVIEW`;
+that synchronization did not declare PASS or authorize B2-C/B2-D, CP3-C2-C,
+CP3-D, or automatic progression.
+
+GPT independently reviewed the resulting B2-B SHA
+`d81148636c237ac8ab6b85e930d3926fae19c855` and returned `PASS WITH CLOSEOUT
+CONDITION`, P0 `0`, P1 `0`, P2 `1` non-blocking. P1-01 through P1-09 are
+`CLOSED`, so B2-B is `PASS — CLOSED`. Production admission and the generic
+READY repository path remain fail closed; the machine maximum positive state
+remains `READY_FOR_MANUAL_REVIEW`. The server-owned clock, complete current-
+state discovery, exact KR/US bridges, same-subject official legal-name history,
+all-supporting-name reconciliation, collision checks and impacted-READY
+invalidation remain unchanged. This documentation-only closeout does not alter
+the approved B1 technical meaning or authorize B2-C/B2-D, CP3-C2-C, CP3-D, or
+automatic progression. GitHub CI execution evidence remains absent and is a
+non-blocking P2; LOCAL Codex evidence is not GitHub CI evidence.

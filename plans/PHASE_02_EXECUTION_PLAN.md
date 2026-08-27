@@ -1,7 +1,7 @@
 # Phase 2 토스증권 읽기 전용 데이터 실행계획
 
 - 계획 상태: `PHASE 2 IMPLEMENTATION IN PROGRESS`
-- Current checkpoint: `CP3-C2-B2-A PASS — CLOSED / CP3-C2-B2-B REMEDIATED — AWAITING GPT INDEPENDENT RE-REVIEW / CP3-C2-B IMPLEMENTATION IN PROGRESS`
+- Current checkpoint: `CP3-C2-B2-A PASS — CLOSED / CP3-C2-B2-B PASS — CLOSED / CP3-C2-B IMPLEMENTATION IN PROGRESS / CP3-C2-B2-C NOT STARTED`
 - 최초 작성·공식 문서 조사일: `2026-08-23` (`Asia/Seoul`)
 - 현재 상태 갱신일: `2026-08-27` (`Asia/Seoul`)
 - 기준 브랜치: `feature/phase-02-toss`
@@ -24,7 +24,7 @@
 - CP3-C2-B1 issuer-authority runtime contract/migration design: `PASS — CONTRACT APPROVED AND CLOSED`
 - CP3-C2-B implementation: `IN PROGRESS`
 - CP3-C2-B2-A: `PASS — CLOSED`
-- CP3-C2-B2-B: `REMEDIATED — AWAITING GPT INDEPENDENT RE-REVIEW`
+- CP3-C2-B2-B: `PASS — CLOSED`
 - CP3-C2-B2-C: `NOT STARTED`
 - CP3-C2-B2-D: `NOT STARTED`
 - CP3-C2-C: `NOT STARTED`
@@ -33,7 +33,7 @@
 
 CP3-A는 `plans/PHASE_02_CP3_A_CONTRACT.md`를 중심으로 Security Master와 Current Price의 planning/contract를 확정한 documentation checkpoint다. CP3-B는 provider source/identity foundation과 독립검증 hardening/documentation closeout을 마쳐 `PASS — CLOSED`다. CP3-C1은 별도 사용자 승인에 따라 strict `/stocks/all`·`/stocks` offline DTO/fixture, conservative universe, continuity-first identity reconciliation, append-only enrichment/lifecycle, collision quarantine, partial-detail audit와 deterministic replay를 additive `0004`로 구현했다. GPT independent review의 P1 두 건에 따라 current identifier를 ID/hash가 아닌 semantic current set으로 해석하고, complete detail response의 duplicate ISIN을 publish 전에 batch-level로 quarantine하도록 보완했다. GPT independent re-review/documentation closeout 뒤 CP3-C1은 `PASS — CLOSED`다. CP3-C2-A는 current public OpenDART/KRX/SEC/primary-exchange/CGS authority와 access/licensing boundary를 조사해 field-owned evidence bundle, fail-closed default, manual final approval과 CP3-C2-B issuer/CP3-C2-C security split을 제안하는 documentation-only checkpoint다. GPT independent review의 P1 두 건에 따라 KRX market과 legal jurisdiction을 분리하고 SEC registrant CIK를 accession/login/agent CIK provenance와 분리했으며, P2 24시간 기준은 repository policy로 명시했다. GPT independent re-review `PASS WITH CLOSEOUT CONDITION`, P0 0 / P1 0과 사용자 승인으로 ADR-013은 `ACCEPTED`, CP3-C2-A는 `PASS — CONTRACT APPROVED AND CLOSED`다. CP3-C2-B1 첫 independent review는 P0 0 / P1 4 / P2 1로 trust root, exact jurisdiction owner, provenance/application, source admission/acceptance 보완을 요구했다. Revised documentation-only contract는 Windows Hello WebAuthn, KR court/US formation-state registry, immutable EvidenceApplication/SourcePolicy, permanent fixture isolation과 expanded counters를 설계했다. SHA `f3a7a3c4cc99de9cd9656544c1b29e3d03df6911`의 GPT independent re-review는 `PASS WITH CLOSEOUT CONDITION`, P0 0 / P1 0으로 P1-01~P1-04를 모두 `CLOSED` 판정했고 사용자가 revised contract와 ADR-014를 documentation closeout 범위로 승인했다. 따라서 ADR-014는 `ACCEPTED`, CP3-C2-B1은 `PASS — CONTRACT APPROVED AND CLOSED`다. B1 closeout 당시에는 collection/live request, WebAuthn/canonical promotion implementation과 migration file을 포함하지 않았고 CP3-C2-B implementation도 시작하지 않았다.
 
-이후 별도 사용자 승인으로 CP3-C2-B implementation에 진입했다. B2-A는 versioned authority ledger contract, permanent source/fixture admission boundary, exact application/bundle membership, contradictory identifier-claim preservation, additive 21-table `0005`, 40 append-only trigger와 low-level insert-or-verify storage를 구현했고 independent re-review/documentation closeout 뒤 `PASS — CLOSED`다. 다시 별도 승인된 B2-B는 immutable server-owned exact KR/US source registry, candidate-specific application, exact CP3-C1 provider-to-issuer bridge, actual correction/revocation head, conservative latest-status freshness, identifier/application/canonical/provider collision scan과 machine-only decision engine을 구현했다. Independent review P1-01~P1-05 remediation은 generic repository 신규 production admission을 fail closed하고 tests-only pre-admitted snapshot을 production path와 분리했으며, request time 대신 transaction-scoped server clock을 사용한다. Request memberships는 seed로만 취급하고 all relevant current provider/authority facts를 discover하며, exact same canonical subject를 non-collision으로 판정하고 duplicate identifier transaction에서 all impacted READY leaves를 append-only `REVIEW_REQUIRED`로 즉시 invalidate한다. `BEGIN IMMEDIATE` transaction 안에서 positive state를 재검증하며 engine-only 경로만 `READY_FOR_MANUAL_REVIEW`를 저장하고 generic repository READY는 계속 typed fail-closed다. Remediation local self-QA는 targeted 63, B2-A authority 69, full backend 676, frontend 43, E2E 2를 통과했다. Migrations `0001`~`0005` 변경, live collection, WebAuthn/approval execution, canonical promotion, VERIFIED mapping과 link-head workflow는 0이다. B2-B는 `REMEDIATED — AWAITING GPT INDEPENDENT RE-REVIEW`; B2-C/B2-D 및 CP3-C2-C/CP3-D는 `NOT STARTED`다.
+이후 별도 사용자 승인으로 CP3-C2-B implementation에 진입했다. B2-A는 versioned authority ledger contract, permanent source/fixture admission boundary, exact application/bundle membership, contradictory identifier-claim preservation, additive 21-table `0005`, 40 append-only trigger와 low-level insert-or-verify storage를 구현했고 independent re-review/documentation closeout 뒤 `PASS — CLOSED`다. 다시 별도 승인된 B2-B는 immutable server-owned exact KR/US source registry, candidate-specific application, exact CP3-C1 provider-to-issuer bridge, actual correction/revocation head, conservative latest-status freshness, identifier/application/canonical/provider collision scan과 machine-only decision engine을 구현했다. Independent review P1-01~P1-05 remediation은 generic repository 신규 production admission을 fail closed하고 tests-only pre-admitted snapshot을 production path와 분리했으며, request time 대신 transaction-scoped server clock을 사용한다. Request memberships는 seed로만 취급하고 all relevant current provider/authority facts를 discover하며, exact same canonical subject를 non-collision으로 판정하고 duplicate identifier transaction에서 all impacted READY leaves를 append-only `REVIEW_REQUIRED`로 즉시 invalidate한다. `BEGIN IMMEDIATE` transaction 안에서 positive state를 재검증하며 engine-only 경로만 `READY_FOR_MANUAL_REVIEW`를 저장하고 generic repository READY는 계속 typed fail-closed다. Remediation local self-QA는 targeted 63, B2-A authority 69, full backend 676, frontend 43, E2E 2를 통과했다. Migrations `0001`~`0005` 변경, live collection, WebAuthn/approval execution, canonical promotion, VERIFIED mapping과 link-head workflow는 0이다. B2-B는 `PASS — CLOSED`; B2-C/B2-D 및 CP3-C2-C/CP3-D는 `NOT STARTED`다.
 
 ## Original CP1 investigation baseline
 
@@ -54,7 +54,7 @@ CP3-A는 `plans/PHASE_02_CP3_A_CONTRACT.md`를 중심으로 Security Master와 C
 
 ## Current checkpoint status
 
-CP3-A approved repository contract는 기존 Phase 1 계약을 breaking 변경하지 않고 provider staging identity, nullable provider source time, raw/source revision, provider-scoped current latest와 additive migration 전략을 정의한다. CP3-B의 9개 source/identity foundation table과 `0003` invariants는 `PASS — CLOSED`다. CP3-C1은 semantic normalized master record, source-linked staging/lifecycle observation, identity-state event와 partial-detail batch audit 네 table만 additive `0004`로 추가했고 independent re-review closeout 뒤 `PASS — CLOSED`다. canonical Issuer/Security mapping row를 생성하지 않고 eligible candidate evidence에서 멈춘다. `plans/PHASE_02_CP3_C2_PROMOTION_AUTHORITY.md`와 ADR-013은 independent re-review와 사용자 승인 뒤 accepted/closed 상태다. CP3-C2-B1은 `plans/PHASE_02_CP3_C2_B1_RUNTIME_CONTRACT.md`와 ADR-014에 approved runtime/schema design을 기록한다. Independently reviewed SHA `f3a7a3c4cc99de9cd9656544c1b29e3d03df6911`은 `PASS WITH CLOSEOUT CONDITION`, P0 0 / P1 0이며 P1-01~P1-04가 모두 `CLOSED`다. 명시적 사용자 승인으로 ADR-014는 `ACCEPTED`, CP3-C2-B1은 `PASS — CONTRACT APPROVED AND CLOSED`다. 별도 implementation 시작 승인 뒤 B2-A는 immutable authority ledger contract/storage와 additive `0005` foundation을 구현했고 remediated SHA `57e9bbbf2a1fd117b8e31c7288f2f08475c7e4ae`의 independent re-review/documentation closeout 뒤 `PASS — CLOSED`다. 이어 별도 B2-B 승인으로 exact source admission/issuer bridge/collision/freshness decision engine을 구현했다. 첫 remediation P1-01~P1-05는 independent re-review에서 `CLOSED`로 확인됐다. Reviewed SHA `722a5036d7d05ad6b8de0314ff6ac5ee8dafacc2`의 두 신규 P1에 대한 second remediation은 exact official legal-name/history gate와 compatible historical SEC multi-filing semantics를 추가했다. CP3-C2-B implementation은 `IN PROGRESS`, B2-B는 `REMEDIATED — AWAITING GPT INDEPENDENT RE-REVIEW`, B2-C/B2-D와 CP3-C2-C/CP3-D는 `NOT STARTED`다.
+CP3-A approved repository contract는 기존 Phase 1 계약을 breaking 변경하지 않고 provider staging identity, nullable provider source time, raw/source revision, provider-scoped current latest와 additive migration 전략을 정의한다. CP3-B의 9개 source/identity foundation table과 `0003` invariants는 `PASS — CLOSED`다. CP3-C1은 semantic normalized master record, source-linked staging/lifecycle observation, identity-state event와 partial-detail batch audit 네 table만 additive `0004`로 추가했고 independent re-review closeout 뒤 `PASS — CLOSED`다. canonical Issuer/Security mapping row를 생성하지 않고 eligible candidate evidence에서 멈춘다. `plans/PHASE_02_CP3_C2_PROMOTION_AUTHORITY.md`와 ADR-013은 independent re-review와 사용자 승인 뒤 accepted/closed 상태다. CP3-C2-B1은 `plans/PHASE_02_CP3_C2_B1_RUNTIME_CONTRACT.md`와 ADR-014에 approved runtime/schema design을 기록한다. Independently reviewed SHA `f3a7a3c4cc99de9cd9656544c1b29e3d03df6911`은 `PASS WITH CLOSEOUT CONDITION`, P0 0 / P1 0이며 P1-01~P1-04가 모두 `CLOSED`다. 명시적 사용자 승인으로 ADR-014는 `ACCEPTED`, CP3-C2-B1은 `PASS — CONTRACT APPROVED AND CLOSED`다. 별도 implementation 시작 승인 뒤 B2-A는 immutable authority ledger contract/storage와 additive `0005` foundation을 구현했고 remediated SHA `57e9bbbf2a1fd117b8e31c7288f2f08475c7e4ae`의 independent re-review/documentation closeout 뒤 `PASS — CLOSED`다. 이어 별도 B2-B 승인으로 exact source admission/issuer bridge/collision/freshness decision engine을 구현했다. 첫 remediation P1-01~P1-05는 independent re-review에서 `CLOSED`로 확인됐다. Reviewed SHA `722a5036d7d05ad6b8de0314ff6ac5ee8dafacc2`의 두 신규 P1에 대한 second remediation은 exact official legal-name/history gate와 compatible historical SEC multi-filing semantics를 추가했다. CP3-C2-B implementation은 `IN PROGRESS`, B2-B는 `PASS — CLOSED`, B2-C/B2-D와 CP3-C2-C/CP3-D는 `NOT STARTED`다.
 
 Second independently reviewed SHA `8093ee9389d4f7ae716482a87de5eae252e08eff`는
 P1-01~P1-07을 `CLOSED`로 확인하고 P1-08 exact legal-entity name-history
@@ -67,6 +67,14 @@ filing names는 coexist할 수 있지만 unknown/cross-entity name 하나가 전
 path를 block한다. LOCAL self-QA는 B2-B `89`, B2-A authority `69`, backend
 `702`, frontend `43`, E2E `2`다. B2-B status와 later-checkpoint gate는 변하지
 않는다.
+
+GPT independent review of the resulting SHA
+`d81148636c237ac8ab6b85e930d3926fae19c855` returned `PASS WITH CLOSEOUT
+CONDITION`, P0 `0`, P1 `0`, P2 `1` non-blocking, and closed P1-01 through
+P1-09. The documentation closeout makes B2-B `PASS — CLOSED` without
+authorizing B2-C. CP3-C2-B implementation remains `IN PROGRESS`; B2-C/B2-D,
+CP3-C2-C and CP3-D remain `NOT STARTED`, and automatic progression remains
+`PROHIBITED`.
 
 ## Historical checkpoint record
 
@@ -84,9 +92,9 @@ path를 block한다. LOCAL self-QA는 B2-B `89`, B2-A authority `69`, backend
 | CP3-C1 | `PASS — CLOSED` | P1-01/P1-02 closed, independent re-review/documentation closeout 완료 |
 | CP3-C2-A | `PASS — CONTRACT APPROVED AND CLOSED` | re-review P0 0 / P1 0, P1-01·P1-02·P2-01 CLOSED, ADR-013 ACCEPTED; production change 0 |
 | CP3-C2-B1 | `PASS — CONTRACT APPROVED AND CLOSED` | re-review P0 0 / P1 0, P1-01~P1-04 CLOSED, P2-01 non-blocking, ADR-014/user approval; implementation 0 |
-| CP3-C2-B implementation | `IN PROGRESS` | 별도 사용자 시작 승인; B2-A closed, B2-B independent re-review 대기 |
+| CP3-C2-B implementation | `IN PROGRESS` | 별도 사용자 시작 승인; B2-A/B2-B closed, B2-C 별도 시작 승인 전 |
 | CP3-C2-B2-A | `PASS — CLOSED` | re-review P0 0 / P1 0, P1-01~P1-03 CLOSED; P2-01 non-blocking; documentation closeout 완료 |
-| CP3-C2-B2-B | `REMEDIATED — AWAITING GPT INDEPENDENT RE-REVIEW` | P1-01~P1-07 CLOSED 유지; P1-08 exact legal-entity name-history subject binding / P1-09 all-supporting-name reconciliation third remediation; Codex self-QA only |
+| CP3-C2-B2-B | `PASS — CLOSED` | reviewed SHA `d81148636c237ac8ab6b85e930d3926fae19c855`; PASS WITH CLOSEOUT CONDITION, P0 0 / P1 0 / P2 1 non-blocking; P1-01~P1-09 CLOSED |
 | CP3-C2-B2-C | `NOT STARTED` | 자동 진행 금지 |
 | CP3-C2-B2-D | `NOT STARTED` | 자동 진행 금지 |
 | CP3-C2-C | `NOT STARTED` | CP3-C2-B implementation 승인과 별도 시작 승인 전 자동 진입 금지 |
@@ -633,8 +641,8 @@ CP2-A의 통과는 CP2 전체 통과가 아니며, 아래 기존 완료 조건�
 
 - 상태: `IN PROGRESS`
 - 진입 승인: B1 closeout 뒤 별개의 명시적 사용자 implementation 시작 승인 완료
-- 현재 terminal sub-checkpoint: `CP3-C2-B2-B REMEDIATED — AWAITING GPT
-  INDEPENDENT RE-REVIEW`; 다음 구현 sub-checkpoint에는 진입하지 않음
+- 현재 terminal sub-checkpoint: `CP3-C2-B2-B PASS — CLOSED`; 다음 구현
+  sub-checkpoint에는 진입하지 않음
 - B2-A 상태: `PASS — CLOSED`
 - B2-A 범위: versioned source-policy/evidence/observation/relation/application/
   bundle/claim/decision contract, deterministic ID/hash, additive 21-table
@@ -652,7 +660,7 @@ CP2-A의 통과는 CP2 전체 통과가 아니며, 아래 기존 완료 조건�
   `57e9bbbf2a1fd117b8e31c7288f2f08475c7e4ae`, `PASS WITH CLOSEOUT
   CONDITION`, P0 `0`, P1 `0`, P1-01~P1-03 `CLOSED`; P2-01 GitHub CI
   execution evidence 부재는 `NON-BLOCKING`
-- B2-B 상태: `REMEDIATED — AWAITING GPT INDEPENDENT RE-REVIEW`
+- B2-B 상태: `PASS — CLOSED`
 - B2-B 범위: exact server-owned source-policy registry, source admission,
   candidate-specific application, KR OpenDART↔IROS and US SEC↔exact state
   registry bridge, current relation head, latest-status freshness, global
@@ -694,13 +702,18 @@ CP2-A의 통과는 CP2 전체 통과가 아니며, 아래 기존 완료 조건�
   field-owner history에 의해 각각 설명돼야 하며 하나라도 미설명/cross-entity면
   conflict다. Fuzzy/case/punctuation/suffix/whitespace normalization과 provider
   name/ticker는 계속 zero authority다.
+- B2-B independent-review closeout: GPT review of SHA
+  `d81148636c237ac8ab6b85e930d3926fae19c855` returned `PASS WITH CLOSEOUT
+  CONDITION`, P0 `0`, P1 `0`, P2 `1` non-blocking, and P1-01 through P1-09
+  are `CLOSED`. B2-B is `PASS — CLOSED`. The GitHub CI execution evidence gap
+  remains a non-blocking P2; LOCAL Codex checks are not GitHub CI evidence.
 - B2-B output/non-scope: machine state는 `UNRESOLVED`,
   `READY_FOR_MANUAL_REVIEW`, `STALE`, `REVIEW_REQUIRED`뿐이며 human
   disposition/WebAuthn/approval/link/canonical write/live collection은 0이다.
 - B2-C: `NOT STARTED`
 - B2-D: `NOT STARTED`
-- 다음 sub-checkpoint 시작 조건: B2-B commit의 GPT independent review와 별도
-  명시적 사용자 시작 승인
+- 다음 sub-checkpoint 시작 조건: 이 closeout commit의 independent verification과
+  B2-C에 대한 별도 명시적 사용자 시작 승인
 - CP3-C2-C/CP3-D automatic progression은 금지한다.
 
 ### CP3-C2-C — Canonical Security Authority / Final Mapping (proposed split)
@@ -924,7 +937,7 @@ Phase 2 완료 선언에는 모두 필요하다.
 
 ## 최종 판정
 
-CP1은 `PASS`, CP2는 `COMPLETE`, CP3-A는 `PASS — CONTRACT APPROVED AND CLOSED`, CP3-B와 CP3-C1은 `PASS — CLOSED`다. ADR-010, ADR-011, revised ADR-012, ADR-013과 ADR-014는 `ACCEPTED`다. CP3-C2-A와 CP3-C2-B1은 `PASS — CONTRACT APPROVED AND CLOSED`다. B1 independently reviewed SHA `f3a7a3c4cc99de9cd9656544c1b29e3d03df6911`은 `PASS WITH CLOSEOUT CONDITION`, P0 0 / P1 0이며 P1-01~P1-04가 `CLOSED`다. B2-A remediation SHA `57e9bbbf2a1fd117b8e31c7288f2f08475c7e4ae`도 independent re-review `PASS WITH CLOSEOUT CONDITION`, P0 0 / P1 0 뒤 documentation closeout을 거쳐 `PASS — CLOSED`다. 이후 별도 사용자 승인으로 B2-B exact production source admission, KR/US issuer bridge, freshness/relation-head/collision evaluation과 machine decision engine을 구현했다. Reviewed SHA `d4f84c4bfb83f2396161eea913f2c119ecb17dac`의 independent review는 `CHANGES REQUIRED`, P0 0 / P1 5 / P2 1을 판정했고 P1-01~P1-05 remediation은 subsequent re-review에서 모두 `CLOSED`로 확인됐다. Reviewed SHA `722a5036d7d05ad6b8de0314ff6ac5ee8dafacc2`의 re-review는 P0 0 / P1 2 new / P2 1을 판정했다. P1-06/P1-07 second remediation은 official legal-name/history reconciliation을 positive gate로 추가하고, accepted filing accession provenance와 stable SEC entity semantics를 분리해 compatible historical filings를 허용하면서 formation/entity/name/provider-history conflicts는 fail closed한다. Codex LOCAL self-QA는 targeted 78, B2-A authority 69, backend 691, frontend 43, E2E 2와 migration/idempotency/build/safety gates를 통과했지만 GPT PASS를 self-declare하지 않는다. CP3-C2-B implementation은 `IN PROGRESS`, B2-B는 `REMEDIATED — AWAITING GPT INDEPENDENT RE-REVIEW`, B2-C/B2-D와 CP3-C2-C/CP3-D는 `NOT STARTED`, automatic checkpoint progression은 `PROHIBITED`다. Migrations `0001`~`0005`는 unchanged, persistent/runtime `0005` application과 `0006` creation은 0이다. Operational WebAuthn/approval, canonical Issuer/Security write, VERIFIED mapping, provider rekey, link-head mutation과 live authority/provider request는 0이다. GitHub CI evidence는 absent이며 모든 현 결과는 LOCAL evidence다. Phase 2 전체는 `IMPLEMENTATION IN PROGRESS`다. `/prices`, price timestamp-null/currency/freshness, natural 429와 actual 429/5xx production timing은 계속 `[LIVE_UNVERIFIED]`다.
+CP1은 `PASS`, CP2는 `COMPLETE`, CP3-A는 `PASS — CONTRACT APPROVED AND CLOSED`, CP3-B와 CP3-C1은 `PASS — CLOSED`다. ADR-010, ADR-011, revised ADR-012, ADR-013과 ADR-014는 `ACCEPTED`다. CP3-C2-A와 CP3-C2-B1은 `PASS — CONTRACT APPROVED AND CLOSED`다. B1 independently reviewed SHA `f3a7a3c4cc99de9cd9656544c1b29e3d03df6911`은 `PASS WITH CLOSEOUT CONDITION`, P0 0 / P1 0이며 P1-01~P1-04가 `CLOSED`다. B2-A remediation SHA `57e9bbbf2a1fd117b8e31c7288f2f08475c7e4ae`도 independent re-review `PASS WITH CLOSEOUT CONDITION`, P0 0 / P1 0 뒤 documentation closeout을 거쳐 `PASS — CLOSED`다. 이후 별도 사용자 승인으로 B2-B exact production source admission, KR/US issuer bridge, freshness/relation-head/collision evaluation과 machine decision engine을 구현했다. Reviewed SHA `d4f84c4bfb83f2396161eea913f2c119ecb17dac`의 independent review는 `CHANGES REQUIRED`, P0 0 / P1 5 / P2 1을 판정했고 P1-01~P1-05 remediation은 subsequent re-review에서 모두 `CLOSED`로 확인됐다. Reviewed SHA `722a5036d7d05ad6b8de0314ff6ac5ee8dafacc2`의 re-review는 P0 0 / P1 2 new / P2 1을 판정했다. P1-06/P1-07 second remediation은 official legal-name/history reconciliation을 positive gate로 추가하고, accepted filing accession provenance와 stable SEC entity semantics를 분리해 compatible historical filings를 허용하면서 formation/entity/name/provider-history conflicts는 fail closed한다. Codex LOCAL self-QA는 targeted 78, B2-A authority 69, backend 691, frontend 43, E2E 2와 migration/idempotency/build/safety gates를 통과했지만 GPT PASS를 self-declare하지 않는다. CP3-C2-B implementation은 `IN PROGRESS`, B2-B는 `PASS — CLOSED`, B2-C/B2-D와 CP3-C2-C/CP3-D는 `NOT STARTED`, automatic checkpoint progression은 `PROHIBITED`다. Migrations `0001`~`0005`는 unchanged, persistent/runtime `0005` application과 `0006` creation은 0이다. Operational WebAuthn/approval, canonical Issuer/Security write, VERIFIED mapping, provider rekey, link-head mutation과 live authority/provider request는 0이다. GitHub CI evidence는 absent이며 모든 현 결과는 LOCAL evidence다. Phase 2 전체는 `IMPLEMENTATION IN PROGRESS`다. `/prices`, price timestamp-null/currency/freshness, natural 429와 actual 429/5xx production timing은 계속 `[LIVE_UNVERIFIED]`다.
 
 Second independently reviewed SHA `8093ee9389d4f7ae716482a87de5eae252e08eff`는
 P1-01~P1-07을 `CLOSED`로 유지하고 P1-08/P1-09를 새로 판정했다. Third
@@ -932,5 +945,8 @@ remediation은 exact registry-subject-bound official name history와 all-support
 name reconciliation을 fail closed로 구현했다. 최신 LOCAL self-QA는 B2-B
 targeted `89`, B2-A authority `69`, backend `702`, frontend `43`, E2E `2`와
 migration/idempotency/lint/typecheck/OpenAPI/build/safety gates를 통과했다.
-GitHub CI evidence는 계속 absent/non-blocking이고 B2-B는 GPT PASS가 아닌
-`REMEDIATED — AWAITING GPT INDEPENDENT RE-REVIEW`다.
+GPT independent review of the resulting SHA
+`d81148636c237ac8ab6b85e930d3926fae19c855` returned `PASS WITH CLOSEOUT
+CONDITION`, P0 `0`, P1 `0`, P2 `1` non-blocking, and closed P1-01 through
+P1-09. GitHub CI execution evidence remains absent/non-blocking. B2-B is
+`PASS — CLOSED`; B2-C is not authorized or started.
