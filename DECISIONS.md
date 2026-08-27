@@ -640,6 +640,36 @@ migration file 생성·적용 모두 0이다.
 - Automatic checkpoint progression: `PROHIBITED`.
 - 이 기록은 B2-A PASS 또는 B2-B 시작 승인이 아니다.
 
+### CP3-C2-B2-A independent re-review / documentation closeout 기록 — 2026-08-27
+
+- Reviewed SHA: `57e9bbbf2a1fd117b8e31c7288f2f08475c7e4ae`.
+- GPT independent re-review: `PASS WITH CLOSEOUT CONDITION`, P0 `0`, P1
+  `0`, P2 `1`.
+- P1-01 `CLOSED`: same provider authority subject의 corrected evidence는 새
+  immutable bundle과 successor decision을 만들 수 있고 predecessor fork와
+  unrelated-provider graft는 계속 거부된다.
+- P1-02 `CLOSED`: separately gated B2-B positive bridge/decision engine이
+  구현되고 독립 검토되기 전에는 모든 B2-A `READY_FOR_MANUAL_REVIEW`
+  persistence가 typed `REVIEW_READY_ENGINE_NOT_IMPLEMENTED`로 fail closed한다.
+- P1-03 `CLOSED`: immutable registration counter와 append-only
+  previous/asserted authentication-event history로 current WebAuthn counter를
+  재구성한다. rollback/equality/gap/fork는 fail closed하고 no-counter
+  authenticator는 advancement를 만들지 않는다.
+- P2-01은 `NON-BLOCKING — GitHub CI execution evidence absent`다. Local Codex
+  gate 결과는 GitHub CI evidence가 아니며 이 closeout에서 CI/workflow를
+  만들지 않는다.
+- 사용자는 이 documentation closeout을 요청했다. 이 요청은 B2-B/B2-C/B2-D,
+  CP3-C2-C, CP3-D 또는 automatic progression 시작 승인이 아니다.
+- ADR-013과 ADR-014는 `ACCEPTED`, CP3-C2-B1은
+  `PASS — CONTRACT APPROVED AND CLOSED`로 유지한다.
+- CP3-C2-B implementation: `IN PROGRESS`.
+- CP3-C2-B2-A: `PASS — CLOSED`.
+- CP3-C2-B2-B: `NOT STARTED — REQUIRES SEPARATE USER START APPROVAL`.
+- CP3-C2-B2-C/B2-D, CP3-C2-C, CP3-D: `NOT STARTED`.
+- Additive `0005`는 current B2-A migration이며 persistent/runtime application은
+  `0`; `0006` creation은 `0`, `0001`~`0004`는 unchanged다.
+- Automatic checkpoint progression: `PROHIBITED`.
+
 ---
 
 ## 새 결정 기록 양식

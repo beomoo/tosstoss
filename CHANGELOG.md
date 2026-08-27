@@ -1,5 +1,31 @@
 # Changelog
 
+## Unreleased — Phase 2 CP3-C2-B2-A Documentation Closeout — 2026-08-27
+
+### Independent re-review
+
+- Remediated SHA `57e9bbbf2a1fd117b8e31c7288f2f08475c7e4ae`
+  received `PASS WITH CLOSEOUT CONDITION`, P0 0 / P1 0 / P2 1.
+- P1-01 cross-bundle same-provider correction supersession, P1-02 premature
+  `READY_FOR_MANUAL_REVIEW` persistence, and P1-03 append-only WebAuthn
+  signature-counter storage are all `CLOSED`.
+- P2-01, absence of GitHub CI execution evidence, remains non-blocking. Local
+  Codex safety gates are not represented as GitHub CI evidence.
+
+### Closeout boundary
+
+- CP3-C2-B2-A is `PASS — CLOSED`; CP3-C2-B implementation remains `IN
+  PROGRESS`.
+- CP3-C2-B2-B is `NOT STARTED — REQUIRES SEPARATE USER START APPROVAL`.
+  B2-C/B2-D, CP3-C2-C and CP3-D remain `NOT STARTED`; automatic progression is
+  `PROHIBITED`.
+- Documentation-only closeout changes no runtime, test, script or migration.
+  `0001`–`0004` remain unchanged, `0005` remains the current additive B2-A
+  migration with persistent/runtime application `0`, and `0006` remains `0`.
+- Operational WebAuthn/approval, canonical Issuer/Security writes, VERIFIED
+  mapping, provider rekey, link-head workflow and live authority/provider
+  requests remain `0`.
+
 ## Unreleased — Phase 2 CP3-C2-B2-A Independent-Review Remediation — 2026-08-27
 
 ### Fixed

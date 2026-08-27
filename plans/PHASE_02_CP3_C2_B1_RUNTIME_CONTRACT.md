@@ -15,8 +15,9 @@
 - B1 closeout production-implementation snapshot:
   `NOT STARTED — REQUIRES SEPARATE USER START APPROVAL`
 - Current implementation status: `IN PROGRESS`
-- CP3-C2-B2-A: `REMEDIATED — AWAITING GPT INDEPENDENT RE-REVIEW`
-- CP3-C2-B2-B / B2-C / B2-D: `NOT STARTED`
+- CP3-C2-B2-A: `PASS — CLOSED`
+- CP3-C2-B2-B: `NOT STARTED — REQUIRES SEPARATE USER START APPROVAL`
+- CP3-C2-B2-C / B2-D: `NOT STARTED`
 - Migration implementation: additive `0005` implemented in B2-A; production
   database application `0`
 - Automatic checkpoint progression: `PROHIBITED`
@@ -1559,10 +1560,10 @@ Foundation`. This later status record does not alter the approved B1 technical
 contract or retroactively broaden the B1 closeout approval.
 
 - CP3-C2-B implementation: `IN PROGRESS`
-- CP3-C2-B2-A: `REMEDIATED — AWAITING GPT INDEPENDENT RE-REVIEW`
+- CP3-C2-B2-A: `PASS — CLOSED`
 - Additive `0005_phase_02_cp3_c2_b_issuer_authority`: implemented and exercised
   only against disposable QA databases; persistent production application `0`
-- CP3-C2-B2-B: `NOT STARTED`
+- CP3-C2-B2-B: `NOT STARTED — REQUIRES SEPARATE USER START APPROVAL`
 - CP3-C2-B2-C: `NOT STARTED`
 - CP3-C2-B2-D: `NOT STARTED`
 - CP3-C2-C: `NOT STARTED`
@@ -1577,3 +1578,10 @@ WebAuthn counters from immutable registration state plus append-only audit
 events. It does not implement WebAuthn cryptographic verification, approval
 execution, canonical Issuer or Security promotion, VERIFIED provider mapping,
 provider rekey, live source collection, or link-head workflow.
+
+GPT independent re-review of the remediated B2-A SHA
+`57e9bbbf2a1fd117b8e31c7288f2f08475c7e4ae` returned `PASS WITH CLOSEOUT
+CONDITION`, P0 `0`, P1 `0`; P1-01 through P1-03 are `CLOSED`. P2-01, absence
+of GitHub CI execution evidence, remains non-blocking. Documentation closeout
+does not authorize B2-B, B2-C, B2-D, CP3-C2-C, CP3-D, or automatic
+progression.
