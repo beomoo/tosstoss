@@ -1,5 +1,25 @@
 # Changelog
 
+## Unreleased — Phase 2 CP3-C2-B2-C 0006 Closeout — 2026-08-28
+
+### Documentation/control-plane closeout
+
+- Recorded GPT independent review of implementation SHA
+  `1be18a622006a6b6a46e251350e2d861d596823d`: `PASS WITH CLOSEOUT CONDITION`,
+  P0 `0`, P1 `0`, P2 `1 — GitHub CI execution evidence absent, NON-BLOCKING`.
+- Recorded the user's explicit `2026-08-28` closeout approval. The additive
+  `0006` schema implementation is now `PASS — CLOSED`; SG-01, SG-02,
+  P1-SR-01, P1-SR-02, P1-SR-03, IG-01 and IG-02 remain `CLOSED`.
+- This closeout changes documentation/control-plane files only. Migrations
+  `0001`–`0006` remain byte-identical to the reviewed SHA; runtime, test,
+  script, frontend, fixture and dependency changes are `0`.
+- CP3-C2-B implementation remains `IN PROGRESS`. B2-C Windows Hello/WebAuthn,
+  reviewer authentication and human approval runtime remain `NOT STARTED / NOT
+  AUTHORIZED`; B2-D, CP3-C2-C and CP3-D remain `NOT STARTED`, and automatic
+  progression remains `PROHIBITED`.
+- GitHub CI execution evidence remains absent as an approved non-blocking P2;
+  LOCAL closeout checks are not GitHub CI evidence.
+
 ## Unreleased — Phase 2 CP3-C2-B2-C 0006 Implementation — 2026-08-28
 
 ### ADR-016 acceptance and additive schema implementation

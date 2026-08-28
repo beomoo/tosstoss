@@ -1,9 +1,9 @@
 # Phase 2 CP3-C2-B2-C Schema Contract Remediation
 
 - Status:
-  `APPROVED VIA ADR-015 AND ADR-016 / 0006 IMPLEMENTATION AUTHORIZED`
+  `APPROVED VIA ADR-015 AND ADR-016 / 0006 PASS — CLOSED`
 - Checkpoint state:
-  `0006 IMPLEMENTED — AWAITING GPT INDEPENDENT REVIEW`
+  `0006 SCHEMA IMPLEMENTATION PASS — CLOSED`
 - Repository: `beomoo/tosstoss`
 - Branch: `feature/phase-02-toss`
 - Initial implementation-entry starting SHA:
@@ -16,6 +16,8 @@
   `f73115ea1182e27259787460307a01b4c3874312`
 - Implementation-gap amendment starting SHA:
   `f73115ea1182e27259787460307a01b4c3874312`
+- Independently reviewed implementation SHA:
+  `1be18a622006a6b6a46e251350e2d861d596823d`
 - Design date: `2026-08-28` (`Asia/Seoul`)
 - Governing contracts: ADR-013 `ACCEPTED`, ADR-014 `ACCEPTED`,
   `plans/PHASE_02_CP3_C2_B1_RUNTIME_CONTRACT.md`
@@ -40,10 +42,13 @@ real enrollment, issuer disposition execution, canonical Issuer/Security,
 `ProviderIdentityMapping(VERIFIED)`, issuer-link mutation and live authority/
 Toss requests remain unauthorized.
 
-The ADR-016 design gate is closed and the separately authorized additive `0006`
-schema is implemented. It remains `AWAITING GPT INDEPENDENT REVIEW` and must not
-be declared PASS or CLOSED before that review. This does not resume B2-C runtime
-work.
+The ADR-016 design gate is closed. GPT independently reviewed the separately
+authorized additive `0006` implementation at SHA
+`1be18a622006a6b6a46e251350e2d861d596823d` and returned `PASS WITH CLOSEOUT
+CONDITION`, P0 `0`, P1 `0`, P2 `1` non-blocking because GitHub CI execution
+evidence is absent. The user explicitly approved closeout on `2026-08-28`, so
+the schema implementation is `PASS — CLOSED`. This does not resume or authorize
+B2-C runtime work.
 
 ## 2. Confirmed gap and corrected non-gap
 
@@ -1469,7 +1474,7 @@ The separately authorized implementation must add offline tests for at least:
 - no live authority/Toss request or real Windows Hello enrollment in automated
   QA.
 
-## 14. Documentation checkpoint result
+## 14. Schema implementation closeout result
 
 - ADR-013: `ACCEPTED`
 - ADR-014: `ACCEPTED`
@@ -1477,10 +1482,11 @@ The separately authorized implementation must add offline tests for at least:
 - ADR-016: `ACCEPTED` (`2026-08-28`)
 - SG-01 / SG-02 / P1-SR-01 / P1-SR-02 / P1-SR-03:
   independently verified `CLOSED`
+- IG-01 / IG-02: independently verified `CLOSED`
 - CP3-C2-B1: `PASS — CONTRACT APPROVED AND CLOSED`
 - CP3-C2-B2-A: `PASS — CLOSED`
 - CP3-C2-B2-B: `PASS — CLOSED`
-- CP3-C2-B2-C schema: `IMPLEMENTED — AWAITING GPT INDEPENDENT REVIEW`
+- CP3-C2-B2-C `0006` schema implementation: `PASS — CLOSED`
 - CP3-C2-B2-D: `NOT STARTED`
 - CP3-C2-C: `NOT STARTED`
 - CP3-D: `NOT STARTED`
@@ -1492,6 +1498,7 @@ The separately authorized implementation must add offline tests for at least:
 - Live authority/Toss requests: `0`
 
 ADR-016 passed GPT independent review and was explicitly accepted by the user.
-The separately authorized `0006` schema implementation is complete and awaits
-GPT independent review. B2-C WebAuthn/human-approval runtime remains `NOT
-STARTED / NOT AUTHORIZED`.
+The separately authorized `0006` implementation also passed independent review
+at SHA `1be18a622006a6b6a46e251350e2d861d596823d` and received explicit user
+closeout approval on `2026-08-28`. Only this schema substep is `PASS — CLOSED`.
+B2-C WebAuthn/human-approval runtime remains `NOT STARTED / NOT AUTHORIZED`.

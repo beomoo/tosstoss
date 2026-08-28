@@ -1163,13 +1163,18 @@ commit할 수 없다.
   `4104973d84307b80a236d9b737b2d29339b27153` returned `PASS WITH CLOSEOUT
   CONDITION`, P0 `0`, P1 `0`, P2 `1` non-blocking, and verified IG-01/IG-02
   `CLOSED`. The user explicitly accepted ADR-016 on `2026-08-28`.
+- GPT independently reviewed the implemented additive schema at SHA
+  `1be18a622006a6b6a46e251350e2d861d596823d` and returned `PASS WITH CLOSEOUT
+  CONDITION`, P0 `0`, P1 `0`, P2 `1` non-blocking because GitHub CI execution
+  evidence is absent. The user explicitly approved the implementation closeout
+  on `2026-08-28`.
 - Six-table additive Option A, `reviewer-credential-state/0.1.0`, trusted-server
   SHA boundary, nullable composite-FK safeguards, union counter chain, terminal
   outcome contract와 issuer/credential-operation assertion separation은
   변경하지 않는다.
-- CP3-C2-B2-C `0006` schema implementation은 별도 사용자 승인에 따라
-  `IMPLEMENTED — AWAITING GPT INDEPENDENT REVIEW`; 구현 결과는 GPT independent
-  review 전 PASS/CLOSED가 아니다.
+- CP3-C2-B2-C `0006` schema implementation: `PASS — CLOSED`. This closes only
+  the additive schema substep and does not close CP3-C2-B implementation or
+  authorize B2-C runtime.
 - B2-C runtime, B2-D, CP3-C2-C와 CP3-D는 `NOT STARTED`; automatic progression은
   `PROHIBITED`다.
 
@@ -1182,8 +1187,11 @@ commit할 수 없다.
   schema implementation을 명시 승인했다. B2-C runtime은 승인하지 않았다.
 - 현재 additive `0006`은 exact six-table surface, approved indexes/triggers,
   ADR-016 trust binding과 cross-ledger counter guards를 구현했다. `0001`–`0005`
-  blob은 고정됐고 persistent canonical/runtime write는 없다. Independent review
-  전에는 CP3-C2-B2-C를 PASS/CLOSED로 선언하지 않는다.
+  blob은 고정됐고 persistent canonical/runtime write는 없다.
+- 이 closeout task의 migration changes는 `0`이며 `0001`–`0006`은 reviewed SHA
+  `1be18a622006a6b6a46e251350e2d861d596823d`와 byte-identical하다.
+- B2-C WebAuthn/reviewer/human-approval runtime, B2-D, CP3-C2-C와 CP3-D는
+  계속 별도 승인 전이며 automatic progression은 `PROHIBITED`다.
 
 ---
 

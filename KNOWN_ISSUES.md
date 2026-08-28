@@ -87,7 +87,7 @@
 ## KI-015 — CP3-C2-B2-C WebAuthn enrollment/credential-operation schema gap
 
 - 상태:
-  `OPEN — ADR-015/ADR-016 ACCEPTED / 0006 IMPLEMENTED — AWAITING GPT INDEPENDENT REVIEW`
+  `CLOSED — ADR-015/ADR-016 ACCEPTED / 0006 PASS — CLOSED / RUNTIME NOT STARTED`
 - 관찰: CP3-C2-B2-C implementation-entry audit에서 frozen `0005`가 valid
   credential 이전의 server-created SID-bound first-enrollment bootstrap,
   WebAuthn create challenge, expiry와 실패 포함 unique terminal consumption을
@@ -138,14 +138,15 @@
   successful-outcome/authorization tuple; and includes the three columns in
   both immutable hash preimages. Weaker subset identities, generic tokens,
   payload authority and SQLite SHA assumptions remain prohibited.
-- Current gate: GPT independent review of SHA
+- Implementation review and closeout: GPT independent review of SHA
   `4104973d84307b80a236d9b737b2d29339b27153` returned P0 `0` / P1 `0`; the user
   accepted ADR-016 on `2026-08-28` and separately authorized only the approved
-  `0006` schema implementation. The additive schema is now `IMPLEMENTED —
-  AWAITING GPT INDEPENDENT REVIEW`, not PASS/CLOSED. Local tests cover the exact
-  six-table inventory, failure-safe upgrade/downgrade, lifecycle graph, amended
-  trust FKs, terminal outcomes and counter union; GitHub CI evidence remains
-  absent/non-blocking.
+  `0006` schema implementation. GPT then independently reviewed implementation
+  SHA `1be18a622006a6b6a46e251350e2d861d596823d` as `PASS WITH CLOSEOUT
+  CONDITION`, P0 `0`, P1 `0`, P2 `1` non-blocking because GitHub CI execution
+  evidence is absent. The user explicitly approved closeout on `2026-08-28`.
+  The additive `0006` schema implementation is therefore `PASS — CLOSED`, and
+  SG-01/SG-02/P1-SR-01/P1-SR-02/P1-SR-03/IG-01/IG-02 remain `CLOSED`.
   B2-C runtime is `NOT STARTED / NOT AUTHORIZED`; later checkpoints remain
   `NOT STARTED`; automatic progression is `PROHIBITED`.
 - 비차단 정정: issuer `SUPERSEDED`는 현재 schema blocker가 아니다. Existing
