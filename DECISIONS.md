@@ -1035,8 +1035,9 @@ implementation PASS or authorize B2-C runtime.
 - ADR-015는 `ACCEPTED`지만 migration/runtime 권한이 아니다. Separately
   authorized implementation work later discovered IG-01/IG-02 and stopped
   without changing files or creating `0006`.
-- CP3-C2-B2-C는 `BLOCKED — APPROVED SCHEMA CONTRACT IMPLEMENTATION GAP /
-  ADR-016 AWAITING GPT INDEPENDENT REVIEW`다.
+- 이 ADR-015 closeout 시점의 CP3-C2-B2-C는 implementation gap에서
+  blocked였다. ADR-016 acceptance와 separate `0006` authorization 이후의
+  current state는 ADR-016에 기록한다.
 - CP3-C2-B2-D, CP3-C2-C와 CP3-D는 `NOT STARTED`이고 automatic progression은
   `PROHIBITED`다.
 - GitHub CI execution evidence 부재는 non-blocking P2이며 LOCAL 문서 검사는
@@ -1057,9 +1058,9 @@ implementation PASS or authorize B2-C runtime.
 
 ## ADR-016 — Reviewer Operation Exact SQLite Binding Amendment
 
-- 상태: `PROPOSED`
+- 상태: `ACCEPTED`
 - 제안일: `2026-08-28`
-- 결정일: 없음
+- 결정일: `2026-08-28`
 - 선행 결정: ADR-015 `ACCEPTED`
 - 상세 계약:
   `plans/PHASE_02_CP3_C2_B2_C_SCHEMA_REMEDIATION.md`
@@ -1158,24 +1159,26 @@ commit할 수 없다.
 ### 영향
 
 - ADR-015는 `ACCEPTED` 상태와 `2026-08-28` 결정일을 유지한다.
-- ADR-016은 `PROPOSED`이며 GPT independent review와 explicit user acceptance
-  전에는 승인된 amendment가 아니다.
+- GPT independent review of SHA
+  `4104973d84307b80a236d9b737b2d29339b27153` returned `PASS WITH CLOSEOUT
+  CONDITION`, P0 `0`, P1 `0`, P2 `1` non-blocking, and verified IG-01/IG-02
+  `CLOSED`. The user explicitly accepted ADR-016 on `2026-08-28`.
 - Six-table additive Option A, `reviewer-credential-state/0.1.0`, trusted-server
   SHA boundary, nullable composite-FK safeguards, union counter chain, terminal
   outcome contract와 issuer/credential-operation assertion separation은
   변경하지 않는다.
-- CP3-C2-B2-C는 `BLOCKED — APPROVED SCHEMA CONTRACT IMPLEMENTATION GAP /
-  ADR-016 AWAITING GPT INDEPENDENT REVIEW`다.
+- CP3-C2-B2-C `0006` schema implementation은 별도 사용자 승인에 따라
+  `IN PROGRESS`; 구현 결과는 GPT independent review 전 PASS/CLOSED가 아니다.
 - B2-C runtime, B2-D, CP3-C2-C와 CP3-D는 `NOT STARTED`; automatic progression은
   `PROHIBITED`다.
 
 ### 마이그레이션·롤백
 
-- 이 documentation/control-plane task의 migration change와 `0006`
+- ADR-016 acceptance 기록 시점의 migration change와 `0006`
   creation/application은 `0`이다.
 - `0001`–`0005`는 byte-identical하게 유지한다.
-- ADR-016이 독립 검토와 사용자 승인을 받더라도 future `0006`
-  implementation에는 별도의 명시적 authorization이 필요하다.
+- 사용자는 ADR-016 acceptance와 별도로 approved contract에 한정한 `0006`
+  schema implementation을 명시 승인했다. B2-C runtime은 승인하지 않았다.
 
 ---
 

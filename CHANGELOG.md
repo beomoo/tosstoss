@@ -1,5 +1,18 @@
 # Changelog
 
+## Unreleased — Phase 2 CP3-C2-B2-C 0006 Implementation — 2026-08-28
+
+### ADR-016 acceptance and implementation authorization
+
+- Recorded GPT independent review of SHA
+  `4104973d84307b80a236d9b737b2d29339b27153`: `PASS WITH CLOSEOUT CONDITION`,
+  P0 `0`, P1 `0`, P2 `1` non-blocking, with IG-01 and IG-02 closed.
+- Recorded the user's explicit acceptance of ADR-016 on `2026-08-28` and the
+  separate authorization for the approved additive `0006` schema only.
+- `0006` implementation is in progress and is not declared PASS/CLOSED.
+  WebAuthn/human-approval runtime and later checkpoints remain unauthorized or
+  not started; automatic progression remains prohibited.
+
 ## Unreleased — Phase 2 CP3-C2-B2-C Exact SQLite Binding Amendment — 2026-08-28
 
 ### Documentation/control-plane amendment

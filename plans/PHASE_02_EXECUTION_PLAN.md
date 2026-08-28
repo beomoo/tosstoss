@@ -1,7 +1,7 @@
 # Phase 2 토스증권 읽기 전용 데이터 실행계획
 
 - 계획 상태: `PHASE 2 IMPLEMENTATION IN PROGRESS`
-- Current checkpoint: `CP3-C2-B2-A PASS — CLOSED / CP3-C2-B2-B PASS — CLOSED / CP3-C2-B IMPLEMENTATION IN PROGRESS / CP3-C2-B2-C BLOCKED — APPROVED SCHEMA CONTRACT IMPLEMENTATION GAP / ADR-016 AWAITING GPT INDEPENDENT REVIEW`
+- Current checkpoint: `CP3-C2-B2-A PASS — CLOSED / CP3-C2-B2-B PASS — CLOSED / CP3-C2-B IMPLEMENTATION IN PROGRESS / ADR-016 ACCEPTED / CP3-C2-B2-C 0006 SCHEMA IMPLEMENTATION IN PROGRESS`
 - 최초 작성·공식 문서 조사일: `2026-08-23` (`Asia/Seoul`)
 - 현재 상태 갱신일: `2026-08-28` (`Asia/Seoul`)
 - 기준 브랜치: `feature/phase-02-toss`
@@ -25,10 +25,9 @@
 - CP3-C2-B implementation: `IN PROGRESS`
 - CP3-C2-B2-A: `PASS — CLOSED`
 - CP3-C2-B2-B: `PASS — CLOSED`
-- CP3-C2-B2-C:
-  `BLOCKED — APPROVED SCHEMA CONTRACT IMPLEMENTATION GAP / ADR-016 AWAITING GPT INDEPENDENT REVIEW`
+- CP3-C2-B2-C: `0006 SCHEMA IMPLEMENTATION IN PROGRESS`
 - ADR-015: `ACCEPTED` (`2026-08-28`)
-- ADR-016: `PROPOSED — AWAITING GPT INDEPENDENT REVIEW AND USER ACCEPTANCE`
+- ADR-016: `ACCEPTED` (`2026-08-28`)
 - `0006`: `NOT CREATED / NOT IMPLEMENTED`
 - B2-C WebAuthn/human-approval runtime: `NOT STARTED / NOT AUTHORIZED`
 - CP3-C2-B2-D: `NOT STARTED`
@@ -85,9 +84,12 @@ approving the six-table schema architecture. A separately authorized `0006`
 implementation attempt then stopped with no changes and no migration because
 GPT-confirmed IG-01 left the closed `authorization_kind` matrix incomplete and
 IG-02 omitted the three child trust columns needed for the exact eight-column
-operation FK. ADR-016 now proposes only the exact enum/matrix, copied trust
-columns/FKs and their hash-preimage coverage. It is not accepted. No `0006` or
-B2-C runtime was implemented.
+operation FK. ADR-016 defines only the exact enum/matrix, copied trust
+columns/FKs and their hash-preimage coverage. GPT independent review of SHA
+`4104973d84307b80a236d9b737b2d29339b27153` returned P0 `0` / P1 `0`; the user
+accepted ADR-016 on `2026-08-28` and separately authorized only the approved
+`0006` schema implementation. That implementation is in progress; B2-C runtime
+remains unauthorized.
 
 ## Original CP1 investigation baseline
 
@@ -149,7 +151,7 @@ CP3-C2-C and CP3-D remain `NOT STARTED`, and automatic progression remains
 | CP3-C2-B implementation | `IN PROGRESS` | B2-A/B2-B closed; B2-C start 승인 뒤 schema gap에서 fail closed |
 | CP3-C2-B2-A | `PASS — CLOSED` | re-review P0 0 / P1 0, P1-01~P1-03 CLOSED; P2-01 non-blocking; documentation closeout 완료 |
 | CP3-C2-B2-B | `PASS — CLOSED` | reviewed SHA `d81148636c237ac8ab6b85e930d3926fae19c855`; PASS WITH CLOSEOUT CONDITION, P0 0 / P1 0 / P2 1 non-blocking; P1-01~P1-09 CLOSED |
-| CP3-C2-B2-C | `BLOCKED — APPROVED SCHEMA CONTRACT IMPLEMENTATION GAP / ADR-016 AWAITING GPT INDEPENDENT REVIEW` | ADR-015 ACCEPTED after reviewed SHA `f73115e...` P0 0 / P1 0; IG-01/IG-02 confirmed; ADR-016 PROPOSED; `0006`/runtime 0 |
+| CP3-C2-B2-C | `0006 SCHEMA IMPLEMENTATION IN PROGRESS` | ADR-015/ADR-016 ACCEPTED; IG-01/IG-02 CLOSED; only approved `0006` schema authorized; runtime 0 |
 | CP3-C2-B2-D | `NOT STARTED` | 자동 진행 금지 |
 | CP3-C2-C | `NOT STARTED` | CP3-C2-B implementation 승인과 별도 시작 승인 전 자동 진입 금지 |
 | CP3-D | `NOT STARTED` | 가격 구현 자동 진입 금지 |
@@ -764,8 +766,7 @@ CP2-A의 통과는 CP2 전체 통과가 아니며, 아래 기존 완료 조건�
 - B2-B output/non-scope: machine state는 `UNRESOLVED`,
   `READY_FOR_MANUAL_REVIEW`, `STALE`, `REVIEW_REQUIRED`뿐이며 human
   disposition/WebAuthn/approval/link/canonical write/live collection은 0이다.
-- B2-C:
-  `BLOCKED — APPROVED SCHEMA CONTRACT IMPLEMENTATION GAP / ADR-016 AWAITING GPT INDEPENDENT REVIEW`
+- B2-C: `0006 SCHEMA IMPLEMENTATION IN PROGRESS`; runtime은 미승인
 - B2-C 시작 승인: 완료. Implementation-entry audit에서 SG-01 first-enrollment
   bootstrap와 SG-02 credential-management reauthentication/counter ledger gap
   확인
@@ -775,9 +776,9 @@ CP2-A의 통과는 CP2 전체 통과가 아니며, 아래 기존 완료 조건�
   `f73115ea1182e27259787460307a01b4c3874312` as `PASS WITH CLOSEOUT CONDITION`,
   P0 `0`, P1 `0`, P2 `1` non-blocking; SG-01/SG-02/P1-SR-01/P1-SR-02/
   P1-SR-03 are `CLOSED`. User acceptance date is `2026-08-28`.
-- Future `0006` architecture: existing `0005` table rebuild 없이 six
-  append-only credential-operation ledger tables와 additive exact indexes/guard
-  triggers. This task creates/applies no migration.
+- `0006` architecture: existing `0005` table rebuild 없이 six append-only
+  credential-operation ledger tables와 additive exact indexes/guard triggers.
+  ADR-016 acceptance 뒤 별도 승인된 schema implementation만 진행한다.
 - Schema-remediation review fix: authenticated final-active-credential revoke는
   exact empty state를 허용하고, 이후 approval/add/replace/further revoke와
   first-enrollment restart/recovery는 fail closed다.
@@ -803,18 +804,18 @@ CP2-A의 통과는 CP2 전체 통과가 아니며, 아래 기존 완료 조건�
   incomplete closed `authorization_kind` matrix, and IG-02, the missing copied
   role/principal-hash/SID-hash child columns required by the exact eight-column
   operation FK.
-- ADR-016: `PROPOSED`. It adds only the exact four-token/five-row authorization
+- ADR-016: `ACCEPTED` (`2026-08-28`). It adds only the exact four-token/five-row authorization
   matrix, the three copied immutable trust columns in both authorization and
   outcome tables, both exact eight-column FKs, the strengthened exact successful
   outcome binding, and matching immutable hash-preimage coverage. It does not
-  weaken the parent key or authorize implementation.
-- `0006`: `NOT CREATED / NOT IMPLEMENTED`
+  weaken the parent key or authorize runtime implementation.
+- `0006`: `IMPLEMENTATION IN PROGRESS — AWAITING IMPLEMENTATION REVIEW`
 - B2-C WebAuthn/human-approval runtime: `NOT STARTED / NOT AUTHORIZED`
 - B2-D: `NOT STARTED`
-- B2-C schema implementation resume 조건: ADR-016 GPT independent review와
-  explicit user acceptance, then a separately authorized future `0006`
-  implementation and independent verification. Runtime remains separately
-  unauthorized.
+- B2-C schema implementation: ADR-016 passed independent review and explicit
+  user acceptance; the separately authorized `0006` implementation is in
+  progress and still requires independent verification. Runtime remains
+  separately unauthorized.
 - CP3-C2-C/CP3-D automatic progression은 금지한다.
 
 ### CP3-C2-C — Canonical Security Authority / Final Mapping (proposed split)
@@ -1065,8 +1066,9 @@ principle. A subsequent re-review of SHA
 CONDITION`, P0 `0`, P1 `0`, P2 `1` non-blocking and closed all SG/P1 findings.
 The user accepted ADR-015 on `2026-08-28`, so the schema architecture is
 approved. The later implementation stopped without changes or `0006` at
-GPT-confirmed IG-01/IG-02. ADR-016 is `PROPOSED` and awaits GPT independent
-review and user acceptance. B2-C is `BLOCKED — APPROVED SCHEMA CONTRACT
-IMPLEMENTATION GAP / ADR-016 AWAITING GPT INDEPENDENT REVIEW`; `0006` is not
-created/implemented, B2-C runtime is not started/authorized, B2-D/CP3-C2-C/
-CP3-D remain `NOT STARTED`, and automatic progression remains `PROHIBITED`.
+GPT-confirmed IG-01/IG-02. GPT independent review of SHA
+`4104973d84307b80a236d9b737b2d29339b27153` returned P0 `0` / P1 `0`; the user
+accepted ADR-016 on `2026-08-28` and separately authorized only the approved
+`0006` schema implementation. That implementation is `IN PROGRESS`, not
+PASS/CLOSED. B2-C runtime is not started/authorized, B2-D/CP3-C2-C/CP3-D
+remain `NOT STARTED`, and automatic progression remains `PROHIBITED`.

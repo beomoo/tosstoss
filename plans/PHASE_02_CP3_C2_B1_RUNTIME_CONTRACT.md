@@ -17,8 +17,7 @@
 - Current implementation status: `IN PROGRESS`
 - CP3-C2-B2-A: `PASS — CLOSED`
 - CP3-C2-B2-B: `PASS — CLOSED`
-- CP3-C2-B2-C:
-  `BLOCKED — APPROVED SCHEMA CONTRACT IMPLEMENTATION GAP / ADR-016 AWAITING GPT INDEPENDENT REVIEW`
+- CP3-C2-B2-C: `0006 SCHEMA IMPLEMENTATION IN PROGRESS`
 - CP3-C2-B2-D: `NOT STARTED`
 - Migration implementation: additive `0005` implemented in B2-A; production
   database application `0`
@@ -1576,11 +1575,10 @@ contract or retroactively broaden the B1 closeout approval.
 - Additive `0005_phase_02_cp3_c2_b_issuer_authority`: implemented and exercised
   only against disposable QA databases; persistent production application `0`
 - CP3-C2-B2-B: `PASS — CLOSED`
-- CP3-C2-B2-C:
-  `BLOCKED — APPROVED SCHEMA CONTRACT IMPLEMENTATION GAP / ADR-016 AWAITING GPT INDEPENDENT REVIEW`
+- CP3-C2-B2-C: `0006 SCHEMA IMPLEMENTATION IN PROGRESS`
 - ADR-015: `ACCEPTED` (`2026-08-28`)
-- ADR-016: `PROPOSED`
-- Migration `0006`: `NOT CREATED / NOT IMPLEMENTED`
+- ADR-016: `ACCEPTED` (`2026-08-28`)
+- Migration `0006`: `AUTHORIZED / IMPLEMENTATION IN PROGRESS`
 - B2-C WebAuthn/human-approval runtime: `NOT STARTED / NOT AUTHORIZED`
 - CP3-C2-B2-D: `NOT STARTED`
 - CP3-C2-C: `NOT STARTED`
@@ -1743,13 +1741,15 @@ the authorization/outcome child columns missing from the exact eight-column
 operation FK. ADR-016 proposes only the exact token matrix, the three copied
 server-owned trust columns in both child rows, both exact FKs, the strengthened
 successful-outcome binding and corresponding immutable hash-preimage coverage.
-ADR-016 is not self-accepted.
+GPT independent review of SHA
+`4104973d84307b80a236d9b737b2d29339b27153` returned P0 `0` / P1 `0`, and the
+user explicitly accepted ADR-016 on `2026-08-28`. The user separately
+authorized only the approved `0006` schema implementation.
 
 - ADR-015: `ACCEPTED` (`2026-08-28`)
-- ADR-016: `PROPOSED — AWAITING GPT INDEPENDENT REVIEW AND USER ACCEPTANCE`
-- CP3-C2-B2-C:
-  `BLOCKED — APPROVED SCHEMA CONTRACT IMPLEMENTATION GAP / ADR-016 AWAITING GPT INDEPENDENT REVIEW`
-- Migration `0006`: `NOT CREATED / NOT IMPLEMENTED`
+- ADR-016: `ACCEPTED` (`2026-08-28`)
+- CP3-C2-B2-C: `0006 SCHEMA IMPLEMENTATION IN PROGRESS`
+- Migration `0006`: `AUTHORIZED / IMPLEMENTATION IN PROGRESS`
 - B2-C WebAuthn/human-approval runtime: `NOT STARTED / NOT AUTHORIZED`
 - CP3-C2-B2-D / CP3-C2-C / CP3-D: `NOT STARTED`
 - Automatic progression: `PROHIBITED`

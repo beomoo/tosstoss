@@ -1,9 +1,9 @@
 # Phase 2 CP3-C2-B2-C Schema Contract Remediation
 
 - Status:
-  `APPROVED VIA ADR-015 / IMPLEMENTATION BLOCKED — ADR-016 PROPOSED`
+  `APPROVED VIA ADR-015 AND ADR-016 / 0006 IMPLEMENTATION AUTHORIZED`
 - Checkpoint state:
-  `BLOCKED — APPROVED SCHEMA CONTRACT IMPLEMENTATION GAP / ADR-016 AWAITING GPT INDEPENDENT REVIEW AND USER ACCEPTANCE`
+  `0006 SCHEMA IMPLEMENTATION IN PROGRESS — AWAITING IMPLEMENTATION AND INDEPENDENT REVIEW`
 - Repository: `beomoo/tosstoss`
 - Branch: `feature/phase-02-toss`
 - Initial implementation-entry starting SHA:
@@ -20,29 +20,30 @@
 - Governing contracts: ADR-013 `ACCEPTED`, ADR-014 `ACCEPTED`,
   `plans/PHASE_02_CP3_C2_B1_RUNTIME_CONTRACT.md`
 - Governing schema decision: ADR-015 `ACCEPTED` (`2026-08-28`)
-- Narrow implementation amendment: ADR-016 `PROPOSED`
+- Narrow implementation amendment: ADR-016 `ACCEPTED` (`2026-08-28`)
 - Runtime implementation: `0`
 - Migration file creation/application: `0`
 - Automatic progression: `PROHIBITED`
 
 ## 1. Purpose and terminal boundary
 
-This document is the ADR-015-approved schema architecture for the minimum
-future amendment needed before CP3-C2-B2-C can faithfully implement Windows
-Hello/WebAuthn steward enrollment and credential lifecycle authorization. The
-implementation-discovered IG-01/IG-02 corrections in this revision are the
-narrow ADR-016 proposal and are not self-accepted.
+This document is the ADR-015/ADR-016-approved schema architecture for the
+minimum additive ledger needed before CP3-C2-B2-C can faithfully implement
+Windows Hello/WebAuthn steward enrollment and credential lifecycle
+authorization. GPT independent review of SHA
+`4104973d84307b80a236d9b737b2d29339b27153` returned P0 `0` / P1 `0`, and the
+user explicitly accepted ADR-016 on `2026-08-28`.
 
-This checkpoint is documentation-only. It does not create migration `0006`,
-modify migrations `0001`–`0005`, implement WebAuthn, enroll a real credential,
-execute an issuer disposition, create a canonical Issuer/Security, write
-`ProviderIdentityMapping(VERIFIED)`, mutate an issuer-link head, or make a live
-authority/Toss request.
+The user separately authorized only implementation of migration `0006` under
+this exact contract. Migrations `0001`–`0005` remain immutable. WebAuthn/runtime,
+real enrollment, issuer disposition execution, canonical Issuer/Security,
+`ProviderIdentityMapping(VERIFIED)`, issuer-link mutation and live authority/
+Toss requests remain unauthorized.
 
-CP3-C2-B2-C remains blocked until ADR-016 passes GPT independent review and is
-explicitly accepted by the user. Any future `0006` implementation still
-requires separate authorization and independent verification. This amendment
-does not resume B2-C runtime work.
+The ADR-016 design gate is closed and the separately authorized `0006`
+implementation is in progress. The implementation must not be declared PASS or
+CLOSED before GPT independent review. This authorization does not resume B2-C
+runtime work.
 
 ## 2. Confirmed gap and corrected non-gap
 
@@ -1473,14 +1474,13 @@ The separately authorized implementation must add offline tests for at least:
 - ADR-013: `ACCEPTED`
 - ADR-014: `ACCEPTED`
 - ADR-015: `ACCEPTED` (`2026-08-28`)
-- ADR-016: `PROPOSED — AWAITING GPT INDEPENDENT REVIEW AND USER ACCEPTANCE`
+- ADR-016: `ACCEPTED` (`2026-08-28`)
 - SG-01 / SG-02 / P1-SR-01 / P1-SR-02 / P1-SR-03:
   independently verified `CLOSED`
 - CP3-C2-B1: `PASS — CONTRACT APPROVED AND CLOSED`
 - CP3-C2-B2-A: `PASS — CLOSED`
 - CP3-C2-B2-B: `PASS — CLOSED`
-- CP3-C2-B2-C:
-  `BLOCKED — APPROVED SCHEMA CONTRACT IMPLEMENTATION GAP / ADR-016 AWAITING GPT INDEPENDENT REVIEW`
+- CP3-C2-B2-C: `0006 SCHEMA IMPLEMENTATION IN PROGRESS`
 - CP3-C2-B2-D: `NOT STARTED`
 - CP3-C2-C: `NOT STARTED`
 - CP3-D: `NOT STARTED`
@@ -1491,6 +1491,6 @@ The separately authorized implementation must add offline tests for at least:
 - Real credential enrollment/approval/canonical/link writes: `0`
 - Live authority/Toss requests: `0`
 
-ADR-016 GPT independent review and explicit user acceptance are required before
-any separately authorized `0006` implementation can resume. B2-C WebAuthn/
-human-approval runtime remains `NOT STARTED / NOT AUTHORIZED` by this task.
+ADR-016 passed GPT independent review and was explicitly accepted by the user.
+Only the separately authorized `0006` schema implementation may proceed. B2-C
+WebAuthn/human-approval runtime remains `NOT STARTED / NOT AUTHORIZED`.
