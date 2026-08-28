@@ -18,6 +18,7 @@ _INTERNAL_ADDITIVE_REVISIONS = frozenset(
         "0003_phase_02_cp3_b_invariants",
         "0004_phase_02_cp3_c1_security_master",
         "0005_phase_02_cp3_c2_b_issuer_authority",
+        "0006_phase_02_cp3_c2_b2_c_reviewer_operations",
     }
 )
 

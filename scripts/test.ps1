@@ -198,7 +198,7 @@ function Get-VitestInventoryFromUtf8Capture {
     }
 }
 
-function Assert-PhaseTwoCP3C2B2BTestInventory {
+function Assert-PhaseTwoCP3C2B2CTestInventory {
     $backendCollection = @(
         Invoke-CapturedChecked `
             -FilePath $python `
@@ -208,8 +208,8 @@ function Assert-PhaseTwoCP3C2B2BTestInventory {
             )
     )
     $backendText = $backendCollection -join [Environment]::NewLine
-    if ($backendText -notmatch '(?m)^702 tests collected in ') {
-        throw "Backend test inventory is not exactly 702 collected tests."
+    if ($backendText -notmatch '(?m)^785 tests collected in ') {
+        throw "Backend test inventory is not exactly 785 collected tests."
     }
 
     $frontendTests = @(
@@ -240,7 +240,7 @@ function Assert-PhaseTwoCP3C2B2BTestInventory {
         throw "Playwright test inventory is not exactly 2 tests in 1 file."
     }
 
-    Write-Host "Test inventory verified: backend=702, frontend=43, e2e=2"
+    Write-Host "Test inventory verified: backend=785, frontend=43, e2e=2"
 }
 
 function Clear-StaleBackendTestDirectories {
@@ -347,7 +347,7 @@ Invoke-PhaseScript `
     -ArgumentList @("-Iterations", "20")
 Invoke-PhaseScript -Name "toss-live-preflight.ps1"
 Invoke-PhaseScript -Name "toss-live-preflight.ps1" -ArgumentList @("-SelfTest")
-Assert-PhaseTwoCP3C2B2BTestInventory
+Assert-PhaseTwoCP3C2B2CTestInventory
 Invoke-Checked -FilePath $python -ArgumentList @(
     $pytestArguments + @("tests/backend", "-q")
 )
@@ -364,4 +364,4 @@ Invoke-PhaseScript -Name "e2e.ps1"
 Invoke-PhaseScript -Name "secret-scan.ps1"
 Invoke-PhaseScript -Name "policy-scan.ps1"
 
-Write-Host "All Phase 2 CP3-C2-B2-B implementation checks passed."
+Write-Host "All Phase 2 CP3-C2-B2-C schema implementation checks passed."

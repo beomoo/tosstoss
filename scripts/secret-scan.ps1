@@ -225,6 +225,65 @@ function Add-StructuredSha256Exceptions {
     }
 }
 
+function Add-FrozenMigrationBlobExceptions {
+    $migrationPath = Join-Path $repoRoot (
+        "services\api\alembic\versions\" +
+        "0006_phase_02_cp3_c2_b2_c_reviewer_operations.py"
+    )
+    $testPath = Join-Path $repoRoot (
+        "tests\backend\test_reviewer_operation_migration.py"
+    )
+    $frozenMigrations = @(
+        [pscustomobject]@{
+            Path = "services/api/alembic/versions/0001_phase_01_foundation.py"
+            Blob = [string]::Concat(
+                "d00355c2", "456021e6", "ffb195e5", "0833adc3", "2c74a4ad"
+            )
+        },
+        [pscustomobject]@{
+            Path = "services/api/alembic/versions/0002_phase_02_cp3_foundation.py"
+            Blob = [string]::Concat(
+                "53f40664", "eca2ea24", "66cc6154", "b8579c5d", "b506e0ba"
+            )
+        },
+        [pscustomobject]@{
+            Path = "services/api/alembic/versions/0003_phase_02_cp3_b_invariants.py"
+            Blob = [string]::Concat(
+                "47d5a690", "09949b15", "5211cd68", "20964013", "6a7cacd9"
+            )
+        },
+        [pscustomobject]@{
+            Path = "services/api/alembic/versions/0004_phase_02_cp3_c1_security_master.py"
+            Blob = [string]::Concat(
+                "91b4d96a", "445be23e", "7aa55e08", "b9310dc7", "334a026d"
+            )
+        },
+        [pscustomobject]@{
+            Path = "services/api/alembic/versions/0005_phase_02_cp3_c2_b_issuer_authority.py"
+            Blob = [string]::Concat(
+                "81976b8f", "70a1f610", "7526a13a", "cadf23f3", "69b196e3"
+            )
+        }
+    )
+    foreach ($frozenMigration in $frozenMigrations) {
+        $actualBlob = @(
+            & git -C $repoRoot hash-object --no-filters -- $frozenMigration.Path 2>&1
+        )
+        if (
+            $LASTEXITCODE -ne 0 -or
+            $actualBlob.Count -ne 1 -or
+            ([string] $actualBlob[0]) -cne $frozenMigration.Blob
+        ) {
+            throw "A frozen predecessor migration does not match its approved Git blob."
+        }
+        foreach ($sourcePath in @($migrationPath, $testPath)) {
+            Add-AllowedArtifactSecretAtMatchingLines `
+                -Path $sourcePath `
+                -Value $frozenMigration.Blob
+        }
+    }
+}
+
 function Add-ValidatedEvidenceManifestExceptions {
     param([Parameter(Mandatory = $true)][string] $Path)
 
@@ -1746,6 +1805,7 @@ try {
         throw "PACKAGE_MANIFEST.json does not match its approved immutable digest."
     }
     Add-StructuredSha256Exceptions -Path $packageManifestPath
+    Add-FrozenMigrationBlobExceptions
     Add-ValidatedPackageLockExceptions -Path (
         Join-Path $repoRoot "package-lock.json"
     )

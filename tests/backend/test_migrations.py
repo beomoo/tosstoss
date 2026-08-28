@@ -52,6 +52,14 @@ AUTHORITY_TABLES = {
     "issuer_authority_links",
     "issuer_authority_link_heads",
 }
+REVIEWER_OPERATION_TABLES = {
+    "reviewer_credential_operations",
+    "reviewer_credential_operation_challenges",
+    "reviewer_credential_operation_challenge_consumptions",
+    "reviewer_credential_operation_authentication_events",
+    "reviewer_webauthn_credential_event_authorizations",
+    "reviewer_credential_operation_outcomes",
+}
 
 
 def _column_names(value: Sequence[str] | None) -> tuple[str, ...]:
@@ -351,7 +359,10 @@ def _assert_expected_schema(database_url: str) -> None:
             },
         }
         assert set(inspector.get_table_names()) == (
-            set(expected_columns) | AUTHORITY_TABLES | {"alembic_version"}
+            set(expected_columns)
+            | AUTHORITY_TABLES
+            | REVIEWER_OPERATION_TABLES
+            | {"alembic_version"}
         )
         for table, expected in expected_columns.items():
             reflected = {
@@ -591,7 +602,7 @@ def test_downgrade_and_reupgrade(workspace_tmp_path: Path) -> None:
         with engine.connect() as connection:
             assert (
                 connection.execute(text("SELECT version_num FROM alembic_version")).scalar_one()
-                == "0005_phase_02_cp3_c2_b_issuer_authority"
+                == "0006_phase_02_cp3_c2_b2_c_reviewer_operations"
             )
     finally:
         engine.dispose()

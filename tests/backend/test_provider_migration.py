@@ -188,7 +188,7 @@ def test_blank_database_upgrades_to_cp3_head(workspace_tmp_path: Path) -> None:
         with engine.connect() as connection:
             assert connection.execute(
                 text("SELECT version_num FROM alembic_version")
-            ).scalar_one() == ("0005_phase_02_cp3_c2_b_issuer_authority")
+            ).scalar_one() == ("0006_phase_02_cp3_c2_b2_c_reviewer_operations")
     finally:
         engine.dispose()
 

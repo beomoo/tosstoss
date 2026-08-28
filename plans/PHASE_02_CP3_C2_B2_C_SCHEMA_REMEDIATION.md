@@ -3,7 +3,7 @@
 - Status:
   `APPROVED VIA ADR-015 AND ADR-016 / 0006 IMPLEMENTATION AUTHORIZED`
 - Checkpoint state:
-  `0006 SCHEMA IMPLEMENTATION IN PROGRESS — AWAITING IMPLEMENTATION AND INDEPENDENT REVIEW`
+  `0006 IMPLEMENTED — AWAITING GPT INDEPENDENT REVIEW`
 - Repository: `beomoo/tosstoss`
 - Branch: `feature/phase-02-toss`
 - Initial implementation-entry starting SHA:
@@ -22,7 +22,7 @@
 - Governing schema decision: ADR-015 `ACCEPTED` (`2026-08-28`)
 - Narrow implementation amendment: ADR-016 `ACCEPTED` (`2026-08-28`)
 - Runtime implementation: `0`
-- Migration file creation/application: `0`
+- Migration file creation: `1` (additive `0006`); persistent application: `0`
 - Automatic progression: `PROHIBITED`
 
 ## 1. Purpose and terminal boundary
@@ -40,10 +40,10 @@ real enrollment, issuer disposition execution, canonical Issuer/Security,
 `ProviderIdentityMapping(VERIFIED)`, issuer-link mutation and live authority/
 Toss requests remain unauthorized.
 
-The ADR-016 design gate is closed and the separately authorized `0006`
-implementation is in progress. The implementation must not be declared PASS or
-CLOSED before GPT independent review. This authorization does not resume B2-C
-runtime work.
+The ADR-016 design gate is closed and the separately authorized additive `0006`
+schema is implemented. It remains `AWAITING GPT INDEPENDENT REVIEW` and must not
+be declared PASS or CLOSED before that review. This does not resume B2-C runtime
+work.
 
 ## 2. Confirmed gap and corrected non-gap
 
@@ -1480,17 +1480,18 @@ The separately authorized implementation must add offline tests for at least:
 - CP3-C2-B1: `PASS — CONTRACT APPROVED AND CLOSED`
 - CP3-C2-B2-A: `PASS — CLOSED`
 - CP3-C2-B2-B: `PASS — CLOSED`
-- CP3-C2-B2-C: `0006 SCHEMA IMPLEMENTATION IN PROGRESS`
+- CP3-C2-B2-C schema: `IMPLEMENTED — AWAITING GPT INDEPENDENT REVIEW`
 - CP3-C2-B2-D: `NOT STARTED`
 - CP3-C2-C: `NOT STARTED`
 - CP3-D: `NOT STARTED`
 - Automatic progression: `PROHIBITED`
-- Runtime/application/test/frontend/dependency changes: `0`
-- Migration changes/application: `0`
-- `0006` file created: `0`
+- Runtime/frontend/dependency changes: `0`
+- Migration changes: additive `0006`; persistent application: `0`
+- `0006` file created: `1`
 - Real credential enrollment/approval/canonical/link writes: `0`
 - Live authority/Toss requests: `0`
 
 ADR-016 passed GPT independent review and was explicitly accepted by the user.
-Only the separately authorized `0006` schema implementation may proceed. B2-C
-WebAuthn/human-approval runtime remains `NOT STARTED / NOT AUTHORIZED`.
+The separately authorized `0006` schema implementation is complete and awaits
+GPT independent review. B2-C WebAuthn/human-approval runtime remains `NOT
+STARTED / NOT AUTHORIZED`.

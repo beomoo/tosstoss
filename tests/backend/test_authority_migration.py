@@ -124,7 +124,7 @@ def _audit_hash(label: str) -> str:
     return "sha256:" + hashlib.sha256(label.encode("utf-8")).hexdigest()
 
 
-def _seed_authentication_counter_ledger(engine):
+def _seed_nonreviewer_authority_ledger(engine):
     sessions = session_factory(engine)
     seed_provider_lineage(sessions)
     policy = production_source_policy()
@@ -161,6 +161,11 @@ def _seed_authentication_counter_ledger(engine):
     repository.insert_or_verify_evidence_application(application)
     repository.insert_or_verify_bundle(bundle)
     repository.insert_or_verify_decision(decision)
+    return decision, bundle
+
+
+def _seed_authentication_counter_ledger(engine):
+    decision, bundle = _seed_nonreviewer_authority_ledger(engine)
 
     principal = {
         "reviewer_principal_id": "reviewer_principal_counter_audit",
@@ -402,7 +407,7 @@ def test_blank_database_upgrades_through_exact_0005_schema(
     workspace_tmp_path: Path,
 ) -> None:
     url = f"sqlite:///{(workspace_tmp_path / 'authority-blank.sqlite3').as_posix()}"
-    command.upgrade(alembic_config(url), "head")
+    command.upgrade(alembic_config(url), REVISION_0005)
     engine = create_engine(url)
     try:
         inspector = inspect(engine)

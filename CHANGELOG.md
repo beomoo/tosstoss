@@ -2,15 +2,32 @@
 
 ## Unreleased — Phase 2 CP3-C2-B2-C 0006 Implementation — 2026-08-28
 
-### ADR-016 acceptance and implementation authorization
+### ADR-016 acceptance and additive schema implementation
 
 - Recorded GPT independent review of SHA
   `4104973d84307b80a236d9b737b2d29339b27153`: `PASS WITH CLOSEOUT CONDITION`,
   P0 `0`, P1 `0`, P2 `1` non-blocking, with IG-01 and IG-02 closed.
 - Recorded the user's explicit acceptance of ADR-016 on `2026-08-28` and the
   separate authorization for the approved additive `0006` schema only.
-- `0006` implementation is in progress and is not declared PASS/CLOSED.
-  WebAuthn/human-approval runtime and later checkpoints remain unauthorized or
+- Added additive revision
+  `0006_phase_02_cp3_c2_b2_c_reviewer_operations` with the approved six-table
+  credential-operation ledger, 23 named indexes, 12 new-table append-only
+  triggers, and 11 insert/counter guards. Migrations `0001`–`0005` remain
+  byte-identical and no existing table was rebuilt.
+- Implemented ADR-016's exact four-token/five-row authorization matrix, copied
+  trust columns, exact eight-column operation FKs, exact eleven-column
+  successful-outcome binding, terminal outcome/continuation graphs, active
+  lifecycle guards, and issuer/operation counter union without a SQLite SHA
+  dependency.
+- Added isolated migration/schema coverage and minimal additive public-revision
+  compatibility. The 0006 implementation is `IMPLEMENTED — AWAITING GPT
+  INDEPENDENT REVIEW`; it is not declared PASS/CLOSED.
+- Final LOCAL QA passed targeted `83`, all-migration `118`, authority-regression
+  `158`, backend `785`, frontend `43`, E2E `2`, repeat/downgrade/re-upgrade,
+  fixture idempotency, Ruff, mypy, ESLint, TypeScript, OpenAPI, two production
+  builds, secret scan and policy scan. Final staged `scripts/test.ps1` exited
+  `0`; this is not GitHub CI evidence.
+- WebAuthn/human-approval runtime and later checkpoints remain unauthorized or
   not started; automatic progression remains prohibited.
 
 ## Unreleased — Phase 2 CP3-C2-B2-C Exact SQLite Binding Amendment — 2026-08-28

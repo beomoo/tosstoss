@@ -1168,7 +1168,8 @@ commit할 수 없다.
   outcome contract와 issuer/credential-operation assertion separation은
   변경하지 않는다.
 - CP3-C2-B2-C `0006` schema implementation은 별도 사용자 승인에 따라
-  `IN PROGRESS`; 구현 결과는 GPT independent review 전 PASS/CLOSED가 아니다.
+  `IMPLEMENTED — AWAITING GPT INDEPENDENT REVIEW`; 구현 결과는 GPT independent
+  review 전 PASS/CLOSED가 아니다.
 - B2-C runtime, B2-D, CP3-C2-C와 CP3-D는 `NOT STARTED`; automatic progression은
   `PROHIBITED`다.
 
@@ -1179,6 +1180,10 @@ commit할 수 없다.
 - `0001`–`0005`는 byte-identical하게 유지한다.
 - 사용자는 ADR-016 acceptance와 별도로 approved contract에 한정한 `0006`
   schema implementation을 명시 승인했다. B2-C runtime은 승인하지 않았다.
+- 현재 additive `0006`은 exact six-table surface, approved indexes/triggers,
+  ADR-016 trust binding과 cross-ledger counter guards를 구현했다. `0001`–`0005`
+  blob은 고정됐고 persistent canonical/runtime write는 없다. Independent review
+  전에는 CP3-C2-B2-C를 PASS/CLOSED로 선언하지 않는다.
 
 ---
 

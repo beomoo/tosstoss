@@ -1516,6 +1516,7 @@ $expectedBackendTestFiles = @(
     "tests/backend/test_provider_raw_store.py",
     "tests/backend/test_provider_repository.py",
     "tests/backend/test_provider_source_contracts.py",
+    "tests/backend/test_reviewer_operation_migration.py",
     "tests/backend/test_security_master_reconciliation.py",
     "tests/backend/test_rejection_matrix.py",
     "tests/backend/test_repositories.py",
@@ -1653,11 +1654,11 @@ $phaseControlFiles = @(
         Where-Object { $_.Name -cne "policy-scan.ps1" }
 )
 $approvedPhaseControlDigest = [string]::Concat(
-    "eaa4bfd9", "317adf7e", "d8dba354", "c728ea0a",
-    "2f9c777a", "16f1fb33", "50274b39", "3c3d09ce"
+    "ba435d5e", "8a38c988", "f07aae35", "b0e04864",
+    "f434ef86", "9e68eda6", "e02ecb6d", "5ad2f544"
 )
 if (
-    $phaseControlFiles.Count -ne 77 -or
+    $phaseControlFiles.Count -ne 78 -or
     (Get-FileSetManifestSha256 -Files $phaseControlFiles) -cne
         $approvedPhaseControlDigest
 ) {
@@ -2458,4 +2459,4 @@ Assert-NoRawPattern `
     -Message "A public token-manager or raw-token extraction surface was found." `
     -Files $applicationRuntimeSourceFiles
 
-Write-Host "Phase 2 CP3-C2-B2-B implementation scope policy scan passed."
+Write-Host "Phase 2 CP3-C2-B2-C schema implementation scope policy scan passed."

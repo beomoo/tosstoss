@@ -87,7 +87,7 @@
 ## KI-015 — CP3-C2-B2-C WebAuthn enrollment/credential-operation schema gap
 
 - 상태:
-  `OPEN — ADR-015/ADR-016 ACCEPTED / 0006 IMPLEMENTATION IN PROGRESS`
+  `OPEN — ADR-015/ADR-016 ACCEPTED / 0006 IMPLEMENTED — AWAITING GPT INDEPENDENT REVIEW`
 - 관찰: CP3-C2-B2-C implementation-entry audit에서 frozen `0005`가 valid
   credential 이전의 server-created SID-bound first-enrollment bootstrap,
   WebAuthn create challenge, expiry와 실패 포함 unique terminal consumption을
@@ -141,7 +141,11 @@
 - Current gate: GPT independent review of SHA
   `4104973d84307b80a236d9b737b2d29339b27153` returned P0 `0` / P1 `0`; the user
   accepted ADR-016 on `2026-08-28` and separately authorized only the approved
-  `0006` schema implementation. Implementation is `IN PROGRESS`, not PASS/CLOSED.
+  `0006` schema implementation. The additive schema is now `IMPLEMENTED —
+  AWAITING GPT INDEPENDENT REVIEW`, not PASS/CLOSED. Local tests cover the exact
+  six-table inventory, failure-safe upgrade/downgrade, lifecycle graph, amended
+  trust FKs, terminal outcomes and counter union; GitHub CI evidence remains
+  absent/non-blocking.
   B2-C runtime is `NOT STARTED / NOT AUTHORIZED`; later checkpoints remain
   `NOT STARTED`; automatic progression is `PROHIBITED`.
 - 비차단 정정: issuer `SUPERSEDED`는 현재 schema blocker가 아니다. Existing

@@ -17,7 +17,7 @@
 - Current implementation status: `IN PROGRESS`
 - CP3-C2-B2-A: `PASS — CLOSED`
 - CP3-C2-B2-B: `PASS — CLOSED`
-- CP3-C2-B2-C: `0006 SCHEMA IMPLEMENTATION IN PROGRESS`
+- CP3-C2-B2-C schema: `IMPLEMENTED — AWAITING GPT INDEPENDENT REVIEW`
 - CP3-C2-B2-D: `NOT STARTED`
 - Migration implementation: additive `0005` implemented in B2-A; production
   database application `0`
@@ -1575,10 +1575,10 @@ contract or retroactively broaden the B1 closeout approval.
 - Additive `0005_phase_02_cp3_c2_b_issuer_authority`: implemented and exercised
   only against disposable QA databases; persistent production application `0`
 - CP3-C2-B2-B: `PASS — CLOSED`
-- CP3-C2-B2-C: `0006 SCHEMA IMPLEMENTATION IN PROGRESS`
+- CP3-C2-B2-C schema: `IMPLEMENTED — AWAITING GPT INDEPENDENT REVIEW`
 - ADR-015: `ACCEPTED` (`2026-08-28`)
 - ADR-016: `ACCEPTED` (`2026-08-28`)
-- Migration `0006`: `AUTHORIZED / IMPLEMENTATION IN PROGRESS`
+- Migration `0006`: `IMPLEMENTED — AWAITING GPT INDEPENDENT REVIEW`
 - B2-C WebAuthn/human-approval runtime: `NOT STARTED / NOT AUTHORIZED`
 - CP3-C2-B2-D: `NOT STARTED`
 - CP3-C2-C: `NOT STARTED`
@@ -1746,10 +1746,15 @@ GPT independent review of SHA
 user explicitly accepted ADR-016 on `2026-08-28`. The user separately
 authorized only the approved `0006` schema implementation.
 
+Under that narrow authorization, additive `0006` now implements the approved
+six-table ledger, exact ADR-016 trust bindings, lifecycle guards and counter
+union against disposable SQLite databases. It remains awaiting GPT independent
+review and adds no WebAuthn/human-approval runtime.
+
 - ADR-015: `ACCEPTED` (`2026-08-28`)
 - ADR-016: `ACCEPTED` (`2026-08-28`)
-- CP3-C2-B2-C: `0006 SCHEMA IMPLEMENTATION IN PROGRESS`
-- Migration `0006`: `AUTHORIZED / IMPLEMENTATION IN PROGRESS`
+- CP3-C2-B2-C schema: `IMPLEMENTED — AWAITING GPT INDEPENDENT REVIEW`
+- Migration `0006`: `IMPLEMENTED — AWAITING GPT INDEPENDENT REVIEW`
 - B2-C WebAuthn/human-approval runtime: `NOT STARTED / NOT AUTHORIZED`
 - CP3-C2-B2-D / CP3-C2-C / CP3-D: `NOT STARTED`
 - Automatic progression: `PROHIBITED`
