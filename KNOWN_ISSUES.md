@@ -87,7 +87,7 @@
 ## KI-015 — CP3-C2-B2-C WebAuthn enrollment/credential-operation schema gap
 
 - 상태:
-  `OPEN — ADR-015 PROPOSED / SCHEMA REMEDIATION AWAITING GPT INDEPENDENT REVIEW`
+  `OPEN — ADR-015 PROPOSED / SCHEMA REMEDIATION AWAITING GPT INDEPENDENT RE-REVIEW`
 - 관찰: CP3-C2-B2-C implementation-entry audit에서 frozen `0005`가 valid
   credential 이전의 server-created SID-bound first-enrollment bootstrap,
   WebAuthn create challenge, expiry와 실패 포함 unique terminal consumption을
@@ -104,8 +104,17 @@
   `plans/PHASE_02_CP3_C2_B2_C_SCHEMA_REMEDIATION.md`와 ADR-015가 table rebuild
   없는 additive future `0006` operation/challenge/consumption/authentication/
   authorization/outcome ledger를 제안한다. ADR-015는 `PROPOSED`이고 `0006`
-  creation/application 및 B2-C runtime은 `0`이다. GPT independent review와
-  explicit user acceptance 전에는 B2-C를 재개하지 않는다.
+  creation/application 및 B2-C runtime은 `0`이다. 첫 proposal SHA
+  `fd0535fdd022f0171a63a83cb2861e924a92da64`의 GPT independent review는
+  SG-01/SG-02와 additive Option A를 원칙적으로 수용하고 `CHANGES REQUIRED`,
+  P0 0 / P1 2 / P2 1 non-blocking을 반환했다. Revised proposal은 authenticated
+  final credential revoke와 exact empty active set을 허용하되 이후 approval/
+  add/replace/revoke/first enrollment/recovery를 모두 fail closed한다. 또한
+  exact `reviewer-credential-state/0.1.0` canonical hash를 trusted server가
+  `BEGIN IMMEDIATE` 안에서 계산하고, SQLite는 SHA UDF 없이 relational graph와
+  deferred lifecycle-authorization/successful-outcome binding만 검증하도록
+  경계를 고정한다. GPT independent re-review와 explicit user acceptance 전에는
+  B2-C를 재개하지 않는다.
 - 비차단 정정: issuer `SUPERSEDED`는 현재 schema blocker가 아니다. Existing
   `0005`의 separate authenticated events와 linear link history로 atomic old
   supersession/successor approval/head CAS를 표현할 수 있다.

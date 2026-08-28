@@ -18,7 +18,7 @@
 - CP3-C2-B2-A: `PASS — CLOSED`
 - CP3-C2-B2-B: `PASS — CLOSED`
 - CP3-C2-B2-C:
-  `BLOCKED — SCHEMA CONTRACT GAP / SCHEMA REMEDIATION AWAITING GPT INDEPENDENT REVIEW`
+  `BLOCKED — SCHEMA CONTRACT GAP / SCHEMA REMEDIATION AWAITING GPT INDEPENDENT RE-REVIEW`
 - CP3-C2-B2-D: `NOT STARTED`
 - Migration implementation: additive `0005` implemented in B2-A; production
   database application `0`
@@ -652,10 +652,13 @@ caller assertion of identity/role is not approval authentication.
   CSPRNG bits during a dedicated local enrollment ceremony. It assigns the
   exact immutable role `LOCAL_DATA_STEWARD`; neither value is accepted from an
   HTTP, CLI, job, parser, or approval caller.
-- First enrollment is enabled only while no steward credential exists and only
-  by a server-created single-use bootstrap record under the Windows account
-  that owns the local application data. The server reads and hashes that
-  account SID from the OS security token; the browser cannot submit it.
+- First enrollment is enabled only before any steward credential has ever been
+  successfully registered and only by a server-created single-use bootstrap
+  record under the Windows account that owns the local application data. A
+  failed pre-registration attempt requires a fresh bootstrap challenge; a later
+  empty active set does not restart first enrollment. The server reads and
+  hashes that account SID from the OS security token; the browser cannot submit
+  it.
 - The enrollment ceremony uses WebAuthn `create` with
   `authenticatorAttachment=platform`, `residentKey=required`, and
   `userVerification=required`. A credential registered without positive user
@@ -670,9 +673,16 @@ caller assertion of identity/role is not approval authentication.
   authenticator and are never stored by this repository, its DB, files, logs,
   fixtures, tests, QA documents, browser storage, or environment.
 - Adding or replacing a credential after first enrollment requires a fresh
-  assertion from an already active credential. If all credentials are lost,
-  approval stays fail-closed; credential recovery is a separate explicitly
-  authorized ceremony and cannot approve a pending decision.
+  assertion from an already active credential. A valid assertion from the
+  currently active credential may authorize revoking that credential even when
+  it is the final active credential. The resulting empty active set is a valid
+  append-only lifecycle state.
+- If no active credential remains, issuer approval and credential add, replace
+  or further revoke operations stay fail-closed; first enrollment does not
+  reopen. No recovery/reset ceremony is defined or authorized by this contract.
+  Any future recovery design requires a separate explicit authorization and
+  cannot approve a pending decision. Historical credential and audit rows
+  remain immutable and queryable.
 
 Enrollment and credential lifecycle are append-only audit events. Credential
 revocation or supersession does not delete the registered public-key history.
@@ -1567,7 +1577,7 @@ contract or retroactively broaden the B1 closeout approval.
   only against disposable QA databases; persistent production application `0`
 - CP3-C2-B2-B: `PASS — CLOSED`
 - CP3-C2-B2-C:
-  `BLOCKED — SCHEMA CONTRACT GAP / SCHEMA REMEDIATION AWAITING GPT INDEPENDENT REVIEW`
+  `BLOCKED — SCHEMA CONTRACT GAP / SCHEMA REMEDIATION AWAITING GPT INDEPENDENT RE-REVIEW`
 - CP3-C2-B2-D: `NOT STARTED`
 - CP3-C2-C: `NOT STARTED`
 - CP3-D: `NOT STARTED`
@@ -1678,12 +1688,23 @@ authentication, lifecycle-authorization, and outcome relations. ADR-015 remains
 `PROPOSED`. This documentation task creates/applies no migration and implements
 no WebAuthn or approval runtime.
 
+GPT independent review of the first ADR-015 proposal at SHA
+`fd0535fdd022f0171a63a83cb2861e924a92da64` accepted SG-01, SG-02 and additive
+Option A in principle, but returned `CHANGES REQUIRED` with P0 `0`, two new P1
+design findings and one non-blocking P2 for absent GitHub CI evidence. The
+revised proposal permits authenticated final-credential revocation and records
+the exact empty active set, while leaving all later authentication and recovery
+fail closed. It also defines `reviewer-credential-state/0.1.0`, with trusted
+server SHA-256 computation under `BEGIN IMMEDIATE`, relational SQLite guards,
+and no undeclared SQLite SHA function. ADR-015 remains `PROPOSED`, and both
+findings await GPT independent re-review.
+
 The second verification does not treat issuer `SUPERSEDED` as a schema blocker:
 two separately authenticated dispositions can append old `SUPERSEDED` and
 successor `APPROVED` link versions atomically before the final guarded head CAS.
 
 - CP3-C2-B2-C:
-  `BLOCKED — SCHEMA CONTRACT GAP / SCHEMA REMEDIATION AWAITING GPT INDEPENDENT REVIEW`
+  `BLOCKED — SCHEMA CONTRACT GAP / SCHEMA REMEDIATION AWAITING GPT INDEPENDENT RE-REVIEW`
 - ADR-015: `PROPOSED`
 - Migration `0006` created/applied: `0`
 - CP3-C2-B2-D / CP3-C2-C / CP3-D: `NOT STARTED`

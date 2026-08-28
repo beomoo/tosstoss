@@ -1,10 +1,14 @@
 # Phase 2 CP3-C2-B2-C Schema Contract Remediation
 
-- Status: `PROPOSED — AWAITING GPT INDEPENDENT REVIEW`
-- Checkpoint state: `BLOCKED — SCHEMA CONTRACT GAP`
+- Status:
+  `PROPOSED — REVISED AFTER GPT INDEPENDENT REVIEW / AWAITING GPT INDEPENDENT RE-REVIEW`
+- Checkpoint state:
+  `BLOCKED — SCHEMA CONTRACT GAP / SCHEMA REMEDIATION AWAITING GPT INDEPENDENT RE-REVIEW`
 - Repository: `beomoo/tosstoss`
 - Branch: `feature/phase-02-toss`
 - Authoritative starting SHA: `60f2805d2390c91a026b3381877006be9000dedb`
+- Independent-review remediation starting SHA:
+  `fd0535fdd022f0171a63a83cb2861e924a92da64`
 - Design date: `2026-08-28` (`Asia/Seoul`)
 - Governing contracts: ADR-013 `ACCEPTED`, ADR-014 `ACCEPTED`,
   `plans/PHASE_02_CP3_C2_B1_RUNTIME_CONTRACT.md`
@@ -73,6 +77,27 @@ Both assertions/events/link versions can be validated and appended inside one
 `BEGIN IMMEDIATE` transaction. This proposal does not weaken or reinterpret
 that lifecycle.
 
+### 2.4 GPT independent review of the first proposal
+
+GPT independently reviewed SHA
+`fd0535fdd022f0171a63a83cb2861e924a92da64` and returned `CHANGES REQUIRED`,
+P0 `0`, P1 `2`, and P2 `1` non-blocking because GitHub CI execution evidence
+is absent. SG-01, SG-02, and additive Option A were accepted in principle.
+
+This revision remediates, but does not self-close, the two new design findings:
+
+- P1-SR-01: authenticated revocation of the final active credential is allowed
+  and produces the exact empty active set. The resulting lockout is truthful
+  fail-closed state, not a reason to invent recovery.
+- P1-SR-02: the exact versioned credential-state preimage, empty-state
+  derivation, active-member reconstruction and server/SQLite validation
+  boundary are defined below. A mandatory deferred lifecycle-event-to-
+  successful-outcome binding closes the event-without-CAS gap while retaining
+  six additive tables.
+
+P1-SR-01 and P1-SR-02 remain awaiting GPT independent re-review. ADR-015
+remains `PROPOSED`.
+
 ## 3. Selected migration strategy
 
 ### 3.1 Decision
@@ -140,11 +165,12 @@ The proposed versions are:
 | Credential-operation authentication | `reviewer-credential-operation-authentication/0.1.0` |
 | Credential-event authorization | `reviewer-credential-event-authorization/0.1.0` |
 | Credential-operation outcome | `reviewer-credential-operation-outcome/0.1.0` |
+| Credential ownership/lifecycle state | `reviewer-credential-state/0.1.0` |
 
-All content and binding hashes use canonical UTF-8/NFC JSON with recursively
-sorted object keys, preserved array order only where the contract assigns
-order, no insignificant whitespace, and SHA-256 rendered as
-`sha256:<lowerhex>`.
+All content and binding hashes use canonical UTF-8/NFC JSON. Object keys are
+sorted by unsigned lexicographic UTF-8 byte order after NFC; arrays preserve
+order only where the contract assigns it. There is no insignificant whitespace,
+and SHA-256 is rendered as `sha256:<lowerhex>`.
 
 Operation, challenge, consumption, and authentication IDs are server-generated
 opaque identifiers with at least 128 CSPRNG bits. They are audit identities and
@@ -163,6 +189,207 @@ in `(0,1)`, every enum is closed to the values in this document, and every
 nullable reference group is constrained all-null or all-non-null. These checks
 are schema invariants; `payload_json` is never consulted to satisfy them.
 
+### 5.1 Exact credential-state membership
+
+Credential state represents ownership and current lifecycle membership for one
+exact steward principal. It does not represent authentication-counter progress.
+The server reconstructs it from all relevant rows; no caller supplies a member
+list.
+
+A credential is `ACTIVE` only when all of these conditions hold:
+
+1. its immutable `reviewer_webauthn_credentials` row belongs to the exact
+   principal tuple in the state object;
+2. it has exactly one authorized lifecycle root whose event type is
+   `REGISTERED` and whose predecessor is null;
+3. every lifecycle successor is authorized, uses the same credential and
+   principal, and forms one acyclic, fork-free chain under
+   `supersedes_credential_event_id`; and
+4. the unique current leaf is the `REGISTERED` root itself, meaning it has no
+   `REVOKED` or `SUPERSEDED` successor.
+
+A unique leaf of `REVOKED` or `SUPERSEDED` makes that credential inactive and
+therefore excludes it from `active_credentials`. An orphan credential, missing
+authorization companion, second root, fork, cycle, cross-principal or cross-
+credential edge, missing leaf, multiple leaves, duplicate credential ID,
+credential-ID fingerprint, public-key fingerprint, or member sort key makes the
+entire state reconstruction invalid. The server returns a typed fail-closed
+error; it never silently drops or deduplicates the bad row.
+
+The frozen `0005` credential/event rows plus the proposed root/successor indexes,
+same-subject chain guard and mandatory authorization companion are sufficient to
+derive that set. No seventh membership/current-state table is proposed. A
+stored projection would duplicate the authoritative append-only graph and
+could hide an omitted member.
+
+### 5.2 Exact canonical state-hash preimage
+
+The logical preimage is exactly this object:
+
+```json
+{
+  "active_credentials": [
+    {
+      "authenticator_attachment": "platform",
+      "counter_capability": "SIGN_COUNT_SUPPORTED",
+      "credential_contract_version": "issuer-steward-webauthn/0.1.0",
+      "credential_id_fingerprint": "sha256:<64-lowerhex>",
+      "lifecycle_leaf": {
+        "credential_event_content_hash": "sha256:<64-lowerhex>",
+        "credential_event_contract_version": "issuer-steward-webauthn/0.1.0",
+        "credential_event_id": "<opaque-event-id>",
+        "event_type": "REGISTERED"
+      },
+      "public_key_algorithm": "<approved-COSE-algorithm>",
+      "public_key_fingerprint": "sha256:<64-lowerhex>",
+      "registration_policy_version": "<server-policy-version>",
+      "resident_key_required": true,
+      "rp_id": "localhost",
+      "user_verification_required": true,
+      "webauthn_credential_id": "<canonical-base64url-id>"
+    }
+  ],
+  "contract_version": "reviewer-credential-state/0.1.0",
+  "os_owner_sid_hash": "sha256:<64-lowerhex>",
+  "principal_content_hash": "sha256:<64-lowerhex>",
+  "reviewer_principal_id": "<server-owned-principal-id>",
+  "reviewer_role": "LOCAL_DATA_STEWARD"
+}
+```
+
+The example counter capability token is replaced by the exact stored value,
+`SIGN_COUNT_SUPPORTED` or `NO_USABLE_COUNTER`. Object keys are recursively
+sorted by the same unsigned UTF-8 rule. Text is NFC-normalized. JSON Booleans
+are literal `true`; there is no BOM, trailing newline or insignificant
+whitespace. `webauthn_credential_id` is the RFC 4648 section 5 URL-safe base64
+encoding of the credential-ID bytes with no `=` padding; padded, alternate or
+non-canonical encodings are rejected rather than normalized. Active members are sorted
+by the tuple
+`(credential_id_fingerprint, webauthn_credential_id,
+lifecycle_leaf.credential_event_id)` using unsigned lexicographic UTF-8 byte
+ordering after NFC. Duplicate sort/identity keys are an error, never a
+`DISTINCT` operation.
+
+For future lifecycle events, `credential_event_content_hash` is the SHA-256 of
+exactly this canonical JSON object (the predecessor value is a string or JSON
+`null`):
+
+```json
+{
+  "contract_version": "issuer-steward-webauthn/0.1.0",
+  "event_type": "REGISTERED",
+  "reviewer_principal_id": "<server-owned-principal-id>",
+  "structured_reason_code": "<closed-server-reason-code>",
+  "supersedes_credential_event_id": null,
+  "webauthn_credential_id": "<canonical-unpadded-base64url-id>"
+}
+```
+
+The example event type and predecessor are replaced by the exact stored values.
+`credential_event_id`, `occurred_at`, `payload_json`, DB/run/request identity
+and insertion order are excluded. The trusted server computes and insert-
+verifies this semantic content hash; SQLite only checks its form and exact
+copies.
+
+`outcome_content_hash` is likewise SHA-256 over one exact canonical object with
+these keys and their exact relational values: `contract_version`,
+`reviewer_credential_operation_id`, `operation_content_hash`,
+`reviewer_principal_id`, `operation_type`, `terminal_result`,
+`terminal_consumption_id`, `terminal_consumption_content_hash`,
+`terminal_challenge_purpose`, `terminal_challenge_result`,
+`authorization_authentication_event_id`,
+`authorization_authentication_content_hash`,
+`authorization_authentication_result`, `registration_consumption_id`,
+`registration_consumption_content_hash`, `registration_challenge_purpose`,
+`registration_terminal_result`, `expected_credential_state_hash`,
+`resulting_credential_state_hash`, and `safe_result_code`. Nullable reference
+values are explicit JSON `null`. `credential_operation_outcome_id`,
+`completed_at` and `payload_json` are excluded; the separately stored opaque
+outcome ID is still part of the exact deferred FK binding.
+
+`authorization_content_hash` covers every relational column listed in section
+7.5 from `credential_event_id` through `resulting_credential_state_hash`,
+including the exact outcome ID/hash/result and all checked nullable reference
+fields, while excluding only `authorization_content_hash`, `recorded_at`, and
+`payload_json`. Nullable values are explicit JSON `null`; the global canonical
+key-order/NFC rules apply.
+
+The state digest is:
+
+```text
+credential_state_hash =
+  "sha256:" + lowerhex(SHA256(UTF8(NFC(canonical_state_json))))
+```
+
+The empty active state is not a global constant. For principal `P`, it is the
+same exact canonical object with `"active_credentials":[]` and all exact
+principal/version/SID fields retained:
+
+```text
+empty_credential_state_hash(P) = sha256(canonical state for P with [])
+```
+
+No zero hash, null, magic literal or omitted array represents empty. For the
+same principal, the pre-first-enrollment and post-final-revocation active-set
+hashes are identical. Historical successful `REGISTERED` authorization and
+operation rows—not the empty hash—permanently distinguish those states and
+prevent `FIRST_ENROLLMENT` from restarting.
+
+### 5.3 Explicit state-hash exclusions
+
+The following never enter the credential-state preimage:
+
+- `registration_sign_count`, `previous_sign_count`, `asserted_sign_count`, the
+  reconstructed current counter, authentication-event IDs/hashes, and all
+  issuer/credential-operation authentication history;
+- `credential_content_hash`, because its wider preimage may contain the
+  immutable registration counter or audit metadata;
+- `registered_at`, `occurred_at`, operation/challenge issue/expiry/consumption/
+  authentication/completion time, payload JSON, request/session/run/DB identity
+  and insertion order;
+- challenge nonce/digest, operation/challenge/consumption/outcome IDs,
+  authenticator transports, AAGUID and canonical COSE bytes. The public-key
+  fingerprint binds the key without duplicating those bytes.
+
+`counter_capability` is included because it is immutable verification-policy
+classification, but every counter value is excluded. Therefore a valid
+signature-counter advancement alone cannot change the credential-state hash.
+
+### 5.4 Trusted-server versus SQLite validation boundary
+
+There is no approved SQLite SHA-256 UDF contract. No migration, trigger or
+connection may assume a `sha256()` SQL function.
+
+Under the same `BEGIN IMMEDIATE` writer transaction, trusted server code must:
+
+1. load every principal credential, lifecycle event and authorization companion;
+2. validate the exact active-member graph above;
+3. build the canonical preimage and compute the current hash;
+4. bind that hash at operation and challenge issuance;
+5. recompute it before challenge consumption/authentication;
+6. validate and freeze the exact server-owned proposed credential/event rows,
+   allocate every opaque `credential_event_id`, and compute each exact event
+   content hash;
+7. project those exact event IDs/hashes onto the current graph in memory and
+   compute the candidate post-state hash;
+8. allocate the opaque outcome ID and compute the exact outcome and
+   authorization content hashes from that frozen candidate tuple;
+9. insert the deferred authorization companion(s), then any new public
+   credential and lifecycle event rows;
+10. reload the complete transaction-visible relational graph and independently
+   recompute the post-state hash; and
+11. require byte-for-byte equality with the candidate hash before inserting the
+    exact outcome. Any missing/extra member or mismatch aborts the entire
+    lifecycle write transaction.
+
+SQLite enforces only relational facts: hash syntax, copied stored-hash equality,
+FKs, unique root/successor/consumption/outcome constraints, same-principal and
+same-credential edges, purpose/result/event patterns, mandatory authorization,
+operation-chain continuity and append-only history. For a successor operation,
+SQLite also requires its stored expected hash to equal its predecessor
+outcome's stored resulting hash. The server independently recomputes both.
+SQLite never calculates or attests the aggregate SHA-256.
+
 ## 6. Exact operation state model
 
 `operation_type` is one of:
@@ -173,8 +400,11 @@ are schema invariants; `payload_json` is never consulted to satisfy them.
 - `REVOKE_CREDENTIAL`
 
 There is no `RECOVER_CREDENTIAL`, `RESET_CREDENTIAL`, `FORCE`, or
-`ADMIN_OVERRIDE` value. If every credential is lost, no non-first operation can
-authenticate and the system remains fail closed.
+`ADMIN_OVERRIDE` value. After any credential has ever been successfully
+registered, `FIRST_ENROLLMENT` is permanently closed. If the active set later
+becomes empty, issuer approval, `ADD_CREDENTIAL`, `REPLACE_CREDENTIAL` and
+further `REVOKE_CREDENTIAL` all fail closed because no active credential can
+authenticate. Empty does not mean never enrolled, and no recovery path appears.
 
 `challenge_purpose` is one of:
 
@@ -192,8 +422,10 @@ The required step matrix is:
 
 A replace may use the target credential to authorize its own replacement, but
 the new credential registration and old credential supersession commit
-atomically. A standalone revoke that would leave zero active credentials is
-rejected. Unauthenticated recovery remains outside the contract.
+atomically. A currently active credential may also authenticate its own
+`REVOKE_CREDENTIAL`, including when it is the final active credential. That
+successful transition produces the exact principal-specific empty state.
+Unauthenticated recovery remains outside the contract.
 
 ## 7. Proposed tables
 
@@ -217,7 +449,7 @@ server-created bootstrap identity.
 | `operation_type` | `VARCHAR(32) NOT NULL` | exact permitted lifecycle action |
 | `target_webauthn_credential_id` | `VARCHAR(512) NULL` | exact existing credential for replace/revoke only |
 | `target_credential_id_fingerprint` | `VARCHAR(71) NULL` | prevents ID-only target ambiguity |
-| `expected_credential_state_hash` | `VARCHAR(71) NOT NULL` | CAS input over the sorted active credential leaf set |
+| `expected_credential_state_hash` | `VARCHAR(71) NOT NULL` | trusted-server-computed `reviewer-credential-state/0.1.0` pre-state used as CAS input |
 | `predecessor_operation_id` | `VARCHAR(128) NULL` | one linear operation history per principal |
 | `operation_policy_version` | `VARCHAR(64) NOT NULL` | server-owned policy, not a request field |
 | `created_at` | `VARCHAR(35) NOT NULL` | aware UTC audit time, never authority-effective time |
@@ -260,7 +492,7 @@ issuer-disposition reuse.
 | `os_owner_sid_hash` | `VARCHAR(71) NOT NULL` | exact OS-owner binding |
 | `operation_type` | `VARCHAR(32) NOT NULL` | cannot be relabelled after issue |
 | `challenge_purpose` | `VARCHAR(32) NOT NULL` | create versus get, never issuer approval |
-| `expected_credential_state_hash` | `VARCHAR(71) NOT NULL` | state checked again at consumption |
+| `expected_credential_state_hash` | `VARCHAR(71) NOT NULL` | exact operation pre-state copied from the server-computed binding and recomputed by the server at consumption |
 | `target_webauthn_credential_id` | `VARCHAR(512) NULL` | exact replace/revoke target copied from operation |
 | `target_credential_id_fingerprint` | `VARCHAR(71) NULL` | exact target fingerprint |
 | `prerequisite_authentication_event_id` | `VARCHAR(128) NULL` | successful existing-credential assertion required before add/replace registration |
@@ -351,7 +583,8 @@ Required FKs/checks:
   USER_VERIFICATION_ABSENT|INVALID_REGISTRATION|INVALID_SIGNATURE|
   COUNTER_REJECTED|REPLAY_REJECTED|FAILED_CLOSED`.
 - All verification flags are 0/1.
-- `SUCCEEDED` must occur no later than expiry and requires all common checks.
+- `SUCCEEDED` requires `consumed_at < expires_at` and all common checks; the
+  challenge is expired at the exact expiry instant.
 - Successful `REGISTRATION_CREATE` additionally requires platform, resident
   key, public-key verification and all registered-credential fields. The
   registration count alone may be null, and only for `NO_USABLE_COUNTER`.
@@ -360,7 +593,7 @@ Required FKs/checks:
 - Any non-registration success or failed consumption requires the entire
   registered-credential field group null. This prevents partially populated
   failure rows from masquerading as registration proof.
-- `EXPIRED` requires `consumed_at>expires_at`. Every other failure is terminal
+- `EXPIRED` requires `consumed_at >= expires_at`. Every other failure is terminal
   and cannot be retried because the challenge FK is unique.
 
 ### 7.4 `reviewer_credential_operation_authentication_events`
@@ -382,7 +615,7 @@ column.
 | `reviewer_credential_operation_id` | `VARCHAR(128) NOT NULL` | exact operation |
 | `operation_content_hash` | `VARCHAR(71) NOT NULL` | immutable operation |
 | `operation_type` | `VARCHAR(32) NOT NULL` | never issuer disposition |
-| `expected_credential_state_hash` | `VARCHAR(71) NOT NULL` | authorization used current credential state |
+| `expected_credential_state_hash` | `VARCHAR(71) NOT NULL` | exact operation pre-state copied relationally; trusted server independently recomputes it before authorization |
 | `reviewer_principal_id` | `VARCHAR(128) NOT NULL` | exact steward |
 | `reviewer_role` | `VARCHAR(32) NOT NULL` | fixed role |
 | `principal_content_hash` | `VARCHAR(71) NOT NULL` | exact principal version |
@@ -453,6 +686,11 @@ credential lifecycle event.
 | `credential_operation_authentication_event_id` | `VARCHAR(128) NULL` | exact successful existing-credential assertion |
 | `credential_operation_authentication_content_hash` | `VARCHAR(71) NULL` | exact immutable authorizing assertion |
 | `credential_operation_authentication_result` | `VARCHAR(16) NULL` | when present, fixed to `VERIFIED` |
+| `credential_operation_outcome_id` | `VARCHAR(128) NOT NULL` | exact successful operation whose atomic CAS includes this lifecycle event |
+| `credential_operation_outcome_content_hash` | `VARCHAR(71) NOT NULL` | immutable successful outcome version |
+| `credential_operation_outcome_result` | `VARCHAR(16) NOT NULL` | fixed to `SUCCEEDED`; a failed operation cannot authorize lifecycle state |
+| `expected_credential_state_hash` | `VARCHAR(71) NOT NULL` | exact server-computed pre-state copied from operation and outcome |
+| `resulting_credential_state_hash` | `VARCHAR(71) NOT NULL` | exact server-computed post-state copied from the successful outcome |
 | `authorization_content_hash` | `VARCHAR(71) NOT NULL UNIQUE` | immutable exact linkage |
 | `recorded_at` | `VARCHAR(35) NOT NULL` | aware UTC audit |
 | `payload_json` | `TEXT NOT NULL` | duplicate safe audit only |
@@ -462,7 +700,9 @@ Required FKs/checks:
 - A `DEFERRABLE INITIALLY DEFERRED` composite FK points to the exact existing
   credential event tuple
   `(event_id, event_content_hash, credential_id, principal_id, event_type)`.
-- A separate exact credential FK binds credential ID/content hash. The event's
+- A separate exact credential FK binds credential ID/content hash and is
+  `DEFERRABLE INITIALLY DEFERRED`, so a registration authorization companion
+  may precede the guarded new credential in the same transaction. The event's
   principal and operation principal must equal the credential principal under
   the insert guard; frozen `0005` cannot be trusted to prove that cross-table
   equality by its two independent single-column FKs alone.
@@ -473,6 +713,11 @@ Required FKs/checks:
   affected credential.
 - Authentication FK can reference only a `VERIFIED` operation-authentication
   row for the same operation/principal.
+- A `DEFERRABLE INITIALLY DEFERRED` composite FK binds the authorization to the
+  exact `SUCCEEDED` operation outcome by outcome ID/content hash, operation,
+  principal, terminal result, expected state and resulting state. This makes a
+  lifecycle event and its CAS result commit together: neither an event-only nor
+  outcome-only successful transition can satisfy commit-time integrity.
 - `FIRST_ENROLLMENT + REGISTERED` requires
   `authorization_kind=BOOTSTRAP_REGISTRATION`, successful registration
   consumption, and null authentication event.
@@ -489,6 +734,12 @@ Required FKs/checks:
   group. Constants (`REGISTRATION_CREATE`, `SUCCEEDED`, `VERIFIED`) are stored
   as checked relational columns so an FK never depends on a partial index or
   JSON predicate.
+
+Although this subsection precedes the outcome table for readability, the
+future migration must create the two mutually commit-bound tables in an order
+supported by SQLite and create all deferred FKs/guards before use. All six
+tables and both sides of the deferred relationship must exist before any
+credential ceremony can run.
 
 ### 7.6 `reviewer_credential_operation_outcomes`
 
@@ -516,8 +767,8 @@ CAS output.
 | `registration_consumption_content_hash` | `VARCHAR(71) NULL` | exact successful registration attempt |
 | `registration_challenge_purpose` | `VARCHAR(32) NULL` | when present, fixed to `REGISTRATION_CREATE` |
 | `registration_terminal_result` | `VARCHAR(32) NULL` | when present, fixed to `SUCCEEDED` |
-| `expected_credential_state_hash` | `VARCHAR(71) NOT NULL` | exact pre-state |
-| `resulting_credential_state_hash` | `VARCHAR(71) NOT NULL` | exact sorted active-leaf post-state |
+| `expected_credential_state_hash` | `VARCHAR(71) NOT NULL` | exact trusted-server-computed `reviewer-credential-state/0.1.0` pre-state |
+| `resulting_credential_state_hash` | `VARCHAR(71) NOT NULL` | exact trusted-server-computed post-state, including the principal-specific empty state after final revoke |
 | `safe_result_code` | `VARCHAR(128) NOT NULL` | non-secret terminal reason |
 | `completed_at` | `VARCHAR(35) NOT NULL` | aware UTC audit |
 | `payload_json` | `TEXT NOT NULL` | duplicate safe audit only |
@@ -535,8 +786,15 @@ Required FKs/checks:
 - A failed outcome requires no credential lifecycle authorization rows and
   preserves the pre-state as the resulting state.
 - A successful outcome is accepted only after the required exact credential
-  event authorization rows exist and the recomputed active-leaf set hashes to
-  `resulting_credential_state_hash`.
+  event authorization rows exist, each is pre-bound to that exact deferred
+  successful outcome tuple, and all relational event-pattern rules pass. The
+  trusted server—not the insert guard—reconstructs the transaction-visible
+  active set and computes `resulting_credential_state_hash` immediately before
+  outcome insertion.
+- `FIRST_ENROLLMENT`, `ADD_CREDENTIAL`, `REPLACE_CREDENTIAL` and
+  `REVOKE_CREDENTIAL` successes all change membership and therefore require a
+  resulting hash different from the expected hash. A successful final revoke
+  is valid and uses the exact empty-state hash from section 5.2.
 
 ### 7.7 Exact composite-FK parent keys
 
@@ -558,6 +816,7 @@ is not sufficient.
 | `uq_reviewer_credential_operation_consumptions_exact_terminal` | `challenge_consumption_id, reviewer_credential_operation_id, reviewer_principal_id, challenge_purpose, terminal_result, consumption_content_hash` | authentication/authorization/outcome binds the exact terminal attempt and result; the consumption row itself already binds its unique challenge |
 | `uq_reviewer_credential_operation_consumptions_exact_registration` | `challenge_consumption_id, reviewer_credential_operation_id, reviewer_principal_id, challenge_purpose, terminal_result, registered_webauthn_credential_id, registered_credential_content_hash, consumption_content_hash` | lifecycle authorization proves that the successful registration produced the same affected credential |
 | `uq_reviewer_credential_operation_authentication_exact_result` | `credential_operation_authentication_event_id, authentication_content_hash, reviewer_credential_operation_id, reviewer_principal_id, authentication_result` | prerequisite/lifecycle/outcome references can require the exact `VERIFIED` assertion with a checked constant |
+| `uq_reviewer_credential_operation_outcomes_exact_success` | `credential_operation_outcome_id, outcome_content_hash, reviewer_credential_operation_id, reviewer_principal_id, terminal_result, expected_credential_state_hash, resulting_credential_state_hash` | deferred lifecycle authorization binds the exact successful CAS result; checked copied result is `SUCCEEDED` |
 
 The FK tuples use those exact column orders. Nullable target columns are
 verified by null-safe insert guards, not placed in a composite FK. Optional
@@ -585,6 +844,7 @@ are constrained to be either entirely null or entirely non-null.
 | `uq_reviewer_credential_operation_consumptions_exact_terminal` | exact tuple in section 7.7 | enables result-qualified authentication/authorization/outcome FKs |
 | `uq_reviewer_credential_operation_consumptions_exact_registration` | exact tuple in section 7.7 | binds a successful create result to the lifecycle event's exact credential |
 | `uq_reviewer_credential_operation_authentication_exact_result` | exact tuple in section 7.7 | enables exact `VERIFIED` prerequisite/authorization/outcome FKs |
+| `uq_reviewer_credential_operation_outcomes_exact_success` | exact tuple in section 7.7 | enables deferred event-authorization binding to the exact successful CAS outcome |
 | `uq_reviewer_credential_event_authorization_step` | operation ID/event type | one required lifecycle event of each type |
 | `ix_reviewer_authentication_counter_chain` | existing issuer auth credential/result/prior/asserted | deterministic cross-ledger counter reconstruction |
 | `ix_reviewer_credential_operation_counter_chain` | operation auth credential/result/prior/asserted | deterministic cross-ledger counter reconstruction |
@@ -609,14 +869,15 @@ authentication, authorization, outcome, or current-counter row.
 
 | Trigger | Invariant |
 |---|---|
-| `trg_reviewer_credential_operations_insert_guard` | exact active principal/SID; root/retry rules; predecessor is unique current terminal leaf; expected credential-state hash matches; first enrollment only before any successful registration; non-first operations require an active credential |
-| `trg_reviewer_credential_operation_challenges_insert_guard` | operation has no outcome; challenge step is valid for operation; expected state is still current; add/replace registration challenge has an exact verified prerequisite |
+| `trg_reviewer_credential_operations_insert_guard` | exact active principal/SID; root/retry rules; predecessor is unique current terminal leaf; successor's stored expected hash equals the predecessor outcome's stored resulting hash; first enrollment only before any successful registration; non-first operations require an active credential. Trusted server separately recomputes the hash |
+| `trg_reviewer_credential_operation_challenges_insert_guard` | operation has no outcome; challenge step is valid for operation; challenge copies the operation's stored expected hash; add/replace registration challenge has an exact verified prerequisite. Trusted server separately proves that pre-state is current |
 | `trg_reviewer_credential_operation_consumptions_insert_guard` | challenge is current/unconsumed; server clock and expiry map to terminal result; success verification matrix is complete; failure still consumes |
-| `trg_reviewer_webauthn_credentials_requires_registration_proof` | every future public credential insert has a pre-inserted successful, exact, deferred registration consumption for the same principal/ID/fingerprints/counter metadata |
+| `trg_reviewer_webauthn_credentials_requires_registration_proof` | every future public credential insert has both a pre-inserted successful exact deferred registration consumption and an exact pending `REGISTERED` authorization companion for the same operation/principal/ID/fingerprints/counter metadata; a consumption alone cannot create trusted credential state |
 | `trg_reviewer_webauthn_credential_events_requires_authorization` | every future lifecycle event has a pre-inserted exact deferred authorization companion |
 | `trg_reviewer_webauthn_credential_events_chain_guard` | `REGISTERED` is the only root; successor uses the same credential/principal; `REVOKED`/`SUPERSEDED` are terminal; cross-credential chain grafts fail |
-| `trg_reviewer_credential_operation_authentication_active_guard` | authorizing credential is the unique active leaf for the same principal at verification; target/current state remains exact |
-| `trg_reviewer_credential_operation_outcomes_insert_guard` | success has the exact event pattern and post-state; failure has no lifecycle writes; last-active revoke and incomplete replace fail |
+| `trg_reviewer_credential_operation_authentication_active_guard` | the authorizing credential belongs to the same principal and has exactly one valid current `REGISTERED` lifecycle leaf at verification; target and copied stored-state binding remain exact. It does not assert aggregate SHA-256 |
+| `trg_reviewer_credential_operation_outcomes_insert_guard` | success has the exact relational event/authorization pattern and every companion names this exact successful outcome; failure has no lifecycle writes and preserves the stored pre-state; incomplete replace fails; authenticated final revoke and its empty active set are permitted. Trusted server computes/revalidates both hashes |
+| `trg_reviewer_authentication_events_credential_active_guard` | every future issuer-approval authentication event uses a same-principal credential whose complete authorized lifecycle has one current `REGISTERED` leaf; a revoked/superseded credential cannot authenticate issuer approval after final or partial revoke |
 | `trg_reviewer_authentication_events_counter_union_guard` | an issuer-approval assertion sees the union of both authentication ledgers; registration base, previous value, unique leaf, fork/gap/rollback rules hold |
 | `trg_reviewer_credential_operation_authentication_counter_union_guard` | a credential-operation assertion obeys the same union counter chain and cannot race an issuer assertion |
 
@@ -636,22 +897,37 @@ The two counter triggers operate on relational columns in
 For `NO_USABLE_COUNTER` both counts remain null. Challenge uniqueness,
 signature, RP/origin, and UV still apply.
 
+The B2-C issuer-approval service must also reconstruct the complete credential
+lifecycle graph under its existing `BEGIN IMMEDIATE` approval writer lock before
+accepting an assertion. The additive active guard provides relational defense in
+depth for direct inserts; neither layer trusts the frozen `0005` credential FK
+alone, because an immutable public credential row remains present after revoke.
+
 ## 10. Transaction and concurrency contract
 
 Every issuance, consumption, credential write, lifecycle write, and outcome
 uses SQLite `BEGIN IMMEDIATE` with `PRAGMA foreign_keys=ON`.
+Aggregate state-hash computation is a trusted-server transaction step, never a
+SQLite trigger claim. FKs, unique indexes, checks and guards enforce the
+relational graph on which that computation operates.
 
 ### 10.1 First enrollment
 
 1. Resolve the application-data owner SID from the Windows OS token.
 2. Insert-or-verify the one active steward principal.
-3. Insert the root/retry `FIRST_ENROLLMENT` operation against the empty
-   credential-state hash.
+3. Prove that no successful historical `FIRST_ENROLLMENT + REGISTERED`
+   authorization exists, compute the exact principal-specific empty-state hash,
+   and insert the root/retry `FIRST_ENROLLMENT` operation against it.
 4. Insert one `REGISTRATION_CREATE` challenge.
 5. At the first terminal attempt, insert its consumption even on failure.
-6. On success, insert the deferred successful consumption proof, public
-   credential, exact `REGISTERED` authorization companion, credential event,
-   and successful operation outcome in one transaction.
+6. On success, freeze the proposed credential/event tuple; allocate the exact
+   event ID and compute its content hash; project that exact event to compute the
+   candidate post-state; then allocate the outcome ID and compute the outcome
+   and authorization hashes. Insert in this order: deferred successful
+   consumption proof, deferred exact `REGISTERED` authorization companion,
+   public credential, credential event, transaction-visible graph revalidation,
+   and successful operation outcome. The companion names that exact deferred
+   outcome tuple; commit-time FKs reject any incomplete sequence.
 
 The root and predecessor-child unique indexes make parallel bootstrap issuance
 or retry produce a typed concurrency conflict. The losing transaction creates
@@ -665,9 +941,15 @@ no credential or lifecycle row.
    counter chain.
 4. Only after that verified event, issue one `REGISTRATION_CREATE` challenge.
 5. Terminally consume the registration challenge.
-6. Atomically append the new public credential and `REGISTERED` event. Replace
-   also appends the target's `SUPERSEDED` event.
-7. Recompute the active set and append the unique successful outcome.
+6. Freeze the proposed `REGISTERED` event and, for replace, the target's
+   `SUPERSEDED` event; allocate every exact event ID and compute its event hash;
+   project those exact events to compute the candidate post-state; then allocate
+   the outcome ID and compute the authorization/outcome hashes.
+7. Insert the deferred authorization companion(s) first, then the new public
+   credential and lifecycle event(s). Reload the transaction-visible graph,
+   recompute its exact versioned state hash in trusted server code, require it
+   to equal the candidate byte-for-byte, and append the unique successful
+   outcome to which every authorization is already deferred-bound.
 
 If another operation changes the state hash, relation leaf, or counter first,
 the stale operation is terminally failed; it cannot be forced or retried.
@@ -675,7 +957,23 @@ the stale operation is terminally failed; it cannot be forced or retried.
 ### 10.3 Revoke
 
 Revoke requires the same assertion flow and appends one exact `REVOKED` event.
-It cannot remove the last active credential. Lost-all recovery is not present.
+The currently active credential may authenticate its own revocation, including
+when it is the final active credential. The server reconstructs the resulting
+graph prospectively using a preallocated exact event ID/content hash, computes
+the candidate post-state and outcome/authorization hashes, inserts the deferred
+authorization companion before the event, reloads and recomputes the
+transaction-visible graph, and only then records the exact outcome. For the
+final credential, the post-state is the principal-specific empty-state hash.
+This is a successful, append-only lockout transition—not a failed operation.
+
+After final revocation, issuer-approval authentication, `ADD_CREDENTIAL`,
+`REPLACE_CREDENTIAL` and further `REVOKE_CREDENTIAL` are unavailable because
+there is no active authorizing credential. Historical successful registration
+prevents `FIRST_ENROLLMENT` from reopening. Recovery/reset remains absent, and
+all principal, public credential, lifecycle, authentication, authorization and
+operation rows remain queryable. Operators who want continued approval
+capability should add a backup credential before intentionally revoking the
+last active credential.
 
 ### 10.4 Failure durability
 
@@ -689,8 +987,8 @@ successor operation and fresh challenge.
 The unique steward/operation/consumption constraints serialize a server-owned
 ceremony; they do not choose between competing identity claims. The principal
 and SID come from one server/OS trust boundary, and every credential is bound to
-that same principal through exact composite FKs. If two enrollment, add, or
-replace writers start from one state hash, only the transaction that completes
+that same principal through exact composite FKs. If two enrollment, add,
+replace, or revoke writers start from one state hash, only the transaction that completes
 the exact challenge and CAS preconditions may append lifecycle rows. The other
 returns a typed concurrency conflict with credential/event/outcome writes zero.
 A duplicate credential ID or fingerprint is a conflict and never reassigns
@@ -729,7 +1027,9 @@ The future upgrade must:
    event, authentication, challenge-consumption, approval event, or approval
    link row lacks a provable authorization lineage; no synthetic backfill is
    allowed;
-4. create new tables in FK-safe order;
+4. create operation, challenge, consumption, operation-authentication, outcome,
+   then lifecycle-authorization tables in FK-safe order; the outcome insert
+   guard is installed only after the authorization table exists;
 5. create indexes and then insert-guard/append-only triggers;
 6. run `PRAGMA foreign_key_check` and schema inventory assertions; and
 7. leave the Alembic head at `0005` if any later DDL step fails.
@@ -763,13 +1063,41 @@ The separately authorized implementation must add offline tests for at least:
   credential-operation assertion cannot authorize issuer approval;
 - challenge failure consumes; simultaneous consumption has one terminal
   winner;
+- success immediately before expiry is representable, while an attempt exactly
+  at or after `expires_at` is terminal `EXPIRED`;
 - exact RP/origin/type/UP/UV/signature/platform/resident-key checks;
 - public credential insert without successful registration proof rejected;
 - credential event without exact authorization companion rejected;
+- credential event without an exact deferred successful-operation outcome
+  binding rejected at commit;
 - cross-principal/cross-credential lifecycle graft rejected;
 - replacement atomically registers new and supersedes old;
-- revoke cannot leave zero active credentials;
+- one active credential can authenticate its own revoke and commit successfully;
+- final revoke reconstructs exactly the principal-specific empty active set;
+- after final revoke, issuer approval and add/replace/further-revoke operations
+  fail closed, first enrollment does not restart, and recovery/reset count is
+  zero;
+- after final revoke, both the normal issuer-approval service path and a direct
+  issuer-authentication-event insert using the revoked public credential fail;
+- revoked credential and principal/lifecycle/authorization/authentication
+  history remain queryable;
 - no unauthenticated recovery/reset path;
+- deterministic `reviewer-credential-state/0.1.0` hash is independent of query,
+  input and insertion order;
+- exact principal-specific empty-state hash is stable across process restart;
+- add, replace and revoke each change the credential-state hash, and final
+  revoke produces the exact empty-state hash;
+- signature-counter advancement alone does not change credential-state hash;
+- altering a lifecycle leaf changes credential-state hash;
+- an omitted active credential fails trusted-server revalidation, while an
+  extra inactive credential is excluded and cannot enter the active member
+  array;
+- planned post-state and reloaded transaction-visible post-state must match
+  byte-for-byte before the deferred successful outcome can commit;
+- two writers starting from the same state produce one valid successor and one
+  typed conflict;
+- state-hash tests and migrations work without any SQLite SHA function or
+  undeclared UDF;
 - union counter history across issuer approval and credential management:
   strict advance, equality, rollback, gap, fork, concurrency, and no-counter
   null/null;
@@ -791,7 +1119,7 @@ The separately authorized implementation must add offline tests for at least:
 - CP3-C2-B2-A: `PASS — CLOSED`
 - CP3-C2-B2-B: `PASS — CLOSED`
 - CP3-C2-B2-C:
-  `BLOCKED — SCHEMA CONTRACT GAP / SCHEMA REMEDIATION AWAITING GPT INDEPENDENT REVIEW`
+  `BLOCKED — SCHEMA CONTRACT GAP / SCHEMA REMEDIATION AWAITING GPT INDEPENDENT RE-REVIEW`
 - CP3-C2-B2-D: `NOT STARTED`
 - CP3-C2-C: `NOT STARTED`
 - CP3-D: `NOT STARTED`
@@ -802,5 +1130,5 @@ The separately authorized implementation must add offline tests for at least:
 - Real credential enrollment/approval/canonical/link writes: `0`
 - Live authority/Toss requests: `0`
 
-Independent review and explicit user acceptance of ADR-015 are required before
-any migration or B2-C runtime implementation can resume.
+GPT independent re-review and explicit user acceptance of ADR-015 are required
+before any migration or B2-C runtime implementation can resume.

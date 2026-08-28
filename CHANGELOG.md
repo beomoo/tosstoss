@@ -1,5 +1,38 @@
 # Changelog
 
+## Unreleased — Phase 2 CP3-C2-B2-C Schema Remediation Review Fix — 2026-08-28
+
+### Documentation proposal revision
+
+- Recorded GPT independent review of SHA
+  `fd0535fdd022f0171a63a83cb2861e924a92da64`: `CHANGES REQUIRED`, P0 `0`,
+  P1 `2`, P2 `1` non-blocking. SG-01/SG-02 and additive Option A were accepted
+  in principle; P1-SR-01 and P1-SR-02 await independent re-review.
+- Corrected final-active-credential lifecycle semantics. A valid authenticated
+  `REVOKE_CREDENTIAL` may revoke the final active credential and commits the
+  exact empty active set. Approval/add/replace/further revoke then fail closed,
+  first enrollment cannot restart, and recovery/reset remains absent.
+- Defined exact `reviewer-credential-state/0.1.0` canonical JSON and SHA-256
+  semantics, including active membership, sort/duplicate rules, principal-
+  specific empty state, audit exclusions, and explicit exclusion of signature-
+  counter values.
+- Assigned aggregate state-hash computation/revalidation to trusted server code
+  under the same SQLite `BEGIN IMMEDIATE` transaction. SQLite enforces the
+  relational graph and exact stored-value bindings only; no undeclared SQLite
+  SHA-256 function is assumed.
+- Retained six additive tables and strengthened the lifecycle authorization
+  companion with a mandatory deferred FK to the exact successful operation
+  outcome/pre-state/post-state tuple. A credential/lifecycle event cannot commit
+  without its successful CAS result.
+- ADR-015 remains `PROPOSED`. CP3-C2-B2-C remains `BLOCKED — SCHEMA CONTRACT
+  GAP / SCHEMA REMEDIATION AWAITING GPT INDEPENDENT RE-REVIEW`; B2-D,
+  CP3-C2-C and CP3-D remain `NOT STARTED`; automatic progression remains
+  `PROHIBITED`.
+- Runtime, test, script, frontend, dependency and migration changes remain `0`.
+  Migrations `0001`–`0005` are unchanged; `0006` creation/application, real
+  enrollment/approval/canonical writes and live authority/Toss requests remain
+  `0`. LOCAL checks are not GitHub CI evidence.
+
 ## Unreleased — Phase 2 CP3-C2-B2-C Schema Contract Remediation — 2026-08-28
 
 ### Documentation proposal

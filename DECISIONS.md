@@ -910,6 +910,14 @@ synthetic credential row 또는 caller SID는 이 공백을 메우는 권한 근
 두 개의 별도 authenticated disposition과 하나의 `BEGIN IMMEDIATE` transaction/
 최종 head CAS로 표현할 수 있다.
 
+첫 제안 SHA `fd0535fdd022f0171a63a83cb2861e924a92da64`에 대한 GPT 독립 검토는
+SG-01/SG-02 진단과 additive 옵션 A를 원칙적으로 수용했으나 `CHANGES
+REQUIRED`, P0 `0`, P1 `2`, P2 `1` non-blocking을 반환했다. P1-SR-01은 최종
+active credential의 authenticated revoke를 거부한 점, P1-SR-02는 state-hash
+계약과 server/SQLite 검증 경계가 불완전했던 점이다. 아래 수정은 두 finding을
+remediate하지만 자체적으로 close하지 않으며 GPT independent re-review를
+기다린다.
+
 ### 제안
 
 - 옵션 A를 선택한다: 기존 `0005` table을 rebuild/alter하지 않고 future
@@ -923,6 +931,12 @@ synthetic credential row 또는 caller SID는 이 공백을 메우는 권한 근
   - `reviewer_credential_operation_outcomes`
 - Operation은 `FIRST_ENROLLMENT|ADD_CREDENTIAL|REPLACE_CREDENTIAL|
   REVOKE_CREDENTIAL`만 허용한다. Recovery/reset/force/override는 없다.
+- 현재 active credential은 자기 자신을 포함해 최종 credential을 인증된
+  `REVOKE_CREDENTIAL`로 폐기할 수 있다. 최종 폐기 결과는 정확한 empty active
+  set이다. 그 뒤 issuer approval/add/replace/further revoke는 fail closed하고,
+  successful registration history 때문에 first enrollment가 재개되지 않으며
+  recovery/reset은 계속 없다. 운영 지속이 필요하면 최종 폐기 전에 backup
+  credential을 추가해야 한다.
 - Challenge purpose는 `REGISTRATION_CREATE`와
   `AUTHORIZATION_ASSERTION`으로 issuer approval과 별도 type/FK namespace를
   사용한다. Fresh 32-byte OS-CSPRNG challenge digest/binding, exact
@@ -939,10 +953,28 @@ synthetic credential row 또는 caller SID는 이 공백을 메우는 권한 근
 - 기존 `reviewer_webauthn_credentials` 및 credential lifecycle event의 future
   insert는 deferred exact proof row와 insert guard를 요구한다.
   `REGISTERED|REVOKED|SUPERSEDED` event마다 성공한 bootstrap/operation
-  authorization이 정확히 하나 연결된다.
+  authorization이 정확히 하나 연결되고, authorization은 exact successful
+  operation outcome/pre-state/post-state tuple에도 deferred FK로 결합된다.
 - One active steward, exact principal/SID composite FK, one operation root,
   unique predecessor child, exact credential-event root/subject와 operation
-  outcome state hashes를 additive unique index/trigger로 검증한다.
+  outcome binding을 additive unique index/check/FK/trigger로 검증한다.
+- Credential ownership/lifecycle state는
+  `reviewer-credential-state/0.1.0`으로 versioning한다. Exact principal ID,
+  principal content hash, server-resolved SID hash, role과 정렬된 active
+  credential/lifecycle-leaf semantic fields를 canonical UTF-8/NFC JSON으로
+  직렬화해 SHA-256을 계산한다. Empty state는 동일 principal binding과 빈
+  `active_credentials` 배열을 갖는 정확한 preimage다. Counter 값과 audit
+  timestamp/row identity는 제외되며 counter advancement만으로 state hash가
+  바뀌지 않는다.
+- Trusted server가 같은 SQLite `BEGIN IMMEDIATE` 안에서 모든 lifecycle row를
+  다시 읽어 pre/post state hash를 계산하고 challenge/consumption/outcome을
+  revalidate한다. SQLite는 relational membership, exact copy, chain,
+  predecessor, event pattern과 authorization/outcome 결합만 검증한다. 승인된
+  SHA-256 UDF가 없으므로 trigger가 aggregate SHA-256을 계산한다고 가정하지
+  않는다. Existing issuer-authentication path에도 current authorized
+  `REGISTERED` lifecycle leaf의 server revalidation과 additive insert guard를
+  요구해 final revoke 뒤 남아 있는 immutable public credential row가 approval
+  authority로 재사용되지 못하게 한다.
 - 모든 새 table은 append-only다. Private key, PIN, biometric, password,
   cookie, bearer token, raw challenge nonce와 reusable Windows credential은
   저장하지 않는다.
@@ -965,7 +997,7 @@ synthetic credential row 또는 caller SID는 이 공백을 메우는 권한 근
   않는다.
 - ADR-015는 아직 `PROPOSED`이며 migration/runtime 권한이 아니다.
 - CP3-C2-B2-C는 `BLOCKED — SCHEMA CONTRACT GAP / SCHEMA REMEDIATION
-  AWAITING GPT INDEPENDENT REVIEW`다.
+  AWAITING GPT INDEPENDENT RE-REVIEW`다.
 - CP3-C2-B2-D, CP3-C2-C와 CP3-D는 `NOT STARTED`이고 automatic progression은
   `PROHIBITED`다.
 - GitHub CI execution evidence 부재는 non-blocking P2이며 LOCAL 문서 검사는
