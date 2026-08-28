@@ -18,6 +18,9 @@
 - CP3-C2-B2-A: `PASS — CLOSED`
 - CP3-C2-B2-B: `PASS — CLOSED`
 - CP3-C2-B2-C `0006` schema implementation: `PASS — CLOSED`
+- B2-C R1 WebAuthn runtime:
+  `BLOCKED — APPROVED RUNTIME CONTRACT GAP / ADR-017 PROPOSED`
+- ADR-017: `PROPOSED`, decision date `NONE`
 - CP3-C2-B2-D: `NOT STARTED`
 - Migration implementation: additive `0005` implemented in B2-A; production
   database application `0`
@@ -1579,7 +1582,8 @@ contract or retroactively broaden the B1 closeout approval.
 - ADR-015: `ACCEPTED` (`2026-08-28`)
 - ADR-016: `ACCEPTED` (`2026-08-28`)
 - Migration `0006`: `PASS — CLOSED`
-- B2-C WebAuthn/human-approval runtime: `NOT STARTED / NOT AUTHORIZED`
+- B2-C WebAuthn/human-approval runtime:
+  `NOT STARTED / BLOCKED — APPROVED RUNTIME CONTRACT GAP / ADR-017 PROPOSED`
 - CP3-C2-B2-D: `NOT STARTED`
 - CP3-C2-C: `NOT STARTED`
 - CP3-D: `NOT STARTED`
@@ -1757,6 +1761,53 @@ on `2026-08-28`. This adds no WebAuthn/human-approval runtime.
 - ADR-016: `ACCEPTED` (`2026-08-28`)
 - CP3-C2-B2-C `0006` schema implementation: `PASS — CLOSED`
 - Migration `0006`: `PASS — CLOSED`
-- B2-C WebAuthn/human-approval runtime: `NOT STARTED / NOT AUTHORIZED`
+- B2-C WebAuthn/human-approval runtime:
+  `NOT STARTED / BLOCKED — APPROVED RUNTIME CONTRACT GAP / ADR-017 PROPOSED`
+- CP3-C2-B2-D / CP3-C2-C / CP3-D: `NOT STARTED`
+- Automatic progression: `PROHIBITED`
+
+## 22. ADR-017 runtime canonicalization amendment — proposed, non-accepted
+
+The separately authorized R1 implementation-entry audit found five approved-
+contract gaps before changing runtime files: exact principal and credential
+hash preimages, deterministic COSE bytes/TEXT/algorithm mapping, raw challenge
+digest and exact operation/issuer bindings, and exact operation/issuer
+authentication preimages. ADR-017 in `DECISIONS.md` is the single normative
+proposal that fills those gaps; its ten exact golden vectors are in
+`qa/PHASE_02_CP3_C2_B2_C_RUNTIME_CANONICALIZATION_GAP_CODEX_REPORT.md`.
+
+Until ADR-017 is independently reviewed and explicitly accepted, this document
+must not be read as authority to choose a runtime serialization. In particular,
+the section 9.1.3 expression
+`sha256(contract | random nonce | canonical binding)` is proposed to be
+superseded for the WebAuthn challenge itself by:
+
+```text
+raw_challenge = exactly 32 OS-CSPRNG bytes
+challenge_digest = "sha256:" + lowerhex(SHA256(raw_challenge))
+client_challenge = unpadded_base64url(raw_challenge)
+```
+
+The exact immutable relational binding is separately canonicalized and hashed
+under ADR-017. Raw challenge bytes are transient and never persisted. This
+separation applies to both credential-operation and issuer-approval challenge
+contracts; it does not authorize issuer approval runtime.
+
+ADR-017 also proposes the exact R1 server policy token
+`issuer-steward-webauthn/0.1.0`, the only COSE mappings `-7 -> ES256` and
+`-257 -> RS256`, RFC 8949 section 4.2.1 deterministic COSE bytes, unpadded
+base64url DB TEXT and raw-byte fingerprints. All unlisted/unknown/alternate
+encodings fail closed. The existing credential-event, operation, consumption,
+authorization, outcome and state hash contracts remain unchanged, and the
+documented hash dependency DAG has no cycle.
+
+- ADR-015: `ACCEPTED` (`2026-08-28`)
+- ADR-016: `ACCEPTED` (`2026-08-28`)
+- ADR-017: `PROPOSED`, decision date `NONE`
+- `0006`: `PASS — CLOSED`
+- R1 application/schema/test/dependency changes: `0`
+- R1 status: `NOT STARTED / BLOCKED — APPROVED RUNTIME CONTRACT GAP`
+- Migration `0007`: `FORBIDDEN`, creation/application `0`
+- Actual Windows Hello or issuer approval: `0`
 - CP3-C2-B2-D / CP3-C2-C / CP3-D: `NOT STARTED`
 - Automatic progression: `PROHIBITED`

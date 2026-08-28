@@ -23,7 +23,9 @@
   `plans/PHASE_02_CP3_C2_B1_RUNTIME_CONTRACT.md`
 - Governing schema decision: ADR-015 `ACCEPTED` (`2026-08-28`)
 - Narrow implementation amendment: ADR-016 `ACCEPTED` (`2026-08-28`)
-- Runtime implementation: `0`
+- Runtime canonicalization amendment: ADR-017 `PROPOSED`, decision date `NONE`
+- Runtime implementation:
+  `0 / BLOCKED — APPROVED RUNTIME CONTRACT GAP / ADR-017 PROPOSED`
 - Migration file creation: `1` (additive `0006`); persistent application: `0`
 - Automatic progression: `PROHIBITED`
 
@@ -1501,4 +1503,50 @@ ADR-016 passed GPT independent review and was explicitly accepted by the user.
 The separately authorized `0006` implementation also passed independent review
 at SHA `1be18a622006a6b6a46e251350e2d861d596823d` and received explicit user
 closeout approval on `2026-08-28`. Only this schema substep is `PASS — CLOSED`.
-B2-C WebAuthn/human-approval runtime remains `NOT STARTED / NOT AUTHORIZED`.
+B2-C WebAuthn/human-approval runtime is now `NOT STARTED / BLOCKED — APPROVED
+RUNTIME CONTRACT GAP / ADR-017 PROPOSED` as detailed below.
+
+## 15. ADR-017 runtime canonicalization gate — proposal only
+
+The R1 implementation-entry audit stopped before code changes because the
+accepted schema names, but does not byte-define, five runtime hash boundaries.
+ADR-017 proposes the missing exact rules without changing the approved six-
+table schema:
+
+1. `principal_content_hash`: the exact six-key object containing contract,
+   enrollment policy, SID hash, `ACTIVE`, principal ID and exact steward role;
+2. `credential_content_hash`: the exact 18-key public credential object,
+   including sorted closed transports, nullable AAGUID/counter value,
+   deterministic COSE TEXT and both raw-byte fingerprints;
+3. COSE_Key: `-7 -> ES256` and `-257 -> RS256` only, RFC 8949 deterministic
+   encoding, unpadded base64url TEXT, re-decode/original-byte equality;
+4. challenges: raw 32-byte OS-CSPRNG digest plus exact operation and issuer
+   immutable relational binding objects; and
+5. authentication: every semantic relational section 7.4 field through
+   `safe_result_code` except event ID, and the corresponding exact `0005`
+   issuer-authentication field set.
+
+The exact normative key sets, null/Boolean/timestamp/caller-ownership rules and
+cycle proof are in ADR-017. Ten executable golden vectors are frozen in
+`qa/PHASE_02_CP3_C2_B2_C_RUNTIME_CANONICALIZATION_GAP_CODEX_REPORT.md`.
+Existing section 5.2 event, operation, consumption, authorization, outcome and
+state preimages do not change.
+
+The DAG is acyclic: raw values feed fingerprints; principal and credential
+content feed state; state and a preallocated challenge ID feed operation;
+operation plus raw-challenge digest feed challenge binding; binding feeds
+consumption/authentication; authentication feeds outcome and authorization.
+Issuer decision/bundle/principal and its independent raw challenge similarly
+feed issuer binding then consumption/authentication/approval. No descendant
+hash is copied into an ancestor preimage.
+
+- ADR-015 / ADR-016: `ACCEPTED`
+- ADR-017: `PROPOSED`, decision date `NONE`; Codex does not self-accept it
+- `0006`: `PASS — CLOSED`, byte-identical in this documentation task
+- R1: `NOT STARTED`, runtime changed files `0`
+- application/schema/migration/test/script/frontend/fixture/dependency changes:
+  `0`
+- `0007`: `FORBIDDEN`, count `0`
+- Real Windows Hello, authentication or approval: `0`
+- B2-D / CP3-C2-C / CP3-D: `NOT STARTED`
+- Automatic progression: `PROHIBITED`

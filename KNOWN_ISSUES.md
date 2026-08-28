@@ -147,7 +147,8 @@
   evidence is absent. The user explicitly approved closeout on `2026-08-28`.
   The additive `0006` schema implementation is therefore `PASS — CLOSED`, and
   SG-01/SG-02/P1-SR-01/P1-SR-02/P1-SR-03/IG-01/IG-02 remain `CLOSED`.
-  B2-C runtime is `NOT STARTED / NOT AUTHORIZED`; later checkpoints remain
+  B2-C R1 is now `NOT STARTED / BLOCKED — APPROVED RUNTIME CONTRACT GAP /
+  ADR-017 PROPOSED`; later checkpoints remain
   `NOT STARTED`; automatic progression is `PROHIBITED`.
 - 비차단 정정: issuer `SUPERSEDED`는 현재 schema blocker가 아니다. Existing
   `0005`의 separate authenticated events와 linear link history로 atomic old
@@ -159,3 +160,27 @@
 - 관찰: Windows의 non-ASCII parent path에서 Python 3.13.15 + setuptools editable install 중 경로가 손상되어 wheel build가 실패했다. 동일 commit을 ASCII-only 경로 `C:\Users\beomoo\Documents\ChatGPT\tosstoss`에 clean clone한 뒤 `scripts/setup.ps1`과 전체 `scripts/test.ps1`이 통과했다.
 - 영향: 현재 Windows 개발·QA repository path는 ASCII-only 사용을 권장하며, 재현 가능한 setup portability 제약이다. Toss runtime·OAuth·rate-limit·business logic에 영향을 준 증거는 없다.
 - 현재 대응: ASCII-only clone path를 사용한다. CP2 completion blocker나 unresolved functional defect로 보지 않고, 향후 setup portability hardening 후보로 이월한다.
+
+## KI-016 — WebAuthn runtime canonicalization/hash preimage gap
+
+- 상태: `P1 BLOCKING — ADR-017 PROPOSED / AWAITING INDEPENDENT REVIEW AND USER ACCEPTANCE`
+- 관찰: R1 pre-implementation audit에서 accepted ADR-015/ADR-016 schema가
+  `principal_content_hash`, `credential_content_hash`, deterministic COSE_Key
+  bytes/TEXT, raw challenge digest/binding, operation/issuer authentication
+  content hash의 exact byte preimage를 완전히 고정하지 않았음을 확인했다.
+- 영향: 합리적인 구현 둘이 서로 다른 persisted identity를 만들 수 있으므로
+  승인 전 R1 구현은 계약을 추측하게 된다. Application/runtime/schema/test/
+  fixture/dependency changes와 real Windows Hello ceremony는 모두 `0`이다.
+- 제안 대응: ADR-017이 NFC/unsigned-UTF-8 compact JSON, exact null/Boolean/
+  timestamp semantics, `-7 -> ES256`, `-257 -> RS256`, RFC 8949 deterministic
+  COSE, raw 32-byte challenge digest, exact operation/issuer bindings와
+  authentication preimages를 제안한다. Ten golden vectors와 acyclic hash DAG는
+  `qa/PHASE_02_CP3_C2_B2_C_RUNTIME_CANONICALIZATION_GAP_CODEX_REPORT.md`에
+  기록했다.
+- 해제 조건: independent GPT review가 blocking finding 없이 proposal을
+  검증하고 사용자가 ADR-017을 explicit `ACCEPTED`로 결정한 뒤, 별도 확인된
+  R1 authority 아래 그 exact vectors를 구현한다. Codex는 이 문서에서
+  ADR-017을 self-accept하지 않는다.
+- 현재 gate: ADR-015/ADR-016 `ACCEPTED`, `0006 PASS — CLOSED`, ADR-017
+  `PROPOSED`, R1 `NOT STARTED / BLOCKED`, `0007` forbidden, later checkpoints
+  `NOT STARTED`, automatic progression `PROHIBITED`.

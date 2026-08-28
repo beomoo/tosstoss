@@ -1195,6 +1195,403 @@ commit할 수 없다.
 
 ---
 
+## ADR-017 — WebAuthn Runtime Canonicalization and Hash Preimage Amendment
+
+- 상태: `PROPOSED`
+- 제안일: `2026-08-28`
+- 결정일: `NONE`
+- 선행 결정: ADR-015 `ACCEPTED`, ADR-016 `ACCEPTED`
+- 적용 gate: `CP3-C2-B2-C R1`
+- 재현 벡터:
+  `qa/PHASE_02_CP3_C2_B2_C_RUNTIME_CANONICALIZATION_GAP_CODEX_REPORT.md`
+
+### 문제
+
+Separately authorized R1 runtime implementation was audited before code changes
+and stopped with `BLOCKED — APPROVED RUNTIME CONTRACT GAP`. The approved
+ADR-015/ADR-016 schema names the required hashes but does not fully determine
+their byte preimages. Five gaps remain:
+
+1. RG-01: `principal_content_hash` exact preimage;
+2. RG-02: `credential_content_hash` exact preimage;
+3. RG-03: deterministic COSE_Key bytes, TEXT encoding and algorithm mapping;
+4. RG-04: challenge digest and challenge-binding exact preimages; and
+5. RG-05: reviewer authentication exact preimages.
+
+Implementing any one reasonable interpretation would create incompatible
+persisted identities. Therefore R1 stays not started until this proposal is
+independently reviewed and explicitly accepted. ADR-015/ADR-016 acceptance and
+the `0006 PASS — CLOSED` schema result are unchanged.
+
+### 제안 — common canonicalization
+
+Every JSON-backed hash added by this ADR uses this exact procedure:
+
+1. The preimage is the one exact object listed below. Unlisted keys are
+   forbidden. Nullable listed keys are present as JSON `null`; they are never
+   omitted, an empty string or zero.
+2. All keys and string values are Unicode NFC. A duplicate key created by NFC
+   normalization fails closed.
+3. Object keys are recursively ordered by unsigned lexicographic UTF-8 bytes.
+   Array order is semantic and must already satisfy the field-specific sort
+   rule.
+4. Serialize UTF-8 JSON with no BOM, indentation, insignificant whitespace or
+   trailing newline. The only literals are lowercase `true`, `false`, `null`.
+   Integers use their shortest base-10 JSON form. Binary floating point,
+   decimal-to-float conversion, NaN and infinity are forbidden.
+5. UTC timestamps use `YYYY-MM-DDTHH:MM:SSZ` when microseconds are zero and
+   `YYYY-MM-DDTHH:MM:SS.ffffffZ` with exactly six digits otherwise. Offsets,
+   local time and trailing-zero trimming are forbidden.
+6. Enums use the exact stored uppercase/lowercase token. Opaque IDs use the
+   exact NFC-normalized stored text and are not decoded or re-derived unless a
+   field rule explicitly says base64url.
+7. The stored digest is
+   `sha256:` plus 64 lowercase hexadecimal characters from SHA-256 of the exact
+   bytes. Hash text is never hashed in place of raw bytes where the rule says
+   raw bytes.
+
+`payload_json`, log/process/run/request/session/transaction identity, insertion
+order and retrieval clocks never enter these preimages. Audit timestamps enter
+only the challenge bindings that explicitly list `issued_at` and `expires_at`;
+`registered_at`, `authenticated_at`, `consumed_at`, `recorded_at` and
+`completed_at` remain excluded. The trusted server supplies every field and
+insert-verifies it against relational columns. A caller cannot supply an ID,
+policy value, Boolean, content hash, counter classification or timestamp as
+authority.
+
+For R1 the exact server-owned enrollment, registration and authentication
+policy token is `issuer-steward-webauthn/0.1.0`. Changing it requires a new
+policy/versioned contract; it is not a request option.
+
+### RG-01 — exact principal content
+
+`principal_content_hash` is SHA-256 of the common canonical JSON serialization
+of exactly these keys and no others:
+
+```json
+{
+  "contract_version": "issuer-steward-webauthn/0.1.0",
+  "enrollment_policy_version": "issuer-steward-webauthn/0.1.0",
+  "os_owner_sid_hash": "sha256:<64-lowerhex>",
+  "principal_state": "ACTIVE",
+  "reviewer_principal_id": "<server-owned-opaque-id>",
+  "reviewer_role": "LOCAL_DATA_STEWARD"
+}
+```
+
+`principal_content_hash`, `registered_at`, `payload_json` and all process/audit
+identity are excluded. The server creates the R1 principal directly in
+`ACTIVE`; R1 defines no later principal state transition, recovery or reset
+path. `os_owner_sid_hash` is already a one-way server-derived digest; raw SID
+text is neither stored in this object nor logged.
+
+### RG-02/RG-03 — exact credential content and COSE_Key
+
+`credential_content_hash` covers exactly these keys and no others:
+
+```text
+authenticator_aaguid
+authenticator_attachment
+authenticator_transports
+contract_version
+cose_public_key_canonical
+counter_capability
+credential_id_fingerprint
+principal_content_hash
+public_key_algorithm
+public_key_fingerprint
+registration_policy_version
+registration_sign_count
+resident_key_required
+reviewer_principal_id
+reviewer_role
+rp_id
+user_verification_required
+webauthn_credential_id
+```
+
+The fixed values are `authenticator_attachment="platform"`,
+`resident_key_required=true`, `user_verification_required=true`,
+`reviewer_role="LOCAL_DATA_STEWARD"`, `rp_id="localhost"` and the R1 policy
+token above. `credential_content_hash`, `registered_at`, `payload_json` and
+process/audit IDs are excluded.
+
+- `webauthn_credential_id` is unpadded RFC 4648 section 5 base64url of the raw
+  credential-ID bytes. Decode then re-encode must equal the received text;
+  padded, standard-base64 and alternate forms fail closed.
+- `credential_id_fingerprint` is SHA-256 of those raw credential-ID bytes.
+- `authenticator_aaguid` is JSON `null` when absent, otherwise the exact
+  lowercase hyphenated UUID produced from 16 verified bytes.
+- `authenticator_transports` is a deduplicated unsigned-UTF-8-sorted array from
+  the closed set `ble`, `hybrid`, `internal`, `nfc`, `smart-card`, `usb`.
+  Absence is `[]`; an unknown/non-text value fails closed. The DB TEXT value is
+  the same compact JSON array bytes.
+- `counter_capability` is exactly `SIGN_COUNT_SUPPORTED` or
+  `NO_USABLE_COUNTER`. The latter requires `registration_sign_count:null`,
+  never zero. A returned zero alone does not prove no-counter capability;
+  unverified capability fails closed. A verified supported counter may have a
+  non-negative registration value including zero.
+
+Only this exact COSE algorithm mapping is approved:
+
+| COSE `alg` | stored `public_key_algorithm` |
+|---:|---|
+| `-7` | `ES256` |
+| `-257` | `RS256` |
+
+The server parses a top-level CBOR map, rejects duplicate labels, validates the
+algorithm-specific COSE_Key structure, and rejects unknown/extra labels and all
+other algorithms. ES256 is exactly EC2/P-256 with labels
+`{1:2,3:-7,-1:1,-2:x,-3:y}` and 32-byte coordinates. RS256 is exactly RSA with
+labels `{1:3,3:-257,-1:n,-2:e}`, an unsigned at-least-2048-bit odd modulus and
+valid odd exponent. Indefinite-length items, CBOR floats, tags and unsupported
+simple values are forbidden.
+
+After validation the map is deterministically encoded under RFC 8949 section
+4.2.1 and decoded again; semantic equality is mandatory. The original COSE_Key
+bytes must equal that deterministic encoding, so duplicate-label,
+non-deterministic and alternate encodings are rejected rather than silently
+normalized. A pinned `cbor2.dumps(value, canonical=True)` implementation may
+provide the encoding only while the committed golden vectors prove the exact
+bytes. `cose_public_key_canonical` is unpadded base64url of the deterministic
+CBOR bytes. `public_key_fingerprint` is SHA-256 of those raw deterministic CBOR
+bytes, not of the base64url TEXT.
+
+### RG-04 — challenge digest and exact binding
+
+For both operation and issuer approval ceremonies, the WebAuthn challenge is
+exactly 32 bytes from the OS CSPRNG. The stored digest is exactly SHA-256 of
+those raw 32 bytes. No UTF-8/base64 conversion, contract prefix, JSON wrapper
+or binding bytes enter `challenge_digest`; the raw bytes are transient and are
+not persisted. The client-visible challenge is their canonical unpadded
+base64url encoding. Decode/re-encode equality is required on return.
+
+This proposal supersedes only the ambiguous B1 section 9.1.3 formula that
+derived challenge bytes from `contract|nonce|binding`. Exact server-side
+binding is instead provided by the separately hashed immutable binding object
+below and its relational insert verification.
+
+`reviewer_credential_operation_challenges.challenge_binding_hash` covers every
+immutable relational column in section 7.2 except
+`challenge_binding_hash` and `payload_json`, using exactly these keys:
+
+```text
+allowed_origin
+authentication_policy_version
+challenge_digest
+challenge_nonce_length
+challenge_purpose
+client_data_type
+contract_version
+expected_credential_state_hash
+expires_at
+issued_at
+operation_content_hash
+operation_type
+os_owner_sid_hash
+platform_attachment_required
+prerequisite_authentication_content_hash
+prerequisite_authentication_event_id
+prerequisite_authentication_result
+principal_content_hash
+resident_key_required
+reviewer_credential_operation_challenge_id
+reviewer_credential_operation_id
+reviewer_principal_id
+reviewer_role
+rp_id
+target_credential_id_fingerprint
+target_webauthn_credential_id
+user_verification_required
+```
+
+`challenge_nonce_length` is integer `32`. SQLite `0/1` policy columns are JSON
+Booleans; nullable policy/reference fields are explicit JSON `null`. The
+challenge ID is a preallocated opaque CSPRNG ID, not a digest-derived ID.
+Therefore including it does not create a cycle. The operation hash never
+contains this binding hash.
+
+`issuer_approval_challenges.challenge_binding_hash` covers every immutable
+server-owned relational column except `challenge_binding_hash` and
+`payload_json`, using exactly these keys:
+
+```text
+allowed_origin
+authentication_policy_version
+authority_bundle_id
+challenge_digest
+contract_version
+expected_bundle_content_hash
+expected_decision_content_hash
+expires_at
+issued_at
+issuer_approval_challenge_id
+issuer_decision_id
+predecessor_approval_event_id
+predecessor_link_id
+principal_content_hash
+proposed_issuer_id
+provider_security_identity_id
+requested_disposition
+reviewer_principal_id
+reviewer_role
+rp_id
+successor_decision_id
+user_verification_required
+```
+
+The issuer ceremony also requires a raw 32-byte challenge even though `0005`
+does not persist a nonce-length column. All predecessor/successor fields are
+present as strings or JSON `null`; decision, bundle, provider identity,
+proposed issuer and requested disposition are exact relational copies. This is
+a contract amendment only and does not authorize issuer-approval runtime.
+
+### RG-05 — exact authentication content
+
+`reviewer_credential_operation_authentication_events.authentication_content_hash`
+covers every relational section 7.4 column from `contract_version` through
+`safe_result_code`, except the event ID, and uses exactly these keys:
+
+```text
+asserted_sign_count
+authentication_policy_version
+authentication_result
+authorizing_webauthn_credential_id
+challenge_binding_hash
+challenge_consumption_content_hash
+challenge_consumption_id
+challenge_purpose
+challenge_terminal_result
+contract_version
+counter_capability
+counter_verified
+credential_id_fingerprint
+exact_origin
+expected_credential_state_hash
+operation_content_hash
+operation_type
+origin_verified
+os_owner_sid_hash
+previous_sign_count
+principal_content_hash
+public_key_fingerprint
+replay_rejected
+reviewer_credential_operation_challenge_id
+reviewer_credential_operation_id
+reviewer_principal_id
+reviewer_role
+rp_id
+rp_id_hash_verified
+safe_result_code
+signature_verified
+user_presence_verified
+user_verification_verified
+```
+
+The event ID, `authentication_content_hash`, `authenticated_at` and
+`payload_json` are excluded. Counter values are integers or explicit JSON
+`null`; every SQLite verification integer is a JSON Boolean.
+
+`reviewer_authentication_events.authentication_content_hash` covers every
+immutable semantic relational authentication field from the `0005` table
+except event ID, hash, authentication time and payload, using exactly:
+
+```text
+asserted_sign_count
+authentication_policy_version
+authentication_result
+authority_bundle_id
+challenge_consumption_id
+contract_version
+counter_capability
+counter_verified
+credential_id_fingerprint
+exact_origin
+expected_bundle_content_hash
+expected_decision_content_hash
+issuer_approval_challenge_id
+issuer_decision_id
+origin_verified
+previous_sign_count
+public_key_fingerprint
+replay_rejected
+requested_disposition
+reviewer_principal_id
+reviewer_role
+rp_id
+rp_id_hash_verified
+safe_result_code
+signature_verified
+user_presence_verified
+user_verification_verified
+webauthn_credential_id
+```
+
+This issuer authentication rule is contract-only. It does not implement or
+authorize an actual assertion or approval.
+
+### Hash dependency DAG and cycle proof
+
+The cryptographic dependency order is:
+
+```text
+raw OS-owner SID -> os_owner_sid_hash -> principal_content_hash
+raw credential ID -> canonical credential ID + credential_id_fingerprint --+
+raw COSE_Key -> deterministic COSE bytes -> public_key_fingerprint ----------+-> credential_content_hash
+principal/credential event leaves -> credential_state_hash
+principal + expected state + preallocated initial challenge ID -> operation_content_hash
+raw operation challenge -> challenge_digest
+operation_content_hash + challenge_digest + preallocated challenge ID -> operation challenge_binding_hash
+operation challenge_binding_hash -> consumption_content_hash
+operation/content + binding + consumption + active credential -> operation authentication_content_hash
+operation authentication + consumption -> outcome_content_hash -> authorization_content_hash
+
+decision + bundle + principal + raw issuer challenge digest + preallocated ID
+  -> issuer challenge_binding_hash -> issuer consumption_content_hash
+  -> issuer authentication_content_hash -> approval-event hashes -> link hashes
+```
+
+No arrow returns to an ancestor. Preallocated opaque row IDs are independent
+random identifiers, not hashes of their child rows. In particular, the
+operation hash may contain `initial_challenge_id`, but never the challenge
+binding hash; consumption may contain a preallocated outcome/continuation ID,
+but never that child's content hash. The existing exact
+credential-event, operation, consumption, authorization, outcome and state
+hash contracts are unchanged.
+
+### Feasibility evidence, alternatives and status effect
+
+An isolated Python 3.13 audit of pinned `webauthn==3.0.0` with
+`cbor2==6.1.4` exposed the expected registration/authentication generate and
+verify APIs. Both ADR-017 ES256 and RS256 deterministic COSE vectors decoded and
+converted to cryptography public-key objects. `cbor2` canonical encoding is
+usable only behind the validation/re-encode-equality boundary above. This task
+changes no dependency or lock file and performs no actual Windows Hello
+ceremony.
+
+Rejected alternatives are hashing library object representations, storing
+arbitrary incoming COSE bytes, accepting padded/alternate base64, mapping
+unknown algorithms/transports, omitting null keys, treating a missing counter
+as zero, or letting callers supply policy/hash fields. Each would make the
+persisted identity non-portable or weaken fail-closed verification.
+
+ADR-017 remains `PROPOSED`; Codex does not self-accept it. R1 remains
+`BLOCKED — APPROVED RUNTIME CONTRACT GAP / ADR-017 PROPOSED`, with application,
+schema, migration, test, fixture and dependency changes all `0`. `0007` is
+forbidden. ADR-015 and ADR-016 remain `ACCEPTED`; `0006` remains
+`PASS — CLOSED`. B2-D, CP3-C2-C and CP3-D remain `NOT STARTED`, and automatic
+progression remains `PROHIBITED`.
+
+### 마이그레이션·롤백
+
+This is a documentation/control-plane proposal. Migrations `0001`–`0006` stay
+byte-identical; migration count and application count are `0`. Before ADR-017
+acceptance, rollback is removal/reversion of these documentation-only changes.
+After acceptance, R1 still requires separate implementation authority and must
+implement the approved vectors without migration `0007`.
+
+---
+
 ## 새 결정 기록 양식
 
 ```md

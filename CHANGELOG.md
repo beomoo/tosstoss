@@ -1,5 +1,36 @@
 # Changelog
 
+## Unreleased — Phase 2 CP3-C2-B2-C Runtime Canonicalization Gap — 2026-08-28
+
+### Documentation/control-plane proposal
+
+- Recorded the R1 pre-implementation fail-closed stop at authoritative SHA
+  `391fa38808033640081565ca9649bbba3501f071`: RG-01 through RG-05 leave
+  principal, credential, COSE, challenge and authentication persisted bytes
+  underdetermined. R1 application/runtime changed files remain `0`.
+- Proposed, but did not accept, ADR-017 — WebAuthn Runtime Canonicalization and
+  Hash Preimage Amendment. It defines exact NFC compact JSON, recursively
+  unsigned-UTF-8-sorted keys, null/Boolean/timestamp semantics and
+  `sha256:<64-lowerhex>` storage.
+- Fixed the exact principal and public-credential preimages; deterministic RFC
+  8949 COSE_Key encoding; `-7 -> ES256` and `-257 -> RS256`; canonical unpadded
+  base64url TEXT; raw credential/public-key fingerprints; closed transports;
+  and no-counter `null` semantics.
+- Fixed both challenge digests as SHA-256 of exactly 32 raw OS-CSPRNG bytes and
+  proposed exact operation/issuer challenge bindings plus exact operation/
+  issuer authentication preimages. The dependency DAG has no cryptographic
+  cycle; existing event/operation/consumption/authorization/outcome/state hash
+  contracts are unchanged.
+- Added ten exact docs-only golden vectors. Two calculator runs were byte-
+  identical; isolated Python 3.13 feasibility checks with `webauthn==3.0.0`
+  and `cbor2==6.1.4` decoded and materialized both approved COSE key types.
+  Repository dependency installation/change and actual Windows Hello use are
+  `0` for this task.
+- ADR-015 and ADR-016 remain `ACCEPTED`; `0006` remains `PASS — CLOSED`;
+  ADR-017 remains `PROPOSED` with decision date `NONE`. R1 is `NOT STARTED /
+  BLOCKED — APPROVED RUNTIME CONTRACT GAP`; `0007` is forbidden; later
+  checkpoints remain `NOT STARTED`; automatic progression is `PROHIBITED`.
+
 ## Unreleased — Phase 2 CP3-C2-B2-C 0006 Closeout — 2026-08-28
 
 ### Documentation/control-plane closeout
