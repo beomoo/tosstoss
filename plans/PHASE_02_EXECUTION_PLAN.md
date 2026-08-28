@@ -62,6 +62,17 @@ authorization to its exact deferred successful operation outcome. SQLite does
 not claim an undeclared SHA function. ADR-015 remains `PROPOSED`; independent
 re-review is required.
 
+GPT independent re-review of SHA
+`e016fc59973e5c81181e7cf20c1ebe3d7aada043` verified P1-SR-01/P1-SR-02
+`CLOSED` and returned one new P1-SR-03. The final documentation revision makes
+every operation-terminal challenge consumption mutually deferred-bound to one
+mapped outcome before the terminal result is returned. Failure preserves the
+exact pre-state and appends no lifecycle transition. Operation/initial
+challenge issuance is atomic; the sole add/replace intermediate success commits
+its verified counter event and one bounded registration challenge together.
+ADR-015 remains `PROPOSED`; P1-SR-03 and the full remediation await independent
+re-review, while `0006` and runtime implementation remain `0`.
+
 ## Original CP1 investigation baseline
 
 2026-08-23 CP1 당시에는 credential을 요청·사용하지 않았고 실제 Toss endpoint 호출도 없었다. 따라서 당시 조사 결과는 전부 공식 공개 계약에 근거한 `[OFFICIAL_DOC]`/`[LIVE_UNVERIFIED]`였고 `[LIVE_VERIFIED]` 항목은 없었다. 아래 source hash, endpoint/field/rate/finality 조사 표는 그 역사적 CP1 기준을 보존한다. 현재 live 상태를 2026-08-23부터 검증됐던 것처럼 소급하지 않는다.
@@ -122,7 +133,7 @@ CP3-C2-C and CP3-D remain `NOT STARTED`, and automatic progression remains
 | CP3-C2-B implementation | `IN PROGRESS` | B2-A/B2-B closed; B2-C start 승인 뒤 schema gap에서 fail closed |
 | CP3-C2-B2-A | `PASS — CLOSED` | re-review P0 0 / P1 0, P1-01~P1-03 CLOSED; P2-01 non-blocking; documentation closeout 완료 |
 | CP3-C2-B2-B | `PASS — CLOSED` | reviewed SHA `d81148636c237ac8ab6b85e930d3926fae19c855`; PASS WITH CLOSEOUT CONDITION, P0 0 / P1 0 / P2 1 non-blocking; P1-01~P1-09 CLOSED |
-| CP3-C2-B2-C | `BLOCKED — SCHEMA CONTRACT GAP / SCHEMA REMEDIATION AWAITING GPT INDEPENDENT RE-REVIEW` | SG-01/SG-02 confirmed; P1-SR-01/P1-SR-02 remediated, re-review pending; ADR-015 PROPOSED; migration/runtime 0 |
+| CP3-C2-B2-C | `BLOCKED — SCHEMA CONTRACT GAP / SCHEMA REMEDIATION AWAITING GPT INDEPENDENT RE-REVIEW` | SG-01/SG-02 confirmed; P1-SR-01/P1-SR-02 CLOSED; P1-SR-03 terminalization remediated, re-review pending; ADR-015 PROPOSED; migration/runtime 0 |
 | CP3-C2-B2-D | `NOT STARTED` | 자동 진행 금지 |
 | CP3-C2-C | `NOT STARTED` | CP3-C2-B implementation 승인과 별도 시작 승인 전 자동 진입 금지 |
 | CP3-D | `NOT STARTED` | 가격 구현 자동 진입 금지 |
@@ -755,6 +766,18 @@ CP2-A의 통과는 CP2 전체 통과가 아니며, 아래 기존 완료 조건�
   active lifecycle graph를 재구성하고 canonical SHA-256을 계산한다. SQLite는
   SHA UDF 없이 relational chain/membership/copy와 deferred event-authorization-
   to-successful-outcome binding을 검증한다.
+- Schema-remediation final terminalization fix: SHA
+  `e016fc59973e5c81181e7cf20c1ebe3d7aada043` re-review에서 P1-SR-01/P1-SR-02는
+  `CLOSED`, P1-SR-03은 new finding으로 확인됐다. 모든 failed/expired terminal
+  consumption은 exact unchanged-state outcome과 mutual deferred FK로 같은
+  transaction에 commit되고 closed result mapping을 사용한다. Operation/initial
+  challenge도 same issuance transaction에 결합한다.
+- ADD/REPLACE continuation: successful existing-credential assertion만 유일한
+  nonterminal consumption이다. 그 consumption, immutable `VERIFIED` counter
+  event와 exactly-one five-minute `REGISTRATION_CREATE` challenge를 같은 writer
+  transaction에 commit하며 reusable authorization session은 없다. Registration
+  failure는 verified counter history를 보존하되 lifecycle state를 바꾸지 않고
+  failed outcome으로 operation을 terminalize한다.
 - B2-D: `NOT STARTED`
 - B2-C resume 조건: schema-remediation independent re-review, ADR-015 explicit
   acceptance, future `0006` implementation separate authorization와 independent
@@ -1002,8 +1025,11 @@ P1-09. GitHub CI execution evidence remains absent/non-blocking. B2-B is
 implementation-entry schema gate. GPT review of the first ADR-015 proposal SHA
 `fd0535fdd022f0171a63a83cb2861e924a92da64` returned `CHANGES REQUIRED`, P0
 `0`, P1 `2`, P2 `1` non-blocking while accepting SG-01/SG-02 and Option A in
-principle. P1-SR-01/P1-SR-02 are revised and await independent re-review.
-ADR-015 remains `PROPOSED`; `0006` and B2-C runtime implementation remain `0`.
+principle. A subsequent re-review of SHA
+`e016fc59973e5c81181e7cf20c1ebe3d7aada043` verified P1-SR-01/P1-SR-02
+`CLOSED` and raised P1-SR-03. The revised operation-terminalization contract is
+awaiting independent re-review. ADR-015 remains `PROPOSED`; `0006` and B2-C
+runtime implementation remain `0`.
 B2-C is `BLOCKED — SCHEMA CONTRACT GAP / SCHEMA REMEDIATION AWAITING GPT
 INDEPENDENT RE-REVIEW`. B2-D, CP3-C2-C and CP3-D remain `NOT STARTED`, and
 automatic progression remains `PROHIBITED`.

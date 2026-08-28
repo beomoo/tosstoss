@@ -1,5 +1,34 @@
 # Changelog
 
+## Unreleased — Phase 2 CP3-C2-B2-C Operation Terminalization Fix — 2026-08-28
+
+### Documentation proposal revision
+
+- Recorded GPT independent re-review of SHA
+  `e016fc59973e5c81181e7cf20c1ebe3d7aada043`: `CHANGES REQUIRED`, P0 `0`,
+  P1 `1`, P2 `1` non-blocking. P1-SR-01 and P1-SR-02 are independently
+  verified `CLOSED`; P1-SR-03 remains subject to re-review after this revision.
+- Required every failed, expired, or otherwise operation-terminal challenge
+  consumption to commit exactly one mapped operation outcome before returning a
+  terminal result. Failed outcomes append no lifecycle transition and preserve
+  the exact expected credential-state hash.
+- Added mutual deferred exact bindings between terminal consumption and outcome,
+  plus a closed `EXPIRED`/`REJECTED`/`FAILED_CLOSED` mapping. Attributable
+  rejected audits remain optional safe facts; no synthetic authentication or
+  credential is created for unattributable failures.
+- Bound each operation to its initial challenge in one issuance transaction.
+  The sole nonterminal case—successful ADD/REPLACE authorization—must atomically
+  commit its verified counter event and exactly one five-minute registration
+  challenge, preventing orphan operations and reusable authorization sessions.
+- Preserved authenticated final-credential revoke/empty-state semantics and the
+  exact trusted-server `reviewer-credential-state/0.1.0` SHA boundary.
+- ADR-015 remains `PROPOSED`; `0006` creation/application and B2-C runtime remain
+  `0`. CP3-C2-B2-C remains blocked awaiting GPT independent re-review; later
+  checkpoints remain `NOT STARTED`, and automatic progression is `PROHIBITED`.
+- This revision changes documentation/control-plane files only. LOCAL checks
+  are not GitHub CI evidence; GitHub CI execution evidence remains absent and
+  non-blocking.
+
 ## Unreleased — Phase 2 CP3-C2-B2-C Schema Remediation Review Fix — 2026-08-28
 
 ### Documentation proposal revision

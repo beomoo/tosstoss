@@ -1696,8 +1696,21 @@ revised proposal permits authenticated final-credential revocation and records
 the exact empty active set, while leaving all later authentication and recovery
 fail closed. It also defines `reviewer-credential-state/0.1.0`, with trusted
 server SHA-256 computation under `BEGIN IMMEDIATE`, relational SQLite guards,
-and no undeclared SQLite SHA function. ADR-015 remains `PROPOSED`, and both
-findings await GPT independent re-review.
+and no undeclared SQLite SHA function. At that revision ADR-015 remained
+`PROPOSED`, and both findings awaited GPT independent re-review.
+
+GPT independent re-review of SHA
+`e016fc59973e5c81181e7cf20c1ebe3d7aada043` verified P1-SR-01 and P1-SR-02
+`CLOSED` and identified P1-SR-03. The additive proposal now requires every
+failed/expired operation-terminal challenge consumption to commit exactly one
+unchanged-state operation outcome before returning its typed result. Mutual
+deferred exact bindings make an outcome-less terminal consumption
+uncommittable. Operation/initial-challenge issuance is atomic, and the sole
+successful add/replace intermediate assertion commits its verified counter
+event and one bounded registration challenge together. This is a
+non-normative implementation amendment note; it does not alter this accepted
+B1 contract. P1-SR-03 awaits independent re-review and ADR-015 remains
+`PROPOSED`.
 
 The second verification does not treat issuer `SUPERSEDED` as a schema blocker:
 two separately authenticated dispositions can append old `SUPERSEDED` and

@@ -914,9 +914,17 @@ synthetic credential row 또는 caller SID는 이 공백을 메우는 권한 근
 SG-01/SG-02 진단과 additive 옵션 A를 원칙적으로 수용했으나 `CHANGES
 REQUIRED`, P0 `0`, P1 `2`, P2 `1` non-blocking을 반환했다. P1-SR-01은 최종
 active credential의 authenticated revoke를 거부한 점, P1-SR-02는 state-hash
-계약과 server/SQLite 검증 경계가 불완전했던 점이다. 아래 수정은 두 finding을
-remediate하지만 자체적으로 close하지 않으며 GPT independent re-review를
-기다린다.
+계약과 server/SQLite 검증 경계가 불완전했던 점이다. 당시 revision은 두
+finding을 remediate했지만 자체적으로 close하지 않고 GPT independent
+re-review를 기다렸다.
+
+GPT independent re-review of SHA
+`e016fc59973e5c81181e7cf20c1ebe3d7aada043` returned `CHANGES REQUIRED`, P0
+`0`, P1 `1`, P2 `1` non-blocking. It verified P1-SR-01 and P1-SR-02 `CLOSED`
+and identified P1-SR-03: a failed/expired terminal challenge consumption could
+be committed without the operation's unique terminal outcome, wedging the
+predecessor/successor chain. The final revision below remediates but does not
+self-close P1-SR-03 and awaits independent re-review.
 
 ### 제안
 
@@ -943,6 +951,26 @@ remediate하지만 자체적으로 close하지 않으며 GPT independent re-revi
   principal/role/SID/state/RP/origin/policy와 5분 이하 expiry를 저장한다.
 - Challenge consumption FK를 unique로 두어 성공/실패 모두 정확히 한 번
   terminal consumption한다.
+- Operation과 최초 required challenge는 같은 `BEGIN IMMEDIATE` issuance
+  transaction에서 만들고 circular deferred exact FK로 서로 결합한다. 따라서
+  challenge/outcome/safe continuation이 없는 orphan operation은 commit할 수 없다.
+- 모든 failure와 모든 final-step success는 operation-terminal이다. Consumption은
+  preallocated exact outcome/result/state tuple을 deferred FK로 가리키고 outcome은
+  exact consumption ID/content/result를 역으로 가리킨다. 실패 시 consumption,
+  attributable rejected audit, unchanged-state outcome을 commit한 뒤에만 typed
+  failure를 반환한다. `EXPIRED -> EXPIRED`, invalid signature/UP/UV/registration
+  `-> REJECTED`, binding/origin-RP/counter/replay/other closed failure
+  `-> FAILED_CLOSED`의 closed mapping을 사용한다.
+- 유일한 nonterminal consumption은 ADD/REPLACE의 successful
+  `AUTHORIZATION_ASSERTION`이다. 그 consumption, immutable `VERIFIED` counter
+  event와 하나의 `REGISTRATION_CREATE` challenge가 같은 transaction에서 exact
+  deferred FK로 결합된다. Assertion은 재사용 가능한 session이 아니고 그
+  registration challenge의 5분 expiry를 넘겨 권한을 유지하지 않는다.
+- ADD/REPLACE authorization이 성공한 뒤 registration이 실패하면 verified
+  counter event는 보존되고 lifecycle event/authorization은 0이며 failed outcome은
+  unchanged credential state를 기록한다. Fresh retry는 그 failed outcome을
+  predecessor로 하는 새 operation/challenge이고 advanced counter history를
+  포함해 재구성한다.
 - Credential-operation authentication event는 same-principal active public
   credential, exact signature/RP/origin/UP/UV와 nullable prior/asserted counter를
   관계형 열로 보존한다. Current counter column은 만들지 않는다.

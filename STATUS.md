@@ -7,7 +7,7 @@
 - Phase 1 PR: `#1`
 - Phase 1 merge commit: `b1829a7375704271a21267e1fcf62808147be593`
 - Release baseline tag: `v0.1.0`
-- 최종 QA일: `2026-08-28 (CP3-C2-B2-C schema-remediation review-fix documentation LOCAL safety verification)`
+- 최종 QA일: `2026-08-28 (CP3-C2-B2-C operation-terminalization schema-remediation documentation LOCAL safety verification)`
 - 실제 API 연결: `CP2-D2 one-shot PASS — OAuth + GET /api/v1/stocks만 검증`
 - 실제 주문 기능: `비활성 / 비범위`
 - OpenAI API 사용: `아니오`
@@ -159,6 +159,8 @@
 - [x] GPT independent review of SHA `fd0535fdd022f0171a63a83cb2861e924a92da64`: `CHANGES REQUIRED`, P0 0 / P1 2 / P2 1 non-blocking; SG-01/SG-02와 additive Option A 원칙 수용
 - [x] P1-SR-01 authenticated final-active-credential revoke와 exact empty active state 정정
 - [x] P1-SR-02 exact `reviewer-credential-state/0.1.0`, server-computed hash boundary와 lifecycle-event/outcome deferred binding 정정
+- [x] GPT independent re-review of SHA `e016fc59973e5c81181e7cf20c1ebe3d7aada043`: `CHANGES REQUIRED`, P0 0 / P1 1 / P2 1 non-blocking; P1-SR-01/P1-SR-02 CLOSED
+- [x] P1-SR-03 every terminal failure의 challenge consumption + unchanged-state operation outcome atomic terminalization, closed result mapping, no-orphan issuance/continuation 계약 정정
 - [ ] CP3-C2-B2-C schema remediation GPT independent re-review/사용자 승인
 - [ ] CP3-C2-B2-D 별도 시작 승인
 - [ ] CP3-C2-C 별도 시작 승인
@@ -223,9 +225,18 @@ P1-SR-02 is remediated by the exact versioned
 `reviewer-credential-state/0.1.0` canonical preimage, server-side SHA-256
 recomputation under `BEGIN IMMEDIATE`, relational SQLite enforcement without an
 undeclared SHA UDF, and a mandatory deferred lifecycle-authorization-to-
-successful-outcome binding. ADR-015 stays `PROPOSED`; both findings await GPT
-independent re-review. GitHub CI execution evidence remains absent and is a
-non-blocking P2; LOCAL checks are not GitHub CI evidence.
+successful-outcome binding. GPT independent re-review of SHA
+`e016fc59973e5c81181e7cf20c1ebe3d7aada043` verified P1-SR-01 and P1-SR-02
+`CLOSED` and returned one new P1-SR-03. The final revision makes every failed or
+expired terminal challenge consumption mutually deferred-bound to exactly one
+unchanged-state operation outcome before a typed result is returned. Operation
+and initial challenge are issued atomically; the sole nonterminal add/replace
+assertion success commits its verified counter event and one five-minute
+registration challenge in the same writer transaction. Failed registration
+preserves that counter event, appends no lifecycle transition and terminalizes
+the operation. ADR-015 stays `PROPOSED`; P1-SR-03 awaits GPT independent
+re-review. GitHub CI execution evidence remains absent and is a non-blocking
+P2; LOCAL checks are not GitHub CI evidence.
 
 `[LIVE_VERIFIED]` 범위는 canonical provider contract, actual OAuth token issuance와 credential acceptance, allowed-IP 실행 경로, actual `GET /api/v1/stocks` 구조, 성공 응답의 Limit/Remaining/Reset header다. natural 429 `Retry-After`, actual 429/5xx, production retry timing, 나머지 Phase 2 market endpoint, CP3 이후 데이터 semantics/freshness는 계속 `[LIVE_UNVERIFIED]`다. Phase 2 전체 완료나 CP3 시작을 의미하지 않는다.
 

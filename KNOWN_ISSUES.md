@@ -113,8 +113,15 @@
   exact `reviewer-credential-state/0.1.0` canonical hash를 trusted server가
   `BEGIN IMMEDIATE` 안에서 계산하고, SQLite는 SHA UDF 없이 relational graph와
   deferred lifecycle-authorization/successful-outcome binding만 검증하도록
-  경계를 고정한다. GPT independent re-review와 explicit user acceptance 전에는
-  B2-C를 재개하지 않는다.
+  경계를 고정한다. SHA `e016fc59973e5c81181e7cf20c1ebe3d7aada043`의 GPT
+  independent re-review는 P1-SR-01/P1-SR-02를 `CLOSED`로 확인하고 P1-SR-03을
+  새로 제기했다. Final revision은 모든 failed/expired terminal challenge
+  consumption과 unchanged-state operation outcome을 circular deferred exact FK로
+  함께 commit하고, operation/initial challenge를 한 issuance transaction에
+  묶는다. ADD/REPLACE의 유일한 intermediate success는 verified counter event와
+  정확히 한 registration challenge를 같은 transaction에 생성하며 재사용 가능한
+  authorization session을 만들지 않는다. GPT independent re-review와 explicit
+  user acceptance 전에는 B2-C를 재개하지 않는다.
 - 비차단 정정: issuer `SUPERSEDED`는 현재 schema blocker가 아니다. Existing
   `0005`의 separate authenticated events와 linear link history로 atomic old
   supersession/successor approval/head CAS를 표현할 수 있다.
