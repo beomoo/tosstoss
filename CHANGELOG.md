@@ -1,5 +1,37 @@
 # Changelog
 
+## Unreleased — Phase 2 CP3-C2-B2-C Exact SQLite Binding Amendment — 2026-08-28
+
+### Documentation/control-plane amendment
+
+- Recorded GPT independent review of SHA
+  `f73115ea1182e27259787460307a01b4c3874312`: `PASS WITH CLOSEOUT CONDITION`,
+  P0 `0`, P1 `0`, P2 `1` non-blocking, followed by explicit user acceptance of
+  ADR-015 on `2026-08-28`. ADR-015 is now `ACCEPTED`; the six-table schema
+  architecture is approved without declaring migration or runtime PASS.
+- Recorded the later fail-closed implementation stop with no changed files and
+  no `0006`. GPT independently confirmed IG-01, the incomplete
+  `authorization_kind` enum/matrix, and IG-02, the unimplementable exact
+  operation child FK caused by three missing copied trust columns.
+- Proposed, but did not accept, ADR-016 — Reviewer Operation Exact SQLite
+  Binding Amendment. The exact closed enum is
+  `BOOTSTRAP_REGISTRATION|AUTHORIZED_REGISTRATION|AUTHORIZED_SUPERSESSION|
+  AUTHORIZED_REVOCATION`, with only the five documented operation/event/token
+  combinations allowed.
+- Added `reviewer_role`, `principal_content_hash`, and `os_owner_sid_hash` to
+  the proposed authorization and outcome child schemas, bound both to the exact
+  ordered eight-column operation parent key, and included all three columns in
+  both immutable content-hash preimages. No subset operation identity, generic
+  authorization fallback, payload authority, or SQLite SHA UDF was introduced.
+- CP3-C2-B2-C is `BLOCKED — APPROVED SCHEMA CONTRACT IMPLEMENTATION GAP /
+  ADR-016 AWAITING GPT INDEPENDENT REVIEW`. `0006` remains not created/not
+  implemented; B2-C runtime and all later checkpoints remain `NOT STARTED`, and
+  automatic progression remains `PROHIBITED`.
+- This change is documentation/control-plane only. Application, test, script,
+  frontend, dependency and migration changes are `0`; migrations `0001`–`0005`
+  remain byte-identical. LOCAL checks are not GitHub CI evidence, which remains
+  absent/non-blocking.
+
 ## Unreleased — Phase 2 CP3-C2-B2-C Operation Terminalization Fix — 2026-08-28
 
 ### Documentation proposal revision

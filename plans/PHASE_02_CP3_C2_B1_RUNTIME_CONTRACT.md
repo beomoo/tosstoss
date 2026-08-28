@@ -18,7 +18,7 @@
 - CP3-C2-B2-A: `PASS — CLOSED`
 - CP3-C2-B2-B: `PASS — CLOSED`
 - CP3-C2-B2-C:
-  `BLOCKED — SCHEMA CONTRACT GAP / SCHEMA REMEDIATION AWAITING GPT INDEPENDENT RE-REVIEW`
+  `BLOCKED — APPROVED SCHEMA CONTRACT IMPLEMENTATION GAP / ADR-016 AWAITING GPT INDEPENDENT REVIEW`
 - CP3-C2-B2-D: `NOT STARTED`
 - Migration implementation: additive `0005` implemented in B2-A; production
   database application `0`
@@ -1577,7 +1577,11 @@ contract or retroactively broaden the B1 closeout approval.
   only against disposable QA databases; persistent production application `0`
 - CP3-C2-B2-B: `PASS — CLOSED`
 - CP3-C2-B2-C:
-  `BLOCKED — SCHEMA CONTRACT GAP / SCHEMA REMEDIATION AWAITING GPT INDEPENDENT RE-REVIEW`
+  `BLOCKED — APPROVED SCHEMA CONTRACT IMPLEMENTATION GAP / ADR-016 AWAITING GPT INDEPENDENT REVIEW`
+- ADR-015: `ACCEPTED` (`2026-08-28`)
+- ADR-016: `PROPOSED`
+- Migration `0006`: `NOT CREATED / NOT IMPLEMENTED`
+- B2-C WebAuthn/human-approval runtime: `NOT STARTED / NOT AUTHORIZED`
 - CP3-C2-B2-D: `NOT STARTED`
 - CP3-C2-C: `NOT STARTED`
 - CP3-D: `NOT STARTED`
@@ -1684,9 +1688,9 @@ This discovery does not weaken or reopen ADR-014. It identifies an
 implementation-discovered additive schema omission. ADR-015 and
 `plans/PHASE_02_CP3_C2_B2_C_SCHEMA_REMEDIATION.md` therefore propose a future
 additive `0006` with separate credential-operation challenge, consumption,
-authentication, lifecycle-authorization, and outcome relations. ADR-015 remains
-`PROPOSED`. This documentation task creates/applies no migration and implements
-no WebAuthn or approval runtime.
+authentication, lifecycle-authorization, and outcome relations. At that
+revision ADR-015 remained `PROPOSED`. That documentation task created/applied
+no migration and implemented no WebAuthn or approval runtime.
 
 GPT independent review of the first ADR-015 proposal at SHA
 `fd0535fdd022f0171a63a83cb2861e924a92da64` accepted SG-01, SG-02 and additive
@@ -1709,16 +1713,43 @@ uncommittable. Operation/initial-challenge issuance is atomic, and the sole
 successful add/replace intermediate assertion commits its verified counter
 event and one bounded registration challenge together. This is a
 non-normative implementation amendment note; it does not alter this accepted
-B1 contract. P1-SR-03 awaits independent re-review and ADR-015 remains
-`PROPOSED`.
+B1 contract. At that revision P1-SR-03 awaited independent re-review and
+ADR-015 remained `PROPOSED`.
 
 The second verification does not treat issuer `SUPERSEDED` as a schema blocker:
 two separately authenticated dispositions can append old `SUPERSEDED` and
 successor `APPROVED` link versions atomically before the final guarded head CAS.
 
 - CP3-C2-B2-C:
-  `BLOCKED — SCHEMA CONTRACT GAP / SCHEMA REMEDIATION AWAITING GPT INDEPENDENT RE-REVIEW`
-- ADR-015: `PROPOSED`
+  historical state before the later ADR-015 closeout
+- ADR-015 at this note: `PROPOSED`
 - Migration `0006` created/applied: `0`
+- CP3-C2-B2-D / CP3-C2-C / CP3-D: `NOT STARTED`
+- Automatic progression: `PROHIBITED`
+
+## 21. ADR-015 closeout and ADR-016 implementation-gap note — non-normative
+
+GPT independently reviewed the schema-remediation result at SHA
+`f73115ea1182e27259787460307a01b4c3874312` and returned `PASS WITH CLOSEOUT
+CONDITION`, P0 `0`, P1 `0`, P2 `1` non-blocking. SG-01, SG-02, P1-SR-01,
+P1-SR-02 and P1-SR-03 are `CLOSED`. The user explicitly accepted ADR-015 on
+`2026-08-28`, so the six-table schema architecture is approved. This does not
+alter ADR-014 or the accepted B1 security semantics.
+
+A separately authorized `0006` implementation attempt then stopped fail closed
+without changing files or creating the migration. GPT independently confirmed
+IG-01, an incomplete closed lifecycle-authorization token matrix, and IG-02,
+the authorization/outcome child columns missing from the exact eight-column
+operation FK. ADR-016 proposes only the exact token matrix, the three copied
+server-owned trust columns in both child rows, both exact FKs, the strengthened
+successful-outcome binding and corresponding immutable hash-preimage coverage.
+ADR-016 is not self-accepted.
+
+- ADR-015: `ACCEPTED` (`2026-08-28`)
+- ADR-016: `PROPOSED — AWAITING GPT INDEPENDENT REVIEW AND USER ACCEPTANCE`
+- CP3-C2-B2-C:
+  `BLOCKED — APPROVED SCHEMA CONTRACT IMPLEMENTATION GAP / ADR-016 AWAITING GPT INDEPENDENT REVIEW`
+- Migration `0006`: `NOT CREATED / NOT IMPLEMENTED`
+- B2-C WebAuthn/human-approval runtime: `NOT STARTED / NOT AUTHORIZED`
 - CP3-C2-B2-D / CP3-C2-C / CP3-D: `NOT STARTED`
 - Automatic progression: `PROHIBITED`

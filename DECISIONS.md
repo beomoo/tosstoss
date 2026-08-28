@@ -879,9 +879,9 @@ migration file 생성·적용 모두 0이다.
 
 ## ADR-015 — WebAuthn Enrollment and Credential-Operation Ledger Amendment
 
-- 상태: `PROPOSED`
+- 상태: `ACCEPTED`
 - 제안일: `2026-08-28`
-- 결정일: 없음
+- 결정일: `2026-08-28`
 - 상세 설계:
   `plans/PHASE_02_CP3_C2_B2_C_SCHEMA_REMEDIATION.md`
 
@@ -925,6 +925,15 @@ and identified P1-SR-03: a failed/expired terminal challenge consumption could
 be committed without the operation's unique terminal outcome, wedging the
 predecessor/successor chain. The final revision below remediates but does not
 self-close P1-SR-03 and awaits independent re-review.
+
+GPT independently reviewed the resulting SHA
+`f73115ea1182e27259787460307a01b4c3874312` and returned `PASS WITH CLOSEOUT
+CONDITION`, P0 `0`, P1 `0`, P2 `1` non-blocking because GitHub CI execution
+evidence is absent. SG-01, SG-02, P1-SR-01, P1-SR-02 and P1-SR-03 were closed.
+The user then explicitly accepted ADR-015 on `2026-08-28`. This acceptance
+approves the six-table schema architecture in
+`plans/PHASE_02_CP3_C2_B2_C_SCHEMA_REMEDIATION.md`; it does not declare an
+implementation PASS or authorize B2-C runtime.
 
 ### 제안
 
@@ -1023,9 +1032,11 @@ self-close P1-SR-03 and awaits independent re-review.
 
 - ADR-013과 ADR-014의 역사적 의미와 `0001`–`0005` byte content는 바뀌지
   않는다.
-- ADR-015는 아직 `PROPOSED`이며 migration/runtime 권한이 아니다.
-- CP3-C2-B2-C는 `BLOCKED — SCHEMA CONTRACT GAP / SCHEMA REMEDIATION
-  AWAITING GPT INDEPENDENT RE-REVIEW`다.
+- ADR-015는 `ACCEPTED`지만 migration/runtime 권한이 아니다. Separately
+  authorized implementation work later discovered IG-01/IG-02 and stopped
+  without changing files or creating `0006`.
+- CP3-C2-B2-C는 `BLOCKED — APPROVED SCHEMA CONTRACT IMPLEMENTATION GAP /
+  ADR-016 AWAITING GPT INDEPENDENT REVIEW`다.
 - CP3-C2-B2-D, CP3-C2-C와 CP3-D는 `NOT STARTED`이고 automatic progression은
   `PROHIBITED`다.
 - GitHub CI execution evidence 부재는 non-blocking P2이며 LOCAL 문서 검사는
@@ -1041,6 +1052,130 @@ self-close P1-SR-03 and awaits independent re-review.
   reviewer lineage를 fail closed로 검사하며 synthetic backfill을 금지한다.
 - Downgrade는 disposable empty ledger에서만 새 object를 역순 제거한다.
   Non-empty audit ledger의 destructive downgrade는 별도 승인 없이 거부한다.
+
+---
+
+## ADR-016 — Reviewer Operation Exact SQLite Binding Amendment
+
+- 상태: `PROPOSED`
+- 제안일: `2026-08-28`
+- 결정일: 없음
+- 선행 결정: ADR-015 `ACCEPTED`
+- 상세 계약:
+  `plans/PHASE_02_CP3_C2_B2_C_SCHEMA_REMEDIATION.md`
+
+### 문제
+
+ADR-015를 충실히 구현하려던 separately authorized `0006` 작업은 SQLite DDL을
+작성하기 전에 두 implementation-discovered gap에서 fail closed했다. 파일은
+변경되지 않았고 `0006`은 생성·적용되지 않았다. GPT가 두 gap을 독립 확인했다.
+
+1. IG-01: closed enum `authorization_kind`가
+   `BOOTSTRAP_REGISTRATION|AUTHORIZED_REGISTRATION`만 명시해 approved
+   `REPLACE_CREDENTIAL + SUPERSEDED`와 `REVOKE_CREDENTIAL + REVOKED` row에 쓸
+   exact token이 없었다.
+2. IG-02: approved parent key
+   `uq_reviewer_credential_operations_exact_binding`은 operation ID/hash,
+   principal ID, role, principal content hash, OS-owner SID hash, operation
+   type와 expected state hash의 exact 8열인데 authorization/outcome child
+   schema에는 role/principal hash/SID hash 열이 없어 그 FK를 구현할 수 없었다.
+
+ADR-015의 승인 자체와 SG-01, SG-02, P1-SR-01, P1-SR-02, P1-SR-03 closure는
+유지한다. 이 문제는 approved architecture를 폐기하거나 과거 결정을
+미승인으로 되돌리는 이유가 아니라 exact SQLite binding의 좁은 additive
+amendment가 필요한 이유다.
+
+### 제안
+
+ADR-016의 범위는 다음 세 항목뿐이다.
+
+1. `reviewer_webauthn_credential_event_authorizations.authorization_kind`를
+   다음 exact closed enum으로 고정한다.
+   - `BOOTSTRAP_REGISTRATION`
+   - `AUTHORIZED_REGISTRATION`
+   - `AUTHORIZED_SUPERSESSION`
+   - `AUTHORIZED_REVOCATION`
+2. `reviewer_webauthn_credential_event_authorizations`와
+   `reviewer_credential_operation_outcomes` 양쪽에 다음 copied immutable
+   server-owned trust columns를 추가 제안한다.
+   - `reviewer_role VARCHAR(32) NOT NULL`
+   - `principal_content_hash VARCHAR(71) NOT NULL`
+   - `os_owner_sid_hash VARCHAR(71) NOT NULL`
+3. 두 row의 immutable content-hash preimage가 위 세 semantic relational
+   column을 모두 포함하도록 exact hash contract를 갱신한다. Audit timestamp와
+   `payload_json`은 기존처럼 제외하며 content-hash cycle을 만들지 않는다.
+
+허용되는 operation/event/authorization 조합은 정확히 다음 다섯 개다.
+
+| `operation_type` | `event_type` | `authorization_kind` |
+|---|---|---|
+| `FIRST_ENROLLMENT` | `REGISTERED` | `BOOTSTRAP_REGISTRATION` |
+| `ADD_CREDENTIAL` | `REGISTERED` | `AUTHORIZED_REGISTRATION` |
+| `REPLACE_CREDENTIAL` | `REGISTERED` | `AUTHORIZED_REGISTRATION` |
+| `REPLACE_CREDENTIAL` | `SUPERSEDED` | `AUTHORIZED_SUPERSESSION` |
+| `REVOKE_CREDENTIAL` | `REVOKED` | `AUTHORIZED_REVOCATION` |
+
+모든 다른 조합은 CHECK/insert guard로 거부한다. Generic
+`AUTHORIZED_LIFECYCLE`, free-form token과 `payload_json` authority는 없다.
+
+두 child table은 exact ordered tuple
+
+```text
+reviewer_credential_operation_id,
+operation_content_hash,
+reviewer_principal_id,
+reviewer_role,
+principal_content_hash,
+os_owner_sid_hash,
+operation_type,
+expected_credential_state_hash
+```
+
+을 approved parent key
+`uq_reviewer_credential_operations_exact_binding`의 동일 순서에
+`DEFERRABLE INITIALLY DEFERRED` FK로 결합한다. `reviewer_role`은
+`LOCAL_DATA_STEWARD`로 고정하고 두 hash는 exact `sha256:<64 lowercase hex>`
+형식으로 검사한다. 값은 trusted server가 operation에서 복사하며 caller
+authority가 아니다. 편의를 위한 weaker subset UNIQUE/FK는 만들지 않는다.
+
+Authorization이 successful outcome을 참조하는 exact deferred tuple도 outcome
+ID/hash, operation ID/content hash, principal ID, 위 세 trust column,
+`SUCCEEDED`, expected state와 resulting state를 모두 포함한다. 따라서
+operation/outcome/authorization 사이에 role/principal hash/SID hash가 다르면
+commit할 수 없다.
+
+### 대안
+
+- Parent operation key를 subset으로 약화: 거부. Exact principal/SID/role trust
+  binding을 잃는다.
+- Convenience subset UNIQUE identity 추가: 거부. 승인된 exact 8열 key와 다른
+  권한 identity를 만든다.
+- Generic authorization token 또는 free-form string: 거부. Closed lifecycle
+  authorization matrix를 증명하지 못한다.
+- `payload_json`/application assumption으로 copied equality를 대체: 거부.
+  SQLite commit-time relational integrity가 사라진다.
+
+### 영향
+
+- ADR-015는 `ACCEPTED` 상태와 `2026-08-28` 결정일을 유지한다.
+- ADR-016은 `PROPOSED`이며 GPT independent review와 explicit user acceptance
+  전에는 승인된 amendment가 아니다.
+- Six-table additive Option A, `reviewer-credential-state/0.1.0`, trusted-server
+  SHA boundary, nullable composite-FK safeguards, union counter chain, terminal
+  outcome contract와 issuer/credential-operation assertion separation은
+  변경하지 않는다.
+- CP3-C2-B2-C는 `BLOCKED — APPROVED SCHEMA CONTRACT IMPLEMENTATION GAP /
+  ADR-016 AWAITING GPT INDEPENDENT REVIEW`다.
+- B2-C runtime, B2-D, CP3-C2-C와 CP3-D는 `NOT STARTED`; automatic progression은
+  `PROHIBITED`다.
+
+### 마이그레이션·롤백
+
+- 이 documentation/control-plane task의 migration change와 `0006`
+  creation/application은 `0`이다.
+- `0001`–`0005`는 byte-identical하게 유지한다.
+- ADR-016이 독립 검토와 사용자 승인을 받더라도 future `0006`
+  implementation에는 별도의 명시적 authorization이 필요하다.
 
 ---
 

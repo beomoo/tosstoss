@@ -1,29 +1,37 @@
 # Phase 2 CP3-C2-B2-C Schema Contract Remediation
 
 - Status:
-  `PROPOSED — REVISED AFTER GPT INDEPENDENT REVIEW / AWAITING GPT INDEPENDENT RE-REVIEW`
+  `APPROVED VIA ADR-015 / IMPLEMENTATION BLOCKED — ADR-016 PROPOSED`
 - Checkpoint state:
-  `BLOCKED — SCHEMA CONTRACT GAP / SCHEMA REMEDIATION AWAITING GPT INDEPENDENT RE-REVIEW`
+  `BLOCKED — APPROVED SCHEMA CONTRACT IMPLEMENTATION GAP / ADR-016 AWAITING GPT INDEPENDENT REVIEW AND USER ACCEPTANCE`
 - Repository: `beomoo/tosstoss`
 - Branch: `feature/phase-02-toss`
-- Authoritative starting SHA: `60f2805d2390c91a026b3381877006be9000dedb`
+- Initial implementation-entry starting SHA:
+  `60f2805d2390c91a026b3381877006be9000dedb`
 - Independent-review remediation starting SHA:
   `fd0535fdd022f0171a63a83cb2861e924a92da64`
 - Final-terminalization remediation starting SHA:
   `e016fc59973e5c81181e7cf20c1ebe3d7aada043`
+- Independently reviewed and user-approved schema-contract SHA:
+  `f73115ea1182e27259787460307a01b4c3874312`
+- Implementation-gap amendment starting SHA:
+  `f73115ea1182e27259787460307a01b4c3874312`
 - Design date: `2026-08-28` (`Asia/Seoul`)
 - Governing contracts: ADR-013 `ACCEPTED`, ADR-014 `ACCEPTED`,
   `plans/PHASE_02_CP3_C2_B1_RUNTIME_CONTRACT.md`
-- Proposed decision: ADR-015 `PROPOSED`
+- Governing schema decision: ADR-015 `ACCEPTED` (`2026-08-28`)
+- Narrow implementation amendment: ADR-016 `PROPOSED`
 - Runtime implementation: `0`
 - Migration file creation/application: `0`
 - Automatic progression: `PROHIBITED`
 
 ## 1. Purpose and terminal boundary
 
-This document designs the minimum future schema amendment needed before
-CP3-C2-B2-C can faithfully implement Windows Hello/WebAuthn steward enrollment
-and credential lifecycle authorization.
+This document is the ADR-015-approved schema architecture for the minimum
+future amendment needed before CP3-C2-B2-C can faithfully implement Windows
+Hello/WebAuthn steward enrollment and credential lifecycle authorization. The
+implementation-discovered IG-01/IG-02 corrections in this revision are the
+narrow ADR-016 proposal and are not self-accepted.
 
 This checkpoint is documentation-only. It does not create migration `0006`,
 modify migrations `0001`–`0005`, implement WebAuthn, enroll a real credential,
@@ -31,9 +39,10 @@ execute an issuer disposition, create a canonical Issuer/Security, write
 `ProviderIdentityMapping(VERIFIED)`, mutate an issuer-link head, or make a live
 authority/Toss request.
 
-CP3-C2-B2-C remains blocked until this proposal passes independent review,
-ADR-015 is explicitly accepted, a future migration implementation is separately
-authorized, and that migration is independently verified.
+CP3-C2-B2-C remains blocked until ADR-016 passes GPT independent review and is
+explicitly accepted by the user. Any future `0006` implementation still
+requires separate authorization and independent verification. This amendment
+does not resume B2-C runtime work.
 
 ## 2. Confirmed gap and corrected non-gap
 
@@ -104,9 +113,31 @@ is absent. That re-review verified P1-SR-01 and P1-SR-02 `CLOSED` and identified
 P1-SR-03: every operation-terminal challenge result must append the unique
 operation outcome before the terminal result is returned.
 
-This revision remediates, but does not self-close, P1-SR-03. ADR-015 remains
-`PROPOSED`, and the full schema remediation remains awaiting GPT independent
-re-review.
+The terminalization revision remediated, but did not self-close, P1-SR-03.
+GPT then independently reviewed SHA
+`f73115ea1182e27259787460307a01b4c3874312` and returned `PASS WITH CLOSEOUT
+CONDITION`, P0 `0`, P1 `0`, and P2 `1` non-blocking because GitHub CI execution
+evidence is absent. That review closed SG-01, SG-02, P1-SR-01, P1-SR-02 and
+P1-SR-03. The user explicitly accepted ADR-015 on `2026-08-28`; the six-table
+schema architecture is therefore approved.
+
+### 2.5 IG-01 / IG-02 — implementation-discovered exact-binding gaps
+
+During the separately authorized `0006` implementation attempt, Codex stopped
+without changing files or creating `0006` because two exact SQLite bindings in
+the approved prose were incomplete. GPT independently confirmed both gaps:
+
+- IG-01: `authorization_kind` named bootstrap and registration tokens but did
+  not name the exact tokens required for `SUPERSEDED` and `REVOKED` lifecycle
+  authorizations.
+- IG-02: the authorization and outcome child schemas required the approved
+  eight-column operation FK but omitted three non-null child columns:
+  `reviewer_role`, `principal_content_hash`, and `os_owner_sid_hash`.
+
+ADR-016 proposes only the exact enum/matrix, copied trust columns, eight-column
+FKs and corresponding hash-preimage coverage stated below. It does not weaken
+the approved parent key, add a subset identity, change the six-table surface,
+or authorize migration/runtime implementation.
 
 ## 3. Selected migration strategy
 
@@ -320,7 +351,8 @@ two deferred companion cycles are relational, not cryptographic hash cycles.
 `outcome_content_hash` is likewise SHA-256 over one exact canonical object with
 these keys and their exact relational values: `contract_version`,
 `reviewer_credential_operation_id`, `operation_content_hash`,
-`reviewer_principal_id`, `operation_type`, `terminal_result`,
+`reviewer_principal_id`, `reviewer_role`, `principal_content_hash`,
+`os_owner_sid_hash`, `operation_type`, `terminal_result`,
 `terminal_consumption_id`, `terminal_consumption_content_hash`,
 `terminal_challenge_purpose`, `terminal_challenge_result`,
 `authorization_authentication_event_id`,
@@ -336,9 +368,10 @@ outcome ID is still part of the exact deferred FK binding.
 `authorization_content_hash` covers every relational column listed in section
 7.5 from `credential_event_id` through `resulting_credential_state_hash`,
 including the exact outcome ID/hash/result and all checked nullable reference
-fields, while excluding only `authorization_content_hash`, `recorded_at`, and
-`payload_json`. Nullable values are explicit JSON `null`; the global canonical
-key-order/NFC rules apply.
+fields. In particular, it includes `reviewer_role`, `principal_content_hash`,
+and `os_owner_sid_hash`. It excludes only `authorization_content_hash`,
+`recorded_at`, and `payload_json`. Nullable values are explicit JSON `null`;
+the global canonical key-order/NFC rules apply.
 
 The state digest is:
 
@@ -809,11 +842,14 @@ credential lifecycle event.
 | `webauthn_credential_id` | `VARCHAR(512) NOT NULL` | exact affected public credential |
 | `webauthn_credential_content_hash` | `VARCHAR(71) NOT NULL` | exact immutable public-credential payload affected by the transition |
 | `reviewer_principal_id` | `VARCHAR(128) NOT NULL` | exact steward |
+| `reviewer_role` | `VARCHAR(32) NOT NULL` | copied server-owned operation role; fixed to `LOCAL_DATA_STEWARD` |
+| `principal_content_hash` | `VARCHAR(71) NOT NULL` | copied exact immutable principal version |
+| `os_owner_sid_hash` | `VARCHAR(71) NOT NULL` | copied exact server-resolved Windows owner binding |
 | `event_type` | `VARCHAR(16) NOT NULL` | `REGISTERED|REVOKED|SUPERSEDED` |
 | `reviewer_credential_operation_id` | `VARCHAR(128) NOT NULL` | exact operation |
 | `operation_content_hash` | `VARCHAR(71) NOT NULL` | exact immutable operation version |
 | `operation_type` | `VARCHAR(32) NOT NULL` | exact lifecycle intent |
-| `authorization_kind` | `VARCHAR(32) NOT NULL` | bootstrap registration versus authenticated operation |
+| `authorization_kind` | `VARCHAR(32) NOT NULL` | exact closed enum: `BOOTSTRAP_REGISTRATION|AUTHORIZED_REGISTRATION|AUTHORIZED_SUPERSESSION|AUTHORIZED_REVOCATION` |
 | `registration_consumption_id` | `VARCHAR(128) NULL` | exact successful create ceremony |
 | `registration_consumption_content_hash` | `VARCHAR(71) NULL` | exact immutable registration terminal attempt |
 | `registration_challenge_purpose` | `VARCHAR(32) NULL` | when present, fixed to `REGISTRATION_CREATE` |
@@ -841,27 +877,52 @@ Required FKs/checks:
   principal and operation principal must equal the credential principal under
   the insert guard; frozen `0005` cannot be trusted to prove that cross-table
   equality by its two independent single-column FKs alone.
-- Composite FK to the exact operation proves the same content hash, principal
-  and type.
+- The exact ordered child tuple
+  `(reviewer_credential_operation_id, operation_content_hash,
+  reviewer_principal_id, reviewer_role, principal_content_hash,
+  os_owner_sid_hash, operation_type, expected_credential_state_hash)` has a
+  `DEFERRABLE INITIALLY DEFERRED` composite FK to
+  `uq_reviewer_credential_operations_exact_binding` in precisely that order.
+  No weaker subset operation identity is created.
+- `reviewer_role` is checked equal to `LOCAL_DATA_STEWARD`.
+  `principal_content_hash` and `os_owner_sid_hash` are each checked as exactly
+  `sha256:` followed by 64 lowercase hexadecimal characters. These copies are
+  server-owned facts and never caller authority.
 - Registration consumption FK can reference only a `SUCCEEDED`
   `REGISTRATION_CREATE` row for the same operation/principal and the same
   affected credential.
 - Authentication FK can reference only a `VERIFIED` operation-authentication
   row for the same operation/principal.
 - A `DEFERRABLE INITIALLY DEFERRED` composite FK binds the authorization to the
-  exact `SUCCEEDED` operation outcome by outcome ID/content hash, operation,
-  principal, terminal result, expected state and resulting state. This makes a
-  lifecycle event and its CAS result commit together: neither an event-only nor
-  outcome-only successful transition can satisfy commit-time integrity.
-- `FIRST_ENROLLMENT + REGISTERED` requires
-  `authorization_kind=BOOTSTRAP_REGISTRATION`, successful registration
-  consumption, and null authentication event.
-- `ADD_CREDENTIAL + REGISTERED` requires
-  `AUTHORIZED_REGISTRATION` plus both successful assertion and registration.
-- `REPLACE_CREDENTIAL` requires one `REGISTERED` authorization with both
-  references and one `SUPERSEDED` authorization with the assertion reference.
-- `REVOKE_CREDENTIAL` permits only one `REVOKED` authorization with the
-  assertion reference.
+  exact `SUCCEEDED` operation outcome by outcome ID/content hash, operation ID/
+  content hash, principal, role, principal content hash, OS-owner SID hash,
+  terminal result, expected state and resulting state. This makes operation,
+  outcome and authorization copies of all three trust fields relationally
+  identical and makes a lifecycle event and its CAS result commit together. Its
+  exact ordered child tuple is
+  `(credential_operation_outcome_id,
+  credential_operation_outcome_content_hash,
+  reviewer_credential_operation_id, operation_content_hash,
+  reviewer_principal_id, reviewer_role, principal_content_hash,
+  os_owner_sid_hash, credential_operation_outcome_result,
+  expected_credential_state_hash, resulting_credential_state_hash)` and it
+  references `uq_reviewer_credential_operation_outcomes_exact_success` in the
+  exact parent order listed in section 7.7.
+- The closed operation/event/authorization matrix is exact:
+  - `FIRST_ENROLLMENT + REGISTERED -> BOOTSTRAP_REGISTRATION` with successful
+    registration consumption and a null authentication event;
+  - `ADD_CREDENTIAL + REGISTERED -> AUTHORIZED_REGISTRATION` with both the
+    successful assertion and registration;
+  - `REPLACE_CREDENTIAL + REGISTERED -> AUTHORIZED_REGISTRATION` with both the
+    successful assertion and registration;
+  - `REPLACE_CREDENTIAL + SUPERSEDED -> AUTHORIZED_SUPERSESSION` with the
+    successful assertion; and
+  - `REVOKE_CREDENTIAL + REVOKED -> AUTHORIZED_REVOCATION` with the successful
+    assertion.
+- Every other `operation_type` / `event_type` / `authorization_kind`
+  combination is rejected by the proposed CHECK/insert guard. There is no
+  generic `AUTHORIZED_LIFECYCLE` fallback, free-form token, or `payload_json`
+  authority.
 - No FK targets `reviewer_authentication_events` or
   `issuer_approval_challenges`; issuer and credential-operation assertions are
   not substitutable.
@@ -894,6 +955,9 @@ challenge.
 | `reviewer_credential_operation_id` | `VARCHAR(128) NOT NULL UNIQUE` | exactly one terminal outcome per operation |
 | `operation_content_hash` | `VARCHAR(71) NOT NULL` | exact operation |
 | `reviewer_principal_id` | `VARCHAR(128) NOT NULL` | exact steward |
+| `reviewer_role` | `VARCHAR(32) NOT NULL` | copied server-owned operation role; fixed to `LOCAL_DATA_STEWARD` |
+| `principal_content_hash` | `VARCHAR(71) NOT NULL` | copied exact immutable principal version |
+| `os_owner_sid_hash` | `VARCHAR(71) NOT NULL` | copied exact server-resolved Windows owner binding |
 | `operation_type` | `VARCHAR(32) NOT NULL` | exact lifecycle action |
 | `terminal_result` | `VARCHAR(16) NOT NULL` | `SUCCEEDED|REJECTED|EXPIRED|FAILED_CLOSED` |
 | `terminal_consumption_id` | `VARCHAR(128) NOT NULL` | exact challenge attempt ending the operation |
@@ -915,7 +979,17 @@ challenge.
 
 Required FKs/checks:
 
-- Composite operation FK binds exact principal/type/content/pre-state.
+- The exact ordered child tuple
+  `(reviewer_credential_operation_id, operation_content_hash,
+  reviewer_principal_id, reviewer_role, principal_content_hash,
+  os_owner_sid_hash, operation_type, expected_credential_state_hash)` has a
+  `DEFERRABLE INITIALLY DEFERRED` composite FK to
+  `uq_reviewer_credential_operations_exact_binding` in precisely that order.
+  No weaker subset operation identity is created.
+- `reviewer_role` is checked equal to `LOCAL_DATA_STEWARD`.
+  `principal_content_hash` and `os_owner_sid_hash` are each checked as exactly
+  `sha256:` followed by 64 lowercase hexadecimal characters. These copies are
+  server-owned facts and never caller authority.
 - Terminal consumption must belong to that operation and match its exact
   purpose, terminal result and content hash.
 - Optional authentication and registration references are composite-bound to
@@ -962,7 +1036,7 @@ is not sufficient.
 | `uq_reviewer_credentials_exact_content` | `webauthn_credential_id, credential_content_hash` | lifecycle authorization binds the exact immutable public credential row |
 | `uq_reviewer_credentials_exact_registration` | `webauthn_credential_id, credential_content_hash, reviewer_principal_id, credential_id_fingerprint, public_key_fingerprint, rp_id, counter_capability` | successful create consumption authorizes the exact immutable public credential; nullable registration count is checked null-safely by trigger |
 | `uq_reviewer_credential_events_exact_authorization` | `credential_event_id, credential_event_content_hash, webauthn_credential_id, reviewer_principal_id, event_type` | deferred companion FK names the exact lifecycle event rather than only its ID |
-| `uq_reviewer_credential_operations_exact_binding` | `reviewer_credential_operation_id, operation_content_hash, reviewer_principal_id, reviewer_role, principal_content_hash, os_owner_sid_hash, operation_type, expected_credential_state_hash` | challenge/outcome copies every non-null operation authority field |
+| `uq_reviewer_credential_operations_exact_binding` | `reviewer_credential_operation_id, operation_content_hash, reviewer_principal_id, reviewer_role, principal_content_hash, os_owner_sid_hash, operation_type, expected_credential_state_hash` | challenge/authorization/outcome children copy every non-null operation authority field |
 | `uq_reviewer_credential_operations_exact_subject` | `reviewer_credential_operation_id, reviewer_principal_id` | self-FK rejects a predecessor from another steward |
 | `uq_reviewer_credential_operation_challenges_exact_operation_step` | `reviewer_credential_operation_challenge_id, reviewer_credential_operation_id, reviewer_principal_id, operation_type, challenge_purpose` | deferred initial/continuation FKs prove the exact operation step without introducing a content-hash cycle |
 | `uq_reviewer_credential_operation_challenges_exact_binding` | `reviewer_credential_operation_challenge_id, reviewer_credential_operation_id, reviewer_principal_id, operation_type, challenge_purpose, challenge_binding_hash` | consumption/authentication names the exact immutable ceremony |
@@ -970,7 +1044,7 @@ is not sufficient.
 | `uq_reviewer_credential_operation_consumptions_exact_registration` | `challenge_consumption_id, reviewer_credential_operation_id, reviewer_principal_id, challenge_purpose, terminal_result, registered_webauthn_credential_id, registered_credential_content_hash, consumption_content_hash` | lifecycle authorization proves that the successful registration produced the same affected credential |
 | `uq_reviewer_credential_operation_authentication_exact_result` | `credential_operation_authentication_event_id, authentication_content_hash, reviewer_credential_operation_id, reviewer_principal_id, authentication_result` | prerequisite/lifecycle references require exact `VERIFIED`; terminal outcomes can bind the exact stored `VERIFIED` or attributable `REJECTED` result |
 | `uq_reviewer_credential_operation_outcomes_exact_terminal` | `credential_operation_outcome_id, reviewer_credential_operation_id, reviewer_principal_id, terminal_result, terminal_consumption_id, expected_credential_state_hash, resulting_credential_state_hash` | a consumption deferred-binds its preallocated exact terminal result/state without introducing an outcome-hash cycle |
-| `uq_reviewer_credential_operation_outcomes_exact_success` | `credential_operation_outcome_id, outcome_content_hash, reviewer_credential_operation_id, reviewer_principal_id, terminal_result, expected_credential_state_hash, resulting_credential_state_hash` | deferred lifecycle authorization binds the exact successful CAS result; checked copied result is `SUCCEEDED` |
+| `uq_reviewer_credential_operation_outcomes_exact_success` | `credential_operation_outcome_id, outcome_content_hash, reviewer_credential_operation_id, operation_content_hash, reviewer_principal_id, reviewer_role, principal_content_hash, os_owner_sid_hash, terminal_result, expected_credential_state_hash, resulting_credential_state_hash` | deferred lifecycle authorization binds the exact successful CAS result and identical operation trust tuple; checked copied result is `SUCCEEDED` |
 
 The FK tuples use those exact column orders. Nullable target columns are
 verified by null-safe insert guards, not placed in a composite FK. Optional
@@ -1301,6 +1375,13 @@ The separately authorized implementation must add offline tests for at least:
 - blank database `0001 -> 0006` upgrade;
 - populated non-reviewer `0005 -> 0006` upgrade with all old rows unchanged;
 - exact `0001`–`0005` hash equality and `0006` revision/down-revision;
+- exact four-token `authorization_kind` enum and five allowed
+  operation/event/authorization combinations; every other combination rejected;
+- both authorization and outcome tables carry the three non-null copied trust
+  columns and implement the exact ordered eight-column operation FK without a
+  weaker subset parent key;
+- authorization/outcome hash-preimage vectors change when any copied role,
+  principal-content-hash or OS-owner-SID-hash value changes;
 - unexpected pre-existing reviewer row fails without synthetic backfill;
 - late-DDL failure removes only `0006` objects and retry succeeds;
 - disposable empty downgrade/re-upgrade;
@@ -1391,14 +1472,15 @@ The separately authorized implementation must add offline tests for at least:
 
 - ADR-013: `ACCEPTED`
 - ADR-014: `ACCEPTED`
-- ADR-015: `PROPOSED`
-- P1-SR-01 / P1-SR-02: independently verified `CLOSED`
-- P1-SR-03: `REMEDIATED — AWAITING GPT INDEPENDENT RE-REVIEW`
+- ADR-015: `ACCEPTED` (`2026-08-28`)
+- ADR-016: `PROPOSED — AWAITING GPT INDEPENDENT REVIEW AND USER ACCEPTANCE`
+- SG-01 / SG-02 / P1-SR-01 / P1-SR-02 / P1-SR-03:
+  independently verified `CLOSED`
 - CP3-C2-B1: `PASS — CONTRACT APPROVED AND CLOSED`
 - CP3-C2-B2-A: `PASS — CLOSED`
 - CP3-C2-B2-B: `PASS — CLOSED`
 - CP3-C2-B2-C:
-  `BLOCKED — SCHEMA CONTRACT GAP / SCHEMA REMEDIATION AWAITING GPT INDEPENDENT RE-REVIEW`
+  `BLOCKED — APPROVED SCHEMA CONTRACT IMPLEMENTATION GAP / ADR-016 AWAITING GPT INDEPENDENT REVIEW`
 - CP3-C2-B2-D: `NOT STARTED`
 - CP3-C2-C: `NOT STARTED`
 - CP3-D: `NOT STARTED`
@@ -1409,5 +1491,6 @@ The separately authorized implementation must add offline tests for at least:
 - Real credential enrollment/approval/canonical/link writes: `0`
 - Live authority/Toss requests: `0`
 
-GPT independent re-review and explicit user acceptance of ADR-015 are required
-before any migration or B2-C runtime implementation can resume.
+ADR-016 GPT independent review and explicit user acceptance are required before
+any separately authorized `0006` implementation can resume. B2-C WebAuthn/
+human-approval runtime remains `NOT STARTED / NOT AUTHORIZED` by this task.

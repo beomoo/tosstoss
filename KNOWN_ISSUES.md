@@ -87,7 +87,7 @@
 ## KI-015 — CP3-C2-B2-C WebAuthn enrollment/credential-operation schema gap
 
 - 상태:
-  `OPEN — ADR-015 PROPOSED / SCHEMA REMEDIATION AWAITING GPT INDEPENDENT RE-REVIEW`
+  `OPEN — ADR-015 ACCEPTED / APPROVED SCHEMA IMPLEMENTATION GAP / ADR-016 PROPOSED`
 - 관찰: CP3-C2-B2-C implementation-entry audit에서 frozen `0005`가 valid
   credential 이전의 server-created SID-bound first-enrollment bootstrap,
   WebAuthn create challenge, expiry와 실패 포함 unique terminal consumption을
@@ -103,8 +103,7 @@
 - 현재 대응:
   `plans/PHASE_02_CP3_C2_B2_C_SCHEMA_REMEDIATION.md`와 ADR-015가 table rebuild
   없는 additive future `0006` operation/challenge/consumption/authentication/
-  authorization/outcome ledger를 제안한다. ADR-015는 `PROPOSED`이고 `0006`
-  creation/application 및 B2-C runtime은 `0`이다. 첫 proposal SHA
+  authorization/outcome ledger를 제안했다. 첫 proposal SHA
   `fd0535fdd022f0171a63a83cb2861e924a92da64`의 GPT independent review는
   SG-01/SG-02와 additive Option A를 원칙적으로 수용하고 `CHANGES REQUIRED`,
   P0 0 / P1 2 / P2 1 non-blocking을 반환했다. Revised proposal은 authenticated
@@ -121,7 +120,28 @@
   묶는다. ADD/REPLACE의 유일한 intermediate success는 verified counter event와
   정확히 한 registration challenge를 같은 transaction에 생성하며 재사용 가능한
   authorization session을 만들지 않는다. GPT independent re-review와 explicit
-  user acceptance 전에는 B2-C를 재개하지 않는다.
+  user acceptance 전에는 당시 B2-C를 재개하지 않았다.
+- ADR-015 closeout: GPT independent review of SHA
+  `f73115ea1182e27259787460307a01b4c3874312` returned `PASS WITH CLOSEOUT
+  CONDITION`, P0 `0`, P1 `0`, P2 `1` non-blocking and closed SG-01, SG-02,
+  P1-SR-01, P1-SR-02 and P1-SR-03. The user explicitly accepted ADR-015 on
+  `2026-08-28`; the schema architecture is approved.
+- Implementation gap: a separately authorized `0006` attempt stopped before
+  changing files or creating the migration. GPT independently confirmed IG-01,
+  where the closed `authorization_kind` enum lacked exact supersession and
+  revocation tokens, and IG-02, where authorization/outcome children omitted
+  the three trust columns required by the exact eight-column operation FK.
+- Proposed remediation: ADR-016 narrowly defines the exact four-token/five-row
+  authorization matrix; adds copied non-null `reviewer_role`,
+  `principal_content_hash`, and `os_owner_sid_hash` to both child proposals;
+  requires both exact ordered eight-column operation FKs; strengthens the exact
+  successful-outcome/authorization tuple; and includes the three columns in
+  both immutable hash preimages. Weaker subset identities, generic tokens,
+  payload authority and SQLite SHA assumptions remain prohibited.
+- Current gate: ADR-016 is `PROPOSED — AWAITING GPT INDEPENDENT REVIEW AND USER
+  ACCEPTANCE`. `0006` is `NOT CREATED / NOT IMPLEMENTED`; B2-C runtime is `NOT
+  STARTED / NOT AUTHORIZED`; later checkpoints remain `NOT STARTED`; automatic
+  progression is `PROHIBITED`.
 - 비차단 정정: issuer `SUPERSEDED`는 현재 schema blocker가 아니다. Existing
   `0005`의 separate authenticated events와 linear link history로 atomic old
   supersession/successor approval/head CAS를 표현할 수 있다.
