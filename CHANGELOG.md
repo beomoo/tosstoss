@@ -1,5 +1,40 @@
 # Changelog
 
+## Unreleased — ADR-017 Counter-Capability Remediation — 2026-08-28
+
+### Documentation/control-plane proposal
+
+- Recorded independent review of authoritative SHA
+  `c76fe7616db65c53ffc5a81d3e3c0cb390c0fa3b`: `CHANGES REQUIRED`, P0 `0`, P1
+  `1`, P2 `2`. ADR-017 remains `PROPOSED — CHANGES REQUIRED / RG-06 OPEN`.
+- Audited counter bootstrap Options A/B/C. Rejected permanent zero-to-no-counter
+  policy because it loses supported-counter clone-detection history; rejected
+  blanket zero-registration incompatibility because it is unacceptably brittle
+  for a Windows Hello-only product; selected, but did not accept, a fresh
+  one-time post-registration assertion.
+- Proposed, but did not accept or implement, ADR-018 — WebAuthn Counter
+  Capability Bootstrap Amendment. Verified `0 -> positive` selects
+  `SIGN_COUNT_SUPPORTED`; verified `0 -> 0` selects the repository
+  `NO_USABLE_COUNTER` evidence mode. No browser/AAGUID/attachment/username/
+  backup/payload/caller/vendor-metadata signal is authority.
+- Audited frozen `0005`/`0006` as insufficient for that continuation: first
+  enrollment cannot carry an assertion, registration consumption cannot wait
+  for classification, and the existing counter union would omit the bootstrap
+  edge. A minimum three-table pre-admission challenge/consumption/finalization
+  ledger and cross-ledger guards are proposed for a necessary future `0007`.
+  `0007` is `NOT CREATED / NOT AUTHORIZED`; `0006` remains `PASS — CLOSED`.
+- Corrected ADR-017 to the WebAuthn-required CTAP2 canonical CBOR encoding form,
+  retaining RFC 8949 only as the underlying CBOR reference. Independent CTAP2
+  re-encoding kept both frozen ES256/RS256 hex, base64url and fingerprints byte-
+  identical; all ten existing vectors remain unchanged where unaffected.
+- Added counter-decision vectors and the schema sufficiency audit in
+  `qa/PHASE_02_CP3_C2_B2_C_ADR_017_COUNTER_CAPABILITY_REMEDIATION_CODEX_REPORT.md`.
+  Application, migration, test, dependency, frontend, real Windows Hello and
+  issuer-approval runtime changes are all `0`.
+- ADR-015/ADR-016 remain `ACCEPTED`; R1 remains `NOT STARTED / BLOCKED`; B2-D,
+  CP3-C2-C and CP3-D remain `NOT STARTED`; automatic progression remains
+  `PROHIBITED`.
+
 ## Unreleased — Phase 2 CP3-C2-B2-C Runtime Canonicalization Gap — 2026-08-28
 
 ### Documentation/control-plane proposal
@@ -12,8 +47,9 @@
   Hash Preimage Amendment. It defines exact NFC compact JSON, recursively
   unsigned-UTF-8-sorted keys, null/Boolean/timestamp semantics and
   `sha256:<64-lowerhex>` storage.
-- Fixed the exact principal and public-credential preimages; deterministic RFC
-  8949 COSE_Key encoding; `-7 -> ES256` and `-257 -> RS256`; canonical unpadded
+- Fixed the exact principal and public-credential preimages; CTAP2 canonical
+  CBOR COSE_Key encoding (RFC 8949 underlying reference); `-7 -> ES256` and
+  `-257 -> RS256`; canonical unpadded
   base64url TEXT; raw credential/public-key fingerprints; closed transports;
   and no-counter `null` semantics.
 - Fixed both challenge digests as SHA-256 of exactly 32 raw OS-CSPRNG bytes and

@@ -1197,11 +1197,14 @@ commit할 수 없다.
 
 ## ADR-017 — WebAuthn Runtime Canonicalization and Hash Preimage Amendment
 
-- 상태: `PROPOSED`
+- 상태: `PROPOSED — CHANGES REQUIRED / RG-06 OPEN`
 - 제안일: `2026-08-28`
 - 결정일: `NONE`
 - 선행 결정: ADR-015 `ACCEPTED`, ADR-016 `ACCEPTED`
 - 적용 gate: `CP3-C2-B2-C R1`
+- 독립 검토: authoritative SHA
+  `c76fe7616db65c53ffc5a81d3e3c0cb390c0fa3b`에 대해 `CHANGES REQUIRED`,
+  P0 `0`, P1 `1`, P2 `2`
 - 재현 벡터:
   `qa/PHASE_02_CP3_C2_B2_C_RUNTIME_CANONICALIZATION_GAP_CODEX_REPORT.md`
 
@@ -1214,14 +1217,25 @@ their byte preimages. Five gaps remain:
 
 1. RG-01: `principal_content_hash` exact preimage;
 2. RG-02: `credential_content_hash` exact preimage;
-3. RG-03: deterministic COSE_Key bytes, TEXT encoding and algorithm mapping;
+3. RG-03: CTAP2 canonical COSE_Key bytes, TEXT encoding and algorithm mapping;
 4. RG-04: challenge digest and challenge-binding exact preimages; and
 5. RG-05: reviewer authentication exact preimages.
 
+Independent review accepted the RG-01 through RG-05 concepts but found a new
+blocking runtime-to-schema requirement, P1-RG-06. Registration `signCount=0`
+cannot distinguish a conforming counter that has not advanced yet from an
+authenticator that provides no usable counter. The selected
+`webauthn==3.0.0` verified-registration result has no authoritative capability
+field, while frozen `0005` requires an immutable classification before the
+credential can be stored. P2-RG-07 also requires the COSE wording below to name
+the WebAuthn-required CTAP2 canonical CBOR encoding form. These findings do not
+reopen `0006`; it remains `PASS — CLOSED`.
+
 Implementing any one reasonable interpretation would create incompatible
-persisted identities. Therefore R1 stays not started until this proposal is
-independently reviewed and explicitly accepted. ADR-015/ADR-016 acceptance and
-the `0006 PASS — CLOSED` schema result are unchanged.
+persisted identities. Therefore R1 stays not started until ADR-017 and ADR-018
+are independently re-reviewed and explicitly accepted, and future schema and
+runtime work are separately authorized. ADR-015/ADR-016 acceptance and the
+`0006 PASS — CLOSED` schema result are unchanged.
 
 ### 제안 — common canonicalization
 
@@ -1328,9 +1342,17 @@ process/audit IDs are excluded.
   the same compact JSON array bytes.
 - `counter_capability` is exactly `SIGN_COUNT_SUPPORTED` or
   `NO_USABLE_COUNTER`. The latter requires `registration_sign_count:null`,
-  never zero. A returned zero alone does not prove no-counter capability;
-  unverified capability fails closed. A verified supported counter may have a
-  non-negative registration value including zero.
+  never zero. A positive registration counter is sufficient to select
+  `SIGN_COUNT_SUPPORTED`. A registration value of zero is
+  `COUNTER_CAPABILITY_UNRESOLVED`: it selects neither immutable database value,
+  cannot create a public credential row, and requires the separately proposed
+  ADR-018 bootstrap continuation. Under that proposal, a fully verified fresh
+  assertion `0 -> positive` selects `SIGN_COUNT_SUPPORTED` while preserving
+  the truthful registration value `0`; `0 -> 0` selects the repository mode
+  `NO_USABLE_COUNTER` and preserves both observed zeros in the bootstrap audit
+  while the frozen credential column remains null. Browser claims, AAGUID,
+  attachment, username, backup flags, caller input and payload JSON are never
+  classification authority.
 
 Only this exact COSE algorithm mapping is approved:
 
@@ -1347,15 +1369,22 @@ labels `{1:3,3:-257,-1:n,-2:e}`, an unsigned at-least-2048-bit odd modulus and
 valid odd exponent. Indefinite-length items, CBOR floats, tags and unsupported
 simple values are forbidden.
 
-After validation the map is deterministically encoded under RFC 8949 section
-4.2.1 and decoded again; semantic equality is mandatory. The original COSE_Key
-bytes must equal that deterministic encoding, so duplicate-label,
-non-deterministic and alternate encodings are rejected rather than silently
-normalized. A pinned `cbor2.dumps(value, canonical=True)` implementation may
-provide the encoding only while the committed golden vectors prove the exact
-bytes. `cose_public_key_canonical` is unpadded base64url of the deterministic
-CBOR bytes. `public_key_fingerprint` is SHA-256 of those raw deterministic CBOR
-bytes, not of the base64url TEXT.
+After validation the map is encoded in the **CTAP2 canonical CBOR encoding
+form** required by WebAuthn for `credentialPublicKey`, then decoded again;
+semantic equality is mandatory. RFC 8949 remains the underlying CBOR
+reference, not the WebAuthn canonical-form authority. The original COSE_Key
+bytes must equal the CTAP2 canonical encoding, so duplicate-label,
+non-canonical and alternate encodings are rejected rather than silently
+normalized. Generic `cbor2.dumps(value, canonical=True)` is not sufficient as
+a general CTAP2 encoder; it is usable for these two restricted, validated key
+maps only because the frozen ES256/RS256 vectors independently prove the same
+bytes. `cose_public_key_canonical` is unpadded base64url of the CTAP2 canonical
+CBOR bytes. `public_key_fingerprint` is SHA-256 of those raw bytes, not of the
+base64url TEXT.
+
+Normative references: W3C WebAuthn Level 3 sections 5.8.1 and 6.5.6
+(`https://www.w3.org/TR/webauthn-3/`) and FIDO CTAP 2.2 section 6.5.4.1
+(`https://fidoalliance.org/specs/fido-v2.2-ps-20250714/fido-client-to-authenticator-protocol-v2.2-ps-20250714.html`).
 
 ### RG-04 — challenge digest and exact binding
 
@@ -1537,7 +1566,7 @@ The cryptographic dependency order is:
 ```text
 raw OS-owner SID -> os_owner_sid_hash -> principal_content_hash
 raw credential ID -> canonical credential ID + credential_id_fingerprint --+
-raw COSE_Key -> deterministic COSE bytes -> public_key_fingerprint ----------+-> credential_content_hash
+raw COSE_Key -> CTAP2 canonical COSE bytes -> public_key_fingerprint --------+-> credential_content_hash
 principal/credential event leaves -> credential_state_hash
 principal + expected state + preallocated initial challenge ID -> operation_content_hash
 raw operation challenge -> challenge_digest
@@ -1563,11 +1592,13 @@ hash contracts are unchanged.
 
 An isolated Python 3.13 audit of pinned `webauthn==3.0.0` with
 `cbor2==6.1.4` exposed the expected registration/authentication generate and
-verify APIs. Both ADR-017 ES256 and RS256 deterministic COSE vectors decoded and
-converted to cryptography public-key objects. `cbor2` canonical encoding is
-usable only behind the validation/re-encode-equality boundary above. This task
-changes no dependency or lock file and performs no actual Windows Hello
-ceremony.
+verify APIs, but no authoritative signature-counter-capability result. Both
+ADR-017 ES256 and RS256 vectors decoded and converted to cryptography public-
+key objects. A separate standard-library encoder implementing the CTAP2 map-key
+ordering and shortest-form rules reproduced both exact frozen hex strings,
+base64url strings and fingerprints. `cbor2` canonical encoding is usable for
+these restricted maps only behind that proved boundary. This task changes no
+dependency or lock file and performs no actual Windows Hello ceremony.
 
 Rejected alternatives are hashing library object representations, storing
 arbitrary incoming COSE bytes, accepting padded/alternate base64, mapping
@@ -1575,20 +1606,165 @@ unknown algorithms/transports, omitting null keys, treating a missing counter
 as zero, or letting callers supply policy/hash fields. Each would make the
 persisted identity non-portable or weaken fail-closed verification.
 
-ADR-017 remains `PROPOSED`; Codex does not self-accept it. R1 remains
-`BLOCKED — APPROVED RUNTIME CONTRACT GAP / ADR-017 PROPOSED`, with application,
-schema, migration, test, fixture and dependency changes all `0`. `0007` is
-forbidden. ADR-015 and ADR-016 remain `ACCEPTED`; `0006` remains
-`PASS — CLOSED`. B2-D, CP3-C2-C and CP3-D remain `NOT STARTED`, and automatic
-progression remains `PROHIBITED`.
+ADR-017 remains `PROPOSED — CHANGES REQUIRED / RG-06 OPEN`; Codex does not
+self-accept it. ADR-018 below is separately `PROPOSED` and not accepted. R1
+remains `NOT STARTED / BLOCKED`, with application, schema, migration, test,
+fixture and dependency changes all `0`. Future `0007` is necessary under the
+selected proposal but is `NOT CREATED / NOT AUTHORIZED`. ADR-015 and ADR-016
+remain `ACCEPTED`; `0006` remains `PASS — CLOSED`. B2-D, CP3-C2-C and CP3-D
+remain `NOT STARTED`, and automatic progression remains `PROHIBITED`.
 
 ### 마이그레이션·롤백
 
 This is a documentation/control-plane proposal. Migrations `0001`–`0006` stay
 byte-identical; migration count and application count are `0`. Before ADR-017
-acceptance, rollback is removal/reversion of these documentation-only changes.
-After acceptance, R1 still requires separate implementation authority and must
-implement the approved vectors without migration `0007`.
+and ADR-018 acceptance, rollback is removal/reversion of these documentation-
+only changes. R1 cannot start from ADR-017 alone. Even after both proposals are
+accepted, a future `0007` and runtime implementation each require separate
+explicit authority.
+
+---
+
+## ADR-018 — WebAuthn Counter Capability Bootstrap Amendment
+
+- 상태: `PROPOSED`
+- 제안일: `2026-08-28`
+- 결정일: `NONE`
+- 선행 결정: ADR-015 `ACCEPTED`, ADR-016 `ACCEPTED`, ADR-017 `PROPOSED —
+  CHANGES REQUIRED / RG-06 OPEN`
+- 적용 gate: `CP3-C2-B2-C R1`
+- proposed future migration:
+  `0007_phase_02_cp3_c2_b2_c_counter_bootstrap` — `NOT CREATED / NOT
+  AUTHORIZED`
+
+### 문제와 선택
+
+WebAuthn permits both a counter-supporting authenticator's initial registration
+counter and a no-counter authenticator's counter to be zero. R1 therefore
+cannot truthfully derive the frozen `0005` classification from a zero
+registration result. Three alternatives were audited:
+
+| Option | Result | Rationale |
+|---|---|---|
+| A — permanently map registration zero to `NO_USABLE_COUNTER` | rejected | It is a possible repository policy, but it permanently discards clone-detection history for every supported counter that begins at zero. The stored token would describe policy, not demonstrated authenticator behavior. |
+| B — reject every registration zero as `COUNTER_CAPABILITY_UNRESOLVED` | rejected as the product policy | It is fail-closed and truthful, but it rejects a standards-valid authenticator class. Without an authorized real Windows Hello ceremony, compatibility cannot be proved; a Windows Hello-only product would be unacceptably brittle and may be unusable. |
+| C — one fresh post-registration assertion | selected proposal | It preserves truth and compatibility: a verified `0 -> positive` proves usable advancement, and verified `0 -> 0` establishes the repository no-usable-counter admission mode without guessing from registration alone. |
+
+Option C does not weaken challenge, RP ID, exact origin, type, UP, UV,
+signature, credential-ID, public-key or replay verification. The assertion is
+bound to exactly the just-registered pending public key and a new 32-byte one-
+time challenge. It grants no issuer approval, reusable login, recovery, reset
+or general credential-operation authority.
+
+### 제안 상태 기계
+
+1. A first-enrollment registration challenge and its server-owned operation
+   intent are issued in a durable **pre-admission** ledger. No public credential
+   exists yet.
+2. A fully verified positive registration `signCount` is immediately
+   `ACCEPTED` as `SIGN_COUNT_SUPPORTED`; the observed positive value is the
+   immutable `registration_sign_count`.
+3. A fully verified registration zero is `REQUIRES CONTINUATION`. Its challenge
+   is consumed exactly once and the verified public material plus observed zero
+   are durably recorded. In the same transaction, exactly one fresh
+   `COUNTER_CAPABILITY_ASSERTION` challenge is issued.
+4. The continuation verifies `webauthn.get`, exact challenge/RP/origin,
+   cross-origin false, UP, UV, exact pending credential ID, and the signature
+   under the pending public key. A result greater than zero is `ACCEPTED` as
+   `SIGN_COUNT_SUPPORTED`, with frozen `registration_sign_count=0` and an
+   audited bootstrap counter edge `0 -> asserted`. A result equal to zero is
+   `ACCEPTED` as `NO_USABLE_COUNTER`, with frozen
+   `registration_sign_count=null` and the observed `0 -> 0` retained only as
+   immutable bootstrap evidence.
+5. Expiry, replay, malformed data, binding mismatch, wrong credential, failed
+   RP/origin/UP/UV/signature checks, or an impossible counter result is
+   `REJECTED`/fail-closed. It creates no public credential. A retry, if later
+   authorized while no credential has ever been admitted, is a wholly fresh
+   first-enrollment bootstrap linked to the terminal predecessor; it is not a
+   recovery or reusable authentication state.
+
+The repository meaning of `counter_capability` is thus an immutable **admitted
+counter-evidence mode**, not a vendor/hardware capability claim. Neither
+AAGUID nor attachment, Windows username, backup flags, browser/caller input,
+payload JSON, undocumented Windows Hello behavior, FIDO Metadata Service or
+vendor attestation trust participates in the decision.
+
+### 기존 schema sufficiency audit
+
+Frozen `0005`/`0006` cannot represent Option C faithfully or atomically:
+
+- `reviewer_webauthn_credentials` must choose the immutable union before insert;
+  a temporary unresolved row or later update is forbidden.
+- A successful frozen registration consumption requires the already classified
+  credential and a terminal operation outcome. It cannot consume registration
+  zero and wait for another assertion.
+- `FIRST_ENROLLMENT` permits only `REGISTRATION_CREATE`; the frozen
+  authentication event table permits assertion rows only for add/replace/revoke.
+- The frozen continuation slot goes in the opposite direction—successful
+  add/replace assertion to registration—and cannot represent registration to
+  capability assertion.
+- The frozen counter-union guards see only issuer and credential-operation
+  authentication events. A separately stored `0 -> positive` bootstrap edge
+  would otherwise be an unaudited/unreconstructed counter advancement.
+- Reusing issuer approval or caller/payload fields would falsely authorize the
+  assertion; pretending the assertion was registration would falsify
+  `registration_sign_count`.
+
+This is a new runtime-to-schema requirement, not a retroactive failure of
+`0006`; `0006` remains `PASS — CLOSED`.
+
+### Minimum future schema amendment
+
+If accepted and separately authorized, the minimum future `0007` adds three
+append-only tables; it does not edit or reopen migration files `0001`–`0006`:
+
+1. `reviewer_webauthn_counter_bootstrap_challenges` stores one root
+   `REGISTRATION_CREATE` and at most one child
+   `COUNTER_CAPABILITY_ASSERTION`. Each row carries the bootstrap/root and
+   predecessor IDs, exact principal/SID/expected-empty-state/operation tuple,
+   purpose, raw-32-byte challenge digest, exact binding hash, RP ID, allowed
+   origin, client-data type, UV requirement, issue/expiry instants, and—for the
+   child—the exact pending credential ID and credential/public-key
+   fingerprints plus the parent registration-consumption hash. Unique indexes
+   enforce one root, one child, one digest and a linear predecessor.
+2. `reviewer_webauthn_counter_bootstrap_consumptions` uniquely consumes one
+   bootstrap challenge and records its terminal result, safe result code, all
+   challenge/RP/origin/cross-origin/UP/UV/signature/replay verification facts,
+   exact verified public registration material, observed raw registration
+   count, assertion previous/asserted counts, continuation/finalization ID,
+   immutable content hash and UTC consumption time. Conditional checks permit
+   public material only on registration, assertion counts only on the child,
+   and successful registration zero only with exactly one continuation.
+3. `reviewer_webauthn_counter_bootstrap_finalizations` records exactly one
+   terminal classification per root: observed registration/assertion counts,
+   selected frozen capability/count pair, terminal disposition, and exact IDs
+   and hashes of the projected frozen operation, registration challenge and
+   consumption, outcome, public credential, lifecycle event and authorization.
+   A successful finalization and every frozen projection row commit in one
+   `BEGIN IMMEDIATE` transaction under deferred FKs and exact-copy triggers;
+   failure finalizations prohibit every frozen credential projection.
+
+The future migration must also add cross-ledger guards that (a) require a
+matching finalization before any first-enrollment frozen projection with
+registration zero or `NO_USABLE_COUNTER`, (b) prevent direct/replayed use of a
+bootstrap challenge, and (c) version-replace the two `0006` counter-union
+trigger definitions so a verified supported bootstrap edge is the first union
+edge. Reconstruction then starts from the truthful frozen registration value,
+includes the optional unique bootstrap edge, and continues through both frozen
+assertion ledgers. A gap, fork, duplicate or missing projection fails closed.
+No existing table, migration blob or historical row is rewritten.
+
+Every new content hash must receive an exact canonical preimage and calculator-
+generated golden vectors in a separately authorized implementation design.
+This proposal intentionally invents no expected hash text by hand.
+
+### 상태 효과
+
+ADR-018 is `PROPOSED`, not accepted or implemented. Future `0007` is necessary
+for Option C but is `NOT CREATED / NOT AUTHORIZED`. ADR-017 remains `PROPOSED —
+CHANGES REQUIRED / RG-06 OPEN`; R1 remains `NOT STARTED / BLOCKED`. ADR-015 and
+ADR-016 remain `ACCEPTED`; `0006` remains `PASS — CLOSED`; B2-D, CP3-C2-C and
+CP3-D remain `NOT STARTED`; automatic progression remains `PROHIBITED`.
 
 ---
 

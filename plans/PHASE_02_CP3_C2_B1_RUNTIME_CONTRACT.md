@@ -19,8 +19,9 @@
 - CP3-C2-B2-B: `PASS — CLOSED`
 - CP3-C2-B2-C `0006` schema implementation: `PASS — CLOSED`
 - B2-C R1 WebAuthn runtime:
-  `BLOCKED — APPROVED RUNTIME CONTRACT GAP / ADR-017 PROPOSED`
-- ADR-017: `PROPOSED`, decision date `NONE`
+  `NOT STARTED / BLOCKED — ADR-017 CHANGES REQUIRED / RG-06 OPEN / ADR-018 PROPOSED`
+- ADR-017: `PROPOSED — CHANGES REQUIRED / RG-06 OPEN`, decision date `NONE`
+- ADR-018: `PROPOSED`, decision date `NONE`
 - CP3-C2-B2-D: `NOT STARTED`
 - Migration implementation: additive `0005` implemented in B2-A; production
   database application `0`
@@ -708,6 +709,18 @@ immutable registration count followed by the unique linear set of append-only
 prior reconstructed value; a gap or fork fails closed. For
 `NO_USABLE_COUNTER`, the reconstructed counter remains null. No credential-row
 `UPDATE` is required or permitted.
+
+ADR-017 independent review found that registration `signCount=0` cannot select
+either immutable mode. A positive registration count remains directly
+admissible as `SIGN_COUNT_SUPPORTED`; zero is
+`COUNTER_CAPABILITY_UNRESOLVED` and cannot insert the frozen credential.
+ADR-018 separately proposes one fresh, exact-credential post-registration
+assertion: verified `0 -> positive` admits `SIGN_COUNT_SUPPORTED` with truthful
+registration count zero, while verified `0 -> 0` admits the repository
+`NO_USABLE_COUNTER` evidence mode with the frozen null. Both observations must
+remain in a dedicated append-only bootstrap ledger. Existing `0005`/`0006`
+cannot represent that continuation or its first counter edge, so a separately
+approved future `0007` is necessary. It is not created or authorized here.
 
 #### 9.1.2 Exact relying party and origin
 
@@ -1583,7 +1596,7 @@ contract or retroactively broaden the B1 closeout approval.
 - ADR-016: `ACCEPTED` (`2026-08-28`)
 - Migration `0006`: `PASS — CLOSED`
 - B2-C WebAuthn/human-approval runtime:
-  `NOT STARTED / BLOCKED — APPROVED RUNTIME CONTRACT GAP / ADR-017 PROPOSED`
+  `NOT STARTED / BLOCKED — ADR-017 CHANGES REQUIRED / RG-06 OPEN / ADR-018 PROPOSED`
 - CP3-C2-B2-D: `NOT STARTED`
 - CP3-C2-C: `NOT STARTED`
 - CP3-D: `NOT STARTED`
@@ -1762,7 +1775,7 @@ on `2026-08-28`. This adds no WebAuthn/human-approval runtime.
 - CP3-C2-B2-C `0006` schema implementation: `PASS — CLOSED`
 - Migration `0006`: `PASS — CLOSED`
 - B2-C WebAuthn/human-approval runtime:
-  `NOT STARTED / BLOCKED — APPROVED RUNTIME CONTRACT GAP / ADR-017 PROPOSED`
+  `NOT STARTED / BLOCKED — ADR-017 CHANGES REQUIRED / RG-06 OPEN / ADR-018 PROPOSED`
 - CP3-C2-B2-D / CP3-C2-C / CP3-D: `NOT STARTED`
 - Automatic progression: `PROHIBITED`
 
@@ -1770,7 +1783,7 @@ on `2026-08-28`. This adds no WebAuthn/human-approval runtime.
 
 The separately authorized R1 implementation-entry audit found five approved-
 contract gaps before changing runtime files: exact principal and credential
-hash preimages, deterministic COSE bytes/TEXT/algorithm mapping, raw challenge
+hash preimages, CTAP2 canonical COSE bytes/TEXT/algorithm mapping, raw challenge
 digest and exact operation/issuer bindings, and exact operation/issuer
 authentication preimages. ADR-017 in `DECISIONS.md` is the single normative
 proposal that fills those gaps; its ten exact golden vectors are in
@@ -1795,19 +1808,54 @@ contracts; it does not authorize issuer approval runtime.
 
 ADR-017 also proposes the exact R1 server policy token
 `issuer-steward-webauthn/0.1.0`, the only COSE mappings `-7 -> ES256` and
-`-257 -> RS256`, RFC 8949 section 4.2.1 deterministic COSE bytes, unpadded
-base64url DB TEXT and raw-byte fingerprints. All unlisted/unknown/alternate
+`-257 -> RS256`, the WebAuthn-required CTAP2 canonical CBOR encoding form,
+unpadded base64url DB TEXT and raw-byte fingerprints. RFC 8949 is retained only
+as the underlying CBOR reference. All unlisted/unknown/alternate
 encodings fail closed. The existing credential-event, operation, consumption,
 authorization, outcome and state hash contracts remain unchanged, and the
 documented hash dependency DAG has no cycle.
 
 - ADR-015: `ACCEPTED` (`2026-08-28`)
 - ADR-016: `ACCEPTED` (`2026-08-28`)
-- ADR-017: `PROPOSED`, decision date `NONE`
+- ADR-017: `PROPOSED — CHANGES REQUIRED / RG-06 OPEN`, decision date `NONE`
+- ADR-018: `PROPOSED`, decision date `NONE`
 - `0006`: `PASS — CLOSED`
 - R1 application/schema/test/dependency changes: `0`
-- R1 status: `NOT STARTED / BLOCKED — APPROVED RUNTIME CONTRACT GAP`
-- Migration `0007`: `FORBIDDEN`, creation/application `0`
+- R1 status: `NOT STARTED / BLOCKED — ADR-017 RG-06 OPEN / ADR-018 PROPOSED`
+- Migration `0007`: necessary under ADR-018 Option C, `NOT CREATED / NOT
+  AUTHORIZED`, creation/application `0`
 - Actual Windows Hello or issuer approval: `0`
 - CP3-C2-B2-D / CP3-C2-C / CP3-D: `NOT STARTED`
+- Automatic progression: `PROHIBITED`
+
+## 23. ADR-018 counter-capability bootstrap amendment — proposed, non-accepted
+
+ADR-017 independent review of authoritative SHA
+`c76fe7616db65c53ffc5a81d3e3c0cb390c0fa3b` returned `CHANGES REQUIRED`, P0
+`0`, P1 `1`, P2 `2`. RG-01 through RG-05 remain conceptually approved. P1-RG-06
+is a newly discovered runtime-to-schema gap: the verified-registration result
+exposes `sign_count` but no authoritative capability field, and a zero is
+ambiguous under the WebAuthn counter model.
+
+The first-principles audit rejects permanent zero-to-no-counter policy because
+it loses genuine clone-detection evidence, and rejects zero-registration
+incompatibility as the product policy because it is brittle for a Windows
+Hello-only product. ADR-018 in `DECISIONS.md` therefore selects, but does not
+accept, a fresh post-registration assertion. It also defines the minimum
+three-table pre-admission challenge/consumption/finalization ledger and the
+cross-ledger counter-union guards required from a future migration.
+
+Frozen `0005`/`0006` cannot atomically consume the zero registration, issue a
+FIRST_ENROLLMENT assertion, preserve its counter edge, and then project the
+classified credential. `0006` remains `PASS — CLOSED`; this is not a
+retroactive failure. The exact counter-decision vectors and schema audit are in
+`qa/PHASE_02_CP3_C2_B2_C_ADR_017_COUNTER_CAPABILITY_REMEDIATION_CODEX_REPORT.md`.
+
+- ADR-015 / ADR-016: `ACCEPTED`
+- ADR-017: `PROPOSED — CHANGES REQUIRED / RG-06 OPEN`
+- ADR-018: `PROPOSED`
+- `0006`: `PASS — CLOSED`
+- future `0007`: `NOT CREATED / NOT AUTHORIZED`
+- R1: `NOT STARTED / BLOCKED`
+- B2-D / CP3-C2-C / CP3-D: `NOT STARTED`
 - Automatic progression: `PROHIBITED`

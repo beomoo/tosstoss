@@ -11,6 +11,14 @@
 - `0006`: `PASS — CLOSED`
 - R1 runtime implementation: `NOT STARTED`, runtime changed files `0`
 
+Post-review addendum: independent review of the resulting authoritative SHA
+`c76fe7616db65c53ffc5a81d3e3c0cb390c0fa3b` returned `CHANGES REQUIRED`, P0
+`0`, P1 `1`, P2 `2`. ADR-017 is now `PROPOSED — CHANGES REQUIRED / RG-06 OPEN`;
+ADR-018 is `PROPOSED`; future `0007` is `NOT CREATED / NOT AUTHORIZED`. The
+original evidence below remains a historical snapshot. RG-01 through RG-05 and
+all ten vector bytes remain unchanged; the remediation report is
+`qa/PHASE_02_CP3_C2_B2_C_ADR_017_COUNTER_CAPABILITY_REMEDIATION_CODEX_REPORT.md`.
+
 ## 1. Scope and stop decision
 
 The pre-implementation audit confirmed that the approved schema did not fully
@@ -23,7 +31,7 @@ or lock-file change and did not invoke Windows Hello.
 |---|---|---|
 | RG-01 | principal hash preimage | exact six-key principal object |
 | RG-02 | credential hash preimage | exact 18-key credential object, null/counter/transport rules |
-| RG-03 | COSE bytes/TEXT/algorithm | RFC 8949 deterministic bytes, unpadded base64url TEXT, raw-byte hash, `-7/-257` only |
+| RG-03 | COSE bytes/TEXT/algorithm | CTAP2 canonical CBOR bytes, unpadded base64url TEXT, raw-byte hash, `-7/-257` only; RFC 8949 is the underlying CBOR reference |
 | RG-04 | challenge digest/binding | raw 32-byte digest plus exact operation and issuer binding objects |
 | RG-05 | authentication hash | exact operation and issuer relational preimages |
 
@@ -103,8 +111,8 @@ and forbidden.
 Both challenge digests are SHA-256 of exactly the raw 32 OS-CSPRNG bytes; raw
 bytes are transient. Credential-ID TEXT is canonical unpadded base64url of raw
 ID bytes and its fingerprint hashes those raw bytes. COSE TEXT is canonical
-unpadded base64url of deterministic CBOR and its fingerprint hashes the raw
-deterministic CBOR. The only algorithm mappings are `-7 -> ES256` and
+unpadded base64url of CTAP2 canonical CBOR and its fingerprint hashes those raw
+CBOR bytes. The only algorithm mappings are `-7 -> ES256` and
 `-257 -> RS256`; unknown or alternate encodings fail closed. Existing event,
 operation, consumption, outcome, authorization and credential-state preimages
 remain unchanged.
@@ -116,7 +124,7 @@ Result: `PASS — NO CRYPTOGRAPHIC CYCLE`.
 ```text
 SID -> SID hash -> principal hash
 credential bytes -> credential ID/fingerprint -----------------------------+
-COSE_Key -> deterministic CBOR -> public-key fingerprint ------------------+-> credential hash
+COSE_Key -> CTAP2 canonical CBOR -> public-key fingerprint ----------------+-> credential hash
 principal + credential/event leaves -> credential-state hash
 principal + expected state + preallocated challenge ID -> operation hash
 raw challenge -> digest
@@ -138,11 +146,19 @@ changed.
 
 The temporary, uncommitted Python 3.13 calculator applied Unicode NFC,
 recursive unsigned-UTF-8 key order, compact UTF-8 JSON and
-`sha256:<lowerhex>`. It used `cbor2.dumps(map, canonical=True)`, re-decoded for
-semantic equality, then passed both COSE keys through
+`sha256:<lowerhex>`. For the two restricted COSE key maps it used
+`cbor2.dumps(map, canonical=True)`, re-decoded for semantic equality, then
+passed both COSE keys through
 `webauthn.helpers.decode_credential_public_key` and
 `decoded_public_key_to_cryptography`. It was run twice and the complete output
 was byte-identical.
+
+P2-RG-07 clarification: WebAuthn requires the **CTAP2 canonical CBOR encoding
+form** for `credentialPublicKey`; RFC 8949 is only the underlying CBOR
+reference. Generic `cbor2` canonical output is not claimed to be a general
+CTAP2 encoder. A later independent standard-library CTAP2 encoder reproduced
+the exact GV-02/GV-03 hex, base64url and fingerprints because the approved maps
+contain only the fixed integer labels shown below. No vector byte changed.
 
 ```text
 vector_count: 10
@@ -157,7 +173,7 @@ For JSON vectors, each `serialized UTF-8` payload is the complete exact input
 object after canonicalization and the exact byte sequence to hash, with no BOM
 or terminal newline. Where labeled as chunks, concatenate the physical payload
 lines with no separator or newline. For CBOR vectors, the diagnostic map is the
-exact semantic input and `deterministic CBOR hex` is the exact byte sequence.
+exact semantic input and `CTAP2 canonical CBOR hex` is the exact byte sequence.
 
 ### GV-01 — principal content
 
@@ -171,7 +187,7 @@ sha256:d48459e52349d73b433179f02ce735acb153201ab0700ff103135b7f9e9a2029
 The SID digest input label was the explicitly synthetic ASCII text
 `synthetic-os-owner-sid`; no real SID was read or persisted for this vector.
 
-### GV-02 — ES256 deterministic COSE_Key
+### GV-02 — ES256 CTAP2 canonical COSE_Key
 
 ```text
 diagnostic map (`-2`/`-3` hex lines are concatenated with no separator):
@@ -186,7 +202,7 @@ f4a13945d898c296
 8ee7eb4a7c0f9e16
 2bce33576b315ece
 cbb6406837bf51f5
-deterministic CBOR hex:
+CTAP2 canonical CBOR hex:
 a50102032620012158206b17d1f2e12c4247f8bce6e563a440f277037d812deb33a0f4a13945d898c2962258204fe342e2fe1a7f9b8ee7eb4a7c0f9e162bce33576b315ececbb6406837bf51f5
 expected cose_public_key_canonical:
 pQECAyYgASFYIGsX0fLhLEJH-Lzm5WOkQPJ3A32BLeszoPShOUXYmMKWIlggT-NC4v4af5uO5-tKfA-eFivOM1drMV7Oy7ZAaDe_UfU
@@ -194,12 +210,12 @@ expected public_key_fingerprint:
 sha256:72080e17877c7fe10b105ea40eea474975a16cf7773c03745aa64c025b6a4e63
 ```
 
-### GV-03 — RS256 deterministic COSE_Key
+### GV-03 — RS256 CTAP2 canonical COSE_Key
 
 ```text
 diagnostic map:
 {1:3,3:-257,-1:h'c7000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001',-2:h'010001'}
-deterministic CBOR hex:
+CTAP2 canonical CBOR hex:
 a401030339010020590100c70000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000012143010001
 expected cose_public_key_canonical:
 pAEDAzkBACBZAQDHAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABIUMBAAE
@@ -223,6 +239,11 @@ sha256:c2982bdd18f8d1029cfbd568242b986259438f47666c1d1275f595aeba85e1a3
 ```
 
 ### GV-05 — credential with no usable counter
+
+Under the ADR-018 proposal this unchanged credential vector is admissible only
+after a fully verified bootstrap observation `registration 0 -> assertion 0`.
+The two observed zeros live in the proposed bootstrap audit; the frozen
+credential preimage truthfully retains `registration_sign_count:null`.
 
 ```text
 serialized UTF-8 chunks (concatenate physical lines with no separator/newline):
@@ -300,10 +321,11 @@ verify_authentication_response
 
 The library returns raw credential public-key COSE bytes. Its helper CBOR
 encoder is not itself a complete contract boundary, so ADR-017 requires a
-validated map, deterministic RFC 8949 re-encoding, semantic re-decode equality
-and original-byte equality. Both approved algorithms passed the library's COSE
-decode and cryptography conversion in this audit. No repository dependency was
-installed or changed during this documentation task.
+validated map, CTAP2 canonical CBOR re-encoding, semantic re-decode equality
+and original-byte equality. RFC 8949 remains the underlying CBOR reference.
+Both approved algorithms passed the library's COSE decode and cryptography
+conversion in this audit. No repository dependency was installed or changed
+during this documentation task.
 
 ## 5. Change inventory
 
@@ -359,7 +381,7 @@ LOCAL closeout results:
 | no application/runtime/test/script/frontend/fixture/dependency change | PASS — implied and explicitly checked by the exact allowlist |
 | `0001`–`0006` blob equality | PASS — all six exact IDs in section 5 |
 | golden-vector generation | PASS — 10 vectors, two full outputs byte-identical |
-| report-vector independent recalculation | PASS — canonical JSON `7`, deterministic COSE `2`, raw challenge `2` |
+| report-vector independent recalculation | PASS — canonical JSON `7`, CTAP2 canonical COSE `2`, raw challenge `2` |
 | ADR/status/plan consistency | PASS — 11 checks; ADR-017 not recorded accepted, later checkpoints not started, no `0007` path |
 | `scripts/secret-scan.ps1` | PASS on final staged content |
 | `scripts/policy-scan.ps1` | PASS — Phase 2 CP3-C2-B2-C scope policy |
