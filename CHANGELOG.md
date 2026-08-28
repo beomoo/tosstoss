@@ -1,5 +1,39 @@
 # Changelog
 
+## Unreleased — Phase 2 CP3-C2-B2-C Schema Contract Remediation — 2026-08-28
+
+### Documentation proposal
+
+- Recorded the implementation-entry result
+  `BLOCKED — SCHEMA CONTRACT GAP` for CP3-C2-B2-C. P0 is 0; SG-01 and SG-02
+  are the two confirmed schema blockers. GitHub CI execution evidence remains
+  absent/non-blocking.
+- Proposed ADR-015,
+  `WebAuthn Enrollment and Credential-Operation Ledger Amendment`, and left it
+  `PROPOSED` pending GPT independent review and explicit user acceptance.
+- Added
+  `plans/PHASE_02_CP3_C2_B2_C_SCHEMA_REMEDIATION.md`. The selected future
+  `0006` strategy is additive option A: six append-only credential-operation
+  tables plus exact additive indexes and insert guards, with no `0005` table
+  rebuild.
+- The proposal separates first-enrollment/create challenges and credential-
+  management/get assertions from issuer-approval challenges. It designs unique
+  terminal consumption, exact principal/SID/credential binding, mandatory
+  lifecycle-event authorization, union append-only counter reconstruction,
+  operation-chain concurrency and no-recovery fail-closed behavior.
+- Corrected the earlier feasibility note: issuer `SUPERSEDED` is not a current
+  schema blocker. Existing `0005` can represent separately authenticated old
+  `SUPERSEDED` and successor `APPROVED` link versions atomically with a guarded
+  final head CAS.
+- Runtime, test, script, frontend, dependency, and migration changes are `0`.
+  Migrations `0001`–`0005` remain byte-identical, `0006` creation/application is
+  `0`, and no real Windows Hello enrollment, approval, canonical/link write, or
+  live authority/Toss request occurred.
+- CP3-C2-B2-C remains
+  `BLOCKED — SCHEMA CONTRACT GAP / SCHEMA REMEDIATION AWAITING GPT INDEPENDENT
+  REVIEW`. B2-D, CP3-C2-C and CP3-D remain `NOT STARTED`; automatic progression
+  remains `PROHIBITED`.
+
 ## Unreleased — Phase 2 CP3-C2-B2-B Issuer Authority Decision Engine — 2026-08-27
 
 ### Documentation closeout

@@ -1,27 +1,29 @@
 # Project Status
 
-- 프로젝트 상태: `PHASE 2 IMPLEMENTATION IN PROGRESS — CP2 COMPLETE / CP3-A PASS — CONTRACT APPROVED AND CLOSED / CP3-B PASS — CLOSED / CP3-C1 PASS — CLOSED / CP3-C2-A PASS — CONTRACT APPROVED AND CLOSED / CP3-C2-B1 PASS — CONTRACT APPROVED AND CLOSED / CP3-C2-B IMPLEMENTATION IN PROGRESS / CP3-C2-B2-A PASS — CLOSED / CP3-C2-B2-B PASS — CLOSED / CP3-C2-B2-C·B2-D NOT STARTED / CP3-C2-C NOT STARTED / CP3-D NOT STARTED`
-- 현재 Phase: `Phase 2 — CP3-C2-B2-A PASS — CLOSED; CP3-C2-B2-B PASS — CLOSED; CP3-C2-B implementation IN PROGRESS; CP3-C2-B2-C NOT STARTED`
+- 프로젝트 상태: `PHASE 2 IMPLEMENTATION IN PROGRESS — CP2 COMPLETE / CP3-A PASS — CONTRACT APPROVED AND CLOSED / CP3-B PASS — CLOSED / CP3-C1 PASS — CLOSED / CP3-C2-A PASS — CONTRACT APPROVED AND CLOSED / CP3-C2-B1 PASS — CONTRACT APPROVED AND CLOSED / CP3-C2-B IMPLEMENTATION IN PROGRESS / CP3-C2-B2-A PASS — CLOSED / CP3-C2-B2-B PASS — CLOSED / CP3-C2-B2-C BLOCKED — SCHEMA CONTRACT GAP / CP3-C2-B2-D NOT STARTED / CP3-C2-C NOT STARTED / CP3-D NOT STARTED`
+- 현재 Phase: `Phase 2 — CP3-C2-B2-A PASS — CLOSED; CP3-C2-B2-B PASS — CLOSED; CP3-C2-B implementation IN PROGRESS; CP3-C2-B2-C BLOCKED — SCHEMA CONTRACT GAP / SCHEMA REMEDIATION AWAITING GPT INDEPENDENT REVIEW`
 - 현재 버전: `0.1.0`
 - Phase 1 최종 검증 commit: `57b2a63ead06d03191d8094e1689b8d2ab3d7764`
 - Phase 1 PR: `#1`
 - Phase 1 merge commit: `b1829a7375704271a21267e1fcf62808147be593`
 - Release baseline tag: `v0.1.0`
-- 최종 QA일: `2026-08-27 (CP3-C2-B2-B documentation closeout local safety verification)`
+- 최종 QA일: `2026-08-28 (CP3-C2-B2-C schema-remediation documentation local safety verification)`
 - 실제 API 연결: `CP2-D2 one-shot PASS — OAuth + GET /api/v1/stocks만 검증`
 - 실제 주문 기능: `비활성 / 비범위`
 - OpenAI API 사용: `아니오`
-- Phase 2 상태: `CP1 PASS / CP2 COMPLETE / CP3-A PASS — CONTRACT APPROVED AND CLOSED / CP3-B PASS — CLOSED / CP3-C1 PASS — CLOSED / CP3-C2-A PASS — CONTRACT APPROVED AND CLOSED / CP3-C2-B1 PASS — CONTRACT APPROVED AND CLOSED / CP3-C2-B IMPLEMENTATION IN PROGRESS / CP3-C2-B2-A PASS — CLOSED / CP3-C2-B2-B PASS — CLOSED / CP3-C2-B2-C·B2-D NOT STARTED / CP3-C2-C NOT STARTED / CP3-D NOT STARTED`
+- Phase 2 상태: `CP1 PASS / CP2 COMPLETE / CP3-A PASS — CONTRACT APPROVED AND CLOSED / CP3-B PASS — CLOSED / CP3-C1 PASS — CLOSED / CP3-C2-A PASS — CONTRACT APPROVED AND CLOSED / CP3-C2-B1 PASS — CONTRACT APPROVED AND CLOSED / CP3-C2-B IMPLEMENTATION IN PROGRESS / CP3-C2-B2-A PASS — CLOSED / CP3-C2-B2-B PASS — CLOSED / CP3-C2-B2-C BLOCKED — SCHEMA CONTRACT GAP / CP3-C2-B2-D NOT STARTED / CP3-C2-C NOT STARTED / CP3-D NOT STARTED`
 - CP3-B: `PASS — CLOSED`
 - CP3-C1: `PASS — CLOSED`
 - CP3-C2-A: `PASS — CONTRACT APPROVED AND CLOSED`
 - ADR-013: `ACCEPTED`
 - ADR-014: `ACCEPTED`
+- ADR-015: `PROPOSED`
 - CP3-C2-B1: `PASS — CONTRACT APPROVED AND CLOSED`
 - CP3-C2-B implementation: `IN PROGRESS`
 - CP3-C2-B2-A: `PASS — CLOSED`
 - CP3-C2-B2-B: `PASS — CLOSED`
-- CP3-C2-B2-C: `NOT STARTED`
+- CP3-C2-B2-C:
+  `BLOCKED — SCHEMA CONTRACT GAP / SCHEMA REMEDIATION AWAITING GPT INDEPENDENT REVIEW`
 - CP3-C2-B2-D: `NOT STARTED`
 - CP3-C2-C: `NOT STARTED`
 - CP3-D: `NOT STARTED`
@@ -150,7 +152,11 @@
 - [x] B2-B third remediation targeted 89, B2-A authority 69, backend exact inventory/full run 702
 - [x] CP3-C2-B2-B GPT independent re-review of SHA `d81148636c237ac8ab6b85e930d3926fae19c855`: `PASS WITH CLOSEOUT CONDITION`, P0 0 / P1 0 / P2 1 non-blocking; P1-01~P1-09 CLOSED
 - [x] CP3-C2-B2-B documentation closeout와 `PASS — CLOSED`
-- [ ] CP3-C2-B2-C 별도 시작 승인
+- [x] CP3-C2-B2-C 별도 시작 승인과 implementation-entry schema audit
+- [x] SG-01 first-enrollment bootstrap relational gap 확인
+- [x] SG-02 credential-management reauthentication/counter relational gap 확인
+- [x] ADR-015 및 additive future-`0006` schema-remediation proposal 작성
+- [ ] CP3-C2-B2-C schema remediation GPT independent review/사용자 승인
 - [ ] CP3-C2-B2-D 별도 시작 승인
 - [ ] CP3-C2-C 별도 시작 승인
 - [ ] CP3-D 별도 시작 승인
@@ -182,6 +188,26 @@ CP3-C2-B1은 accepted ADR-013을 변경하지 않고 issuer-authority runtime co
 SHA `8093ee9389d4f7ae716482a87de5eae252e08eff`의 second independent re-review는 P1-01~P1-07을 `CLOSED`로 확인하고 P1-08/P1-09를 새로 제기했다. Third remediation은 official decisive legal-name history의 모든 component를 KR IROS exact `corporate_registration_reference`/`jurir_no` 또는 US exact state-registry namespace·formation state·`state_entity_number` companion evidence에 독립적으로 bind한다. Relation edge, source namespace, name, role, insertion order 또는 provider name/symbol만으로 subject sameness를 인정하지 않는다. 모든 relevant OpenDART/accepted SEC supporting legal name은 exact current decisive name이거나 동일 field-owner legal entity의 immutable `CORRECTS`/`SUPERSEDES` history에 포함돼야 하며, 설명되지 않은 이름 하나 또는 cross-entity history가 있으면 conflict다. Provider name/ticker, fuzzy/case/punctuation/suffix/whitespace normalization은 계속 zero authority이고 historical filing age는 latest-status freshness와 분리된다. Third-remediation LOCAL self-QA는 targeted `89`, B2-A authority `69`, backend `702`, frontend `43`, E2E `2`를 통과했다. Migrations `0001`~`0005`, generic production admission/READY fail-closed, `BEGIN IMMEDIATE`, 모든 zero counter와 later-checkpoint 금지는 유지된다.
 
 GPT independent review of SHA `d81148636c237ac8ab6b85e930d3926fae19c855` returned `PASS WITH CLOSEOUT CONDITION`, P0 `0`, P1 `0`, P2 `1` non-blocking, and closed P1-01 through P1-09. CP3-C2-B2-B is therefore `PASS — CLOSED`. Production authority admission and generic READY remain fail closed; the machine maximum positive state remains `READY_FOR_MANUAL_REVIEW`; the engine-owned UTC clock, complete current-state discovery, exact KR/US issuer bridge, same-subject legal-name history, all-supporting-name reconciliation, collision handling and impacted-READY invalidation remain active. This documentation closeout changes no implementation and does not authorize B2-C. CP3-C2-B implementation remains `IN PROGRESS`; B2-C/B2-D, CP3-C2-C and CP3-D remain `NOT STARTED`; automatic progression remains `PROHIBITED`.
+
+사용자는 이후 CP3-C2-B2-C 시작을 명시 승인했지만, starting SHA
+`60f2805d2390c91a026b3381877006be9000dedb`의 accepted B1 contract와 frozen
+`0005`를 implementation-entry 단계에서 재대조한 결과 runtime 구현 전에 두
+schema blocker가 확인됐다. SG-01은 유효한 credential이 존재하기 전
+server-created Windows-owner-SID-bound first-enrollment bootstrap, WebAuthn
+create challenge, finite expiry와 실패 포함 unique terminal consumption을
+관계형으로 보존할 table/FK가 없다는 점이다. SG-02는 existing
+`reviewer_authentication_events`가 issuer decision/bundle/disposition에 필수
+결합되어 active credential의 `ADD_CREDENTIAL`/`REPLACE_CREDENTIAL` fresh
+assertion과 counter advancement를 정직하게 기록할 수 없다는 점이다.
+`payload_json`, process/browser memory, fake issuer challenge 또는 synthetic
+credential은 허용되지 않는다. 2차 검증은 issuer `SUPERSEDED`를 blocker에서
+제외했다. ADR-015는 existing table rebuild 없이 six append-only
+credential-operation ledger tables와 exact additive indexes/guards를 제안하지만
+현재 `PROPOSED`다. `0001`–`0005` 변경과 `0006` 생성/적용, runtime/test/
+frontend/dependency 변경, real credential/approval/canonical/link/live request는
+모두 `0`이다. 따라서 B2-C는 `BLOCKED — SCHEMA CONTRACT GAP / SCHEMA
+REMEDIATION AWAITING GPT INDEPENDENT REVIEW`이고 B2-D/CP3-C2-C/CP3-D는
+`NOT STARTED`, automatic progression은 `PROHIBITED`다.
 
 `[LIVE_VERIFIED]` 범위는 canonical provider contract, actual OAuth token issuance와 credential acceptance, allowed-IP 실행 경로, actual `GET /api/v1/stocks` 구조, 성공 응답의 Limit/Remaining/Reset header다. natural 429 `Retry-After`, actual 429/5xx, production retry timing, 나머지 Phase 2 market endpoint, CP3 이후 데이터 semantics/freshness는 계속 `[LIVE_UNVERIFIED]`다. Phase 2 전체 완료나 CP3 시작을 의미하지 않는다.
 

@@ -877,6 +877,113 @@ migration file 생성·적용 모두 0이다.
 
 ---
 
+## ADR-015 — WebAuthn Enrollment and Credential-Operation Ledger Amendment
+
+- 상태: `PROPOSED`
+- 제안일: `2026-08-28`
+- 결정일: 없음
+- 상세 설계:
+  `plans/PHASE_02_CP3_C2_B2_C_SCHEMA_REMEDIATION.md`
+
+### 문제
+
+사용자가 CP3-C2-B2-C 시작을 별도로 승인했지만, authoritative starting SHA
+`60f2805d2390c91a026b3381877006be9000dedb`의 frozen `0005`를 B1 runtime
+contract와 대조한 결과 구현 전에 두 schema blocker가 확인됐다.
+
+- SG-01: `reviewer_principals`와 credential/event table은 존재하지만, 유효한
+  credential이 생기기 전 server-created Windows-owner-SID-bound first-enrollment
+  bootstrap, WebAuthn create challenge, expiry와 실패를 포함한 exactly-one
+  terminal consumption을 관계형으로 기록할 수 없다.
+- SG-02: 기존 `reviewer_authentication_events`는 issuer approval challenge,
+  decision, bundle과 issuer disposition에 필수 결합되어 있다. 따라서 active
+  credential의 fresh assertion이 `ADD_CREDENTIAL`/`REPLACE_CREDENTIAL`을
+  승인했다는 사실과 그 assertion의 signature-counter advancement를 issuer
+  disposition을 위조하지 않고 기록할 수 없다.
+
+`payload_json`, process memory, browser storage, fake issuer decision/challenge,
+synthetic credential row 또는 caller SID는 이 공백을 메우는 권한 근거가
+아니다.
+
+독립 2차 검증은 issuer `SUPERSEDED`를 schema blocker에서 제외했다. 기존
+`0005`는 old `APPROVED -> SUPERSEDED -> successor APPROVED` link sequence를
+두 개의 별도 authenticated disposition과 하나의 `BEGIN IMMEDIATE` transaction/
+최종 head CAS로 표현할 수 있다.
+
+### 제안
+
+- 옵션 A를 선택한다: 기존 `0005` table을 rebuild/alter하지 않고 future
+  `0006_phase_02_cp3_c2_b2_c_reviewer_operations`가 여섯 개의 append-only
+  table을 additive로 제안한다.
+  - `reviewer_credential_operations`
+  - `reviewer_credential_operation_challenges`
+  - `reviewer_credential_operation_challenge_consumptions`
+  - `reviewer_credential_operation_authentication_events`
+  - `reviewer_webauthn_credential_event_authorizations`
+  - `reviewer_credential_operation_outcomes`
+- Operation은 `FIRST_ENROLLMENT|ADD_CREDENTIAL|REPLACE_CREDENTIAL|
+  REVOKE_CREDENTIAL`만 허용한다. Recovery/reset/force/override는 없다.
+- Challenge purpose는 `REGISTRATION_CREATE`와
+  `AUTHORIZATION_ASSERTION`으로 issuer approval과 별도 type/FK namespace를
+  사용한다. Fresh 32-byte OS-CSPRNG challenge digest/binding, exact
+  principal/role/SID/state/RP/origin/policy와 5분 이하 expiry를 저장한다.
+- Challenge consumption FK를 unique로 두어 성공/실패 모두 정확히 한 번
+  terminal consumption한다.
+- Credential-operation authentication event는 same-principal active public
+  credential, exact signature/RP/origin/UP/UV와 nullable prior/asserted counter를
+  관계형 열로 보존한다. Current counter column은 만들지 않는다.
+- Counter reconstruction은 immutable registration count에서 시작해 issuer
+  approval authentication과 credential-operation authentication의 relational
+  `VERIFIED` rows를 합친 one linear chain으로 수행한다. Additive insert guards가
+  equality/rollback/gap/fork와 동시 writer를 fail closed한다.
+- 기존 `reviewer_webauthn_credentials` 및 credential lifecycle event의 future
+  insert는 deferred exact proof row와 insert guard를 요구한다.
+  `REGISTERED|REVOKED|SUPERSEDED` event마다 성공한 bootstrap/operation
+  authorization이 정확히 하나 연결된다.
+- One active steward, exact principal/SID composite FK, one operation root,
+  unique predecessor child, exact credential-event root/subject와 operation
+  outcome state hashes를 additive unique index/trigger로 검증한다.
+- 모든 새 table은 append-only다. Private key, PIN, biometric, password,
+  cookie, bearer token, raw challenge nonce와 reusable Windows credential은
+  저장하지 않는다.
+
+### 대안
+
+- `0005` reviewer/authentication table rebuild: 거부. 이미 승인된 issuer
+  disposition 의미와 credential administration 의미를 섞고 migration 위험을
+  늘린다.
+- Existing table rebuild와 new table 조합: 거부. Deferred companion FK와
+  additive insert guard로 mandatory authorization을 검증할 수 있어 rebuild가
+  불필요하다.
+- JSON/in-memory-only bootstrap 또는 issuer challenge 재사용: 거부. Terminal
+  consumption, FK purpose separation, restart/concurrency audit와 counter chain을
+  증명하지 못한다.
+
+### 영향
+
+- ADR-013과 ADR-014의 역사적 의미와 `0001`–`0005` byte content는 바뀌지
+  않는다.
+- ADR-015는 아직 `PROPOSED`이며 migration/runtime 권한이 아니다.
+- CP3-C2-B2-C는 `BLOCKED — SCHEMA CONTRACT GAP / SCHEMA REMEDIATION
+  AWAITING GPT INDEPENDENT REVIEW`다.
+- CP3-C2-B2-D, CP3-C2-C와 CP3-D는 `NOT STARTED`이고 automatic progression은
+  `PROHIBITED`다.
+- GitHub CI execution evidence 부재는 non-blocking P2이며 LOCAL 문서 검사는
+  GitHub CI evidence가 아니다.
+
+### 마이그레이션·롤백
+
+- 이 문서 작업에서 `0006` 파일 생성/적용은 `0`이다.
+- Future `0006`은 exact down revision
+  `0005_phase_02_cp3_c2_b_issuer_authority`를 사용하고 table rebuild 없이 새
+  table/index/trigger만 추가한다.
+- Upgrade는 `0001`–`0005` hash, object collision, unexpected pre-existing
+  reviewer lineage를 fail closed로 검사하며 synthetic backfill을 금지한다.
+- Downgrade는 disposable empty ledger에서만 새 object를 역순 제거한다.
+  Non-empty audit ledger의 destructive downgrade는 별도 승인 없이 거부한다.
+
+---
+
 ## 새 결정 기록 양식
 
 ```md

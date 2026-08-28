@@ -17,7 +17,9 @@
 - Current implementation status: `IN PROGRESS`
 - CP3-C2-B2-A: `PASS — CLOSED`
 - CP3-C2-B2-B: `PASS — CLOSED`
-- CP3-C2-B2-C / B2-D: `NOT STARTED`
+- CP3-C2-B2-C:
+  `BLOCKED — SCHEMA CONTRACT GAP / SCHEMA REMEDIATION AWAITING GPT INDEPENDENT REVIEW`
+- CP3-C2-B2-D: `NOT STARTED`
 - Migration implementation: additive `0005` implemented in B2-A; production
   database application `0`
 - Automatic checkpoint progression: `PROHIBITED`
@@ -1564,7 +1566,8 @@ contract or retroactively broaden the B1 closeout approval.
 - Additive `0005_phase_02_cp3_c2_b_issuer_authority`: implemented and exercised
   only against disposable QA databases; persistent production application `0`
 - CP3-C2-B2-B: `PASS — CLOSED`
-- CP3-C2-B2-C: `NOT STARTED`
+- CP3-C2-B2-C:
+  `BLOCKED — SCHEMA CONTRACT GAP / SCHEMA REMEDIATION AWAITING GPT INDEPENDENT REVIEW`
 - CP3-C2-B2-D: `NOT STARTED`
 - CP3-C2-C: `NOT STARTED`
 - CP3-D: `NOT STARTED`
@@ -1651,3 +1654,37 @@ invalidation remain unchanged. This documentation-only closeout does not alter
 the approved B1 technical meaning or authorize B2-C/B2-D, CP3-C2-C, CP3-D, or
 automatic progression. GitHub CI execution evidence remains absent and is a
 non-blocking P2; LOCAL Codex evidence is not GitHub CI evidence.
+
+## 20. B2-C implementation-entry schema amendment note — non-normative
+
+The user subsequently authorized CP3-C2-B2-C entry. A read-only implementation-
+entry audit at starting SHA
+`60f2805d2390c91a026b3381877006be9000dedb` found that implemented `0005` does
+not relationally represent two requirements already present in this accepted
+contract:
+
+1. the server-created, Windows-owner-SID-bound, single-use first-enrollment
+   bootstrap with finite create-challenge expiry and one terminal consumption
+   before a credential exists; and
+2. a fresh existing-credential assertion authorizing add/replace lifecycle
+   events, with that assertion participating in append-only counter
+   reconstruction independently from issuer dispositions.
+
+This discovery does not weaken or reopen ADR-014. It identifies an
+implementation-discovered additive schema omission. ADR-015 and
+`plans/PHASE_02_CP3_C2_B2_C_SCHEMA_REMEDIATION.md` therefore propose a future
+additive `0006` with separate credential-operation challenge, consumption,
+authentication, lifecycle-authorization, and outcome relations. ADR-015 remains
+`PROPOSED`. This documentation task creates/applies no migration and implements
+no WebAuthn or approval runtime.
+
+The second verification does not treat issuer `SUPERSEDED` as a schema blocker:
+two separately authenticated dispositions can append old `SUPERSEDED` and
+successor `APPROVED` link versions atomically before the final guarded head CAS.
+
+- CP3-C2-B2-C:
+  `BLOCKED — SCHEMA CONTRACT GAP / SCHEMA REMEDIATION AWAITING GPT INDEPENDENT REVIEW`
+- ADR-015: `PROPOSED`
+- Migration `0006` created/applied: `0`
+- CP3-C2-B2-D / CP3-C2-C / CP3-D: `NOT STARTED`
+- Automatic progression: `PROHIBITED`

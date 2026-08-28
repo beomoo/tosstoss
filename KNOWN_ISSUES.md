@@ -84,6 +84,32 @@
 - 영향: 랜덤 self-canary의 재현성에 관한 비차단 QA infrastructure P2다. repository secret 노출이나 CP3-C1 기능 결함의 증거는 확인되지 않았다.
 - 현재 대응: scanner source, threshold, filter, scope를 변경하지 않는다. self-report의 exact entropy 설명은 GPT가 독립적으로 검증하지 않았으며 확립된 원인으로 기록하지 않는다. 근본 원인은 미검증 상태로 별도 QA infrastructure 조사에 이월한다.
 
+## KI-015 — CP3-C2-B2-C WebAuthn enrollment/credential-operation schema gap
+
+- 상태:
+  `OPEN — ADR-015 PROPOSED / SCHEMA REMEDIATION AWAITING GPT INDEPENDENT REVIEW`
+- 관찰: CP3-C2-B2-C implementation-entry audit에서 frozen `0005`가 valid
+  credential 이전의 server-created SID-bound first-enrollment bootstrap,
+  WebAuthn create challenge, expiry와 실패 포함 unique terminal consumption을
+  관계형으로 표현하지 못한다. Existing `reviewer_authentication_events`는
+  issuer decision/bundle/disposition에 강제 결합되어 credential add/replace
+  fresh assertion과 그 counter advancement를 credential-operation authority로
+  기록할 수 없다.
+- 영향: Windows Hello enrollment, credential lifecycle authorization과 human
+  issuer approval runtime은 구현을 시작할 수 없다. `payload_json`, process/
+  browser memory, fake issuer challenge, synthetic credential 또는
+  unauthenticated recovery로 우회하면 accepted B1/ADR-014 trust root를
+  위반한다.
+- 현재 대응:
+  `plans/PHASE_02_CP3_C2_B2_C_SCHEMA_REMEDIATION.md`와 ADR-015가 table rebuild
+  없는 additive future `0006` operation/challenge/consumption/authentication/
+  authorization/outcome ledger를 제안한다. ADR-015는 `PROPOSED`이고 `0006`
+  creation/application 및 B2-C runtime은 `0`이다. GPT independent review와
+  explicit user acceptance 전에는 B2-C를 재개하지 않는다.
+- 비차단 정정: issuer `SUPERSEDED`는 현재 schema blocker가 아니다. Existing
+  `0005`의 separate authenticated events와 linear link history로 atomic old
+  supersession/successor approval/head CAS를 표현할 수 있다.
+
 ## KI-010 — Windows non-ASCII 개발·QA 저장소 경로의 editable install 실패
 
 - 상태: `P2 DEFERRED — ENVIRONMENT CONSTRAINT`
