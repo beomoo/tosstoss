@@ -13,7 +13,15 @@
 7. 모든 판단의 출처, 기준일, 수정 이력, 미확인 항목 표시
 8. ChatGPT Plus에서 후속 추론에 사용할 분석 패킷 생성
 
-현재 목표는 **투자 판단을 보조하는 읽기 전용 연구 시스템**이며, 실제 주문 시스템이 아니다.
+현재 구현 목표는 **로컬 Windows 환경에서 투자 판단을 보조하는 읽기 전용 연구 시스템**이며, 실제 주문 시스템이 아니다.
+
+장기 제품 방향은 다음 세 단계로 구분한다.
+
+1. 로컬·비공개 분석 개발과 안정화
+2. 별도 승인된 공개 읽기 전용 대시보드
+3. 별도 승인된 미래 자동매매
+
+두 미래 단계는 현재 로드맵의 자동 진입점이 아니며, 읽기 전용 v1.0 완료 조건에도 포함하지 않는다.
 
 ---
 
@@ -26,7 +34,8 @@
 - 유료 시세·컨센서스: 사용하지 않음
 - 운영 환경: Windows 개인 PC 우선
 - 저장소: 비공개 GitHub 권장
-- 배포: `localhost` 우선
+- 현재 배포: `localhost` 전용, `LOCAL_ONLY=true`
+- 미래 공개 배포: 별도 `Public Read-only Deployment` 체크포인트 승인 전 금지
 
 ---
 
@@ -189,14 +198,61 @@ revision_status: ORIGINAL | AMENDED | SUPERSEDED | MERGED
 - 6~18개월 손익비
 - 원문 규칙 검증 후 단계적 적용
 
-### Future — 별도 승인 필요
+### Future — Public Read-only Deployment
+
+- 상태: `FUTURE / NOT AUTHORIZED / NOT STARTED`
+- 익명 인터넷 사용자는 명시적으로 승인된 public-safe 분석 결과만 읽을 수 있다.
+- 내부 데이터와 처리 결과를 privileged operational table에서 직접 공개하지 않고 public-safe projection/read model 또는 snapshot 경계를 거쳐 제공한다.
+- mutation, owner/admin, canonical identity approval, source admission, task control, secret, account, unrestricted storage와 trading capability는 공개 표면에서 제외한다.
+- read-only 권한은 숨겨진 UI가 아니라 서버·서비스 경계에서 강제한다.
+- 공개 표면의 침해가 `OWNER / ADMIN` 또는 `TRADING` 권한과 직접 실행 경로를 자동으로 제공하지 않도록 신뢰 도메인을 분리한다.
+- 호스팅, 도메인, 프록시, VPN, 클라우드와 배포 기술은 이 계획에서 선택하지 않는다.
+
+```text
+INTERNAL DATA / PROCESSING
+        |
+        v
+PUBLIC-SAFE PROJECTION / READ MODEL
+        |
+        v
+PUBLIC READ-ONLY API / UI
+        |
+        v
+ANY INTERNET VIEWER
+```
+
+### Future — Automated Trading
+
+- 상태: `FUTURE / NOT AUTHORIZED / NOT STARTED`
+- 실제 주문과 자동매매는 읽기 전용 v1.0의 완료 범위가 아닌 별도 보안·위험관리 프로젝트다.
+- AI/Codex는 broker authority가 아니라 **untrusted order-intent producer**다.
+- 주문 의도는 우회할 수 없는 deterministic risk policy engine을 통과한 뒤 별도 trade executor만 broker API를 호출할 수 있다.
+- AI/Codex는 무제한 증권사 자격증명을 소유하거나 자신의 위험 한도를 변경할 수 없다.
+- 미래 Trading ADR은 master enable/disable, 주문·일일 금액 한도, 허용 종목, 포지션 노출, 주문 수·속도, 주문 유형, 가격·슬리피지 보호, 시장 세션, 중복·멱등성, stale-data 차단, 불변 감사, kill switch와 broker/API 오류 fail-closed를 다뤄야 한다.
+- 거래 활성화, 금액 한도 상향, 허용 종목 확대, 제한 완화와 kill-state 복구는 강한 인간 권한을 요구한다.
+
+```text
+AI / Codex
+    |
+    v
+Order Intent
+    |
+    v
+Deterministic Risk Policy Engine
+    |
+    v
+Trade Executor
+    |
+    v
+Broker API
+```
+
+### Future — 기타 별도 승인 후보
 
 - 가상 포트폴리오
 - 모의주문
-- 실제 주문
-- 자동매매
 
-실제 주문 기능은 본 계획의 기본 완료 범위가 아니며 별도 보안·위험관리 프로젝트로 분리한다.
+미래 항목은 별도 체크포인트와 명시적 승인 없이는 현재 Phase에 삽입하거나 구현하지 않는다.
 
 ---
 
@@ -264,3 +320,22 @@ revision_status: ORIGINAL | AMENDED | SUPERSEDED | MERGED
 - 매크로 변화의 기업 영향 경로와 반론 표시
 - 분석 결과를 ChatGPT Plus용 구조화 패킷으로 내보내기
 - 소스 오류나 지연을 숨기지 않고 데이터 품질 화면에 표시
+
+이 기준은 현재 로컬 읽기 전용 v1.0 기준이다. 공개 인터넷 배포와 자동매매는 포함하지 않는다.
+
+---
+
+## 9. 장기 신뢰 도메인
+
+```text
+PUBLIC
+  anonymous viewer -> approved public-safe analytical output, READ ONLY
+
+OWNER / ADMIN
+  trusted human -> privileged administration and approval
+
+TRADING
+  future deterministic execution authority inside a human-approved risk envelope
+```
+
+`PUBLIC`은 누구나 승인된 출력물을 읽을 수 있다는 뜻이지 애플리케이션 내부에 접근할 수 있다는 뜻이 아니다. `OWNER / ADMIN`은 canonical identity 승인, 보안 설정과 미래 거래 안전 통제를 담당한다. `TRADING`은 별도 승인된 bounded execution 도메인이며 공개 열람이나 AI 실행 자체에서 파생되지 않는다.

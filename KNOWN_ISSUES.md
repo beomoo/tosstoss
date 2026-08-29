@@ -161,10 +161,10 @@
 - 영향: 현재 Windows 개발·QA repository path는 ASCII-only 사용을 권장하며, 재현 가능한 setup portability 제약이다. Toss runtime·OAuth·rate-limit·business logic에 영향을 준 증거는 없다.
 - 현재 대응: ASCII-only clone path를 사용한다. CP2 completion blocker나 unresolved functional defect로 보지 않고, 향후 setup portability hardening 후보로 이월한다.
 
-## KI-016 — WebAuthn runtime schema and Windows provenance gap
+## KI-016 — WebAuthn runtime schema and human-authority amendment gate
 
 - 상태: `P1 BLOCKING — ADR-017 ACCEPTED /
-  ADR-018 ACCEPTED / ADR-019 ON HOLD / AWAITING SEPARATE USER DECISION`
+  ADR-018 ACCEPTED / ADR-019 PROPOSED — AWAITING GPT REVIEW / USER ACCEPTANCE`
 - 관찰: R1 pre-implementation audit에서 accepted ADR-015/ADR-016 schema가
   `principal_content_hash`, `credential_content_hash`, deterministic COSE_Key
   bytes/TEXT, raw challenge digest/binding, operation/issuer authentication
@@ -206,15 +206,18 @@
   transaction과 `PRAGMA foreign_key_check`를 통과했고 임시 파일은 삭제됐다.
   Production R1은 기존 `PROJECT_ROOT/var/dashboard.db`만 authority path로
   인정하고 directory OWNER SID와 process `TOKEN_USER`를 `EqualSid`로 비교한
-  뒤에만 SID hash를 만든다. ADR-019는 strict Hello provenance, honest weaker
-  Windows-platform property, stronger Windows-native architecture를 비교하되
-  아무 옵션이나 trust root도 선택하지 않는다.
+  뒤에만 SID hash를 만든다. Revised ADR-019는 authenticator vendor/product
+  identity를 authority에서 제외하고, previously registered trusted human
+  credential의 fresh cryptographically verified WebAuthn assertion을 제안한다.
+  이는 strict Microsoft Windows Hello provenance requirement만 amendment하며
+  exact RP/origin/challenge/UV/credential/counter/audit, first enrollment와 SID
+  ownership control을 약화하지 않는다.
 - 해제 조건: ADR-017/ADR-018은 이미 채택되었으므로
-  ADR-019가 GPT review된 뒤 사용자가 필요한 ADR을 explicit `ACCEPTED`로
+  revised ADR-019가 GPT review된 뒤 사용자가 explicit `ACCEPTED`로
   결정해야 한다. 이후에도 future `0007`과 R1 runtime은 각각 별도 승인해야
   한다. Codex는 어느 ADR도 self-accept하지 않는다.
 - 현재 gate: ADR-015/ADR-016 `ACCEPTED`, `0006 PASS — CLOSED`, ADR-017
   `ACCEPTED`, ADR-018 `ACCEPTED`, ADR-019
-  `PROPOSED — ON HOLD / AWAITING SEPARATE USER DECISION`, R1 `NOT STARTED /
+  `PROPOSED — AWAITING GPT REVIEW / USER ACCEPTANCE`, R1 `NOT STARTED /
   BLOCKED`, future `0007` `NOT CREATED / NOT AUTHORIZED`, later
   checkpoints `NOT STARTED`, automatic progression `PROHIBITED`.

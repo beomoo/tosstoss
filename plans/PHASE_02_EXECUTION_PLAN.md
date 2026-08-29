@@ -1,7 +1,7 @@
 # Phase 2 토스증권 읽기 전용 데이터 실행계획
 
 - 계획 상태: `PHASE 2 IMPLEMENTATION IN PROGRESS`
-- Current checkpoint: `CP3-C2-B2-A PASS — CLOSED / CP3-C2-B2-B PASS — CLOSED / CP3-C2-B IMPLEMENTATION IN PROGRESS / ADR-015 ACCEPTED / ADR-016 ACCEPTED / ADR-017 ACCEPTED / ADR-018 ACCEPTED / ADR-019 PROPOSED — ON HOLD / AWAITING SEPARATE USER DECISION / CP3-C2-B2-C 0006 PASS — CLOSED / B2-C R1 NOT STARTED — BLOCKED — ADR-019 DECISION REQUIRED`
+- Current checkpoint: `CP3-C2-B2-A PASS — CLOSED / CP3-C2-B2-B PASS — CLOSED / CP3-C2-B IMPLEMENTATION IN PROGRESS / ADR-015 ACCEPTED / ADR-016 ACCEPTED / ADR-017 ACCEPTED / ADR-018 ACCEPTED / ADR-019 PROPOSED — AWAITING GPT REVIEW / USER ACCEPTANCE / CP3-C2-B2-C 0006 PASS — CLOSED / B2-C R1 NOT STARTED — BLOCKED — ADR-019 DECISION REQUIRED`
 - 최초 작성·공식 문서 조사일: `2026-08-23` (`Asia/Seoul`)
 - 현재 상태 갱신일: `2026-08-29` (`Asia/Seoul`)
 - 기준 브랜치: `feature/phase-02-toss`
@@ -30,7 +30,7 @@
 - ADR-016: `ACCEPTED` (`2026-08-28`)
 - ADR-017: `ACCEPTED` (`2026-08-29`)
 - ADR-018: `ACCEPTED` (`2026-08-29`)
-- ADR-019: `PROPOSED — ON HOLD / AWAITING SEPARATE USER DECISION` (`2026-08-29`),
+- ADR-019: `PROPOSED — AWAITING GPT REVIEW / USER ACCEPTANCE` (`2026-08-29`),
   decision date `NONE`
 - `0006`: `PASS — CLOSED`
 - B2-C WebAuthn/human-approval runtime:
@@ -40,7 +40,13 @@
 - CP3-C2-B2-D: `NOT STARTED`
 - CP3-C2-C: `NOT STARTED`
 - CP3-D: `NOT STARTED`
+- Public Read-only Deployment: `FUTURE / NOT AUTHORIZED / NOT STARTED`
+- Automated Trading: `FUTURE / NOT AUTHORIZED / NOT STARTED`
 - Phase 2: `IMPLEMENTATION IN PROGRESS`
+
+Public Read-only Deployment and Automated Trading are outside Phase 2 and do
+not alter any current checkpoint meaning. Current Phase 2 remains
+`LOCAL_ONLY=true`, `TRADING_ENABLED=false`, and `DRY_RUN=true`.
 
 CP3-A는 `plans/PHASE_02_CP3_A_CONTRACT.md`를 중심으로 Security Master와 Current Price의 planning/contract를 확정한 documentation checkpoint다. CP3-B는 provider source/identity foundation과 독립검증 hardening/documentation closeout을 마쳐 `PASS — CLOSED`다. CP3-C1은 별도 사용자 승인에 따라 strict `/stocks/all`·`/stocks` offline DTO/fixture, conservative universe, continuity-first identity reconciliation, append-only enrichment/lifecycle, collision quarantine, partial-detail audit와 deterministic replay를 additive `0004`로 구현했다. GPT independent review의 P1 두 건에 따라 current identifier를 ID/hash가 아닌 semantic current set으로 해석하고, complete detail response의 duplicate ISIN을 publish 전에 batch-level로 quarantine하도록 보완했다. GPT independent re-review/documentation closeout 뒤 CP3-C1은 `PASS — CLOSED`다. CP3-C2-A는 current public OpenDART/KRX/SEC/primary-exchange/CGS authority와 access/licensing boundary를 조사해 field-owned evidence bundle, fail-closed default, manual final approval과 CP3-C2-B issuer/CP3-C2-C security split을 제안하는 documentation-only checkpoint다. GPT independent review의 P1 두 건에 따라 KRX market과 legal jurisdiction을 분리하고 SEC registrant CIK를 accession/login/agent CIK provenance와 분리했으며, P2 24시간 기준은 repository policy로 명시했다. GPT independent re-review `PASS WITH CLOSEOUT CONDITION`, P0 0 / P1 0과 사용자 승인으로 ADR-013은 `ACCEPTED`, CP3-C2-A는 `PASS — CONTRACT APPROVED AND CLOSED`다. CP3-C2-B1 첫 independent review는 P0 0 / P1 4 / P2 1로 trust root, exact jurisdiction owner, provenance/application, source admission/acceptance 보완을 요구했다. Revised documentation-only contract는 Windows Hello WebAuthn, KR court/US formation-state registry, immutable EvidenceApplication/SourcePolicy, permanent fixture isolation과 expanded counters를 설계했다. SHA `f3a7a3c4cc99de9cd9656544c1b29e3d03df6911`의 GPT independent re-review는 `PASS WITH CLOSEOUT CONDITION`, P0 0 / P1 0으로 P1-01~P1-04를 모두 `CLOSED` 판정했고 사용자가 revised contract와 ADR-014를 documentation closeout 범위로 승인했다. 따라서 ADR-014는 `ACCEPTED`, CP3-C2-B1은 `PASS — CONTRACT APPROVED AND CLOSED`다. B1 closeout 당시에는 collection/live request, WebAuthn/canonical promotion implementation과 migration file을 포함하지 않았고 CP3-C2-B implementation도 시작하지 않았다.
 
@@ -827,10 +833,13 @@ CP2-A의 통과는 CP2 전체 통과가 아니며, 아래 기존 완료 조건�
   weaken the parent key or authorize runtime implementation.
 - ADR-017: `ACCEPTED` (`2026-08-29`)
 - ADR-018: `ACCEPTED` (`2026-08-29`)
-- ADR-019: `PROPOSED — ON HOLD / AWAITING SEPARATE USER DECISION`, decision date
-  `NONE`. Current platform+UV+none-attestation proves Windows platform WebAuthn,
-  not strict Windows Hello provenance. No weaker property or new trust root is
-  selected; R1 remains blocked on ADR-019.
+- ADR-019: `PROPOSED — AWAITING GPT REVIEW / USER ACCEPTANCE`, decision date
+  `NONE`. The revised proposal removes only strict Microsoft Windows Hello
+  vendor/product provenance as an authority condition and instead requires a
+  fresh cryptographically verified assertion from a previously registered
+  trusted human WebAuthn credential under every unchanged exact RP/origin/
+  challenge/UV/credential/counter/audit control. The historical B1 phrase is
+  preserved; R1 remains blocked until review and explicit acceptance.
 - `0006`: `PASS — CLOSED`
 - B2-C WebAuthn/human-approval runtime:
   `NOT STARTED / BLOCKED — ADR-019 DECISION REQUIRED`

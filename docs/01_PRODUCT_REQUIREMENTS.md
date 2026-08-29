@@ -1,13 +1,25 @@
 # Product Requirements
 
-## 1. 사용자
+## 1. 사용자와 권한
 
-- 개인 투자자 1인
-- 국내·미국 주식 분석
-- 코딩보다 분석 결과와 근거 확인이 중요
-- Windows 개인 PC와 브라우저 사용
-- ChatGPT Plus와 Codex를 활용
-- 추가 API 비용을 최소화
+### 현재 OWNER / ADMIN
+
+- 주 사용자와 관리자는 개인 투자자 1인이다.
+- 국내·미국 주식 분석을 수행한다.
+- 코딩보다 분석 결과와 근거 확인이 중요하다.
+- Windows 개인 PC와 브라우저를 사용한다.
+- ChatGPT Plus와 Codex를 활용한다.
+- 추가 API 비용을 최소화한다.
+- canonical issuer/security 승인, privileged configuration과 보안 민감 상태 변경은 owner-only다.
+
+### 미래 PUBLIC VIEWER
+
+- 상태: `FUTURE / NOT AUTHORIZED / NOT STARTED`
+- 익명·미인증 인터넷 사용자가 될 수 있다.
+- 권한은 명시적으로 승인된 public-safe 분석 결과의 `READ ONLY` 열람뿐이다.
+- 데이터·설정·관심종목·owner 가정 변경, canonical identity 승인, source admission, task control, secret·private brokerage/account 정보 열람과 거래 권한은 없다.
+
+현재 구현은 local-only다. 미래 public viewer는 현재 owner/admin 사용자나 같은 인증·권한 도메인으로 취급하지 않는다.
 
 ---
 
@@ -163,6 +175,7 @@
 ## 5. 명시적 비범위
 
 - Phase 1의 실제 API 연동
+- 현재 로드맵의 공개 인터넷 배포
 - 실제 주문
 - 완전 자동매매
 - OpenAI API 자동 호출
@@ -171,6 +184,8 @@
 - 13F를 실시간 매수 데이터로 표현
 - 기관 보유 증가만으로 펀더멘털 수치 변경
 - 자산제곱 원문 전체 규칙의 즉시 자동화
+
+공개 읽기 전용 배포와 자동매매는 영구 폐기 항목이 아니라 각각 별도 승인된 미래 제품 체크포인트다. 어느 항목도 현재 구현이나 읽기 전용 v1.0 완료 조건에 포함되지 않는다.
 
 ---
 

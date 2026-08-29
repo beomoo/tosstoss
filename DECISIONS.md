@@ -2010,69 +2010,119 @@ FR-01~FR-03 are treated as contractually closed. ADR-015 and ADR-016 remain
 
 ---
 
-## ADR-019 — Windows Hello Provenance Trust Boundary
+## ADR-019 — Vendor-Neutral WebAuthn Human Authority Boundary
 
-- 상태: `PROPOSED — ON HOLD / AWAITING SEPARATE USER DECISION`
+- 상태: `PROPOSED — AWAITING GPT REVIEW / USER ACCEPTANCE`
 - 제안일: `2026-08-29`
 - 결정일: `NONE`
-- 선행 결정: accepted B1/ADR-014 requires a Windows Hello-backed platform
-  credential; ADR-017/ADR-018 are accepted
+- 선행 결정: ADR-014/B1, ADR-017 and ADR-018 are `ACCEPTED`
 - 적용 gate: `CP3-C2-B2-C R1`
 
-### 문제와 standards result
+### 문제와 역사 보존
 
-The current ceremony requires Windows, `authenticatorAttachment=platform`,
-UV, resident discoverability, and `attestation=none`; it uses no Metadata
-Service, AAGUID allowlist, enterprise/direct attestation trust path, hardware
-attestation CA, or native broker. WebAuthn Level 3 defines none attestation as
-providing no attestation information and an empty trust path. Attachment
-modality and UV prove ceremony properties, not the authenticator vendor or
-implementation. Microsoft documents that current Windows WebAuthn routes to
-Windows Hello, external security keys, and plugin authenticators, and Windows
-11 24H2 supports plugin passkey managers.
+Accepted B1/ADR-014 historically used the product-property phrase
+`Windows Hello-backed platform credential only`. The later provenance audit
+correctly established that platform attachment, UV, resident discoverability
+and `attestation=none` do not cryptographically prove that a credential vendor
+or product is specifically Microsoft Windows Hello.
 
-Therefore the current exact design proves only:
+The product requirement has now changed: authenticator vendor/product identity
+is not human authority. Strict Microsoft Windows Hello provenance is no longer
+the intended authorization property. This ADR does not rewrite B1 history or
+pretend the accepted phrase originally had a different meaning. If accepted,
+ADR-019 amends and supersedes only that affected authenticator-vendor
+requirement.
 
-```text
-a user-verifying platform WebAuthn credential on Windows
-```
+### 제안
 
-It does **not** uniquely establish strict Windows Hello provenance. This is a
-new trust-boundary blocker, not permission to weaken accepted B1.
+A privileged human action requires a fresh, cryptographically verified
+WebAuthn assertion from a previously registered trusted human credential that
+satisfies the repository's exact RP, origin, challenge, user-verification,
+credential, signature-counter and audit requirements.
 
-### Options — no option selected or accepted
+Windows Hello may be the authenticator used on the owner's Windows PC, but the
+claim `this authenticator is specifically Microsoft Windows Hello` is not an
+authorization condition. The contract remains compatible in principle with a
+future separately approved mobile platform credential or hardware security key
+that satisfies the same registered-credential and UV policy. This ADR neither
+implements nor approves those credential types.
 
-| Option | Property and consequence | Decision state |
-|---|---|---|
-| 1. Retain strict Windows Hello-only and add independently verifiable provenance | Preserves accepted B1, but requires an exact Microsoft/Windows-Hello-specific attestation or other provenance signal plus an approved trust path, failure policy, privacy model, and rotation/revocation contract. `attestation=none` cannot supply it. MDS, direct/enterprise attestation, AAGUID allowlists, and new roots remain forbidden unless separately accepted. | candidate; technically strongest product-property match, mechanism not yet approved |
-| 2. Redefine the property as “user-verifying Windows platform WebAuthn credential” | Matches what the present browser ceremony actually proves. Threat model must explicitly accept Windows platform/plugin authenticators that satisfy exact RP/origin/UV/signature rules and acknowledge that no Windows Hello provenance is established. This changes the accepted B1 security property. | candidate only; not selected for ease and requires explicit user amendment |
-| 3. Adopt a stronger Windows-native architecture | A native broker or Windows credential/key API might expose a narrower system trust boundary, but it adds a native component, protocol, packaging/update surface, and new authority root. Its ability to exclude plugin authenticators must be independently proved before selection. | research candidate; no broker or root authorized |
+The authority root is the trusted server's exact registered-credential binding
+plus a fresh verified assertion. Passwords, cookies, bearer tokens, Windows
+login identity, localhost access, process ownership, environment variables,
+caller auth flags, browser UI state, Codex/GPT/CLI execution and possession of
+repository files are not substitutes.
 
-Fail-closed default retains the strict B1 words and blocks R1. No provenance
-option, weaker property, Metadata Service, attestation mode, AAGUID policy,
-native broker, or trust root is introduced by this proposal. ADR-019 needs
-independent review and explicit user acceptance before R1 can begin, even if
-ADR-017/ADR-018 later pass review.
+### 변경되지 않는 통제
 
-The deliberate RG-09 handle model remains unchanged: each credential slot is
-a distinct authenticator-layer WebAuthn user-account namespace so a second
-discoverable credential does not replace the first `(rpId,userHandle)` entry;
-all slots map server-side to the one `LOCAL_DATA_STEWARD` authorization
-principal. Every assertion keeps a non-empty exact `allowCredentials` list.
+All unaffected accepted B1, ADR-017 and ADR-018 controls remain in force,
+including at least:
 
-Normative/primary references:
-W3C WebAuthn Level 3 none attestation, user handle, and discoverable credential
-rules (`https://www.w3.org/TR/webauthn-3/`) and Microsoft WebAuthn APIs for
-Windows/plugin passkey managers
-(`https://learn.microsoft.com/en-us/windows/security/identity-protection/hello-for-business/webauthn-apis`).
+- WebAuthn cryptographic signature verification;
+- exact `RP ID=localhost`, exact `origin=http://localhost:3000`,
+  `crossOrigin=false` and exact assertion type validation;
+- required user verification and the already accepted user-presence rules;
+- a fresh 32-byte OS-CSPRNG challenge with exact five-minute validity;
+- one terminal verification attempt, including consumption on failure;
+- no reusable approval session and a fresh assertion for every approval;
+- exact registered credential binding, server-controlled trusted credential
+  identity and non-empty exact `allowCredentials` where already required;
+- supported `signCount` strict advancement, with equality, rollback, gap,
+  fork and cloned-counter indications failing closed;
+- ADR-018 `NO_USABLE_COUNTER` semantics;
+- append-only authentication and approval audit;
+- exact linkage from an approval event to its successful authentication event;
+- rejection of caller-supplied principal, role, authenticated state or
+  authentication-event ID as authority;
+- the accepted first-enrollment bootstrap rules and absence of a silently
+  introduced recovery/reset mechanism; and
+- the local Windows application-data ownership rule requiring canonical
+  application-data OWNER SID equality with the current process `TOKEN_USER`
+  SID wherever that bootstrap/runtime boundary applies.
+
+The deliberate RG-09 handle model also remains unchanged: each credential slot
+has its distinct authenticator-layer `(rpId,userHandle)` namespace, all slots
+map server-side to the one `LOCAL_DATA_STEWARD` principal, and assertions keep
+their exact non-empty credential allow list.
+
+### 위협 모델 영향
+
+Removing vendor provenance broadens only the class of credentials that may be
+separately registered and trusted under the exact WebAuthn policy. It means an
+approved non-Microsoft authenticator could hold human authority, so credential
+enrollment, lifecycle authorization, loss/revocation handling and exact
+registered-key audit—not a vendor label—must carry that trust. It does not
+broaden the registered credential set automatically, admit an unknown
+authenticator, weaken UV/signature/counter/replay checks, authorize remote
+owner/admin access, or add recovery.
+
+### 대안
+
+- Retain strict Windows Hello vendor provenance: rejected as the intended
+  product property. No Windows-Hello-specific attestation or provenance
+  research is required for this authorization model.
+- Replace WebAuthn with a weaker local/login/session signal: rejected because
+  it removes fresh cryptographic human proof.
+- Implement additional mobile credentials or hardware keys now: rejected as
+  outside this documentation checkpoint and requiring separate authorization.
+
+### 다른 신뢰 도메인과의 관계
+
+ADR-019 governs only fresh human authority in the `OWNER / ADMIN` domain. It
+does not require authentication for a future anonymous `PUBLIC` viewer and does
+not give that viewer any mutation or approval authority. It also does not
+authorize `TRADING`; any future trading enablement or risk-envelope expansion
+must remain a separately approved privileged human action. Public read-only
+deployment and automated trading both remain future, unauthorized checkpoints.
 
 ### 상태 효과
 
-ADR-019 is `PROPOSED — ON HOLD / AWAITING SEPARATE USER DECISION`; it is not
-accepted. ADR-017 and ADR-018 are `ACCEPTED`; `0006` is `PASS — CLOSED`; future
-`0007` is
-`NOT CREATED / NOT AUTHORIZED`; R1 is `BLOCKED / NOT STARTED`; B2-D, CP3-C2-C
-and CP3-D are `NOT STARTED`; automatic progression is `PROHIBITED`.
+ADR-019 remains `PROPOSED — AWAITING GPT REVIEW / USER ACCEPTANCE`; Codex does
+not self-accept it and the decision date remains `NONE`. R1 remains
+`BLOCKED / NOT STARTED — ADR-019 DECISION REQUIRED`. ADR-017 and ADR-018 remain
+`ACCEPTED`; `0006` remains `PASS — CLOSED`; future `0007` is
+`NOT CREATED / NOT AUTHORIZED`; B2-D, CP3-C2-C and CP3-D remain `NOT STARTED`;
+automatic progression remains `PROHIBITED`.
 
 ---
 

@@ -20,7 +20,9 @@ Docker는 선택사항이다. Phase 1의 필수 실행 경로는 Windows PowerSh
 
 ---
 
-## 2. 논리 구성
+## 2. 현재 논리 구성
+
+현재 구현은 로컬 Windows-first, `LOCAL_ONLY=true`, 읽기 전용 분석 아키텍처다.
 
 ```text
 Browser
@@ -204,3 +206,45 @@ OPENAI_API_ENABLED=false
 - 데이터 마이그레이션
 - 롤백
 - 테스트
+
+---
+
+## 10. 미래 공개 읽기 전용 경계
+
+- 상태: `FUTURE / NOT AUTHORIZED / NOT STARTED`
+- 현재 내부 처리와 privileged operational table을 인터넷에 직접 노출하지 않는다.
+- 승인된 public-safe 필드와 집계만 별도 projection/read model 또는 snapshot으로 만든 뒤 public read-only API/UI가 조회한다.
+- public API/UI는 승인된 query/read capability만 가지며 mutation, owner/admin, canonical approval, secret, internal task control, unrestricted DB와 trading executor 경로를 갖지 않는다.
+- read-only는 프론트엔드 버튼 숨김이 아니라 서버·서비스 권한 경계로 강제한다.
+- 구현 서비스, 저장소, 호스팅과 네트워크 제품은 이 체크포인트 승인 전 선택하지 않는다.
+
+```text
+                     FUTURE PUBLIC
+                          |
+INTERNAL PROCESSING ---> PUBLIC-SAFE READ MODEL ---> PUBLIC READ-ONLY API/UI
+
+OWNER / ADMIN
+     |
+     +---- separate privileged human-authority boundary
+
+FUTURE TRADING
+     |
+     +---- separate deterministic execution-authority boundary
+```
+
+공개 표면이 침해되어도 owner/admin 또는 trading 권한과 직접 실행 경로가 자동으로 생기지 않아야 한다. 이 격리는 미래 요구사항이며 현재 구현 완료를 주장하지 않는다.
+
+## 11. 미래 자동매매 경계
+
+- 상태: `FUTURE / NOT AUTHORIZED / NOT STARTED`
+- AI/Codex는 untrusted order-intent producer이고 broker authority가 아니다.
+- deterministic risk policy engine이 인간이 사전 승인한 위험 한도를 적용하며 AI/Codex는 이를 우회하거나 수정할 수 없다.
+- trade executor만 제한된 broker credential과 승인된 order surface를 사용할 수 있다.
+- owner의 강한 인간 권한이 trading enable, limit increase, allowed-universe expansion, restriction weakening과 kill-state recovery를 통제한다.
+
+```text
+AI / Codex -> Order Intent -> Deterministic Risk Policy Engine
+                                      |
+                                      v
+                              Trade Executor -> Broker API
+```

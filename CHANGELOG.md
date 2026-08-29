@@ -1,5 +1,39 @@
 # Changelog
 
+## Unreleased — ADR-019 Human Authority and Master Trust Boundaries — 2026-08-29
+
+- Revised ADR-019 to `Vendor-Neutral WebAuthn Human Authority Boundary` and
+  kept it `PROPOSED — AWAITING GPT REVIEW / USER ACCEPTANCE` with decision date
+  `NONE`.
+- Preserved the historical accepted B1 phrase `Windows Hello-backed platform
+  credential only`; proposed amendment scope removes only Microsoft Windows
+  Hello vendor/product provenance as an authorization condition.
+- Kept fresh registered-credential WebAuthn signature, exact RP/origin/type,
+  UP/UV, 32-byte five-minute one-time challenge, exact allow-list and
+  credential binding, counter fail-closed rules, append-only authentication/
+  approval audit, first enrollment, no recovery and app-data OWNER SID/process
+  `TOKEN_USER` equality controls unchanged.
+- Distinguished the current local Windows-first read-only implementation from
+  two separately authorized future checkpoints: anonymous Public Read-only
+  Deployment and Automated Trading.
+- Frozen the future public trust boundary as internal processing -> public-safe
+  projection/read model -> public read-only API/UI -> any Internet viewer. The
+  public domain receives no mutation, owner/admin, secret, internal-storage or
+  trading authority, and no hosting/network product is selected.
+- Recorded future AI/Codex as an untrusted order-intent producer behind a
+  deterministic risk policy engine and separate trade executor. No trading
+  implementation, risk engine, broker call, credential or deployment was
+  added.
+- Current `LOCAL_ONLY=true`, `TRADING_ENABLED=false` and `DRY_RUN=true` remain
+  mandatory. Public Read-only Deployment and Automated Trading are both
+  `FUTURE / NOT AUTHORIZED / NOT STARTED`.
+- Migrations `0001`–`0006` remain byte-identical; `0007` remains
+  `NOT CREATED / NOT AUTHORIZED`; R1 remains `BLOCKED / NOT STARTED — ADR-019
+  DECISION REQUIRED`; later checkpoints and automatic progression remain
+  prohibited.
+- Application, runtime, migration, test, dependency, fixture, frontend,
+  network-exposure and trading changes are all `0`.
+
 ## Unreleased — ADR-017/ADR-018 USER-ACCEPTANCE CLOSEOUT — 2026-08-29
 
 - Independent review authority remains from authoritative SHA

@@ -27,8 +27,8 @@
   `ACCEPTED` (`2026-08-29`)
 - Counter bootstrap amendment: ADR-018
   `ACCEPTED` (`2026-08-29`)
-- Windows Hello provenance boundary: ADR-019
-  `PROPOSED — ON HOLD / AWAITING SEPARATE USER DECISION`, decision date `NONE`
+- Vendor-neutral WebAuthn human-authority boundary: ADR-019
+  `PROPOSED — AWAITING GPT REVIEW / USER ACCEPTANCE`, decision date `NONE`
 - Runtime implementation:
   `0 / NOT STARTED / BLOCKED — ADR-019 DECISION REQUIRED`
 - Migration file creation: `1` (additive `0006`); persistent application: `0`
@@ -38,8 +38,10 @@
 
 This document is the ADR-015/ADR-016-approved schema architecture for the
 minimum additive ledger needed before CP3-C2-B2-C can faithfully implement
-Windows Hello/WebAuthn steward enrollment and credential lifecycle
-authorization. GPT independent review of SHA
+trusted-human WebAuthn steward enrollment and credential lifecycle
+authorization. The accepted historical B1 phrase was Windows Hello-backed;
+revised ADR-019 proposes to amend only its vendor-provenance condition. GPT
+independent review of SHA
 `4104973d84307b80a236d9b737b2d29339b27153` returned P0 `0` / P1 `0`, and the
 user explicitly accepted ADR-016 on `2026-08-28`.
 
@@ -1630,7 +1632,7 @@ attachment, and canonical ES256/RS256 public material.
 
 - ADR-017: `ACCEPTED` (`2026-08-29`)
 - ADR-018: `ACCEPTED` (`2026-08-29`)
-- ADR-019: `PROPOSED — ON HOLD / AWAITING SEPARATE USER DECISION`
+- ADR-019: `PROPOSED — AWAITING GPT REVIEW / USER ACCEPTANCE`
 - RG-08/RG-09/RG-10: not self-declared closed
 - `0006`: `PASS — CLOSED`
 - proposed `0007_phase_02_cp3_c2_b2_c_counter_capability_bootstrap`:
@@ -1681,13 +1683,16 @@ objects, races, API failures, or mismatch fail closed; raw SIDs are transient.
 
 Platform attachment + UV + none attestation proves only a user-verifying
 Windows platform WebAuthn credential, not strict Windows Hello provenance.
-ADR-019 is proposed, not accepted, comparing verifiable strict-Hello
-provenance, an explicit weaker-property amendment, and a stronger Windows-
-native architecture. No option or trust root is authorized.
+That historical audit remains valid. Revised ADR-019 is proposed, not accepted:
+it makes authenticator vendor/product identity non-authoritative and requires a
+fresh cryptographically verified assertion from a previously registered
+trusted WebAuthn credential under all unchanged exact controls. It amends only
+the historical B1 vendor-provenance requirement if accepted. No additional
+credential type, trust root, recovery or runtime is authorized.
 
 - ADR-017: `ACCEPTED` (`2026-08-29`)
 - ADR-018: `ACCEPTED` (`2026-08-29`)
-- ADR-019: `PROPOSED — ON HOLD / AWAITING SEPARATE USER DECISION`
+- ADR-019: `PROPOSED — AWAITING GPT REVIEW / USER ACCEPTANCE`
 - `0006`: `PASS — CLOSED`
 - `0007`: `NOT CREATED / NOT AUTHORIZED`
 - R1: `NOT STARTED / BLOCKED — ADR-019 DECISION REQUIRED`

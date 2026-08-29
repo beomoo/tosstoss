@@ -22,8 +22,8 @@
   `NOT STARTED / BLOCKED — ADR-019 DECISION REQUIRED`
 - ADR-017: `ACCEPTED` (`2026-08-29`)
 - ADR-018: `ACCEPTED` (`2026-08-29`)
-- ADR-019: `PROPOSED — ON HOLD / AWAITING SEPARATE USER DECISION` (decision
-  date `2026-08-29`)
+- ADR-019: `PROPOSED — AWAITING GPT REVIEW / USER ACCEPTANCE` (decision date
+  `NONE`)
 - CP3-C2-B2-D: `NOT STARTED`
 - Migration implementation: additive `0005` implemented in B2-A; production
   database application `0`
@@ -644,6 +644,12 @@ GPT, a connector, parser, scheduled job, provider, or unauthenticated local
 request cannot be the reviewer.
 
 ### 9.1 Concrete local data-steward authentication trust root
+
+This section preserves the exact historically accepted B1 language, including
+`Windows Hello-backed platform credential only`. Revised ADR-019 does not
+rewrite that history. If independently reviewed and explicitly accepted, it
+amends only the authenticator-vendor provenance condition; every other B1,
+ADR-017 and ADR-018 control in this section remains in force.
 
 The only approval trust root for this contract is a registered Windows
 Hello-backed WebAuthn/passkey platform credential bound to the server-owned
@@ -1856,7 +1862,7 @@ retroactive failure. The exact counter-decision vectors and schema audit are in
 - ADR-015 / ADR-016: `ACCEPTED`
 - ADR-017: `ACCEPTED` (`2026-08-29`)
 - ADR-018: `ACCEPTED` (`2026-08-29`)
-- ADR-019: `PROPOSED — ON HOLD / AWAITING SEPARATE USER DECISION`
+- ADR-019: `PROPOSED — AWAITING GPT REVIEW / USER ACCEPTANCE`
 - `0006`: `PASS — CLOSED`
 - future `0007`: `NOT CREATED / NOT AUTHORIZED`
 - R1: `NOT STARTED / BLOCKED`
@@ -1961,20 +1967,27 @@ remote/reparse object, path race, API failure, or unequal SID fails closed.
 Neither raw SID is persisted or logged. Only after equality succeeds is the
 token SID canonicalized and hashed under the already-frozen RG-10 byte rule.
 
-### 24.5 Windows Hello provenance result
+### 24.5 Historical provenance result and revised ADR-019
 
-The current exact policy proves a user-verifying platform WebAuthn credential
-on Windows, not uniquely Windows Hello. `attestation=none` yields no provenance
-trust path, and Windows WebAuthn supports plugin passkey authenticators.
-Accepted B1 is not silently weakened. Proposed ADR-019 compares strict Hello
-provenance with a new verifiable mechanism, an explicit property amendment to
-Windows platform WebAuthn, and a stronger Windows-native architecture. No
-option, trust root, attestation change, AAGUID list, Metadata Service, or native
-broker is selected or authorized. R1 therefore remains blocked on ADR-019.
+The provenance audit remains valid historical evidence: the exact ceremony
+proves a user-verifying platform WebAuthn credential on Windows, not uniquely
+Microsoft Windows Hello. `attestation=none` yields no vendor provenance trust
+path, and Windows WebAuthn can route to plugin authenticators.
+
+Revised ADR-019 now proposes that authenticator vendor/product identity is not
+authority. The proposed human-authority property is a fresh cryptographically
+verified assertion from a previously registered trusted WebAuthn credential
+under the exact accepted RP/origin/challenge/UP/UV/credential/signature/
+counter/audit rules. Windows Hello may be the actual authenticator, but proving
+that product identity is not an authorization condition. The historical B1
+phrase remains recorded; only that vendor requirement would be amended if
+ADR-019 is later accepted. No additional mobile credential, hardware key,
+attestation mode, trust root, recovery or runtime is authorized here. R1
+therefore remains blocked on ADR-019 review and explicit user acceptance.
 
 - ADR-017: `ACCEPTED` (`2026-08-29`)
 - ADR-018: `ACCEPTED` (`2026-08-29`)
-- ADR-019: `PROPOSED — ON HOLD / AWAITING SEPARATE USER DECISION`
+- ADR-019: `PROPOSED — AWAITING GPT REVIEW / USER ACCEPTANCE`
 - RG-08/RG-09/RG-10: not self-declared closed
 - `0006`: `PASS — CLOSED`
 - `0007`: `NOT CREATED / NOT AUTHORIZED`
