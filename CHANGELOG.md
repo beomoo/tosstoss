@@ -1,5 +1,37 @@
 # Changelog
 
+## Unreleased — ADR-017/ADR-018 Full R1 Implementability Remediation — 2026-08-29
+
+- Recorded the full-design independent verdict at authoritative SHA
+  `c34d8ca5a25bbea8c4ff410b7d62dc451f357528`: `CHANGES REQUIRED`, P0 `0`,
+  P1 `3`, P2 `2`. Neither ADR was accepted.
+- Extended Option C to every credential-producing operation: first enrollment,
+  add, and replace. Add/replace preserve the already-committed authorizing
+  assertion and counter edge; replace success atomically registers the new
+  credential and supersedes the old target, while failure leaves ownership
+  unchanged and creates an exact frozen terminal predecessor outcome.
+- Defined the exact 32-byte per-operation WebAuthn credential-slot handle,
+  display-only user entity constants, non-empty assertion allow lists, optional
+  returned-user-handle validation, and restart reconstruction without a new
+  persisted handle column.
+- Defined Windows owner identity as UTF-8 hashing of exact canonical
+  `ConvertSidToStringSidW` output from the validated current-process
+  `TOKEN_USER`; all API failures and non-Windows production fail closed.
+- Fixed exact registration request and proof derivation for platform attachment,
+  required discoverability/UV, attestation none, `credProps`, and restricted
+  CTAP2-canonical ES256/RS256 public material.
+- Added an implementation-ready proposed future
+  `0007_phase_02_cp3_c2_b2_c_counter_capability_bootstrap` design with three
+  exact append-only tables, all keys/FKs/checks/indexes/hash preimages/guards,
+  frozen projection transactions, replay/restart rules, and a complete frozen-
+  trigger replacement audit. `0007` remains `NOT CREATED / NOT AUTHORIZED`.
+- Preserved migrations `0001`–`0006` byte-identically and kept `0006 PASS —
+  CLOSED`. Application, migration, test, dependency, fixture, and frontend
+  changes are `0`; no real Windows Hello or issuer approval ran.
+- ADR-017 is `PROPOSED — AWAITING INDEPENDENT RE-REVIEW`; ADR-018 is `PROPOSED
+  — AWAITING INDEPENDENT REVIEW`; R1 remains `NOT STARTED / BLOCKED` and
+  automatic progression remains prohibited.
+
 ## Unreleased — ADR-017 Counter-Capability Remediation — 2026-08-28
 
 ### Documentation/control-plane proposal

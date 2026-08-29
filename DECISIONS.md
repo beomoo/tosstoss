@@ -1197,39 +1197,35 @@ commit할 수 없다.
 
 ## ADR-017 — WebAuthn Runtime Canonicalization and Hash Preimage Amendment
 
-- 상태: `PROPOSED — CHANGES REQUIRED / RG-06 OPEN`
+- 상태: `PROPOSED — AWAITING INDEPENDENT RE-REVIEW`
 - 제안일: `2026-08-28`
 - 결정일: `NONE`
 - 선행 결정: ADR-015 `ACCEPTED`, ADR-016 `ACCEPTED`
 - 적용 gate: `CP3-C2-B2-C R1`
 - 독립 검토: authoritative SHA
-  `c76fe7616db65c53ffc5a81d3e3c0cb390c0fa3b`에 대해 `CHANGES REQUIRED`,
-  P0 `0`, P1 `1`, P2 `2`
+  `c34d8ca5a25bbea8c4ff410b7d62dc451f357528`의 전체 R1 설계에 대해
+  `CHANGES REQUIRED`, P0 `0`, P1 `3`, P2 `2`
 - 재현 벡터:
   `qa/PHASE_02_CP3_C2_B2_C_RUNTIME_CANONICALIZATION_GAP_CODEX_REPORT.md`
 
 ### 문제
 
 Separately authorized R1 runtime implementation was audited before code changes
-and stopped with `BLOCKED — APPROVED RUNTIME CONTRACT GAP`. The approved
-ADR-015/ADR-016 schema names the required hashes but does not fully determine
-their byte preimages. Five gaps remain:
+and stopped with `BLOCKED — APPROVED RUNTIME CONTRACT GAP`. ADR-017 previously
+closed the five original byte-preimage questions and ADR-018 selected the
+correct zero-counter continuation principle. Full independent review then found
+four further implementation gaps:
 
-1. RG-01: `principal_content_hash` exact preimage;
-2. RG-02: `credential_content_hash` exact preimage;
-3. RG-03: CTAP2 canonical COSE_Key bytes, TEXT encoding and algorithm mapping;
-4. RG-04: challenge digest and challenge-binding exact preimages; and
-5. RG-05: reviewer authentication exact preimages.
+1. P1-RG-08: zero-counter bootstrap must cover first, add, and replace;
+2. P1-RG-09: exact WebAuthn user entity and per-credential-slot handle;
+3. P1-RG-10: exact Windows token SID source and hash bytes; and
+4. P2-RG-11: implementation-exact registration request/proof derivation.
 
-Independent review accepted the RG-01 through RG-05 concepts but found a new
-blocking runtime-to-schema requirement, P1-RG-06. Registration `signCount=0`
-cannot distinguish a conforming counter that has not advanced yet from an
-authenticator that provides no usable counter. The selected
-`webauthn==3.0.0` verified-registration result has no authoritative capability
-field, while frozen `0005` requires an immutable classification before the
-credential can be stored. P2-RG-07 also requires the COSE wording below to name
-the WebAuthn-required CTAP2 canonical CBOR encoding form. These findings do not
-reopen `0006`; it remains `PASS — CLOSED`.
+RG-01 through RG-07, including Option C and CTAP2 canonical terminology, remain
+valid. The new findings require an all-operation relational projection,
+deterministic credential-slot user handles, exact SID bytes, and exact
+registration proof flags. These findings do not reopen `0006`; it remains
+`PASS — CLOSED`.
 
 Implementing any one reasonable interpretation would create incompatible
 persisted identities. Therefore R1 stays not started until ADR-017 and ADR-018
@@ -1276,6 +1272,129 @@ authority.
 For R1 the exact server-owned enrollment, registration and authentication
 policy token is `issuer-steward-webauthn/0.1.0`. Changing it requires a new
 policy/versioned contract; it is not a request option.
+
+### RG-09 — exact WebAuthn user entity and credential-slot handle
+
+R1 permits multiple active credentials and requires discoverable platform
+credentials. A discoverable credential is keyed by `(rpId, userHandle)` on an
+authenticator; reusing one stable principal handle can replace the earlier
+credential on the same Windows Hello authenticator. Each credential-creating
+operation therefore owns one deterministic credential-slot handle while every
+slot maps server-side to the same `LOCAL_DATA_STEWARD` principal.
+
+```text
+webauthn_user_handle_bytes = SHA256(
+    ASCII("issuer-steward-webauthn-user-handle/0.1.0")
+    || 0x00
+    || UTF8_NFC(reviewer_principal_id)
+    || 0x00
+    || UTF8_NFC(reviewer_credential_operation_id)
+)
+```
+
+The result is exactly 32 raw bytes. No `sha256:` text is part of `user.id`.
+The handle is non-empty, no more than 64 bytes, non-PII, server-derived, fixed
+for that credential-creating operation, never caller-supplied, not the
+principal ID, and not a session or authority token. Exact display-only creation
+values are:
+
+```text
+rp.name          = "localhost"
+user.name        = "local-data-steward"
+user.displayName = "Local Data Steward"
+```
+
+These strings provide zero security authority, identify no natural person, do
+not replace `user.id`, and never enter issuer authority identity.
+
+Every R1 assertion request has a non-empty `allowCredentials` list.
+Counter-capability assertion permits exactly the pending credential ID.
+ADD/REPLACE/REVOKE authorization permits only the exact currently active
+credential IDs allowed for that operation. Later issuer approval, still
+contract-only, permits only exact currently active credential IDs. An empty
+discoverable-account assertion is forbidden in R1.
+
+If `response.userHandle` is present, the server follows the exact credential to
+its immutable registering operation, recomputes the expected 32 bytes, and
+requires byte equality. With non-empty `allowCredentials`, absence is permitted;
+credential ID, principal, challenge, RP/origin, UP/UV, and signature checks
+remain mandatory. A present mismatch maps to terminal
+`BINDING_MISMATCH`/safe result `USER_HANDLE_MISMATCH` and cannot produce a
+verified authentication.
+
+No database user-handle value column is required. Pending rows carry the exact
+operation ID; an admitted credential has one unique root `REGISTERED` event and
+exact authorization pointing to its registering operation. Principal plus that
+operation deterministically reconstruct the handle after restart. Returned raw
+handles are transient and never persisted or logged.
+
+### RG-10 — exact Windows owner SID preimage
+
+Production Windows obtains identity only from the current process access token:
+
+1. `OpenProcessToken` on the current process;
+2. `GetTokenInformation(..., TokenUser, ...)`;
+3. take the exact `TOKEN_USER.User.Sid` and require `IsValidSid` success;
+4. call `ConvertSidToStringSidW` and use exactly its canonical standard
+   `S-R-I-S-S...` result; free the returned buffer with `LocalFree`.
+
+```text
+os_owner_sid_hash =
+  "sha256:" + lowercase_hex(
+    SHA256(UTF8(canonical_windows_sid_text))
+  )
+```
+
+The preimage has no UTF-16 code units, terminating NUL, case conversion,
+whitespace, domain/user name, environment username, caller value, SID alias,
+binary SID bytes, or textual hash prefix. The canonical text is transient only;
+the raw SID is never persisted or logged. Failure of token opening, TokenUser
+query, SID validation, or string conversion fails closed. Non-Windows
+production execution fails closed.
+
+### RG-11 — exact registration request and proof derivation
+
+The registration request sets exactly:
+
+```text
+authenticatorSelection.authenticatorAttachment = "platform"
+authenticatorSelection.residentKey              = "required"
+authenticatorSelection.requireResidentKey       = true
+authenticatorSelection.userVerification         = "required"
+attestation                                      = "none"
+extensions.credProps                             = true
+```
+
+No FIDO Metadata Service, vendor attestation trust, or new hardware trust root
+is introduced. `platform_authenticator_verified=1` only when cryptographic
+registration verification succeeds and returned
+`PublicKeyCredential.authenticatorAttachment` is exactly `platform`; null,
+cross-platform, or unknown rejects registration.
+
+`resident_key_verified=1` only when the exact server option required
+`residentKey`, `requireResidentKey=true`, and creation completed successfully.
+If `clientExtensionResults.credProps.rk` is present it must be true; false
+rejects. Missing `credProps`/`rk` does not override successful creation under
+the required resident-key option.
+
+`public_key_material_verified=1` only after cryptographic registration success,
+canonical credential-ID validation, ADR-017 CTAP2-canonical COSE validation,
+and exact `ES256`/`RS256` allowlist validation. Attachment and `credProps` are
+client/WebAuthn ceremony outputs and consistency evidence, not hardware-
+attestation authority.
+
+Normative references for RG-09/RG-11 are W3C WebAuthn Level 3 user entities,
+discoverable credentials, authenticator selection, assertion options, and
+credential-properties extension (`https://www.w3.org/TR/webauthn-3/`). RG-10
+uses the Microsoft Win32 contracts for `OpenProcessToken`,
+`GetTokenInformation`, `TOKEN_USER`, `IsValidSid`, and
+`ConvertSidToStringSidW`:
+`https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-openprocesstoken`,
+`https://learn.microsoft.com/en-us/windows/win32/api/securitybaseapi/nf-securitybaseapi-gettokeninformation`,
+`https://learn.microsoft.com/en-us/windows/win32/api/winnt/ns-winnt-token_user`,
+`https://learn.microsoft.com/en-us/windows/win32/api/securitybaseapi/nf-securitybaseapi-isvalidsid`,
+and
+`https://learn.microsoft.com/en-us/windows/win32/api/sddl/nf-sddl-convertsidtostringsidw`.
 
 ### RG-01 — exact principal content
 
@@ -1564,7 +1683,8 @@ authorize an actual assertion or approval.
 The cryptographic dependency order is:
 
 ```text
-raw OS-owner SID -> os_owner_sid_hash -> principal_content_hash
+current process TOKEN_USER -> canonical Windows SID UTF-8 -> os_owner_sid_hash -> principal_content_hash
+principal ID + credential-creating operation ID -> raw 32-byte WebAuthn user handle
 raw credential ID -> canonical credential ID + credential_id_fingerprint --+
 raw COSE_Key -> CTAP2 canonical COSE bytes -> public_key_fingerprint --------+-> credential_content_hash
 principal/credential event leaves -> credential_state_hash
@@ -1606,8 +1726,9 @@ unknown algorithms/transports, omitting null keys, treating a missing counter
 as zero, or letting callers supply policy/hash fields. Each would make the
 persisted identity non-portable or weaken fail-closed verification.
 
-ADR-017 remains `PROPOSED — CHANGES REQUIRED / RG-06 OPEN`; Codex does not
-self-accept it. ADR-018 below is separately `PROPOSED` and not accepted. R1
+ADR-017 remains `PROPOSED — AWAITING INDEPENDENT RE-REVIEW`; Codex does not
+self-accept it. ADR-018 below is separately `PROPOSED — AWAITING INDEPENDENT
+REVIEW` and not accepted. RG-08/RG-09/RG-10 are not self-declared closed. R1
 remains `NOT STARTED / BLOCKED`, with application, schema, migration, test,
 fixture and dependency changes all `0`. Future `0007` is necessary under the
 selected proposal but is `NOT CREATED / NOT AUTHORIZED`. ADR-015 and ADR-016
@@ -1627,14 +1748,14 @@ explicit authority.
 
 ## ADR-018 — WebAuthn Counter Capability Bootstrap Amendment
 
-- 상태: `PROPOSED`
+- 상태: `PROPOSED — AWAITING INDEPENDENT REVIEW`
 - 제안일: `2026-08-28`
 - 결정일: `NONE`
 - 선행 결정: ADR-015 `ACCEPTED`, ADR-016 `ACCEPTED`, ADR-017 `PROPOSED —
-  CHANGES REQUIRED / RG-06 OPEN`
+  AWAITING INDEPENDENT RE-REVIEW`
 - 적용 gate: `CP3-C2-B2-C R1`
 - proposed future migration:
-  `0007_phase_02_cp3_c2_b2_c_counter_bootstrap` — `NOT CREATED / NOT
+  `0007_phase_02_cp3_c2_b2_c_counter_capability_bootstrap` — `NOT CREATED / NOT
   AUTHORIZED`
 
 ### 문제와 선택
@@ -1658,30 +1779,40 @@ or general credential-operation authority.
 
 ### 제안 상태 기계
 
-1. A first-enrollment registration challenge and its server-owned operation
-   intent are issued in a durable **pre-admission** ledger. No public credential
-   exists yet.
+1. Every `FIRST_ENROLLMENT`, `ADD_CREDENTIAL`, or `REPLACE_CREDENTIAL` uses its
+   exact existing `0006` `REGISTRATION_CREATE` challenge. Revoke is excluded.
 2. A fully verified positive registration `signCount` is immediately
-   `ACCEPTED` as `SIGN_COUNT_SUPPORTED`; the observed positive value is the
-   immutable `registration_sign_count`.
-3. A fully verified registration zero is `REQUIRES CONTINUATION`. Its challenge
-   is consumed exactly once and the verified public material plus observed zero
-   are durably recorded. In the same transaction, exactly one fresh
-   `COUNTER_CAPABILITY_ASSERTION` challenge is issued.
+   `ACCEPTED` through the unchanged frozen terminal path as
+   `SIGN_COUNT_SUPPORTED`; the positive value is immutable.
+3. A fully verified registration zero is `REQUIRES CONTINUATION`. No public
+   credential or frozen registration consumption exists yet. In one transaction
+   the server records the verified pending public material and observed zero and
+   issues exactly one fresh assertion challenge whose expiry is no later than
+   the still-live parent registration challenge.
 4. The continuation verifies `webauthn.get`, exact challenge/RP/origin,
-   cross-origin false, UP, UV, exact pending credential ID, and the signature
-   under the pending public key. A result greater than zero is `ACCEPTED` as
+   cross-origin false, UP, UV, exactly the pending credential ID, optional
+   returned user-handle equality, and the signature under the pending public
+   key. A result greater than zero is `ACCEPTED` as
    `SIGN_COUNT_SUPPORTED`, with frozen `registration_sign_count=0` and an
-   audited bootstrap counter edge `0 -> asserted`. A result equal to zero is
+   audited first counter edge `0 -> asserted`. A result equal to zero is
    `ACCEPTED` as `NO_USABLE_COUNTER`, with frozen
-   `registration_sign_count=null` and the observed `0 -> 0` retained only as
-   immutable bootstrap evidence.
-5. Expiry, replay, malformed data, binding mismatch, wrong credential, failed
-   RP/origin/UP/UV/signature checks, or an impossible counter result is
-   `REJECTED`/fail-closed. It creates no public credential. A retry, if later
-   authorized while no credential has ever been admitted, is a wholly fresh
-   first-enrollment bootstrap linked to the terminal predecessor; it is not a
-   recovery or reusable authentication state.
+   `registration_sign_count=null` and immutable observed `0 -> 0` evidence.
+5. Successful FIRST and ADD project exactly one new `REGISTERED` credential.
+   Successful REPLACE atomically projects the new `REGISTERED` plus old-target
+   `SUPERSEDED` lifecycle authorizations under the same operation, principal,
+   and successful outcome.
+6. Expiry, replay, malformed data, binding/user-handle mismatch, wrong
+   credential, failed RP/origin/UP/UV/signature checks, or an impossible count
+   terminalizes the original operation without a public credential or lifecycle
+   authorization. Expected and resulting credential-state hashes are equal.
+   The exact frozen outcome is a valid predecessor for a wholly fresh successor
+   operation; it is not recovery or reusable authentication state.
+
+For ADD/REPLACE, entering step 3 never rolls back the earlier successful
+`AUTHORIZATION_ASSERTION` consumption, `VERIFIED` authentication event, its
+supported-counter advancement, or the already-issued registration challenge.
+Failure therefore leaves ownership state unchanged but preserves that immutable
+authentication history. REPLACE failure leaves the old target ACTIVE.
 
 The repository meaning of `counter_capability` is thus an immutable **admitted
 counter-evidence mode**, not a vendor/hardware capability claim. Neither
@@ -1703,6 +1834,17 @@ Frozen `0005`/`0006` cannot represent Option C faithfully or atomically:
 - The frozen continuation slot goes in the opposite direction—successful
   add/replace assertion to registration—and cannot represent registration to
   capability assertion.
+- For ADD/REPLACE, the authorizing assertion and supported counter advancement
+  are already immutable before the new registration. Treating the later
+  bootstrap as a new operation would lose the single-operation lifecycle and
+  replace atomicity; rolling back the prior event would falsify history.
+- Frozen `REGISTRATION_CREATE` is terminal and every successor requires an exact
+  predecessor outcome. A pending-only terminal marker would make restart and
+  successor insertion inconsistent with `0006`.
+- Frozen credential insertion requires exact successful registration proof;
+  REPLACE success additionally requires one `REGISTERED` plus one `SUPERSEDED`
+  authorization under the same successful outcome. A side-table classification
+  without an exact frozen projection cannot satisfy those guards.
 - The frozen counter-union guards see only issuer and credential-operation
   authentication events. A separately stored `0 -> positive` bootstrap edge
   would otherwise be an unaudited/unreconstructed counter advancement.
@@ -1713,58 +1855,50 @@ Frozen `0005`/`0006` cannot represent Option C faithfully or atomically:
 This is a new runtime-to-schema requirement, not a retroactive failure of
 `0006`; `0006` remains `PASS — CLOSED`.
 
-### Minimum future schema amendment
+### Exact future schema amendment
 
-If accepted and separately authorized, the minimum future `0007` adds three
-append-only tables; it does not edit or reopen migration files `0001`–`0006`:
+The implementation-ready normative design is
+`plans/PHASE_02_CP3_C2_B2_C_ADR_018_COUNTER_CAPABILITY_SCHEMA_PROPOSAL.md`.
+If accepted and separately authorized, the minimum future `0007` remains three
+append-only tables, but their exact roles are now:
 
-1. `reviewer_webauthn_counter_bootstrap_challenges` stores one root
-   `REGISTRATION_CREATE` and at most one child
-   `COUNTER_CAPABILITY_ASSERTION`. Each row carries the bootstrap/root and
-   predecessor IDs, exact principal/SID/expected-empty-state/operation tuple,
-   purpose, raw-32-byte challenge digest, exact binding hash, RP ID, allowed
-   origin, client-data type, UV requirement, issue/expiry instants, and—for the
-   child—the exact pending credential ID and credential/public-key
-   fingerprints plus the parent registration-consumption hash. Unique indexes
-   enforce one root, one child, one digest and a linear predecessor.
-2. `reviewer_webauthn_counter_bootstrap_consumptions` uniquely consumes one
-   bootstrap challenge and records its terminal result, safe result code, all
-   challenge/RP/origin/cross-origin/UP/UV/signature/replay verification facts,
-   exact verified public registration material, observed raw registration
-   count, assertion previous/asserted counts, continuation/finalization ID,
-   immutable content hash and UTC consumption time. Conditional checks permit
-   public material only on registration, assertion counts only on the child,
-   and successful registration zero only with exactly one continuation.
-3. `reviewer_webauthn_counter_bootstrap_finalizations` records exactly one
-   terminal classification per root: observed registration/assertion counts,
-   selected frozen capability/count pair, terminal disposition, and exact IDs
-   and hashes of the projected frozen operation, registration challenge and
-   consumption, outcome, public credential, lifecycle event and authorization.
-   A successful finalization and every frozen projection row commit in one
-   `BEGIN IMMEDIATE` transaction under deferred FKs and exact-copy triggers;
-   failure finalizations prohibit every frozen credential projection.
+1. `reviewer_webauthn_counter_capability_registrations`: one fully verified
+   zero registration against the existing frozen challenge, including exact
+   public material, request/proof flags, operation/principal/SID/state tuple,
+   prerequisite authorizing event for add/replace, observed zero, and the one
+   preallocated child challenge;
+2. `reviewer_webauthn_counter_capability_challenges`: the raw-32-byte-digest,
+   exact pending-credential assertion challenge with one non-empty allow-list
+   member, handle-policy version, exact binding, and child expiry no later than
+   the parent registration expiry;
+3. `reviewer_webauthn_counter_capability_assertions`: the single terminal child
+   consumption, verification facts, optional-user-handle result, observed
+   counter edge, immutable classification, and exact IDs/hashes/results of the
+   frozen consumption/outcome/credential/lifecycle projection.
 
-The future migration must also add cross-ledger guards that (a) require a
-matching finalization before any first-enrollment frozen projection with
-registration zero or `NO_USABLE_COUNTER`, (b) prevent direct/replayed use of a
-bootstrap challenge, and (c) version-replace the two `0006` counter-union
-trigger definitions so a verified supported bootstrap edge is the first union
-edge. Reconstruction then starts from the truthful frozen registration value,
-includes the optional unique bootstrap edge, and continues through both frozen
-assertion ledgers. A gap, fork, duplicate or missing projection fails closed.
-No existing table, migration blob or historical row is rewritten.
+The companion specifies every column, type, nullability, key, UNIQUE, composite
+deferred FK, CHECK family, index, append-only trigger, insert guard, exact
+content-hash field inventory, timestamp, and payload authority rule. It also
+defines exact FIRST/ADD/REPLACE success and failure transactions, replay and
+restart reconstruction, user-handle reconstruction, and the hash DAG.
 
-Every new content hash must receive an exact canonical preimage and calculator-
-generated golden vectors in a separately authorized implementation design.
-This proposal intentionally invents no expected hash text by hand.
+Only the two frozen counter-union definitions are version-replaced, under their
+same names, to add the supported bootstrap edge:
+`trg_reviewer_authentication_events_counter_union_guard` and
+`trg_reviewer_credential_operation_authentication_counter_union_guard`.
+All predecessor, challenge, consumption, active-credential, registration-proof,
+lifecycle, outcome, and append-only triggers remain intact and receive only
+additional cross-ledger guards. No existing row or migration is rewritten.
 
 ### 상태 효과
 
-ADR-018 is `PROPOSED`, not accepted or implemented. Future `0007` is necessary
-for Option C but is `NOT CREATED / NOT AUTHORIZED`. ADR-017 remains `PROPOSED —
-CHANGES REQUIRED / RG-06 OPEN`; R1 remains `NOT STARTED / BLOCKED`. ADR-015 and
-ADR-016 remain `ACCEPTED`; `0006` remains `PASS — CLOSED`; B2-D, CP3-C2-C and
-CP3-D remain `NOT STARTED`; automatic progression remains `PROHIBITED`.
+ADR-018 is `PROPOSED — AWAITING INDEPENDENT REVIEW`, not accepted or
+implemented. Future `0007` is necessary for Option C but is `NOT CREATED / NOT
+AUTHORIZED`. ADR-017 remains `PROPOSED — AWAITING INDEPENDENT RE-REVIEW`; R1
+remains `NOT STARTED / BLOCKED`. RG-08/RG-09/RG-10 are not self-declared closed.
+ADR-015 and ADR-016 remain `ACCEPTED`; `0006` remains `PASS — CLOSED`; B2-D,
+CP3-C2-C and CP3-D remain `NOT STARTED`; automatic progression remains
+`PROHIBITED`.
 
 ---
 

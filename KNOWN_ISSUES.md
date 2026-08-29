@@ -147,8 +147,8 @@
   evidence is absent. The user explicitly approved closeout on `2026-08-28`.
   The additive `0006` schema implementation is therefore `PASS — CLOSED`, and
   SG-01/SG-02/P1-SR-01/P1-SR-02/P1-SR-03/IG-01/IG-02 remain `CLOSED`.
-  B2-C R1 is now `NOT STARTED / BLOCKED — ADR-017 CHANGES REQUIRED / RG-06
-  OPEN / ADR-018 PROPOSED`; later checkpoints remain
+  B2-C R1 is now `NOT STARTED / BLOCKED — ADR-017/ADR-018 REVIEW REQUIRED`;
+  later checkpoints remain
   `NOT STARTED`; automatic progression is `PROHIBITED`.
 - 비차단 정정: issuer `SUPERSEDED`는 현재 schema blocker가 아니다. Existing
   `0005`의 separate authenticated events와 linear link history로 atomic old
@@ -163,8 +163,8 @@
 
 ## KI-016 — WebAuthn runtime canonicalization/counter bootstrap gap
 
-- 상태: `P1 BLOCKING — ADR-017 PROPOSED / CHANGES REQUIRED / RG-06 OPEN /
-  ADR-018 PROPOSED`
+- 상태: `P1 BLOCKING — ADR-017 PROPOSED / AWAITING INDEPENDENT RE-REVIEW /
+  ADR-018 PROPOSED / AWAITING INDEPENDENT REVIEW`
 - 관찰: R1 pre-implementation audit에서 accepted ADR-015/ADR-016 schema가
   `principal_content_hash`, `credential_content_hash`, deterministic COSE_Key
   bytes/TEXT, raw challenge digest/binding, operation/issuer authentication
@@ -173,10 +173,10 @@
   승인 전 R1 구현은 계약을 추측하게 된다. Application/runtime/schema/test/
   fixture/dependency changes와 real Windows Hello ceremony는 모두 `0`이다.
 - 독립 검토: authoritative SHA
-  `c76fe7616db65c53ffc5a81d3e3c0cb390c0fa3b`는 `CHANGES REQUIRED`, P0 `0`,
-  P1 `1`, P2 `2`였다. RG-01~RG-05는 conceptual pass지만 등록 `signCount=0`
-  에서 frozen counter union을 결정할 authoritative signal이 없다는 RG-06이
-  새 blocking gap이다.
+  `c34d8ca5a25bbea8c4ff410b7d62dc451f357528`의 full R1 review는
+  `CHANGES REQUIRED`, P0 `0`, P1 `3`, P2 `2`였다. RG-01~RG-07과 Option C는
+  유지되지만 RG-08 all-operation integration, RG-09 exact userHandle,
+  RG-10 exact SID preimage, RG-11 registration proof가 추가로 필요하다.
 - 제안 대응: ADR-017이 NFC/unsigned-UTF-8 compact JSON, exact null/Boolean/
   timestamp semantics, `-7 -> ES256`, `-257 -> RS256`, CTAP2 canonical CBOR
   COSE (`RFC 8949`는 underlying reference), raw 32-byte challenge digest,
@@ -186,12 +186,16 @@
   기록했고 ES256/RS256 bytes는 CTAP2 규칙에서도 unchanged다. ADR-018은
   registration zero 뒤 fresh one-time assertion을 선택한다: verified
   `0 -> positive`는 supported, verified `0 -> 0`은 repository no-usable-counter
-  mode다. Frozen `0005`/`0006`에는 이 pre-admission continuation/counter edge가
-  없어 future `0007`이 필요하다.
+  mode다. 보완 설계는 FIRST/ADD/REPLACE 모두에 같은 continuation을 적용하고,
+  ADD/REPLACE의 prior authorization/counter를 보존하며, per-operation 32-byte
+  user handle, current-process `TOKEN_USER` SID UTF-8 hash, exact registration
+  proof를 고정한다. Frozen `0005`/`0006`에는 이 pending continuation/counter
+  edge가 없어 implementation-ready future `0007` proposal이 필요하다.
 - 해제 조건: ADR-017과 ADR-018이 blocking finding 없이 독립 재검토되고
   사용자가 둘을 explicit `ACCEPTED`로 결정한 뒤, future `0007`과 R1 runtime을
   각각 별도 승인해야 한다. Codex는 어느 ADR도 self-accept하지 않는다.
 - 현재 gate: ADR-015/ADR-016 `ACCEPTED`, `0006 PASS — CLOSED`, ADR-017
-  `PROPOSED — CHANGES REQUIRED / RG-06 OPEN`, ADR-018 `PROPOSED`, R1 `NOT
-  STARTED / BLOCKED`, future `0007` `NOT CREATED / NOT AUTHORIZED`, later
+  `PROPOSED — AWAITING INDEPENDENT RE-REVIEW`, ADR-018
+  `PROPOSED — AWAITING INDEPENDENT REVIEW`, R1 `NOT STARTED / BLOCKED`, future
+  `0007` `NOT CREATED / NOT AUTHORIZED`, later
   checkpoints `NOT STARTED`, automatic progression `PROHIBITED`.

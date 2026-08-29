@@ -23,11 +23,12 @@
   `plans/PHASE_02_CP3_C2_B1_RUNTIME_CONTRACT.md`
 - Governing schema decision: ADR-015 `ACCEPTED` (`2026-08-28`)
 - Narrow implementation amendment: ADR-016 `ACCEPTED` (`2026-08-28`)
-- Runtime canonicalization amendment: ADR-017 `PROPOSED — CHANGES REQUIRED /
-  RG-06 OPEN`, decision date `NONE`
-- Counter bootstrap amendment: ADR-018 `PROPOSED`, decision date `NONE`
+- Runtime canonicalization amendment: ADR-017
+  `PROPOSED — AWAITING INDEPENDENT RE-REVIEW`, decision date `NONE`
+- Counter bootstrap amendment: ADR-018
+  `PROPOSED — AWAITING INDEPENDENT REVIEW`, decision date `NONE`
 - Runtime implementation:
-  `0 / NOT STARTED / BLOCKED — ADR-017 RG-06 OPEN / ADR-018 PROPOSED`
+  `0 / NOT STARTED / BLOCKED — ADR-017/ADR-018 REVIEW REQUIRED`
 - Migration file creation: `1` (additive `0006`); persistent application: `0`
 - Automatic progression: `PROHIBITED`
 
@@ -1506,7 +1507,7 @@ The separately authorized `0006` implementation also passed independent review
 at SHA `1be18a622006a6b6a46e251350e2d861d596823d` and received explicit user
 closeout approval on `2026-08-28`. Only this schema substep is `PASS — CLOSED`.
 B2-C WebAuthn/human-approval runtime is now `NOT STARTED / BLOCKED — ADR-017
-CHANGES REQUIRED / RG-06 OPEN / ADR-018 PROPOSED` as detailed below.
+AND ADR-018 REVIEW REQUIRED` as detailed below.
 
 ## 15. ADR-017 runtime canonicalization gate — proposal only
 
@@ -1544,9 +1545,10 @@ feed issuer binding then consumption/authentication/approval. No descendant
 hash is copied into an ancestor preimage.
 
 - ADR-015 / ADR-016: `ACCEPTED`
-- ADR-017: `PROPOSED — CHANGES REQUIRED / RG-06 OPEN`, decision date `NONE`;
+- ADR-017: `PROPOSED — AWAITING INDEPENDENT RE-REVIEW`, decision date `NONE`;
   Codex does not self-accept it
-- ADR-018: `PROPOSED`, decision date `NONE`; Codex does not self-accept it
+- ADR-018: `PROPOSED — AWAITING INDEPENDENT REVIEW`, decision date `NONE`;
+  Codex does not self-accept it
 - `0006`: `PASS — CLOSED`, byte-identical in this documentation task
 - R1: `NOT STARTED / BLOCKED`, runtime changed files `0`
 - application/schema/migration/test/script/frontend/fixture/dependency changes:
@@ -1581,3 +1583,57 @@ minimum three-table append-only pre-admission challenge, consumption and
 finalization ledger plus exact projection/counter-union guards in a future
 `0007`. No `0007` file is created or authorized, and no `0001`–`0006` blob is
 changed. `0006` remains `PASS — CLOSED`.
+
+## 17. Full all-operation bootstrap integration — proposal only
+
+Full independent review at authoritative SHA
+`c34d8ca5a25bbea8c4ff410b7d62dc451f357528` found that section 16 was not
+implementation-complete for ADD/REPLACE, user handles, Windows SID bytes, and
+registration proof flags. RG-01 through RG-07 remain unchanged.
+
+The amended proposal applies registration-zero continuation to exactly
+`FIRST_ENROLLMENT`, `ADD_CREDENTIAL`, and `REPLACE_CREDENTIAL`. Positive
+registration remains on the frozen terminal path. Zero registration records a
+verified pending credential and one exact-credential assertion challenge; it
+does not yet insert the frozen registration consumption or public credential.
+The child expires no later than the frozen parent challenge.
+
+For ADD/REPLACE, the prior authorizing assertion consumption, `VERIFIED` event,
+counter edge, and registration continuation challenge are already committed and
+never rolled back. Successful classification projects the same original
+operation into its exact frozen successful consumption/outcome/lifecycle graph.
+REPLACE success contains one new `REGISTERED` plus one old-target `SUPERSEDED`
+authorization atomically. Failed/expired classification projects a terminal
+frozen consumption/outcome, no public or lifecycle rows, and equal
+expected/resulting state. The exact outcome permits one fresh successor;
+REPLACE failure leaves the old target active.
+
+The future additive three-table design, every column/type/nullability/key/FK/
+CHECK/index/hash preimage/trigger, frozen-trigger replacement audit, transaction
+projection, replay rule, and restart reconstruction are normative in
+`plans/PHASE_02_CP3_C2_B2_C_ADR_018_COUNTER_CAPABILITY_SCHEMA_PROPOSAL.md`.
+Only the two frozen counter-union trigger definitions require version
+replacement to add the successful supported bootstrap edge. Existing
+predecessor, challenge, consumption, active-credential, registration-proof,
+lifecycle, outcome, and append-only triggers remain and receive additive
+cross-ledger restrictions.
+
+Per-operation raw WebAuthn user handles are deterministically reconstructed
+from principal plus registering operation, so no handle column is proposed.
+Every assertion has a non-empty exact allow list, and a present returned handle
+must match. Production SID hashing is fixed to UTF-8 of the exact canonical
+`ConvertSidToStringSidW` output obtained from the validated current process
+`TOKEN_USER`. Registration proof is fixed to platform attachment, resident key
+and UV required, attestation none, `credProps=true`, exact returned platform
+attachment, and canonical ES256/RS256 public material.
+
+- ADR-017: `PROPOSED — AWAITING INDEPENDENT RE-REVIEW`
+- ADR-018: `PROPOSED — AWAITING INDEPENDENT REVIEW`
+- RG-08/RG-09/RG-10: not self-declared closed
+- `0006`: `PASS — CLOSED`
+- proposed `0007_phase_02_cp3_c2_b2_c_counter_capability_bootstrap`:
+  `NOT CREATED / NOT AUTHORIZED`
+- application/migration/test/dependency/frontend changes: `0`
+- R1: `NOT STARTED / BLOCKED`
+- B2-D / CP3-C2-C / CP3-D: `NOT STARTED`
+- Automatic progression: `PROHIBITED`

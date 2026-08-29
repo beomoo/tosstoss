@@ -19,9 +19,9 @@
 - CP3-C2-B2-B: `PASS — CLOSED`
 - CP3-C2-B2-C `0006` schema implementation: `PASS — CLOSED`
 - B2-C R1 WebAuthn runtime:
-  `NOT STARTED / BLOCKED — ADR-017 CHANGES REQUIRED / RG-06 OPEN / ADR-018 PROPOSED`
-- ADR-017: `PROPOSED — CHANGES REQUIRED / RG-06 OPEN`, decision date `NONE`
-- ADR-018: `PROPOSED`, decision date `NONE`
+  `NOT STARTED / BLOCKED — ADR-017/ADR-018 REVIEW REQUIRED`
+- ADR-017: `PROPOSED — AWAITING INDEPENDENT RE-REVIEW`, decision date `NONE`
+- ADR-018: `PROPOSED — AWAITING INDEPENDENT REVIEW`, decision date `NONE`
 - CP3-C2-B2-D: `NOT STARTED`
 - Migration implementation: additive `0005` implemented in B2-A; production
   database application `0`
@@ -1596,7 +1596,7 @@ contract or retroactively broaden the B1 closeout approval.
 - ADR-016: `ACCEPTED` (`2026-08-28`)
 - Migration `0006`: `PASS — CLOSED`
 - B2-C WebAuthn/human-approval runtime:
-  `NOT STARTED / BLOCKED — ADR-017 CHANGES REQUIRED / RG-06 OPEN / ADR-018 PROPOSED`
+  `NOT STARTED / BLOCKED — ADR-017/ADR-018 REVIEW REQUIRED`
 - CP3-C2-B2-D: `NOT STARTED`
 - CP3-C2-C: `NOT STARTED`
 - CP3-D: `NOT STARTED`
@@ -1775,7 +1775,7 @@ on `2026-08-28`. This adds no WebAuthn/human-approval runtime.
 - CP3-C2-B2-C `0006` schema implementation: `PASS — CLOSED`
 - Migration `0006`: `PASS — CLOSED`
 - B2-C WebAuthn/human-approval runtime:
-  `NOT STARTED / BLOCKED — ADR-017 CHANGES REQUIRED / RG-06 OPEN / ADR-018 PROPOSED`
+  `NOT STARTED / BLOCKED — ADR-017/ADR-018 REVIEW REQUIRED`
 - CP3-C2-B2-D / CP3-C2-C / CP3-D: `NOT STARTED`
 - Automatic progression: `PROHIBITED`
 
@@ -1817,11 +1817,11 @@ documented hash dependency DAG has no cycle.
 
 - ADR-015: `ACCEPTED` (`2026-08-28`)
 - ADR-016: `ACCEPTED` (`2026-08-28`)
-- ADR-017: `PROPOSED — CHANGES REQUIRED / RG-06 OPEN`, decision date `NONE`
+- ADR-017: `PROPOSED — AWAITING INDEPENDENT RE-REVIEW`, decision date `NONE`
 - ADR-018: `PROPOSED`, decision date `NONE`
 - `0006`: `PASS — CLOSED`
 - R1 application/schema/test/dependency changes: `0`
-- R1 status: `NOT STARTED / BLOCKED — ADR-017 RG-06 OPEN / ADR-018 PROPOSED`
+- R1 status: `NOT STARTED / BLOCKED — ADR-017/ADR-018 REVIEW REQUIRED`
 - Migration `0007`: necessary under ADR-018 Option C, `NOT CREATED / NOT
   AUTHORIZED`, creation/application `0`
 - Actual Windows Hello or issuer approval: `0`
@@ -1852,10 +1852,89 @@ retroactive failure. The exact counter-decision vectors and schema audit are in
 `qa/PHASE_02_CP3_C2_B2_C_ADR_017_COUNTER_CAPABILITY_REMEDIATION_CODEX_REPORT.md`.
 
 - ADR-015 / ADR-016: `ACCEPTED`
-- ADR-017: `PROPOSED — CHANGES REQUIRED / RG-06 OPEN`
-- ADR-018: `PROPOSED`
+- ADR-017: `PROPOSED — AWAITING INDEPENDENT RE-REVIEW`
+- ADR-018: `PROPOSED — AWAITING INDEPENDENT REVIEW`
 - `0006`: `PASS — CLOSED`
 - future `0007`: `NOT CREATED / NOT AUTHORIZED`
+- R1: `NOT STARTED / BLOCKED`
+- B2-D / CP3-C2-C / CP3-D: `NOT STARTED`
+- Automatic progression: `PROHIBITED`
+
+## 24. ADR-017/ADR-018 full R1 implementability remediation — proposal only
+
+Full independent review of authoritative SHA
+`c34d8ca5a25bbea8c4ff410b7d62dc451f357528` returned `CHANGES REQUIRED`, P0
+`0`, P1 `3`, P2 `2`. RG-01 through RG-07 and Option C remain valid. ADR-017 now
+proposes, without accepting, the exact contracts below.
+
+### 24.1 All credential-creating operations
+
+Counter ambiguity applies identically to `FIRST_ENROLLMENT`, `ADD_CREDENTIAL`,
+and `REPLACE_CREDENTIAL`; it never applies to `REVOKE_CREDENTIAL`. A positive
+registration counter uses the existing terminal `0006` path. Registration zero
+creates no public credential and enters exactly one pending-credential
+assertion. The child challenge expires no later than the existing registration
+challenge.
+
+ADD/REPLACE have already durably consumed an authorization assertion, recorded
+the authorizing `VERIFIED` event and any supported counter edge, and issued the
+single frozen registration challenge. Those rows never roll back. Successful
+classification completes the same original operation. Failure creates the
+exact frozen failed/expired registration consumption and outcome with unchanged
+credential state. REPLACE success atomically authorizes new `REGISTERED` plus
+old-target `SUPERSEDED`; failure leaves the old target active.
+
+The exact proposed table, column, FK, CHECK, index, trigger, transaction,
+restart, replay, and hash design is normative in
+`plans/PHASE_02_CP3_C2_B2_C_ADR_018_COUNTER_CAPABILITY_SCHEMA_PROPOSAL.md`.
+Future migration identity is proposed as
+`0007_phase_02_cp3_c2_b2_c_counter_capability_bootstrap`; creation and authority
+remain zero.
+
+### 24.2 Exact user entity and assertions
+
+Registration uses display-only constants `rp.name="localhost"`,
+`user.name="local-data-steward"`, and
+`user.displayName="Local Data Steward"`. The exact raw 32-byte per-slot
+`user.id` is:
+
+```text
+SHA256(ASCII("issuer-steward-webauthn-user-handle/0.1.0") || 0x00
+       || UTF8_NFC(reviewer_principal_id) || 0x00
+       || UTF8_NFC(reviewer_credential_operation_id))
+```
+
+Distinct operation IDs prevent discoverable credential replacement when one
+principal owns multiple active platform credentials. Every R1 assertion uses a
+non-empty exact `allowCredentials` list. A present `response.userHandle` must
+equal the reconstructed slot handle byte-for-byte; absence is allowed with the
+non-empty allow list. No persisted handle column is needed because the unique
+root registration authorization reconstructs the exact operation after restart.
+
+### 24.3 Exact Windows owner and registration proof
+
+Production Windows opens the current process token, queries `TokenUser`,
+validates the exact `TOKEN_USER` SID, converts it with
+`ConvertSidToStringSidW`, and hashes UTF-8 bytes of that exact canonical
+`S-R-I-S-S...` text. It hashes neither UTF-16/NUL, binary SID, aliases,
+environment username, nor caller values. Raw SID text is transient and never
+logged. Any API failure or non-Windows production execution fails closed.
+
+Registration requests exact platform attachment, resident key required plus
+legacy `requireResidentKey=true`, UV required, attestation none, and
+`credProps=true`. Platform proof requires cryptographic success plus returned
+attachment exactly `platform`. Resident-key proof follows successful creation
+under the exact required option; present `credProps.rk` must be true, while
+absence is not by itself contrary evidence. Public-key proof additionally
+requires canonical credential ID, CTAP2-canonical restricted COSE, and exact
+ES256/RS256 allowlisting. Client ceremony outputs do not create attestation
+authority.
+
+- ADR-017: `PROPOSED — AWAITING INDEPENDENT RE-REVIEW`
+- ADR-018: `PROPOSED — AWAITING INDEPENDENT REVIEW`
+- RG-08/RG-09/RG-10: not self-declared closed
+- `0006`: `PASS — CLOSED`
+- `0007`: `NOT CREATED / NOT AUTHORIZED`
 - R1: `NOT STARTED / BLOCKED`
 - B2-D / CP3-C2-C / CP3-D: `NOT STARTED`
 - Automatic progression: `PROHIBITED`
