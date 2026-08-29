@@ -1197,7 +1197,7 @@ commit할 수 없다.
 
 ## ADR-017 — WebAuthn Runtime Canonicalization and Hash Preimage Amendment
 
-- 상태: `PROPOSED — AWAITING INDEPENDENT RE-REVIEW`
+- 상태: `PROPOSED — AWAITING GPT RE-REVIEW`
 - 제안일: `2026-08-28`
 - 결정일: `NONE`
 - 선행 결정: ADR-015 `ACCEPTED`, ADR-016 `ACCEPTED`
@@ -1205,6 +1205,11 @@ commit할 수 없다.
 - 독립 검토: authoritative SHA
   `c34d8ca5a25bbea8c4ff410b7d62dc451f357528`의 전체 R1 설계에 대해
   `CHANGES REQUIRED`, P0 `0`, P1 `3`, P2 `2`
+- 최종 schema/trust-boundary 검토: authoritative SHA
+  `09ced6c0d0000f911075154c97a0e1cf54656f86`에 대해 `CHANGES REQUIRED`,
+  P0 `0`, P1 `3`, P2 `1`; RG-08/RG-09/RG-10 canonical SID bytes/RG-11은
+  `CLOSED IN PRINCIPLE`, P1-FR-01/P1-FR-02/P1-FR-03과 Windows Hello
+  provenance가 새 blocker
 - 재현 벡터:
   `qa/PHASE_02_CP3_C2_B2_C_RUNTIME_CANONICALIZATION_GAP_CODEX_REPORT.md`
 
@@ -1328,9 +1333,56 @@ exact authorization pointing to its registering operation. Principal plus that
 operation deterministically reconstruct the handle after restart. Returned raw
 handles are transient and never persisted or logged.
 
-### RG-10 — exact Windows owner SID preimage
+### RG-10 / P1-FR-03 — exact Windows app-data owner binding and SID preimage
 
-Production Windows obtains identity only from the current process access token:
+The exact production application-data root for the SQLite authority/reviewer
+ledger is the existing repository runtime root, not a new profile directory:
+
+```text
+canonical_app_data_root = resolve(PROJECT_ROOT / "var")
+canonical_authority_database = canonical_app_data_root / "dashboard.db"
+```
+
+`PROJECT_ROOT` is derived server-side from the installed API module location as
+`Path(__file__).resolve().parents[4]`, matching the repository scripts'
+`Get-RepoRoot` plus `var` contract. It is never derived from the current working
+directory, `USERNAME`, a browser, or caller data. In production authority mode,
+the effective `DASHBOARD_DATABASE_URL` must resolve byte-for-byte, under Windows
+ordinal case-insensitive path comparison, to the canonical database above.
+In-memory, temporary, fixture-hash, test and externally overridden SQLite paths
+cannot host production reviewer/authority state and fail closed for R1.
+
+Before reading or writing any R1 principal/credential/approval row, the server
+performs this owner check:
+
+1. Require Windows and a local volume that reports persistent ACL support. A
+   remote, non-filesystem, reparse-point, or object for which owner information
+   cannot be queried is rejected.
+2. If `canonical_app_data_root` does not exist, resolve and open the canonical
+   repository root, create exactly its `var` child with `CreateDirectoryW`, and
+   immediately continue with the same handle-based verification below. The
+   directory is not trusted merely because creation succeeded. Failure or a
+   race/swap is fail-closed; R1 does not change ownership with `SetSecurityInfo`.
+3. Open the directory with `CreateFileW(OPEN_EXISTING)` using `READ_CONTROL`,
+   `FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE`, and
+   `FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OPEN_REPARSE_POINT`. Query
+   `FileAttributeTagInfo` and reject any reparse point. Resolve the opened
+   object with `GetFinalPathNameByHandleW(FILE_NAME_NORMALIZED |
+   VOLUME_NAME_DOS)` and require it to equal the expected canonical root.
+4. Call `GetVolumeInformationW` for the handle-resolved volume. Reject a
+   remote volume or filesystem flags that omit `FILE_PERSISTENT_ACLS`.
+5. Call `GetSecurityInfo(handle, SE_FILE_OBJECT,
+   OWNER_SECURITY_INFORMATION, ...)`, require a non-null owner SID, and require
+   `IsValidSid(app_data_owner_sid)`.
+6. Independently call `OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, ...)`,
+   `GetTokenInformation(..., TokenUser, ...)`, and
+   `IsValidSid(token_user_sid)`. Require
+   `EqualSid(app_data_owner_sid, token_user_sid)` to return nonzero. Group
+   membership, administrator/elevation status, profile-folder name, and path
+   access are not substitutes for owner equality.
+
+Only after equality succeeds does production derive the immutable owner hash
+from the independently obtained process-token SID:
 
 1. `OpenProcessToken` on the current process;
 2. `GetTokenInformation(..., TokenUser, ...)`;
@@ -1348,9 +1400,11 @@ os_owner_sid_hash =
 The preimage has no UTF-16 code units, terminating NUL, case conversion,
 whitespace, domain/user name, environment username, caller value, SID alias,
 binary SID bytes, or textual hash prefix. The canonical text is transient only;
-the raw SID is never persisted or logged. Failure of token opening, TokenUser
-query, SID validation, or string conversion fails closed. Non-Windows
-production execution fails closed.
+the raw app-data owner SID, process-token SID, and canonical SID text are never
+persisted or logged. Failure of root resolution/creation, handle opening, final-
+path or reparse validation, owner-security query, token opening, TokenUser
+query, either SID validation, `EqualSid`, or string conversion fails closed.
+Non-Windows production execution fails closed.
 
 ### RG-11 — exact registration request and proof derivation
 
@@ -1387,8 +1441,13 @@ Normative references for RG-09/RG-11 are W3C WebAuthn Level 3 user entities,
 discoverable credentials, authenticator selection, assertion options, and
 credential-properties extension (`https://www.w3.org/TR/webauthn-3/`). RG-10
 uses the Microsoft Win32 contracts for `OpenProcessToken`,
+`GetSecurityInfo`, `CreateFileW`, `GetFinalPathNameByHandleW`, `EqualSid`,
 `GetTokenInformation`, `TOKEN_USER`, `IsValidSid`, and
 `ConvertSidToStringSidW`:
+`https://learn.microsoft.com/en-us/windows/win32/api/aclapi/nf-aclapi-getsecurityinfo`,
+`https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-createfilew`,
+`https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-getfinalpathnamebyhandlew`,
+`https://learn.microsoft.com/en-us/windows/win32/api/securitybaseapi/nf-securitybaseapi-equalsid`,
 `https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-openprocesstoken`,
 `https://learn.microsoft.com/en-us/windows/win32/api/securitybaseapi/nf-securitybaseapi-gettokeninformation`,
 `https://learn.microsoft.com/en-us/windows/win32/api/winnt/ns-winnt-token_user`,
@@ -1726,9 +1785,9 @@ unknown algorithms/transports, omitting null keys, treating a missing counter
 as zero, or letting callers supply policy/hash fields. Each would make the
 persisted identity non-portable or weaken fail-closed verification.
 
-ADR-017 remains `PROPOSED — AWAITING INDEPENDENT RE-REVIEW`; Codex does not
-self-accept it. ADR-018 below is separately `PROPOSED — AWAITING INDEPENDENT
-REVIEW` and not accepted. RG-08/RG-09/RG-10 are not self-declared closed. R1
+ADR-017 remains `PROPOSED — AWAITING GPT RE-REVIEW`; Codex does not
+self-accept it. ADR-018 below is separately `PROPOSED — AWAITING GPT
+RE-REVIEW` and not accepted. RG-08/RG-09/RG-10 are not self-declared closed. R1
 remains `NOT STARTED / BLOCKED`, with application, schema, migration, test,
 fixture and dependency changes all `0`. Future `0007` is necessary under the
 selected proposal but is `NOT CREATED / NOT AUTHORIZED`. ADR-015 and ADR-016
@@ -1748,11 +1807,11 @@ explicit authority.
 
 ## ADR-018 — WebAuthn Counter Capability Bootstrap Amendment
 
-- 상태: `PROPOSED — AWAITING INDEPENDENT REVIEW`
+- 상태: `PROPOSED — AWAITING GPT RE-REVIEW`
 - 제안일: `2026-08-28`
 - 결정일: `NONE`
 - 선행 결정: ADR-015 `ACCEPTED`, ADR-016 `ACCEPTED`, ADR-017 `PROPOSED —
-  AWAITING INDEPENDENT RE-REVIEW`
+  AWAITING GPT RE-REVIEW`
 - 적용 gate: `CP3-C2-B2-C R1`
 - proposed future migration:
   `0007_phase_02_cp3_c2_b2_c_counter_capability_bootstrap` — `NOT CREATED / NOT
@@ -1882,6 +1941,35 @@ content-hash field inventory, timestamp, and payload authority rule. It also
 defines exact FIRST/ADD/REPLACE success and failure transactions, replay and
 restart reconstruction, user-handle reconstruction, and the hash DAG.
 
+P1-FR-01 is resolved in the proposal by choosing additive-index design A.
+Future `0007` must create exactly
+`uq_0007_reviewer_credential_operation_outcomes_bootstrap_projection` on the
+frozen outcome table with ordered columns
+`(credential_operation_outcome_id, outcome_content_hash,
+reviewer_credential_operation_id, operation_content_hash,
+reviewer_principal_id, reviewer_role, principal_content_hash,
+os_owner_sid_hash, operation_type, terminal_result, terminal_consumption_id,
+terminal_consumption_content_hash, expected_credential_state_hash,
+resulting_credential_state_hash)`. Neither frozen outcome UNIQUE is an eligible
+parent for that complete tuple. The assertion also now copies exact
+`projected_registration_challenge_purpose='REGISTRATION_CREATE'` so its frozen
+consumption FK has all six child columns; no constant is silently substituted
+for a missing child column.
+
+P1-FR-02 is resolved by the exact executable order proven against frozen
+immediate triggers. First/add success is assertion -> frozen registration
+consumption -> registration lifecycle authorization -> public credential ->
+`REGISTERED` event -> frozen outcome. Replace success is assertion ->
+consumption -> new registration authorization -> old supersession authorization
+-> new credential -> new `REGISTERED` -> old `SUPERSEDED` -> outcome. Every
+failure/expiry is assertion -> frozen consumption -> frozen outcome with zero
+credential/lifecycle writes. The authorization rows are intentional deferred-
+FK forward references; their own new additive projection guard runs before the
+credential/event insert. A disposable uncommitted SQLite proof applied the
+actual `0001`–`0006`, materialized the proposal, committed all nine required
+first/add/replace positive/zero/failure transactions, and returned zero rows
+from `PRAGMA foreign_key_check`. No proof file or database is retained.
+
 Only the two frozen counter-union definitions are version-replaced, under their
 same names, to add the supported bootstrap edge:
 `trg_reviewer_authentication_events_counter_union_guard` and
@@ -1892,13 +1980,78 @@ additional cross-ledger guards. No existing row or migration is rewritten.
 
 ### 상태 효과
 
-ADR-018 is `PROPOSED — AWAITING INDEPENDENT REVIEW`, not accepted or
+ADR-018 is `PROPOSED — AWAITING GPT RE-REVIEW`, not accepted or
 implemented. Future `0007` is necessary for Option C but is `NOT CREATED / NOT
-AUTHORIZED`. ADR-017 remains `PROPOSED — AWAITING INDEPENDENT RE-REVIEW`; R1
+AUTHORIZED`. ADR-017 remains `PROPOSED — AWAITING GPT RE-REVIEW`; R1
 remains `NOT STARTED / BLOCKED`. RG-08/RG-09/RG-10 are not self-declared closed.
 ADR-015 and ADR-016 remain `ACCEPTED`; `0006` remains `PASS — CLOSED`; B2-D,
 CP3-C2-C and CP3-D remain `NOT STARTED`; automatic progression remains
 `PROHIBITED`.
+
+---
+
+## ADR-019 — Windows Hello Provenance Trust Boundary
+
+- 상태: `PROPOSED — AWAITING GPT REVIEW`
+- 제안일: `2026-08-29`
+- 결정일: `NONE`
+- 선행 결정: accepted B1/ADR-014 requires a Windows Hello-backed platform
+  credential; ADR-017/ADR-018 remain proposed
+- 적용 gate: `CP3-C2-B2-C R1`
+
+### 문제와 standards result
+
+The current ceremony requires Windows, `authenticatorAttachment=platform`,
+UV, resident discoverability, and `attestation=none`; it uses no Metadata
+Service, AAGUID allowlist, enterprise/direct attestation trust path, hardware
+attestation CA, or native broker. WebAuthn Level 3 defines none attestation as
+providing no attestation information and an empty trust path. Attachment
+modality and UV prove ceremony properties, not the authenticator vendor or
+implementation. Microsoft documents that current Windows WebAuthn routes to
+Windows Hello, external security keys, and plugin authenticators, and Windows
+11 24H2 supports plugin passkey managers.
+
+Therefore the current exact design proves only:
+
+```text
+a user-verifying platform WebAuthn credential on Windows
+```
+
+It does **not** uniquely establish strict Windows Hello provenance. This is a
+new trust-boundary blocker, not permission to weaken accepted B1.
+
+### Options — no option selected or accepted
+
+| Option | Property and consequence | Decision state |
+|---|---|---|
+| 1. Retain strict Windows Hello-only and add independently verifiable provenance | Preserves accepted B1, but requires an exact Microsoft/Windows-Hello-specific attestation or other provenance signal plus an approved trust path, failure policy, privacy model, and rotation/revocation contract. `attestation=none` cannot supply it. MDS, direct/enterprise attestation, AAGUID allowlists, and new roots remain forbidden unless separately accepted. | candidate; technically strongest product-property match, mechanism not yet approved |
+| 2. Redefine the property as “user-verifying Windows platform WebAuthn credential” | Matches what the present browser ceremony actually proves. Threat model must explicitly accept Windows platform/plugin authenticators that satisfy exact RP/origin/UV/signature rules and acknowledge that no Windows Hello provenance is established. This changes the accepted B1 security property. | candidate only; not selected for ease and requires explicit user amendment |
+| 3. Adopt a stronger Windows-native architecture | A native broker or Windows credential/key API might expose a narrower system trust boundary, but it adds a native component, protocol, packaging/update surface, and new authority root. Its ability to exclude plugin authenticators must be independently proved before selection. | research candidate; no broker or root authorized |
+
+Fail-closed default retains the strict B1 words and blocks R1. No provenance
+option, weaker property, Metadata Service, attestation mode, AAGUID policy,
+native broker, or trust root is introduced by this proposal. ADR-019 needs
+independent review and explicit user acceptance before R1 can begin, even if
+ADR-017/ADR-018 later pass review.
+
+The deliberate RG-09 handle model remains unchanged: each credential slot is
+a distinct authenticator-layer WebAuthn user-account namespace so a second
+discoverable credential does not replace the first `(rpId,userHandle)` entry;
+all slots map server-side to the one `LOCAL_DATA_STEWARD` authorization
+principal. Every assertion keeps a non-empty exact `allowCredentials` list.
+
+Normative/primary references:
+W3C WebAuthn Level 3 none attestation, user handle, and discoverable credential
+rules (`https://www.w3.org/TR/webauthn-3/`) and Microsoft WebAuthn APIs for
+Windows/plugin passkey managers
+(`https://learn.microsoft.com/en-us/windows/security/identity-protection/hello-for-business/webauthn-apis`).
+
+### 상태 효과
+
+ADR-019 is `PROPOSED — AWAITING GPT REVIEW`, not accepted. ADR-017 and ADR-018
+are `PROPOSED — AWAITING GPT RE-REVIEW`; `0006` is `PASS — CLOSED`; future
+`0007` is `NOT CREATED / NOT AUTHORIZED`; R1 is `BLOCKED / NOT STARTED`; B2-D,
+CP3-C2-C and CP3-D are `NOT STARTED`; automatic progression is `PROHIBITED`.
 
 ---
 

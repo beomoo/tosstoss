@@ -1,5 +1,36 @@
 # Changelog
 
+## Unreleased — ADR-017/ADR-018 Final Schema + Windows Trust Boundary — 2026-08-29
+
+- Recorded final independent review of authoritative SHA
+  `09ced6c0d0000f911075154c97a0e1cf54656f86`: `CHANGES REQUIRED`, P0 `0`, P1
+  `3`, P2 `1`. RG-08/RG-09/RG-10 canonical SID bytes/RG-11 remain closed in
+  principle; no ADR was accepted.
+- Selected one exact future-0007 parent index for the complete frozen outcome
+  projection, added the explicit registration-purpose child column required by
+  SQLite's frozen consumption FK, and made the additive/frozen index inventory
+  exhaustive.
+- Derived the exact immediate-trigger-safe row order for first/add/replace
+  success and failure. A disposable uncommitted SQLite harness applied actual
+  migrations `0001`–`0006`, materialized the proposed DDL/guards, committed all
+  nine required transactions, and returned zero rows from
+  `PRAGMA foreign_key_check`; the proof artifacts were deleted.
+- Bound the existing production `PROJECT_ROOT/var/dashboard.db` authority root
+  to its handle-resolved filesystem OWNER SID and independently validated
+  process `TOKEN_USER` via `EqualSid` before the approved SID hash derivation.
+  Unsupported filesystems, reparse/path mismatch, API failure, and unequal SIDs
+  fail closed.
+- Found that platform attachment + UV + none attestation proves a user-verifying
+  Windows platform WebAuthn credential, not strict Windows Hello provenance.
+  Proposed, but did not accept, ADR-019 with three trust-boundary options. No
+  Metadata Service, attestation root, AAGUID list, native broker, or weaker
+  product property was introduced.
+- Migrations `0001`–`0006` remain byte-identical; `0006` remains `PASS —
+  CLOSED`; `0007` remains `NOT CREATED / NOT AUTHORIZED`. Committed application,
+  migration, test, dependency, frontend, and runtime changes are zero. R1 and
+  later checkpoints remain blocked/not started; automatic progression remains
+  prohibited.
+
 ## Unreleased — ADR-017/ADR-018 Full R1 Implementability Remediation — 2026-08-29
 
 - Recorded the full-design independent verdict at authoritative SHA

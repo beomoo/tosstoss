@@ -24,11 +24,13 @@
 - Governing schema decision: ADR-015 `ACCEPTED` (`2026-08-28`)
 - Narrow implementation amendment: ADR-016 `ACCEPTED` (`2026-08-28`)
 - Runtime canonicalization amendment: ADR-017
-  `PROPOSED — AWAITING INDEPENDENT RE-REVIEW`, decision date `NONE`
+  `PROPOSED — AWAITING GPT RE-REVIEW`, decision date `NONE`
 - Counter bootstrap amendment: ADR-018
-  `PROPOSED — AWAITING INDEPENDENT REVIEW`, decision date `NONE`
+  `PROPOSED — AWAITING GPT RE-REVIEW`, decision date `NONE`
+- Windows Hello provenance boundary: ADR-019
+  `PROPOSED — AWAITING GPT REVIEW`, decision date `NONE`
 - Runtime implementation:
-  `0 / NOT STARTED / BLOCKED — ADR-017/ADR-018 REVIEW REQUIRED`
+  `0 / NOT STARTED / BLOCKED — ADR-017/ADR-018/ADR-019 REVIEW REQUIRED`
 - Migration file creation: `1` (additive `0006`); persistent application: `0`
 - Automatic progression: `PROHIBITED`
 
@@ -1545,9 +1547,9 @@ feed issuer binding then consumption/authentication/approval. No descendant
 hash is copied into an ancestor preimage.
 
 - ADR-015 / ADR-016: `ACCEPTED`
-- ADR-017: `PROPOSED — AWAITING INDEPENDENT RE-REVIEW`, decision date `NONE`;
+- ADR-017: `PROPOSED — AWAITING GPT RE-REVIEW`, decision date `NONE`;
   Codex does not self-accept it
-- ADR-018: `PROPOSED — AWAITING INDEPENDENT REVIEW`, decision date `NONE`;
+- ADR-018: `PROPOSED — AWAITING GPT RE-REVIEW`, decision date `NONE`;
   Codex does not self-accept it
 - `0006`: `PASS — CLOSED`, byte-identical in this documentation task
 - R1: `NOT STARTED / BLOCKED`, runtime changed files `0`
@@ -1627,8 +1629,9 @@ must match. Production SID hashing is fixed to UTF-8 of the exact canonical
 and UV required, attestation none, `credProps=true`, exact returned platform
 attachment, and canonical ES256/RS256 public material.
 
-- ADR-017: `PROPOSED — AWAITING INDEPENDENT RE-REVIEW`
-- ADR-018: `PROPOSED — AWAITING INDEPENDENT REVIEW`
+- ADR-017: `PROPOSED — AWAITING GPT RE-REVIEW`
+- ADR-018: `PROPOSED — AWAITING GPT RE-REVIEW`
+- ADR-019: `PROPOSED — AWAITING GPT REVIEW`
 - RG-08/RG-09/RG-10: not self-declared closed
 - `0006`: `PASS — CLOSED`
 - proposed `0007_phase_02_cp3_c2_b2_c_counter_capability_bootstrap`:
@@ -1637,3 +1640,57 @@ attachment, and canonical ES256/RS256 public material.
 - R1: `NOT STARTED / BLOCKED`
 - B2-D / CP3-C2-C / CP3-D: `NOT STARTED`
 - Automatic progression: `PROHIBITED`
+
+## 18. Final schema and Windows trust-boundary remediation — proposal only
+
+Final review at authoritative SHA
+`09ced6c0d0000f911075154c97a0e1cf54656f86` returned `CHANGES REQUIRED`, P0
+`0`, P1 `3`, P2 `1`. RG-08, RG-09, RG-10 canonical SID byte representation,
+and RG-11 remain closed in principle. The new findings do not reopen frozen
+`0006`.
+
+P1-FR-01 selects exact additive parent index
+`uq_0007_reviewer_credential_operation_outcomes_bootstrap_projection` on
+`(credential_operation_outcome_id, outcome_content_hash,
+reviewer_credential_operation_id, operation_content_hash,
+reviewer_principal_id, reviewer_role, principal_content_hash,
+os_owner_sid_hash, operation_type, terminal_result, terminal_consumption_id,
+terminal_consumption_content_hash, expected_credential_state_hash,
+resulting_credential_state_hash)`. Neither frozen outcome UNIQUE contains that
+complete tuple. The assertion also gains non-null
+`projected_registration_challenge_purpose='REGISTRATION_CREATE'` for the frozen
+consumption FK.
+
+P1-FR-02 freezes executable order. First/add success is assertion, frozen
+registration consumption, registration authorization, public credential,
+`REGISTERED`, outcome. Replace success is assertion, consumption, new
+registration authorization, old supersession authorization, new credential,
+new `REGISTERED`, old `SUPERSEDED`, outcome. Failure/expiry is assertion,
+consumption, outcome only. The authorizations intentionally forward-reference
+deferred credential/event/outcome FKs. A disposable uncommitted SQLite harness
+applied actual `0001`–`0006`, materialized the proposal, committed all nine
+required transactions, and returned zero `PRAGMA foreign_key_check` rows. The
+proof code/databases were deleted.
+
+P1-FR-03 binds existing production root `PROJECT_ROOT / "var"` and
+`dashboard.db` to its filesystem OWNER SID. R1 opens the directory without
+following reparse points, validates final path and persistent-ACL support,
+retrieves/validates its owner with `GetSecurityInfo`, independently validates
+process `TOKEN_USER`, and requires `EqualSid` before the approved UTF-8 SID
+hash. Absent-root creation is followed by the same verification. Unsupported
+objects, races, API failures, or mismatch fail closed; raw SIDs are transient.
+
+Platform attachment + UV + none attestation proves only a user-verifying
+Windows platform WebAuthn credential, not strict Windows Hello provenance.
+ADR-019 is proposed, not accepted, comparing verifiable strict-Hello
+provenance, an explicit weaker-property amendment, and a stronger Windows-
+native architecture. No option or trust root is authorized.
+
+- ADR-017: `PROPOSED — AWAITING GPT RE-REVIEW`
+- ADR-018: `PROPOSED — AWAITING GPT RE-REVIEW`
+- ADR-019: `PROPOSED — AWAITING GPT REVIEW`
+- `0006`: `PASS — CLOSED`
+- `0007`: `NOT CREATED / NOT AUTHORIZED`
+- R1: `BLOCKED / NOT STARTED`
+- B2-D / CP3-C2-C / CP3-D: `NOT STARTED`
+- automatic progression: `PROHIBITED`

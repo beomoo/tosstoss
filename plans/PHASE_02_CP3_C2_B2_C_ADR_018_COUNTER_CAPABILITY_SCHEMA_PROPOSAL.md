@@ -2,8 +2,8 @@
 
 ## 1. Control-plane status
 
-- ADR-017: `PROPOSED — AWAITING INDEPENDENT RE-REVIEW`
-- ADR-018: `PROPOSED — AWAITING INDEPENDENT REVIEW`
+- ADR-017: `PROPOSED — AWAITING GPT RE-REVIEW`
+- ADR-018: `PROPOSED — AWAITING GPT RE-REVIEW`
 - `0006`: `PASS — CLOSED`
 - proposed future migration:
   `0007_phase_02_cp3_c2_b2_c_counter_capability_bootstrap`
@@ -291,6 +291,7 @@ Exact name:
 | `classification_verified` | `INTEGER` | no | `1` only on successful exact classification |
 | `projected_registration_consumption_id` | `VARCHAR(128)` | no | exact frozen terminal consumption |
 | `projected_registration_consumption_content_hash` | `VARCHAR(71)` | no | exact frozen hash |
+| `projected_registration_challenge_purpose` | `VARCHAR(32)` | no | exactly `REGISTRATION_CREATE`; required child column for the frozen six-column consumption FK |
 | `projected_registration_terminal_result` | `VARCHAR(32)` | no | success, failed-closed, or parent expiry |
 | `projected_registration_safe_result_code` | `VARCHAR(128)` | no | exact overall-registration code |
 | `projected_operation_outcome_id` | `VARCHAR(128)` | no | exact frozen outcome |
@@ -315,11 +316,27 @@ Exact name:
 - Exact challenge and pending-registration FKs copy their IDs, hashes,
   operation/principal/state tuple, and credential fingerprints.
 - Exact operation FK uses the frozen eight-column operation tuple.
-- Deferred exact frozen-consumption FK uses frozen
-  `uq_reviewer_credential_operation_consumptions_exact_terminal`.
-- Deferred exact frozen-outcome FK uses the complete frozen outcome exact-copy
-  tuple, including outcome hash, operation/principal/SID tuple, terminal result,
-  terminal consumption, expected state, and resulting state.
+- Deferred exact frozen-consumption FK has child columns, in this exact order:
+  `(projected_registration_consumption_id,
+  reviewer_credential_operation_id, reviewer_principal_id,
+  projected_registration_challenge_purpose,
+  projected_registration_terminal_result,
+  projected_registration_consumption_content_hash)`. It targets frozen
+  `uq_reviewer_credential_operation_consumptions_exact_terminal` in its exact
+  existing order. The new purpose column is fixed to `REGISTRATION_CREATE`;
+  an implied SQL constant cannot be used as an SQLite composite-FK child.
+- The deferred exact frozen-outcome FK uses future additive parent index
+  `uq_0007_reviewer_credential_operation_outcomes_bootstrap_projection`. Its
+  child columns, in exact order, are
+  `(projected_operation_outcome_id,
+  projected_operation_outcome_content_hash,
+  reviewer_credential_operation_id, operation_content_hash,
+  reviewer_principal_id, reviewer_role, principal_content_hash,
+  os_owner_sid_hash, operation_type, projected_operation_terminal_result,
+  projected_registration_consumption_id,
+  projected_registration_consumption_content_hash,
+  expected_credential_state_hash,
+  projected_resulting_credential_state_hash)`.
 - On success, a deferred FK binds the pending credential ID plus projected
   content hash to `uq_reviewer_credentials_exact_content`; deferred FKs bind the
   registered and optional superseded IDs to their immutable event rows.
@@ -354,10 +371,11 @@ was verified; the count has no classification authority.
 The preimage contains every section 7 column from `contract_version` through
 `projected_superseded_authorization_content_hash`, including the event ID, child
 challenge ID, all exact-copy hashes, counter observations, result codes, and
-projection IDs. It excludes only `assertion_content_hash`, `consumed_at`, and
-`payload_json`. Nullable counters, classification, credential, and lifecycle
-projection fields are explicit JSON null. Verification integers are JSON
-Booleans.
+projection IDs. This includes the newly explicit
+`projected_registration_challenge_purpose`. It excludes only
+`assertion_content_hash`, `consumed_at`, and `payload_json`. Nullable counters,
+classification, credential, and lifecycle projection fields are explicit JSON
+null. Verification integers are JSON Booleans.
 
 ## 8. Exact additive trigger and index design
 
@@ -375,6 +393,7 @@ is also the exact parent key for any composite FK described above.
 | `uq_0007_cc_registration_credential_fingerprint` | registrations | UNIQUE `(credential_id_fingerprint)` |
 | `uq_0007_cc_registration_public_key_fingerprint` | registrations | UNIQUE `(public_key_fingerprint)` |
 | `uq_0007_cc_registration_exact_copy` | registrations | UNIQUE `(counter_capability_registration_id, counter_capability_registration_content_hash, reviewer_credential_operation_id, operation_content_hash, operation_type, reviewer_principal_id, reviewer_role, principal_content_hash, os_owner_sid_hash, expected_credential_state_hash, registration_challenge_id, registration_challenge_binding_hash, webauthn_credential_id, credential_id_fingerprint, public_key_fingerprint, continuation_challenge_id)` |
+| `uq_0007_cc_registration_assertion_copy` | registrations | UNIQUE `(counter_capability_registration_id, counter_capability_registration_content_hash, reviewer_credential_operation_id, operation_content_hash, operation_type, reviewer_principal_id, reviewer_role, principal_content_hash, os_owner_sid_hash, expected_credential_state_hash, webauthn_credential_id, credential_id_fingerprint, public_key_fingerprint)` |
 | `ix_counter_capability_registrations_operation` | registrations | `(reviewer_credential_operation_id, reviewer_principal_id)` |
 | `uq_0007_cc_challenge_digest` | challenges | UNIQUE `(challenge_digest)` |
 | `uq_0007_cc_challenge_binding` | challenges | UNIQUE `(challenge_binding_hash)` |
@@ -388,21 +407,38 @@ is also the exact parent key for any composite FK described above.
 | `uq_0007_cc_assertion_consumption_projection` | assertions | UNIQUE `(projected_registration_consumption_id)` |
 | `uq_0007_cc_assertion_outcome_projection` | assertions | UNIQUE `(projected_operation_outcome_id)` |
 | `ix_counter_capability_assertions_operation` | assertions | `(reviewer_credential_operation_id, projected_operation_terminal_result)` |
+| `uq_0007_reviewer_credential_operation_outcomes_bootstrap_projection` | frozen outcomes | UNIQUE `(credential_operation_outcome_id, outcome_content_hash, reviewer_credential_operation_id, operation_content_hash, reviewer_principal_id, reviewer_role, principal_content_hash, os_owner_sid_hash, operation_type, terminal_result, terminal_consumption_id, terminal_consumption_content_hash, expected_credential_state_hash, resulting_credential_state_hash)` |
 | `uq_0007_credential_event_authorization_projection` | frozen event authorizations | UNIQUE `(credential_event_id, credential_event_content_hash, authorization_content_hash, webauthn_credential_id, reviewer_credential_operation_id, credential_operation_outcome_id, credential_operation_outcome_content_hash, event_type, authorization_kind)` |
 
 PK indexes are implicit and are not duplicated. No partial index changes frozen
-active-state or lifecycle semantics.
+active-state or lifecycle semantics. This inventory is exhaustive. In
+particular, there is no remaining “may add exact-copy indexes” discretion.
+
+### 8.0.1 Frozen outcome parent-key audit — P1-FR-01
+
+Frozen `uq_reviewer_credential_operation_outcomes_exact_terminal` contains the
+terminal consumption ID but omits `outcome_content_hash` and most copied trust
+fields. Frozen
+`uq_reviewer_credential_operation_outcomes_exact_success` contains the outcome
+hash and trust tuple but omits `terminal_consumption_id` and its content hash.
+Neither is an eligible SQLite parent for the intended child tuple. ADR-018
+therefore selects remediation A: future `0007` MUST create the one exact
+additive UNIQUE index named above before it creates the assertion FK. No frozen
+row or trigger meaning changes. Schema creation must fail if the index cannot
+be created; splitting the binding or relying on reverse triggers is not an
+authorized substitute.
 
 ### 8.1 New insert guards
 
 | Trigger | Exact responsibility |
 |---|---|
-| `trg_0007_counter_capability_registrations_insert_guard` | exact unconsumed live parent registration challenge; no outcome; exact operation/principal/state/prerequisite tuple; canonical credential/key material; registration count exactly zero; registration proof flags and request contract exact; pending credential absent from both pending and public ledgers; same-transaction exact child challenge |
+| `trg_0007_counter_capability_registrations_insert_guard` | exact unconsumed live parent registration challenge; no outcome; exact operation/principal/state/prerequisite tuple; canonical credential/key material; registration count exactly zero; registration proof flags and request contract exact; pending credential absent from both pending and public ledgers. The forward child is not queried by this immediate trigger; the deferred `(continuation_challenge_id, counter_capability_registration_id)` FK requires it at COMMIT. |
 | `trg_0007_counter_capability_challenges_insert_guard` | raw-32-byte digest contract; exact pending copy; exactly one allow credential; exact user-handle policy; child expiry no later than parent; no existing assertion |
 | `trg_0007_counter_capability_assertions_insert_guard` | exact one-time challenge; time/result match; full verification matrix; optional user-handle result; classification union; frozen projection IDs/hashes/results; failure zero-write rule; same-operation registration and replace lifecycle patterns |
 | `trg_0007_operation_consumptions_bootstrap_projection_guard` | when the frozen registration challenge has a pending row, reject any consumption unless exactly one same-transaction assertion row projects every new frozen value; also rejects frozen consumption before bootstrap terminalization |
 | `trg_0007_operation_outcomes_bootstrap_projection_guard` | when terminal registration consumption belongs to pending bootstrap, require the exact assertion projection and exact success/failure state relation |
 | `trg_0007_credentials_counter_bootstrap_guard` | any new public credential with `registration_sign_count=0` or `NO_USABLE_COUNTER` requires exactly one successful assertion projection; positive registration path is unaffected |
+| `trg_0007_credential_event_authorizations_counter_bootstrap_guard` | before either forward-reference authorization is inserted, require the already-existing successful assertion to project its exact event ID/hash, authorization hash, credential, operation, outcome ID/hash, event type, and authorization kind; failure projections cannot authorize lifecycle rows |
 | `trg_0007_credential_events_counter_bootstrap_guard` | projected `REGISTERED` and, for replace, `SUPERSEDED` events and authorization hashes must match the single successful assertion and outcome; no such rows may exist for a failed assertion |
 | `trg_0007_counter_capability_assertions_counter_union_guard` | supported `0 -> positive` is the first and unique union edge; no issuer/operation/bootstrap fork or duplicate may exist |
 
@@ -453,9 +489,9 @@ The following frozen triggers are **not** replaced:
   outcome preserves its exact one/two/zero authorization counts and reverse
   binding; the additive outcome guard only adds bootstrap linkage.
 
-No frozen append-only trigger is changed. The proposal may add exact-copy UNIQUE
-indexes to frozen tables solely to support stronger composite deferred FKs; it
-does not change existing data or semantics.
+No frozen append-only trigger is changed. The two exact additive UNIQUE indexes
+on frozen tables are exhaustively named in section 8.0. They support composite
+deferred FKs/projections and change neither existing data nor semantics.
 
 ## 9. Exact transaction projections
 
@@ -467,34 +503,100 @@ credential, event, or authorization. For add/replace, the prior frozen
 authorization assertion consumption, `VERIFIED` event, counter edge, and parent
 registration challenge already exist and are unchanged.
 
-### 9.2 Successful classification transaction
+### 9.2 Exact executable successful insertion order — P1-FR-02
 
-One `BEGIN IMMEDIATE` transaction inserts:
+The following is executable row order, not merely an inventory. Every operation
+uses one `BEGIN IMMEDIATE` transaction with foreign keys enabled.
 
-1. one section 7 successful assertion;
-2. the original frozen registration challenge consumption as `SUCCEEDED`, with
-   the selected capability/count and exact credential content hash;
-3. the immutable public credential;
-4. one `REGISTERED` event and its exact `BOOTSTRAP_REGISTRATION` or
-   `AUTHORIZED_REGISTRATION` authorization;
-5. for replace only, one old-target `SUPERSEDED` event and one
-   `AUTHORIZED_SUPERSESSION` authorization;
-6. one frozen successful operation outcome.
+For `FIRST_ENROLLMENT` and `ADD_CREDENTIAL` success the exact order is:
 
-Deferred FKs and guards make this graph all-or-nothing. First/add success changes
-the state by adding the new active credential. Replace success changes the state
-by removing the old target from the active projection and adding the new
-credential. The old authorizing event and counter edge are never rewritten.
+1. insert the section 7 successful assertion. Its immediate guard reads only
+   the already-committed pending row and child challenge and validates its
+   self-contained projection. The FKs to the future frozen consumption,
+   outcome, public credential and event are deliberately deferred;
+2. insert the frozen `REGISTRATION_CREATE/SUCCEEDED` consumption. Frozen
+   `trg_reviewer_credential_operation_consumptions_insert_guard` sees the
+   already-existing frozen challenge and validates replay/expiry/outcome
+   mapping. Additive
+   `trg_0007_operation_consumptions_bootstrap_projection_guard` sees the
+   already-existing assertion. Its FK to the future outcome remains deferred;
+3. insert the `BOOTSTRAP_REGISTRATION` authorization for first or
+   `AUTHORIZED_REGISTRATION` authorization for add. The additive authorization
+   guard sees the assertion. The frozen table's FKs to the future public
+   credential, lifecycle event, and outcome are deliberately deferred. For add,
+   its old authorizing authentication event already exists from the earlier
+   immutable assertion transaction;
+4. insert the public credential. Frozen
+   `trg_reviewer_webauthn_credentials_requires_registration_proof` now finds
+   both the consumption from step 2 and authorization from step 3. The additive
+   credential guard finds the assertion from step 1;
+5. insert `REGISTERED`. Frozen
+   `trg_reviewer_webauthn_credential_events_requires_authorization` now finds
+   both the authorization and public credential; the chain guard proves a
+   unique root. The additive event guard sees the assertion/authorization;
+6. insert the frozen successful outcome last. Frozen
+   `trg_reviewer_credential_operation_outcomes_insert_guard` now sees the exact
+   successful consumption and one required authorization. The additive outcome
+   guard sees the assertion. This resolves every remaining outcome FK; COMMIT
+   resolves the authorization/assertion forward-reference cycles.
 
-### 9.3 Failed or expired classification transaction
+For `REPLACE_CREDENTIAL` success the exact order is:
 
-One `BEGIN IMMEDIATE` transaction inserts one section 7 terminal assertion, the
-original frozen registration challenge consumption with the exact terminal
-mapping in section 7.1, and one frozen terminal operation outcome. Credential,
-lifecycle-event, and lifecycle-authorization inserts are exactly zero. Expected
-and resulting credential-state hashes are equal. For replace the old target
-therefore remains active. The outcome is a valid predecessor for one fresh
+1. section 7 successful assertion;
+2. frozen successful registration consumption;
+3. new-credential `AUTHORIZED_REGISTRATION` authorization;
+4. old-target `AUTHORIZED_SUPERSESSION` authorization;
+5. new public credential;
+6. new `REGISTERED` root event;
+7. old-target `SUPERSEDED` event, whose predecessor is the old target's already-
+   existing `REGISTERED` root;
+8. frozen successful outcome last.
+
+Steps 1–2 have the same trigger/deferred-FK reasons as above. Both authorization
+rows must exist before their events, and the registered authorization must
+exist before the new credential. At step 7 the frozen authorization and chain
+guards find the old public credential, exact authorization, and unsucceeded old
+root. At step 8 the frozen outcome guard finds exactly two authorizations — one
+registered/new and one superseded/old — for the same operation/principal/
+outcome. COMMIT then resolves every deferred FK atomically. The prior authorizer
+authentication/counter rows are never updated.
+
+### 9.3 Exact executable failed or expired insertion order
+
+For first, add, and replace, one `BEGIN IMMEDIATE` inserts exactly:
+
+1. the section 7 failed/expired assertion projection. Its final frozen-row FKs
+   are deferred and every credential/lifecycle projection is null;
+2. the original frozen registration consumption with the exact failure or
+   expiry terminal mapping. The frozen immediate guard sees the original
+   challenge; the additive consumption guard sees step 1; its outcome FK is
+   still deferred;
+3. the frozen terminal outcome last. The frozen outcome guard now sees the
+   consumption and requires zero lifecycle authorizations for an unsuccessful
+   outcome; the additive outcome guard sees the exact projection.
+
+Credential, lifecycle-event, and lifecycle-authorization inserts are exactly
+zero. Expected and resulting state hashes are identical. COMMIT resolves the
+assertion/consumption/outcome cycle. For add/replace the earlier authorizing
+authentication/counter event remains immutable; for replace the old target
+remains active. The exact frozen outcome is a legal predecessor for one fresh
 successor operation.
+
+### 9.4 Disposable SQLite proof
+
+On `2026-08-29`, an uncommitted temporary Python/SQLite harness applied the
+actual frozen `0001`–`0006`, materialized all three proposed table surfaces,
+the complete FK and index design above, and the affected additive guards, then
+executed the exact orders in sections 9.2/9.3 for:
+
+- first `0 -> positive`, `0 -> 0`, and bootstrap failure;
+- add `0 -> positive`, `0 -> 0`, and bootstrap failure; and
+- replace `0 -> positive`, `0 -> 0`, and bootstrap failure.
+
+Schema creation produced no foreign-key mismatch. All nine transactions
+committed, and `PRAGMA foreign_key_check` returned zero rows for every database.
+The proof code and all disposable databases were deleted and are not repository
+artifacts. This is local design evidence, not a created migration or CI result.
 
 ## 10. Restart and replay reconstruction
 
@@ -514,6 +616,16 @@ server retains no raw challenge, browser memory, session, recovery token, or
 login state.
 
 ## 11. User-handle schema sufficiency
+
+This is a deliberate two-layer account model. Each credential slot is a
+distinct WebAuthn user-account namespace at the authenticator layer, even
+though WebAuthn says a handle ought normally be shared by credentials of one
+user account. The deviation is necessary because the accepted product permits
+multiple active credentials while requiring discoverable platform credentials,
+and an authenticator stores at most one discoverable credential for an
+`(rpId,userHandle)` pair. Every slot nevertheless maps server-side to exactly
+the same `LOCAL_DATA_STEWARD` authorization principal. It does not create
+multiple reviewer principals, login discovery, or recovery state.
 
 No user-handle value column is required in `0007` or in the frozen credential
 table. For a pending credential, the exact operation ID is copied into all three

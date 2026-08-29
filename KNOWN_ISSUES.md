@@ -147,7 +147,7 @@
   evidence is absent. The user explicitly approved closeout on `2026-08-28`.
   The additive `0006` schema implementation is therefore `PASS — CLOSED`, and
   SG-01/SG-02/P1-SR-01/P1-SR-02/P1-SR-03/IG-01/IG-02 remain `CLOSED`.
-  B2-C R1 is now `NOT STARTED / BLOCKED — ADR-017/ADR-018 REVIEW REQUIRED`;
+  B2-C R1 is now `NOT STARTED / BLOCKED — ADR-017/ADR-018/ADR-019 REVIEW REQUIRED`;
   later checkpoints remain
   `NOT STARTED`; automatic progression is `PROHIBITED`.
 - 비차단 정정: issuer `SUPERSEDED`는 현재 schema blocker가 아니다. Existing
@@ -161,10 +161,10 @@
 - 영향: 현재 Windows 개발·QA repository path는 ASCII-only 사용을 권장하며, 재현 가능한 setup portability 제약이다. Toss runtime·OAuth·rate-limit·business logic에 영향을 준 증거는 없다.
 - 현재 대응: ASCII-only clone path를 사용한다. CP2 completion blocker나 unresolved functional defect로 보지 않고, 향후 setup portability hardening 후보로 이월한다.
 
-## KI-016 — WebAuthn runtime canonicalization/counter bootstrap gap
+## KI-016 — WebAuthn runtime schema and Windows provenance gap
 
-- 상태: `P1 BLOCKING — ADR-017 PROPOSED / AWAITING INDEPENDENT RE-REVIEW /
-  ADR-018 PROPOSED / AWAITING INDEPENDENT REVIEW`
+- 상태: `P1 BLOCKING — ADR-017/ADR-018 PROPOSED / AWAITING GPT RE-REVIEW /
+  ADR-019 PROPOSED / AWAITING GPT REVIEW`
 - 관찰: R1 pre-implementation audit에서 accepted ADR-015/ADR-016 schema가
   `principal_content_hash`, `credential_content_hash`, deterministic COSE_Key
   bytes/TEXT, raw challenge digest/binding, operation/issuer authentication
@@ -177,6 +177,13 @@
   `CHANGES REQUIRED`, P0 `0`, P1 `3`, P2 `2`였다. RG-01~RG-07과 Option C는
   유지되지만 RG-08 all-operation integration, RG-09 exact userHandle,
   RG-10 exact SID preimage, RG-11 registration proof가 추가로 필요하다.
+- 최종 검토: authoritative SHA
+  `09ced6c0d0000f911075154c97a0e1cf54656f86`는 `CHANGES REQUIRED`, P0 `0`,
+  P1 `3`, P2 `1`을 반환했다. RG-08/RG-09/RG-10 canonical SID bytes/RG-11은
+  closed in principle이나, frozen outcome complete parent key, frozen immediate
+  trigger 실행 순서, app-data OWNER SID와 process `TOKEN_USER` equality가
+  추가 blocker다. 별도 provenance audit는 platform+UV+none-attestation이
+  strict Windows Hello provenance를 입증하지 않음을 확인했다.
 - 제안 대응: ADR-017이 NFC/unsigned-UTF-8 compact JSON, exact null/Boolean/
   timestamp semantics, `-7 -> ES256`, `-257 -> RS256`, CTAP2 canonical CBOR
   COSE (`RFC 8949`는 underlying reference), raw 32-byte challenge digest,
@@ -191,11 +198,24 @@
   user handle, current-process `TOKEN_USER` SID UTF-8 hash, exact registration
   proof를 고정한다. Frozen `0005`/`0006`에는 이 pending continuation/counter
   edge가 없어 implementation-ready future `0007` proposal이 필요하다.
-- 해제 조건: ADR-017과 ADR-018이 blocking finding 없이 독립 재검토되고
-  사용자가 둘을 explicit `ACCEPTED`로 결정한 뒤, future `0007`과 R1 runtime을
-  각각 별도 승인해야 한다. Codex는 어느 ADR도 self-accept하지 않는다.
+- 최종 제안 대응: future `0007`은 exact
+  `uq_0007_reviewer_credential_operation_outcomes_bootstrap_projection`,
+  explicit registration-purpose child column, authorization projection guard,
+  and exact assertion→consumption→authorization→credential→event→outcome order를
+  제안한다. Disposable actual-0001~0006 SQLite proof는 required nine
+  transaction과 `PRAGMA foreign_key_check`를 통과했고 임시 파일은 삭제됐다.
+  Production R1은 기존 `PROJECT_ROOT/var/dashboard.db`만 authority path로
+  인정하고 directory OWNER SID와 process `TOKEN_USER`를 `EqualSid`로 비교한
+  뒤에만 SID hash를 만든다. ADR-019는 strict Hello provenance, honest weaker
+  Windows-platform property, stronger Windows-native architecture를 비교하되
+  아무 옵션이나 trust root도 선택하지 않는다.
+- 해제 조건: ADR-017/ADR-018이 blocking finding 없이 GPT re-review되고
+  ADR-019가 GPT review된 뒤 사용자가 필요한 ADR을 explicit `ACCEPTED`로
+  결정해야 한다. 이후에도 future `0007`과 R1 runtime은 각각 별도 승인해야
+  한다. Codex는 어느 ADR도 self-accept하지 않는다.
 - 현재 gate: ADR-015/ADR-016 `ACCEPTED`, `0006 PASS — CLOSED`, ADR-017
-  `PROPOSED — AWAITING INDEPENDENT RE-REVIEW`, ADR-018
-  `PROPOSED — AWAITING INDEPENDENT REVIEW`, R1 `NOT STARTED / BLOCKED`, future
+  `PROPOSED — AWAITING GPT RE-REVIEW`, ADR-018
+  `PROPOSED — AWAITING GPT RE-REVIEW`, ADR-019
+  `PROPOSED — AWAITING GPT REVIEW`, R1 `NOT STARTED / BLOCKED`, future
   `0007` `NOT CREATED / NOT AUTHORIZED`, later
   checkpoints `NOT STARTED`, automatic progression `PROHIBITED`.

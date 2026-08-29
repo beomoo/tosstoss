@@ -19,9 +19,10 @@
 - CP3-C2-B2-B: `PASS — CLOSED`
 - CP3-C2-B2-C `0006` schema implementation: `PASS — CLOSED`
 - B2-C R1 WebAuthn runtime:
-  `NOT STARTED / BLOCKED — ADR-017/ADR-018 REVIEW REQUIRED`
-- ADR-017: `PROPOSED — AWAITING INDEPENDENT RE-REVIEW`, decision date `NONE`
-- ADR-018: `PROPOSED — AWAITING INDEPENDENT REVIEW`, decision date `NONE`
+  `NOT STARTED / BLOCKED — ADR-017/ADR-018/ADR-019 REVIEW REQUIRED`
+- ADR-017: `PROPOSED — AWAITING GPT RE-REVIEW`, decision date `NONE`
+- ADR-018: `PROPOSED — AWAITING GPT RE-REVIEW`, decision date `NONE`
+- ADR-019: `PROPOSED — AWAITING GPT REVIEW`, decision date `NONE`
 - CP3-C2-B2-D: `NOT STARTED`
 - Migration implementation: additive `0005` implemented in B2-A; production
   database application `0`
@@ -1596,7 +1597,7 @@ contract or retroactively broaden the B1 closeout approval.
 - ADR-016: `ACCEPTED` (`2026-08-28`)
 - Migration `0006`: `PASS — CLOSED`
 - B2-C WebAuthn/human-approval runtime:
-  `NOT STARTED / BLOCKED — ADR-017/ADR-018 REVIEW REQUIRED`
+  `NOT STARTED / BLOCKED — ADR-017/ADR-018/ADR-019 REVIEW REQUIRED`
 - CP3-C2-B2-D: `NOT STARTED`
 - CP3-C2-C: `NOT STARTED`
 - CP3-D: `NOT STARTED`
@@ -1775,7 +1776,7 @@ on `2026-08-28`. This adds no WebAuthn/human-approval runtime.
 - CP3-C2-B2-C `0006` schema implementation: `PASS — CLOSED`
 - Migration `0006`: `PASS — CLOSED`
 - B2-C WebAuthn/human-approval runtime:
-  `NOT STARTED / BLOCKED — ADR-017/ADR-018 REVIEW REQUIRED`
+  `NOT STARTED / BLOCKED — ADR-017/ADR-018/ADR-019 REVIEW REQUIRED`
 - CP3-C2-B2-D / CP3-C2-C / CP3-D: `NOT STARTED`
 - Automatic progression: `PROHIBITED`
 
@@ -1817,11 +1818,11 @@ documented hash dependency DAG has no cycle.
 
 - ADR-015: `ACCEPTED` (`2026-08-28`)
 - ADR-016: `ACCEPTED` (`2026-08-28`)
-- ADR-017: `PROPOSED — AWAITING INDEPENDENT RE-REVIEW`, decision date `NONE`
+- ADR-017: `PROPOSED — AWAITING GPT RE-REVIEW`, decision date `NONE`
 - ADR-018: `PROPOSED`, decision date `NONE`
 - `0006`: `PASS — CLOSED`
 - R1 application/schema/test/dependency changes: `0`
-- R1 status: `NOT STARTED / BLOCKED — ADR-017/ADR-018 REVIEW REQUIRED`
+- R1 status: `NOT STARTED / BLOCKED — ADR-017/ADR-018/ADR-019 REVIEW REQUIRED`
 - Migration `0007`: necessary under ADR-018 Option C, `NOT CREATED / NOT
   AUTHORIZED`, creation/application `0`
 - Actual Windows Hello or issuer approval: `0`
@@ -1852,8 +1853,9 @@ retroactive failure. The exact counter-decision vectors and schema audit are in
 `qa/PHASE_02_CP3_C2_B2_C_ADR_017_COUNTER_CAPABILITY_REMEDIATION_CODEX_REPORT.md`.
 
 - ADR-015 / ADR-016: `ACCEPTED`
-- ADR-017: `PROPOSED — AWAITING INDEPENDENT RE-REVIEW`
-- ADR-018: `PROPOSED — AWAITING INDEPENDENT REVIEW`
+- ADR-017: `PROPOSED — AWAITING GPT RE-REVIEW`
+- ADR-018: `PROPOSED — AWAITING GPT RE-REVIEW`
+- ADR-019: `PROPOSED — AWAITING GPT REVIEW`
 - `0006`: `PASS — CLOSED`
 - future `0007`: `NOT CREATED / NOT AUTHORIZED`
 - R1: `NOT STARTED / BLOCKED`
@@ -1930,8 +1932,49 @@ requires canonical credential ID, CTAP2-canonical restricted COSE, and exact
 ES256/RS256 allowlisting. Client ceremony outputs do not create attestation
 authority.
 
-- ADR-017: `PROPOSED — AWAITING INDEPENDENT RE-REVIEW`
-- ADR-018: `PROPOSED — AWAITING INDEPENDENT REVIEW`
+### 24.4 P1-FR-03 app-data ownership correction
+
+The accepted phrase “Windows account that owns the local application data” is
+not satisfied by `TOKEN_USER` alone. The exact production authority/reviewer
+root is the existing `PROJECT_ROOT / "var"`, and the exact production database
+is its existing `dashboard.db`; no profile or second storage root is introduced.
+`PROJECT_ROOT` is derived from the installed API module location, not CWD or an
+environment username. R1 production rejects any effective SQLite URL that does
+not resolve to that database. Test, fixture and disposable databases carry no
+production authority.
+
+Before any R1 authority write, the server opens the canonical directory handle
+with `CreateFileW(OPEN_EXISTING, READ_CONTROL, FILE_SHARE_READ |
+FILE_SHARE_WRITE | FILE_SHARE_DELETE, FILE_FLAG_BACKUP_SEMANTICS |
+FILE_FLAG_OPEN_REPARSE_POINT)`, rejects reparse points, and requires
+`GetFinalPathNameByHandleW` to return the expected normalized local path. The
+handle-resolved volume is checked with `GetVolumeInformationW`; a remote volume
+or one whose filesystem flags omit `FILE_PERSISTENT_ACLS` is rejected. It
+retrieves the owner with `GetSecurityInfo(SE_FILE_OBJECT,
+OWNER_SECURITY_INFORMATION)`, validates that SID, independently reads and
+validates the current process `TOKEN_USER`, and requires `EqualSid`. If the
+root is absent, the server creates exactly
+the `var` child and then performs the same handle/owner check before database
+creation; creation success is not ownership proof. Unsupported filesystem,
+remote/reparse object, path race, API failure, or unequal SID fails closed.
+Neither raw SID is persisted or logged. Only after equality succeeds is the
+token SID canonicalized and hashed under the already-frozen RG-10 byte rule.
+
+### 24.5 Windows Hello provenance result
+
+The current exact policy proves a user-verifying platform WebAuthn credential
+on Windows, not uniquely Windows Hello. `attestation=none` yields no provenance
+trust path, and Windows WebAuthn supports plugin passkey authenticators.
+Accepted B1 is not silently weakened. Proposed ADR-019 compares strict Hello
+provenance with a new verifiable mechanism, an explicit property amendment to
+Windows platform WebAuthn, and a stronger Windows-native architecture. No
+option, trust root, attestation change, AAGUID list, Metadata Service, or native
+broker is selected or authorized. R1 therefore remains blocked on ADR-019 as
+well as ADR-017/ADR-018.
+
+- ADR-017: `PROPOSED — AWAITING GPT RE-REVIEW`
+- ADR-018: `PROPOSED — AWAITING GPT RE-REVIEW`
+- ADR-019: `PROPOSED — AWAITING GPT REVIEW`
 - RG-08/RG-09/RG-10: not self-declared closed
 - `0006`: `PASS — CLOSED`
 - `0007`: `NOT CREATED / NOT AUTHORIZED`
