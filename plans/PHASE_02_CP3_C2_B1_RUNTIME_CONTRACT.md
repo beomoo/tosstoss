@@ -19,10 +19,11 @@
 - CP3-C2-B2-B: `PASS — CLOSED`
 - CP3-C2-B2-C `0006` schema implementation: `PASS — CLOSED`
 - B2-C R1 WebAuthn runtime:
-  `NOT STARTED / BLOCKED — ADR-017/ADR-018/ADR-019 REVIEW REQUIRED`
-- ADR-017: `PROPOSED — AWAITING GPT RE-REVIEW`, decision date `NONE`
-- ADR-018: `PROPOSED — AWAITING GPT RE-REVIEW`, decision date `NONE`
-- ADR-019: `PROPOSED — AWAITING GPT REVIEW`, decision date `NONE`
+  `NOT STARTED / BLOCKED — ADR-019 DECISION REQUIRED`
+- ADR-017: `ACCEPTED` (`2026-08-29`)
+- ADR-018: `ACCEPTED` (`2026-08-29`)
+- ADR-019: `PROPOSED — ON HOLD / AWAITING SEPARATE USER DECISION` (decision
+  date `2026-08-29`)
 - CP3-C2-B2-D: `NOT STARTED`
 - Migration implementation: additive `0005` implemented in B2-A; production
   database application `0`
@@ -1597,7 +1598,7 @@ contract or retroactively broaden the B1 closeout approval.
 - ADR-016: `ACCEPTED` (`2026-08-28`)
 - Migration `0006`: `PASS — CLOSED`
 - B2-C WebAuthn/human-approval runtime:
-  `NOT STARTED / BLOCKED — ADR-017/ADR-018/ADR-019 REVIEW REQUIRED`
+  `NOT STARTED / BLOCKED — ADR-019 DECISION REQUIRED`
 - CP3-C2-B2-D: `NOT STARTED`
 - CP3-C2-C: `NOT STARTED`
 - CP3-D: `NOT STARTED`
@@ -1776,11 +1777,11 @@ on `2026-08-28`. This adds no WebAuthn/human-approval runtime.
 - CP3-C2-B2-C `0006` schema implementation: `PASS — CLOSED`
 - Migration `0006`: `PASS — CLOSED`
 - B2-C WebAuthn/human-approval runtime:
-  `NOT STARTED / BLOCKED — ADR-017/ADR-018/ADR-019 REVIEW REQUIRED`
+  `NOT STARTED / BLOCKED — ADR-019 DECISION REQUIRED`
 - CP3-C2-B2-D / CP3-C2-C / CP3-D: `NOT STARTED`
 - Automatic progression: `PROHIBITED`
 
-## 22. ADR-017 runtime canonicalization amendment — proposed, non-accepted
+## 22. ADR-017 runtime canonicalization amendment — proposal companion (accepted as control-plane contract)
 
 The separately authorized R1 implementation-entry audit found five approved-
 contract gaps before changing runtime files: exact principal and credential
@@ -1818,11 +1819,11 @@ documented hash dependency DAG has no cycle.
 
 - ADR-015: `ACCEPTED` (`2026-08-28`)
 - ADR-016: `ACCEPTED` (`2026-08-28`)
-- ADR-017: `PROPOSED — AWAITING GPT RE-REVIEW`, decision date `NONE`
+- ADR-017: `ACCEPTED` (`2026-08-29`)
 - ADR-018: `PROPOSED`, decision date `NONE`
 - `0006`: `PASS — CLOSED`
 - R1 application/schema/test/dependency changes: `0`
-- R1 status: `NOT STARTED / BLOCKED — ADR-017/ADR-018/ADR-019 REVIEW REQUIRED`
+- R1 status: `NOT STARTED / BLOCKED — ADR-019 DECISION REQUIRED`
 - Migration `0007`: necessary under ADR-018 Option C, `NOT CREATED / NOT
   AUTHORIZED`, creation/application `0`
 - Actual Windows Hello or issuer approval: `0`
@@ -1853,9 +1854,9 @@ retroactive failure. The exact counter-decision vectors and schema audit are in
 `qa/PHASE_02_CP3_C2_B2_C_ADR_017_COUNTER_CAPABILITY_REMEDIATION_CODEX_REPORT.md`.
 
 - ADR-015 / ADR-016: `ACCEPTED`
-- ADR-017: `PROPOSED — AWAITING GPT RE-REVIEW`
-- ADR-018: `PROPOSED — AWAITING GPT RE-REVIEW`
-- ADR-019: `PROPOSED — AWAITING GPT REVIEW`
+- ADR-017: `ACCEPTED` (`2026-08-29`)
+- ADR-018: `ACCEPTED` (`2026-08-29`)
+- ADR-019: `PROPOSED — ON HOLD / AWAITING SEPARATE USER DECISION`
 - `0006`: `PASS — CLOSED`
 - future `0007`: `NOT CREATED / NOT AUTHORIZED`
 - R1: `NOT STARTED / BLOCKED`
@@ -1969,12 +1970,11 @@ Accepted B1 is not silently weakened. Proposed ADR-019 compares strict Hello
 provenance with a new verifiable mechanism, an explicit property amendment to
 Windows platform WebAuthn, and a stronger Windows-native architecture. No
 option, trust root, attestation change, AAGUID list, Metadata Service, or native
-broker is selected or authorized. R1 therefore remains blocked on ADR-019 as
-well as ADR-017/ADR-018.
+broker is selected or authorized. R1 therefore remains blocked on ADR-019.
 
-- ADR-017: `PROPOSED — AWAITING GPT RE-REVIEW`
-- ADR-018: `PROPOSED — AWAITING GPT RE-REVIEW`
-- ADR-019: `PROPOSED — AWAITING GPT REVIEW`
+- ADR-017: `ACCEPTED` (`2026-08-29`)
+- ADR-018: `ACCEPTED` (`2026-08-29`)
+- ADR-019: `PROPOSED — ON HOLD / AWAITING SEPARATE USER DECISION`
 - RG-08/RG-09/RG-10: not self-declared closed
 - `0006`: `PASS — CLOSED`
 - `0007`: `NOT CREATED / NOT AUTHORIZED`

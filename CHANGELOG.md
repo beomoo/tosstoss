@@ -1,35 +1,33 @@
 # Changelog
 
-## Unreleased — ADR-017/ADR-018 Final Schema + Windows Trust Boundary — 2026-08-29
+## Unreleased — ADR-017/ADR-018 USER-ACCEPTANCE CLOSEOUT — 2026-08-29
 
-- Recorded final independent review of authoritative SHA
-  `09ced6c0d0000f911075154c97a0e1cf54656f86`: `CHANGES REQUIRED`, P0 `0`, P1
-  `3`, P2 `1`. RG-08/RG-09/RG-10 canonical SID bytes/RG-11 remain closed in
-  principle; no ADR was accepted.
-- Selected one exact future-0007 parent index for the complete frozen outcome
-  projection, added the explicit registration-purpose child column required by
-  SQLite's frozen consumption FK, and made the additive/frozen index inventory
-  exhaustive.
-- Derived the exact immediate-trigger-safe row order for first/add/replace
-  success and failure. A disposable uncommitted SQLite harness applied actual
-  migrations `0001`–`0006`, materialized the proposed DDL/guards, committed all
-  nine required transactions, and returned zero rows from
-  `PRAGMA foreign_key_check`; the proof artifacts were deleted.
-- Bound the existing production `PROJECT_ROOT/var/dashboard.db` authority root
-  to its handle-resolved filesystem OWNER SID and independently validated
-  process `TOKEN_USER` via `EqualSid` before the approved SID hash derivation.
-  Unsupported filesystems, reparse/path mismatch, API failure, and unequal SIDs
-  fail closed.
-- Found that platform attachment + UV + none attestation proves a user-verifying
-  Windows platform WebAuthn credential, not strict Windows Hello provenance.
-  Proposed, but did not accept, ADR-019 with three trust-boundary options. No
-  Metadata Service, attestation root, AAGUID list, native broker, or weaker
-  product property was introduced.
-- Migrations `0001`–`0006` remain byte-identical; `0006` remains `PASS —
-  CLOSED`; `0007` remains `NOT CREATED / NOT AUTHORIZED`. Committed application,
-  migration, test, dependency, frontend, and runtime changes are zero. R1 and
-  later checkpoints remain blocked/not started; automatic progression remains
-  prohibited.
+- Independent review authority remains from authoritative SHA
+  `dbf913d5654b3a1095d359ac34e1edcde2f63c1e`.
+- `CHANGES REQUIRED` closeout findings are now closed by user decision:
+  `ADR-017` and `ADR-018` are both `ACCEPTED`.
+- Explicit user decision: `ADR-017` and `ADR-018` accepted on
+  `2026-08-29`; `ADR-019` remains `PROPOSED — ON HOLD / AWAITING SEPARATE
+  USER DECISION`.
+- All findings through `RG-01`–`RG-11` and `FR-01`–`FR-03` are now contractually
+  closed as design artifacts.
+- `ADR-017` acceptance freeze includes canonical principal/credential preimages,
+  CTAP2-canonical COSE mapping, exact challenge derivations, user-handle model,
+  registration proof contract, and accepted golden vectors.
+- `ADR-018` acceptance freeze includes all-operation continuation bootstrap
+  (`FIRST_ENROLLMENT` / `ADD_CREDENTIAL` / `REPLACE_CREDENTIAL`),
+  exact one-time continuation contracts, exact user-handle slot formulas,
+  app-data OWNER SID equality requirement, and exact immediate-trigger-safe
+  insertion ordering.
+- `ADR-019` trust-boundary blocker remains: platform+UV+resident+attestation=none
+  proves a user-verifying Windows platform credential and not strict Windows Hello
+  provenance.
+- Migrations `0001`–`0006` remain byte-identical; `0006` remains
+  `PASS — CLOSED`; `0007` remains `NOT CREATED / NOT AUTHORIZED`.
+- Committed application, migration, test, dependency, fixture, frontend, and
+  runtime changes remain `0`.
+- `R1` remains `NOT STARTED / BLOCKED` due `ADR-019`, later checkpoints remain
+  `NOT STARTED`, and automatic progression remains `PROHIBITED`.
 
 ## Unreleased — ADR-017/ADR-018 Full R1 Implementability Remediation — 2026-08-29
 
@@ -59,9 +57,10 @@
 - Preserved migrations `0001`–`0006` byte-identically and kept `0006 PASS —
   CLOSED`. Application, migration, test, dependency, fixture, and frontend
   changes are `0`; no real Windows Hello or issuer approval ran.
-- ADR-017 is `PROPOSED — AWAITING INDEPENDENT RE-REVIEW`; ADR-018 is `PROPOSED
-  — AWAITING INDEPENDENT REVIEW`; R1 remains `NOT STARTED / BLOCKED` and
-  automatic progression remains prohibited.
+- `ADR-017` is `ACCEPTED` (`2026-08-29`); `ADR-018` is `ACCEPTED`
+  (`2026-08-29`). `ADR-019` is `PROPOSED — ON HOLD / AWAITING SEPARATE USER
+  DECISION`. R1 remains `NOT STARTED / BLOCKED` pending `ADR-019`, and automatic
+  progression remains prohibited.
 
 ## Unreleased — ADR-017 Counter-Capability Remediation — 2026-08-28
 

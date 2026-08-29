@@ -1,7 +1,7 @@
 # Phase 2 토스증권 읽기 전용 데이터 실행계획
 
 - 계획 상태: `PHASE 2 IMPLEMENTATION IN PROGRESS`
-- Current checkpoint: `CP3-C2-B2-A PASS — CLOSED / CP3-C2-B2-B PASS — CLOSED / CP3-C2-B IMPLEMENTATION IN PROGRESS / ADR-015 ACCEPTED / ADR-016 ACCEPTED / ADR-017 PROPOSED — AWAITING GPT RE-REVIEW / ADR-018 PROPOSED — AWAITING GPT RE-REVIEW / ADR-019 PROPOSED — AWAITING GPT REVIEW / CP3-C2-B2-C 0006 PASS — CLOSED / B2-C R1 NOT STARTED — BLOCKED`
+- Current checkpoint: `CP3-C2-B2-A PASS — CLOSED / CP3-C2-B2-B PASS — CLOSED / CP3-C2-B IMPLEMENTATION IN PROGRESS / ADR-015 ACCEPTED / ADR-016 ACCEPTED / ADR-017 ACCEPTED / ADR-018 ACCEPTED / ADR-019 PROPOSED — ON HOLD / AWAITING SEPARATE USER DECISION / CP3-C2-B2-C 0006 PASS — CLOSED / B2-C R1 NOT STARTED — BLOCKED — ADR-019 DECISION REQUIRED`
 - 최초 작성·공식 문서 조사일: `2026-08-23` (`Asia/Seoul`)
 - 현재 상태 갱신일: `2026-08-29` (`Asia/Seoul`)
 - 기준 브랜치: `feature/phase-02-toss`
@@ -28,15 +28,13 @@
 - CP3-C2-B2-C schema: `PASS — CLOSED`
 - ADR-015: `ACCEPTED` (`2026-08-28`)
 - ADR-016: `ACCEPTED` (`2026-08-28`)
-- ADR-017: `PROPOSED — AWAITING GPT RE-REVIEW` (`2026-08-28`),
+- ADR-017: `ACCEPTED` (`2026-08-29`)
+- ADR-018: `ACCEPTED` (`2026-08-29`)
+- ADR-019: `PROPOSED — ON HOLD / AWAITING SEPARATE USER DECISION` (`2026-08-29`),
   decision date `NONE`
-- ADR-018: `PROPOSED — AWAITING GPT RE-REVIEW` (`2026-08-28`),
-  decision date `NONE`
-- ADR-019: `PROPOSED — AWAITING GPT REVIEW` (`2026-08-29`), decision date
-  `NONE`
 - `0006`: `PASS — CLOSED`
 - B2-C WebAuthn/human-approval runtime:
-  `NOT STARTED / BLOCKED — ADR-017/ADR-018/ADR-019 REVIEW REQUIRED`
+  `NOT STARTED / BLOCKED — ADR-019 DECISION REQUIRED`
 - Future `0007_phase_02_cp3_c2_b2_c_counter_capability_bootstrap`:
   `NOT CREATED / NOT AUTHORIZED`
 - CP3-C2-B2-D: `NOT STARTED`
@@ -126,7 +124,7 @@ remains unauthorized and not started.
 CP3-A approved repository contract는 기존 Phase 1 계약을 breaking 변경하지 않고 provider staging identity, nullable provider source time, raw/source revision, provider-scoped current latest와 additive migration 전략을 정의한다. CP3-B의 9개 source/identity foundation table과 `0003` invariants는 `PASS — CLOSED`다. CP3-C1은 semantic normalized master record, source-linked staging/lifecycle observation, identity-state event와 partial-detail batch audit 네 table만 additive `0004`로 추가했고 independent re-review closeout 뒤 `PASS — CLOSED`다. canonical Issuer/Security mapping row를 생성하지 않고 eligible candidate evidence에서 멈춘다. `plans/PHASE_02_CP3_C2_PROMOTION_AUTHORITY.md`와 ADR-013은 independent re-review와 사용자 승인 뒤 accepted/closed 상태다. CP3-C2-B1은 `plans/PHASE_02_CP3_C2_B1_RUNTIME_CONTRACT.md`와 ADR-014에 approved runtime/schema design을 기록한다. Independently reviewed SHA `f3a7a3c4cc99de9cd9656544c1b29e3d03df6911`은 `PASS WITH CLOSEOUT CONDITION`, P0 0 / P1 0이며 P1-01~P1-04가 모두 `CLOSED`다. 명시적 사용자 승인으로 ADR-014는 `ACCEPTED`, CP3-C2-B1은 `PASS — CONTRACT APPROVED AND CLOSED`다. 별도 implementation 시작 승인 뒤 B2-A는 immutable authority ledger contract/storage와 additive `0005` foundation을 구현했고 remediated SHA `57e9bbbf2a1fd117b8e31c7288f2f08475c7e4ae`의 independent re-review/documentation closeout 뒤 `PASS — CLOSED`다. 이어 별도 B2-B 승인으로 exact source admission/issuer bridge/collision/freshness decision engine을 구현했다. 첫 remediation P1-01~P1-05는 independent re-review에서 `CLOSED`로 확인됐다. Reviewed SHA `722a5036d7d05ad6b8de0314ff6ac5ee8dafacc2`의 두 신규 P1에 대한 second remediation은 exact official legal-name/history gate와 compatible historical SEC multi-filing semantics를 추가했다. CP3-C2-B implementation은 `IN PROGRESS`, B2-B는 `PASS — CLOSED`, B2-C `0006` schema는 `PASS — CLOSED`, B2-C runtime과 B2-D, CP3-C2-C/CP3-D는 `NOT STARTED`다.
 
 The preceding sentence preserves the pre-R1 snapshot. Current R1 state is
-`NOT STARTED / BLOCKED — ADR-017/ADR-018/ADR-019 REVIEW REQUIRED`; future `0007` is
+`NOT STARTED / BLOCKED — ADR-019 DECISION REQUIRED`; future `0007` is
 `NOT CREATED / NOT AUTHORIZED`;
 B2-D, CP3-C2-C and CP3-D remain `NOT STARTED`.
 
@@ -166,7 +164,7 @@ CP3-C2-C and CP3-D remain `NOT STARTED`, and automatic progression remains
 | CP3-C1 | `PASS — CLOSED` | P1-01/P1-02 closed, independent re-review/documentation closeout 완료 |
 | CP3-C2-A | `PASS — CONTRACT APPROVED AND CLOSED` | re-review P0 0 / P1 0, P1-01·P1-02·P2-01 CLOSED, ADR-013 ACCEPTED; production change 0 |
 | CP3-C2-B1 | `PASS — CONTRACT APPROVED AND CLOSED` | re-review P0 0 / P1 0, P1-01~P1-04 CLOSED, P2-01 non-blocking, ADR-014/user approval; implementation 0 |
-| CP3-C2-B implementation | `IN PROGRESS` | B2-A/B2-B/`0006` schema closed; B2-C R1 blocked on ADR-017/ADR-018 review |
+| CP3-C2-B implementation | `IN PROGRESS` | B2-A/B2-B/`0006` schema closed; B2-C R1 blocked on ADR-019 decision |
 | CP3-C2-B2-A | `PASS — CLOSED` | re-review P0 0 / P1 0, P1-01~P1-03 CLOSED; P2-01 non-blocking; documentation closeout 완료 |
 | CP3-C2-B2-B | `PASS — CLOSED` | reviewed SHA `d81148636c237ac8ab6b85e930d3926fae19c855`; PASS WITH CLOSEOUT CONDITION, P0 0 / P1 0 / P2 1 non-blocking; P1-01~P1-09 CLOSED |
 | CP3-C2-B2-C | `0006 PASS — CLOSED` | Reviewed SHA `1be18a622006a6b6a46e251350e2d861d596823d`; P0 0 / P1 0 / P2 1 non-blocking; explicit user closeout; runtime 0 |
@@ -784,7 +782,7 @@ CP2-A의 통과는 CP2 전체 통과가 아니며, 아래 기존 완료 조건�
 - B2-B output/non-scope: machine state는 `UNRESOLVED`,
   `READY_FOR_MANUAL_REVIEW`, `STALE`, `REVIEW_REQUIRED`뿐이며 human
   disposition/WebAuthn/approval/link/canonical write/live collection은 0이다.
-- B2-C: `0006 PASS — CLOSED`; R1 runtime은 ADR-017/ADR-018 review 전 미착수 / blocked
+- B2-C: `0006 PASS — CLOSED`; R1 runtime은 ADR-019 decision 전 미착수 / blocked
 - B2-C 시작 승인: 완료. Implementation-entry audit에서 SG-01 first-enrollment
   bootstrap와 SG-02 credential-management reauthentication/counter ledger gap
   확인
@@ -827,21 +825,15 @@ CP2-A의 통과는 CP2 전체 통과가 아니며, 아래 기존 완료 조건�
   outcome tables, both exact eight-column FKs, the strengthened exact successful
   outcome binding, and matching immutable hash-preimage coverage. It does not
   weaken the parent key or authorize runtime implementation.
-- ADR-017: `PROPOSED — AWAITING GPT RE-REVIEW` (`2026-08-28`), decision
-  date `NONE`. RG-01~RG-07 remain valid; full review adds the proposed RG-08
-  all-operation, RG-09 userHandle, RG-10 SID, and RG-11 registration-proof
-  contracts. ADR-017 is not self-accepted authority.
-- ADR-018: `PROPOSED — AWAITING GPT RE-REVIEW` (`2026-08-28`), decision date `NONE`. It selects a fresh
-  one-time assertion after registration zero for FIRST/ADD/REPLACE and proposes
-  the exact future three-table projection ledger. Future `0007` is necessary but
-  `NOT CREATED / NOT AUTHORIZED`.
-- ADR-019: `PROPOSED — AWAITING GPT REVIEW` (`2026-08-29`), decision date
+- ADR-017: `ACCEPTED` (`2026-08-29`)
+- ADR-018: `ACCEPTED` (`2026-08-29`)
+- ADR-019: `PROPOSED — ON HOLD / AWAITING SEPARATE USER DECISION`, decision date
   `NONE`. Current platform+UV+none-attestation proves Windows platform WebAuthn,
   not strict Windows Hello provenance. No weaker property or new trust root is
-  selected; R1 remains blocked.
+  selected; R1 remains blocked on ADR-019.
 - `0006`: `PASS — CLOSED`
 - B2-C WebAuthn/human-approval runtime:
-  `NOT STARTED / BLOCKED — ADR-017/ADR-018/ADR-019 REVIEW REQUIRED`
+  `NOT STARTED / BLOCKED — ADR-019 DECISION REQUIRED`
 - B2-D: `NOT STARTED`
 - B2-C schema implementation: ADR-016 was accepted, and additive `0006` at
   SHA `1be18a622006a6b6a46e251350e2d861d596823d` passed independent review
@@ -1109,7 +1101,7 @@ before code changes. Full independent review of authoritative SHA
 `c34d8ca5a25bbea8c4ff410b7d62dc451f357528` returned `CHANGES REQUIRED`, P0
 `0`, P1 `3`, P2 `2`. RG-01~RG-07 and Option C remain valid; the documentation
 now proposes all-operation integration, exact userHandle/SID/registration proof,
-and implementation-ready future `0007`. Neither ADR nor `0007` is accepted or
-authorized. B2-C R1 remains `BLOCKED — ADR-017/ADR-018/ADR-019 REVIEW REQUIRED`;
+and implementation-ready future `0007`. ADR-017 and ADR-018 are now accepted; `0007`
+is separate and still not created. B2-C R1 remains `BLOCKED — ADR-019 REVIEW REQUIRED`;
 B2-D/CP3-C2-C/CP3-D remain `NOT STARTED`, and automatic progression remains
 `PROHIBITED`.

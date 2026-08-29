@@ -2,13 +2,13 @@
 
 ## 1. Control-plane status
 
-- ADR-017: `PROPOSED — AWAITING GPT RE-REVIEW`
-- ADR-018: `PROPOSED — AWAITING GPT RE-REVIEW`
+- ADR-017: `ACCEPTED` (`2026-08-29`)
+- ADR-018: `ACCEPTED` (`2026-08-29`)
 - `0006`: `PASS — CLOSED`
 - proposed future migration:
   `0007_phase_02_cp3_c2_b2_c_counter_capability_bootstrap`
 - `0007`: `NOT CREATED / NOT AUTHORIZED`
-- R1: `NOT STARTED / BLOCKED`
+- R1: `NOT STARTED / BLOCKED — ADR-019 DECISION REQUIRED`
 - automatic progression: `PROHIBITED`
 
 This document is the implementation-ready, normative schema companion to
@@ -667,6 +667,6 @@ assertion hash. The graph is acyclic.
 
 This proposal changes application, migration, test, dependency, fixture, and
 frontend files by `0`. It performs no Windows Hello or issuer-approval runtime.
-ADR-017 and ADR-018 remain proposed; RG-08/RG-09/RG-10 are not self-declared
-closed. `0007` requires separate user authorization after independent review and
-acceptance. R1, B2-D, CP3-C2-C, and CP3-D remain not started.
+ADR-017 and ADR-018 are accepted. `0007` is not created and not authorized.
+R1, B2-D, CP3-C2-C, and CP3-D remain not started. R1 remains blocked on
+ADR-019.

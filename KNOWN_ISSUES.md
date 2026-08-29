@@ -163,8 +163,8 @@
 
 ## KI-016 — WebAuthn runtime schema and Windows provenance gap
 
-- 상태: `P1 BLOCKING — ADR-017/ADR-018 PROPOSED / AWAITING GPT RE-REVIEW /
-  ADR-019 PROPOSED / AWAITING GPT REVIEW`
+- 상태: `P1 BLOCKING — ADR-017 ACCEPTED /
+  ADR-018 ACCEPTED / ADR-019 ON HOLD / AWAITING SEPARATE USER DECISION`
 - 관찰: R1 pre-implementation audit에서 accepted ADR-015/ADR-016 schema가
   `principal_content_hash`, `credential_content_hash`, deterministic COSE_Key
   bytes/TEXT, raw challenge digest/binding, operation/issuer authentication
@@ -209,13 +209,12 @@
   뒤에만 SID hash를 만든다. ADR-019는 strict Hello provenance, honest weaker
   Windows-platform property, stronger Windows-native architecture를 비교하되
   아무 옵션이나 trust root도 선택하지 않는다.
-- 해제 조건: ADR-017/ADR-018이 blocking finding 없이 GPT re-review되고
+- 해제 조건: ADR-017/ADR-018은 이미 채택되었으므로
   ADR-019가 GPT review된 뒤 사용자가 필요한 ADR을 explicit `ACCEPTED`로
   결정해야 한다. 이후에도 future `0007`과 R1 runtime은 각각 별도 승인해야
   한다. Codex는 어느 ADR도 self-accept하지 않는다.
 - 현재 gate: ADR-015/ADR-016 `ACCEPTED`, `0006 PASS — CLOSED`, ADR-017
-  `PROPOSED — AWAITING GPT RE-REVIEW`, ADR-018
-  `PROPOSED — AWAITING GPT RE-REVIEW`, ADR-019
-  `PROPOSED — AWAITING GPT REVIEW`, R1 `NOT STARTED / BLOCKED`, future
-  `0007` `NOT CREATED / NOT AUTHORIZED`, later
+  `ACCEPTED`, ADR-018 `ACCEPTED`, ADR-019
+  `PROPOSED — ON HOLD / AWAITING SEPARATE USER DECISION`, R1 `NOT STARTED /
+  BLOCKED`, future `0007` `NOT CREATED / NOT AUTHORIZED`, later
   checkpoints `NOT STARTED`, automatic progression `PROHIBITED`.

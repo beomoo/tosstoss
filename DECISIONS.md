@@ -1197,9 +1197,9 @@ commit할 수 없다.
 
 ## ADR-017 — WebAuthn Runtime Canonicalization and Hash Preimage Amendment
 
-- 상태: `PROPOSED — AWAITING GPT RE-REVIEW`
+- 상태: `ACCEPTED`
 - 제안일: `2026-08-28`
-- 결정일: `NONE`
+- 결정일: `2026-08-29`
 - 선행 결정: ADR-015 `ACCEPTED`, ADR-016 `ACCEPTED`
 - 적용 gate: `CP3-C2-B2-C R1`
 - 독립 검토: authoritative SHA
@@ -1233,9 +1233,9 @@ registration proof flags. These findings do not reopen `0006`; it remains
 `PASS — CLOSED`.
 
 Implementing any one reasonable interpretation would create incompatible
-persisted identities. Therefore R1 stays not started until ADR-017 and ADR-018
-are independently re-reviewed and explicitly accepted, and future schema and
-runtime work are separately authorized. ADR-015/ADR-016 acceptance and the
+persisted identities. Therefore R1 stays `NOT STARTED / BLOCKED` pending
+`ADR-019` user decision, even after ADR-017/ADR-018 acceptance. Future schema and
+runtime work remain separately authorized. ADR-015/ADR-016 acceptance and the
 `0006 PASS — CLOSED` schema result are unchanged.
 
 ### 제안 — common canonicalization
@@ -1785,14 +1785,15 @@ unknown algorithms/transports, omitting null keys, treating a missing counter
 as zero, or letting callers supply policy/hash fields. Each would make the
 persisted identity non-portable or weaken fail-closed verification.
 
-ADR-017 remains `PROPOSED — AWAITING GPT RE-REVIEW`; Codex does not
-self-accept it. ADR-018 below is separately `PROPOSED — AWAITING GPT
-RE-REVIEW` and not accepted. RG-08/RG-09/RG-10 are not self-declared closed. R1
-remains `NOT STARTED / BLOCKED`, with application, schema, migration, test,
-fixture and dependency changes all `0`. Future `0007` is necessary under the
-selected proposal but is `NOT CREATED / NOT AUTHORIZED`. ADR-015 and ADR-016
-remain `ACCEPTED`; `0006` remains `PASS — CLOSED`. B2-D, CP3-C2-C and CP3-D
-remain `NOT STARTED`, and automatic progression remains `PROHIBITED`.
+ADR-017 is `ACCEPTED` (`2026-08-29`); ADR-018 below is separately
+`ACCEPTED`; Codex does not self-implement. `RG-08/RG-09/RG-10` are
+self-declared closed, and `RG-11` and all requested FR findings are accepted.
+R1 remains `BLOCKED / NOT STARTED` pending `ADR-019`, with application, schema,
+migration, test, fixture and dependency changes all `0`. Future `0007` is
+necessary under the selected proposal but is `NOT CREATED / NOT AUTHORIZED`.
+ADR-015 and ADR-016 remain `ACCEPTED`; `0006` remains `PASS — CLOSED`. B2-D,
+CP3-C2-C and CP3-D remain `NOT STARTED`, and automatic progression remains
+`PROHIBITED`.
 
 ### 마이그레이션·롤백
 
@@ -1807,11 +1808,10 @@ explicit authority.
 
 ## ADR-018 — WebAuthn Counter Capability Bootstrap Amendment
 
-- 상태: `PROPOSED — AWAITING GPT RE-REVIEW`
+- 상태: `ACCEPTED`
 - 제안일: `2026-08-28`
-- 결정일: `NONE`
-- 선행 결정: ADR-015 `ACCEPTED`, ADR-016 `ACCEPTED`, ADR-017 `PROPOSED —
-  AWAITING GPT RE-REVIEW`
+- 결정일: `2026-08-29`
+- 선행 결정: ADR-015 `ACCEPTED`, ADR-016 `ACCEPTED`, ADR-017 `ACCEPTED`
 - 적용 gate: `CP3-C2-B2-C R1`
 - proposed future migration:
   `0007_phase_02_cp3_c2_b2_c_counter_capability_bootstrap` — `NOT CREATED / NOT
@@ -1980,10 +1980,13 @@ additional cross-ledger guards. No existing row or migration is rewritten.
 
 ### 상태 효과
 
-ADR-018 is `PROPOSED — AWAITING GPT RE-REVIEW`, not accepted or
-implemented. Future `0007` is necessary for Option C but is `NOT CREATED / NOT
-AUTHORIZED`. ADR-017 remains `PROPOSED — AWAITING GPT RE-REVIEW`; R1
-remains `NOT STARTED / BLOCKED`. RG-08/RG-09/RG-10 are not self-declared closed.
+ADR-018 is `ACCEPTED` (`2026-08-29`) and not self-implemented; it is fully
+frozen as control-plane/runtime-contract design only. Future `0007` is necessary
+for full Option C and is `NOT CREATED / NOT AUTHORIZED`. ADR-017 is `ACCEPTED`;
+R1 remains `BLOCKED / NOT STARTED` pending `ADR-019` acceptance. RG-08~RG-11 and
+FR-01~FR-03 are treated as contractually closed. ADR-015 and ADR-016 remain
+`ACCEPTED`; `0006` remains `PASS — CLOSED`; B2-D, CP3-C2-C and CP3-D remain
+`NOT STARTED`; automatic progression remains `PROHIBITED`.
 ADR-015 and ADR-016 remain `ACCEPTED`; `0006` remains `PASS — CLOSED`; B2-D,
 CP3-C2-C and CP3-D remain `NOT STARTED`; automatic progression remains
 `PROHIBITED`.
@@ -1996,7 +1999,7 @@ CP3-C2-C and CP3-D remain `NOT STARTED`; automatic progression remains
 - 제안일: `2026-08-29`
 - 결정일: `NONE`
 - 선행 결정: accepted B1/ADR-014 requires a Windows Hello-backed platform
-  credential; ADR-017/ADR-018 remain proposed
+  credential; ADR-017/ADR-018 are accepted
 - 적용 gate: `CP3-C2-B2-C R1`
 
 ### 문제와 standards result
@@ -2049,9 +2052,9 @@ Windows/plugin passkey managers
 ### 상태 효과
 
 ADR-019 is `PROPOSED — AWAITING GPT REVIEW`, not accepted. ADR-017 and ADR-018
-are `PROPOSED — AWAITING GPT RE-REVIEW`; `0006` is `PASS — CLOSED`; future
-`0007` is `NOT CREATED / NOT AUTHORIZED`; R1 is `BLOCKED / NOT STARTED`; B2-D,
-CP3-C2-C and CP3-D are `NOT STARTED`; automatic progression is `PROHIBITED`.
+are `ACCEPTED`; `0006` is `PASS — CLOSED`; future `0007` is
+`NOT CREATED / NOT AUTHORIZED`; R1 is `BLOCKED / NOT STARTED`; B2-D, CP3-C2-C
+and CP3-D are `NOT STARTED`; automatic progression is `PROHIBITED`.
 
 ---
 

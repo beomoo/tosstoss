@@ -24,13 +24,13 @@
 - Governing schema decision: ADR-015 `ACCEPTED` (`2026-08-28`)
 - Narrow implementation amendment: ADR-016 `ACCEPTED` (`2026-08-28`)
 - Runtime canonicalization amendment: ADR-017
-  `PROPOSED — AWAITING GPT RE-REVIEW`, decision date `NONE`
+  `ACCEPTED` (`2026-08-29`)
 - Counter bootstrap amendment: ADR-018
-  `PROPOSED — AWAITING GPT RE-REVIEW`, decision date `NONE`
+  `ACCEPTED` (`2026-08-29`)
 - Windows Hello provenance boundary: ADR-019
-  `PROPOSED — AWAITING GPT REVIEW`, decision date `NONE`
+  `PROPOSED — ON HOLD / AWAITING SEPARATE USER DECISION`, decision date `NONE`
 - Runtime implementation:
-  `0 / NOT STARTED / BLOCKED — ADR-017/ADR-018/ADR-019 REVIEW REQUIRED`
+  `0 / NOT STARTED / BLOCKED — ADR-019 DECISION REQUIRED`
 - Migration file creation: `1` (additive `0006`); persistent application: `0`
 - Automatic progression: `PROHIBITED`
 
@@ -1508,8 +1508,8 @@ ADR-016 passed GPT independent review and was explicitly accepted by the user.
 The separately authorized `0006` implementation also passed independent review
 at SHA `1be18a622006a6b6a46e251350e2d861d596823d` and received explicit user
 closeout approval on `2026-08-28`. Only this schema substep is `PASS — CLOSED`.
-B2-C WebAuthn/human-approval runtime is now `NOT STARTED / BLOCKED — ADR-017
-AND ADR-018 REVIEW REQUIRED` as detailed below.
+B2-C WebAuthn/human-approval runtime is now `NOT STARTED / BLOCKED — ADR-019
+DECISION REQUIRED` as detailed below.
 
 ## 15. ADR-017 runtime canonicalization gate — proposal only
 
@@ -1547,12 +1547,11 @@ feed issuer binding then consumption/authentication/approval. No descendant
 hash is copied into an ancestor preimage.
 
 - ADR-015 / ADR-016: `ACCEPTED`
-- ADR-017: `PROPOSED — AWAITING GPT RE-REVIEW`, decision date `NONE`;
-  Codex does not self-accept it
-- ADR-018: `PROPOSED — AWAITING GPT RE-REVIEW`, decision date `NONE`;
-  Codex does not self-accept it
+- ADR-017: `ACCEPTED` (`2026-08-29`)
+- ADR-018: `ACCEPTED` (`2026-08-29`)
 - `0006`: `PASS — CLOSED`, byte-identical in this documentation task
-- R1: `NOT STARTED / BLOCKED`, runtime changed files `0`
+- R1: `NOT STARTED / BLOCKED — ADR-019 DECISION REQUIRED`, runtime changed
+  files `0`
 - application/schema/migration/test/script/frontend/fixture/dependency changes:
   `0`
 - future `0007`: necessary under ADR-018 Option C, `NOT CREATED / NOT
@@ -1629,15 +1628,15 @@ must match. Production SID hashing is fixed to UTF-8 of the exact canonical
 and UV required, attestation none, `credProps=true`, exact returned platform
 attachment, and canonical ES256/RS256 public material.
 
-- ADR-017: `PROPOSED — AWAITING GPT RE-REVIEW`
-- ADR-018: `PROPOSED — AWAITING GPT RE-REVIEW`
-- ADR-019: `PROPOSED — AWAITING GPT REVIEW`
+- ADR-017: `ACCEPTED` (`2026-08-29`)
+- ADR-018: `ACCEPTED` (`2026-08-29`)
+- ADR-019: `PROPOSED — ON HOLD / AWAITING SEPARATE USER DECISION`
 - RG-08/RG-09/RG-10: not self-declared closed
 - `0006`: `PASS — CLOSED`
 - proposed `0007_phase_02_cp3_c2_b2_c_counter_capability_bootstrap`:
   `NOT CREATED / NOT AUTHORIZED`
 - application/migration/test/dependency/frontend changes: `0`
-- R1: `NOT STARTED / BLOCKED`
+- R1: `NOT STARTED / BLOCKED — ADR-019 DECISION REQUIRED`
 - B2-D / CP3-C2-C / CP3-D: `NOT STARTED`
 - Automatic progression: `PROHIBITED`
 
@@ -1686,11 +1685,11 @@ ADR-019 is proposed, not accepted, comparing verifiable strict-Hello
 provenance, an explicit weaker-property amendment, and a stronger Windows-
 native architecture. No option or trust root is authorized.
 
-- ADR-017: `PROPOSED — AWAITING GPT RE-REVIEW`
-- ADR-018: `PROPOSED — AWAITING GPT RE-REVIEW`
-- ADR-019: `PROPOSED — AWAITING GPT REVIEW`
+- ADR-017: `ACCEPTED` (`2026-08-29`)
+- ADR-018: `ACCEPTED` (`2026-08-29`)
+- ADR-019: `PROPOSED — ON HOLD / AWAITING SEPARATE USER DECISION`
 - `0006`: `PASS — CLOSED`
 - `0007`: `NOT CREATED / NOT AUTHORIZED`
-- R1: `BLOCKED / NOT STARTED`
+- R1: `NOT STARTED / BLOCKED — ADR-019 DECISION REQUIRED`
 - B2-D / CP3-C2-C / CP3-D: `NOT STARTED`
 - automatic progression: `PROHIBITED`
