@@ -1210,6 +1210,19 @@ commit할 수 없다.
   P0 `0`, P1 `3`, P2 `1`; RG-08/RG-09/RG-10 canonical SID bytes/RG-11은
   `CLOSED IN PRINCIPLE`, P1-FR-01/P1-FR-02/P1-FR-03과 Windows Hello
   provenance가 새 blocker
+- 최종 보완: authoritative SHA
+  `dbf913d5654b3a1095d359ac34e1edcde2f63c1e`에서 P1-FR-01 frozen-outcome
+  parent key, P1-FR-02 executable immediate-trigger insertion order,
+  P1-FR-03 app-data OWNER SID / process `TOKEN_USER` equality와 ADR-019
+  provenance proposal을 문서화
+- 최종 독립 검토: GPT가
+  `dbf913d5654b3a1095d359ac34e1edcde2f63c1e`를 독립 검토해
+  `PASS WITH CLOSEOUT CONDITION`, P0 `0`, unresolved ADR-017/ADR-018 P1 `0`,
+  P2 `1` — GitHub CI execution evidence absent / non-blocking으로 판정하고
+  P1-FR-01/P1-FR-02/P1-FR-03을 closed로 확인
+- 사용자 결정: `2026-08-29` explicit acceptance로 ADR-017과 ADR-018을
+  `ACCEPTED`로 결정. 이 결정 권한은 Codex self-review가 아니라 위 GPT 독립
+  검토 결과와 사용자의 명시적 수락에서 발생한다.
 - 재현 벡터:
   `qa/PHASE_02_CP3_C2_B2_C_RUNTIME_CANONICALIZATION_GAP_CODEX_REPORT.md`
 
@@ -1814,6 +1827,12 @@ explicit authority.
 - 결정일: `2026-08-29`
 - 선행 결정: ADR-015 `ACCEPTED`, ADR-016 `ACCEPTED`, ADR-017 `ACCEPTED`
 - 적용 gate: `CP3-C2-B2-C R1`
+- 결정 provenance: GPT가 authoritative SHA
+  `dbf913d5654b3a1095d359ac34e1edcde2f63c1e`의 FR-01/FR-02/FR-03 보완을
+  독립 검토해 `PASS WITH CLOSEOUT CONDITION`, P0 `0`, unresolved
+  ADR-017/ADR-018 P1 `0`, P2 `1` — GitHub CI execution evidence absent /
+  non-blocking으로 판정한 뒤, 사용자가 `2026-08-29` ADR-018을 명시적으로
+  `ACCEPTED`했다. Codex self-review는 결정 권한이 아니다.
 - proposed future migration:
   `0007_phase_02_cp3_c2_b2_c_counter_capability_bootstrap` — `NOT CREATED / NOT
   AUTHORIZED`

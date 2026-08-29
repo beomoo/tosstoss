@@ -202,8 +202,12 @@
 - [x] P1-FR-03 canonical `PROJECT_ROOT/var` filesystem OWNER SID와 process
       `TOKEN_USER` `EqualSid` binding 제안
 - [x] Windows Hello provenance audit와 ADR-019 proposal 작성
-- [ ] ADR-017/ADR-018 GPT re-review, ADR-019 GPT review와 explicit user acceptance
-- [ ] ADR-017 acceptance 이후 별도 R1 implementation authority 확인 및 재개
+- [x] SHA `dbf913d5654b3a1095d359ac34e1edcde2f63c1e` GPT independent review:
+      `PASS WITH CLOSEOUT CONDITION`, P0 0 / unresolved ADR-017/ADR-018 P1 0 /
+      P2 1 — GitHub CI execution evidence absent / non-blocking; FR-01~FR-03 closed
+- [x] 사용자 ADR-017/ADR-018 explicit acceptance (`2026-08-29`)
+- [ ] ADR-019 GPT review와 별도 사용자 결정
+- [ ] ADR-019 결정 이후 별도 R1 implementation authority 확인 및 재개
 - [ ] CP3-C2-B2-D 별도 시작 승인
 - [ ] CP3-C2-C 별도 시작 승인
 - [ ] CP3-D 별도 시작 승인
@@ -299,13 +303,24 @@ closeout on `2026-08-28`, so the CP3-C2-B2-C `0006` schema implementation is
 `0`, P1 `3`, P2 `2`. RG-01~RG-07 remain valid. The documentation remediation
 extends Option C across FIRST/ADD/REPLACE, fixes exact userHandle, Windows SID,
 and registration-proof contracts, and defines implementation-ready proposed
-future `0007` tables and guards. Final schema/trust review at
-`09ced6c0d0000f911075154c97a0e1cf54656f86` added the exact frozen-outcome
-parent key, executable trigger order, app-data OWNER equality contract, and
-Windows Hello provenance blocker. ADR-017/ADR-018 were documented as proposed and
-not accepted at that time; ADR-019 was on hold and not accepted. No migration
-was created or authorized. B2-C R1 is `NOT STARTED / BLOCKED — ADR-017/ADR-018/ADR-019 REVIEW REQUIRED`. B2-D,
-CP3-C2-C and CP3-D remain `NOT STARTED`; automatic progression is `PROHIBITED`.
+future `0007` tables and guards. GPT then independently reviewed authoritative
+SHA `09ced6c0d0000f911075154c97a0e1cf54656f86` and returned `CHANGES REQUIRED`,
+P0 `0`, P1 `3`, P2 `1`: FR-01 frozen outcome parent-key, FR-02 executable
+immediate-trigger ordering, FR-03 app-data OWNER SID / process `TOKEN_USER`
+binding, and the strict Windows Hello provenance blocker remained. ADR-019 had
+not yet been proposed at that SHA. Documentation/design remediation committed at
+`dbf913d5654b3a1095d359ac34e1edcde2f63c1e` added the exact frozen-outcome
+parent UNIQUE index and explicit registration-purpose FK child, executable
+insertion orders, app-data OWNER == `TOKEN_USER` contract, disposable SQLite
+9/9 relational proof, and the ADR-019 proposal. GPT independently reviewed
+`dbf913d5654b3a1095d359ac34e1edcde2f63c1e` as `PASS WITH CLOSEOUT CONDITION`,
+P0 `0`, unresolved ADR-017/ADR-018 P1 `0`, P2 `1` — GitHub CI execution
+evidence absent / non-blocking. The user explicitly accepted ADR-017 and
+ADR-018 on `2026-08-29`. ADR-019 was not accepted and remains `PROPOSED — ON
+HOLD / AWAITING SEPARATE USER DECISION`, decision date `NONE`. No migration was
+created or authorized. B2-C R1 is `NOT STARTED / BLOCKED — ADR-019 DECISION
+REQUIRED`. B2-D, CP3-C2-C and CP3-D remain `NOT STARTED`; automatic progression
+is `PROHIBITED`.
 GitHub CI execution evidence remains absent/non-blocking; LOCAL checks are not
 GitHub CI evidence.
 

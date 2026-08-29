@@ -124,6 +124,22 @@ Note: section 8.2 records the required disposable-tree scanner attempt and exact
   `Required current-build evidence is missing: <repo>\\apps\\web\\.next\\BUILD_ID`
 - Status: `SECRET SCAN — NOT VERIFIED`
 
+## 8.3 Final acceptance-provenance correction
+
+- correction starting SHA:
+  `03879219d6bf70d2c674e7938048ad5c6a33757b`
+- independent verdict at that SHA:
+  `FAIL — ONE CONTROL-PLANE P1 REMAINS`
+- findings: P0 `0`, P1 `1`, P2 `2` non-blocking
+  - native secret scan: `NOT VERIFIED`
+  - GitHub CI execution evidence: absent
+- P1-FINAL-01 correction: `DECISIONS.md` and `STATUS.md` now preserve the exact
+  chronology `c34d8ca... CHANGES REQUIRED` -> `09ced6c... CHANGES REQUIRED` ->
+  `dbf913d... PASS WITH CLOSEOUT CONDITION` -> explicit user acceptance on
+  `2026-08-29`.
+- This correction does not change the valid ADR-017/ADR-018 acceptance, accept
+  ADR-019, create `0007`, or authorize R1.
+
 ## 9. Exact changed paths
 
 - `DECISIONS.md`
