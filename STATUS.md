@@ -302,10 +302,9 @@ and registration-proof contracts, and defines implementation-ready proposed
 future `0007` tables and guards. Final schema/trust review at
 `09ced6c0d0000f911075154c97a0e1cf54656f86` added the exact frozen-outcome
 parent key, executable trigger order, app-data OWNER equality contract, and
-Windows Hello provenance blocker. ADR-017/ADR-018 are `PROPOSED — AWAITING GPT
-RE-REVIEW`; ADR-019 is `PROPOSED — AWAITING GPT REVIEW`; none is accepted. No
-migration was created or authorized. B2-C R1 is `NOT STARTED / BLOCKED —
-ADR-017/ADR-018/ADR-019 REVIEW REQUIRED`. B2-D,
+Windows Hello provenance blocker. ADR-017/ADR-018 were documented as proposed and
+not accepted at that time; ADR-019 was on hold and not accepted. No migration
+was created or authorized. B2-C R1 is `NOT STARTED / BLOCKED — ADR-017/ADR-018/ADR-019 REVIEW REQUIRED`. B2-D,
 CP3-C2-C and CP3-D remain `NOT STARTED`; automatic progression is `PROHIBITED`.
 GitHub CI execution evidence remains absent/non-blocking; LOCAL checks are not
 GitHub CI evidence.
@@ -317,5 +316,5 @@ GitHub CI evidence.
 - Node.js 지원 범위는 24.16 이상 25 미만이며 QA 기준은 24.19.0이다.
 - ADR-009는 아직 `PROPOSED`이며 독립 리뷰·승인 대상이다.
 - 모든 표시 데이터는 합성 fixture이고 실제 투자 판단 자료가 아니다.
-- Toss market connector는 CP2 범위에서 구현됐고 CP3-C1은 호출 없는 offline Security Master staging/reconciliation만 추가했다. CP3-C2-A와 B1은 approved authority/runtime-schema contract를 확정했고, B2-A는 immutable authority ledger와 additive `0005` foundation, B2-B는 trusted pre-admitted immutable evidence만 평가하는 offline bridge/collision/freshness machine engine을 구현했다. 신규 production evidence operational admission은 fail closed이며 live ingestion은 구현하지 않았다. Additive `0006` reviewer credential-operation ledger는 구현·독립검토·사용자 closeout을 마쳐 `PASS — CLOSED`지만 WebAuthn runtime, approval route/execution, canonical Issuer/Security promotion, VERIFIED mapping, Current Price normalization/storage, scheduler와 화면 연결은 구현하지 않았다. CP3-C2-B2-A/B2-B/0006 schema는 `PASS — CLOSED`; ADR-015/ADR-016은 `ACCEPTED`; ADR-017/ADR-018은 `PROPOSED — AWAITING GPT RE-REVIEW`; ADR-019는 `PROPOSED — AWAITING GPT REVIEW`; future `0007`은 `NOT CREATED / NOT AUTHORIZED`; B2-C R1은 `NOT STARTED / BLOCKED`; B2-D와 CP3-C2-C/CP3-D는 `NOT STARTED`, automatic checkpoint progression은 `PROHIBITED`다. OpenDART/SEC/IROS/US state registry/news/macro live connector, 계좌와 주문도 구현하지 않았다.
+- Toss market connector는 CP2 범위에서 구현됐고 CP3-C1은 호출 없는 offline Security Master staging/reconciliation만 추가했다. CP3-C2-A와 B1은 approved authority/runtime-schema contract를 확정했고, B2-A는 immutable authority ledger와 additive `0005` foundation, B2-B는 trusted pre-admitted immutable evidence만 평가하는 offline bridge/collision/freshness machine engine을 구현했다. 신규 production evidence operational admission은 fail closed이며 live ingestion은 구현하지 않았다. Additive `0006` reviewer credential-operation ledger는 구현·독립검토·사용자 closeout을 마쳐 `PASS — CLOSED`지만 WebAuthn runtime, approval route/execution, canonical Issuer/Security promotion, VERIFIED mapping, Current Price normalization/storage, scheduler와 화면 연결은 구현하지 않았다. CP3-C2-B2-A/B2-B/0006 schema는 `PASS — CLOSED`; ADR-015/ADR-016은 `ACCEPTED`; ADR-017/ADR-018은 `ACCEPTED`; ADR-019는 `PROPOSED — ON HOLD / AWAITING SEPARATE USER DECISION`; future `0007`은 `NOT CREATED / NOT AUTHORIZED`; B2-C R1은 `NOT STARTED / BLOCKED`; B2-D와 CP3-C2-C/CP3-D는 `NOT STARTED`, automatic checkpoint progression은 `PROHIBITED`다. OpenDART/SEC/IROS/US state registry/news/macro live connector, 계좌와 주문도 구현하지 않았다.
 - Windows 개발·QA 저장소는 현재 ASCII-only parent path를 사용한다. non-ASCII parent path의 setuptools editable build 실패는 `P2 DEFERRED / ENVIRONMENT CONSTRAINT`이며 CP2 business logic 결함으로 분류하지 않는다.

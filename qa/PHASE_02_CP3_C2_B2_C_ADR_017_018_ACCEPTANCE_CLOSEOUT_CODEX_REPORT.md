@@ -6,9 +6,18 @@
 - branch: `feature/phase-02-toss`
 - authoritative starting SHA: `dbf913d5654b3a1095d359ac34e1edcde2f63c1e`
 - independent-repository context: documentation/control-plane only
-- independent verdict carried forward: `CHANGES REQUIRED` (prior run)
-- independent review finding counts carried forward: `P0: 0 / P1: 3 / P2: 1`
+- independent verdict carried forward: `PASS WITH CLOSEOUT CONDITION` at
+  `dbf913d5654b3a1095d359ac34e1edcde2f63c1e`
+- independent finding counts carried forward:
+  `P0: 0 / unresolved P1: 0 / P2: 1`
 - requested closeout outcome: user acceptance for **ADR-017 + ADR-018**, no implementation or migration execution.
+- provenance chain:
+  - authoritative base `09ced6c0d0000f911075154c97a0e1cf54656f86` (previously
+    `CHANGES REQUIRED`, `P0 0 / P1 3 / P2 1`)
+  - remediation + FR completion + this acceptance-closeout review at
+    `dbf913d5654b3a1095d359ac34e1edcde2f63c1e`
+    (`PASS WITH CLOSEOUT CONDITION`, `P0 0 / unresolved P1 0 / P2 1`)
+  - explicit user acceptance on `2026-08-29`
 
 ## 2. Control-plane decision closure
 
@@ -92,7 +101,7 @@ No migration file was edited in this task.
 | `git diff --cached --check` | PASS |
 | exact docs-only path allowlist | PASS |
 | frozen `0001`–`0006` blob verification | PASS |
-| secret scan on changed docs | Native `scripts/secret-scan.ps1` cannot complete on this host with `core.autocrlf=true`; CRLF-normalized staged docs cause index/worktree mismatch. A targeted docs-only custom scan for common secret token patterns (excluding documented placeholders) found **no new secrets** in changed files. |
+| secret scan on changed docs | NOT VERIFIED |
 | policy scan (no non-doc runtime/surface edits) | PASS |
 | `ADR/status/plan consistency` (cross-doc checks in this task) | PASS |
 | ADR-019 blocker evidence preserved | PASS |
@@ -103,18 +112,23 @@ No migration file was edited in this task.
 - GitHub CI execution was not run in this docs-only control-plane closeout; evidence is local-only.
 - This is unchanged from prior R1-doc-only gates.
 
-Note: `scripts/secret-scan.ps1` is present but currently fails on this host in this repository configuration due an index/worktree normalization mismatch with `core.autocrlf=true`; no new secrets were introduced by this docs-only change.
+Note: section 8.2 records the required disposable-tree scanner attempt and exact output.
+
+## 8.2 Native scanner proof (disposable-tree)
+
+- Working tree: detached clean worktree at authoritative SHA
+  `eb61fadc4f6886b7649193579f9b96e444d112a7`
+- Command: `pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/secret-scan.ps1`
+- Result: `Exit code 1`
+- Failure reason:
+  `Required current-build evidence is missing: <repo>\\apps\\web\\.next\\BUILD_ID`
+- Status: `SECRET SCAN — NOT VERIFIED`
 
 ## 9. Exact changed paths
 
-- `CHANGELOG.md`
 - `DECISIONS.md`
-- `KNOWN_ISSUES.md`
 - `STATUS.md`
-- `plans/PHASE_02_EXECUTION_PLAN.md`
-- `plans/PHASE_02_CP3_C2_B1_RUNTIME_CONTRACT.md`
-- `plans/PHASE_02_CP3_C2_B2_C_ADR_018_COUNTER_CAPABILITY_SCHEMA_PROPOSAL.md`
-- `plans/PHASE_02_CP3_C2_B2_C_SCHEMA_REMEDIATION.md`
+- `qa/PHASE_02_CP3_C2_B2_C_ADR_017_018_ACCEPTANCE_CLOSEOUT_CODEX_REPORT.md`
 
 ## 10. Finalization
 

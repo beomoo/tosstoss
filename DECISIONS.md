@@ -1786,8 +1786,9 @@ as zero, or letting callers supply policy/hash fields. Each would make the
 persisted identity non-portable or weaken fail-closed verification.
 
 ADR-017 is `ACCEPTED` (`2026-08-29`); ADR-018 below is separately
-`ACCEPTED`; Codex does not self-implement. `RG-08/RG-09/RG-10` are
-self-declared closed, and `RG-11` and all requested FR findings are accepted.
+`ACCEPTED`; Codex does not self-implement. `RG-08/RG-09/RG-10` are closed as
+contract/design-level matters from GPT independent review and explicit user
+acceptance; `RG-11` and all requested FR findings are accepted.
 R1 remains `BLOCKED / NOT STARTED` pending `ADR-019`, with application, schema,
 migration, test, fixture and dependency changes all `0`. Future `0007` is
 necessary under the selected proposal but is `NOT CREATED / NOT AUTHORIZED`.
@@ -1987,15 +1988,12 @@ R1 remains `BLOCKED / NOT STARTED` pending `ADR-019` acceptance. RG-08~RG-11 and
 FR-01~FR-03 are treated as contractually closed. ADR-015 and ADR-016 remain
 `ACCEPTED`; `0006` remains `PASS — CLOSED`; B2-D, CP3-C2-C and CP3-D remain
 `NOT STARTED`; automatic progression remains `PROHIBITED`.
-ADR-015 and ADR-016 remain `ACCEPTED`; `0006` remains `PASS — CLOSED`; B2-D,
-CP3-C2-C and CP3-D remain `NOT STARTED`; automatic progression remains
-`PROHIBITED`.
 
 ---
 
 ## ADR-019 — Windows Hello Provenance Trust Boundary
 
-- 상태: `PROPOSED — AWAITING GPT REVIEW`
+- 상태: `PROPOSED — ON HOLD / AWAITING SEPARATE USER DECISION`
 - 제안일: `2026-08-29`
 - 결정일: `NONE`
 - 선행 결정: accepted B1/ADR-014 requires a Windows Hello-backed platform
@@ -2051,8 +2049,9 @@ Windows/plugin passkey managers
 
 ### 상태 효과
 
-ADR-019 is `PROPOSED — AWAITING GPT REVIEW`, not accepted. ADR-017 and ADR-018
-are `ACCEPTED`; `0006` is `PASS — CLOSED`; future `0007` is
+ADR-019 is `PROPOSED — ON HOLD / AWAITING SEPARATE USER DECISION`; it is not
+accepted. ADR-017 and ADR-018 are `ACCEPTED`; `0006` is `PASS — CLOSED`; future
+`0007` is
 `NOT CREATED / NOT AUTHORIZED`; R1 is `BLOCKED / NOT STARTED`; B2-D, CP3-C2-C
 and CP3-D are `NOT STARTED`; automatic progression is `PROHIBITED`.
 
