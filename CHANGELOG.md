@@ -1,5 +1,26 @@
 # Changelog
 
+## Unreleased — ADR-019 USER-ACCEPTANCE CLOSEOUT — 2026-08-31
+
+- Recorded explicit user acceptance of ADR-019, `Vendor-Neutral WebAuthn Human
+  Authority Boundary`, with proposal date `2026-08-29` and decision date
+  `2026-08-31`.
+- Preserved historical B1 wording `Windows Hello-backed platform credential
+  only`; ADR-019 amends only strict authenticator-vendor provenance, leaving
+  every unaffected B1/ADR-017/ADR-018 control unchanged.
+- Kept ADR-015/ADR-016/ADR-017/ADR-018 accepted, `0006 PASS — CLOSED`, future
+  `0007 NOT CREATED / NOT AUTHORIZED`, and R1 `NOT STARTED / REQUIRES SEPARATE
+  AUTHORIZATION`.
+- Kept Public Read-only Deployment and Automated Trading
+  `FUTURE / NOT AUTHORIZED / NOT STARTED`, current `LOCAL_ONLY=true`,
+  `TRADING_ENABLED=false`, `DRY_RUN=true`, and automatic progression
+  `PROHIBITED`.
+- Retained two non-blocking review issues: future Public deployment source
+  redistribution/publication eligibility review and absent GitHub CI execution
+  evidence.
+- Application, runtime, migration, test, dependency, fixture, frontend, network
+  exposure and trading changes are all `0`.
+
 ## Unreleased — ADR-019 Human Authority and Master Trust Boundaries — 2026-08-29
 
 - Revised ADR-019 to `Vendor-Neutral WebAuthn Human Authority Boundary` and

@@ -19,11 +19,10 @@
 - CP3-C2-B2-B: `PASS — CLOSED`
 - CP3-C2-B2-C `0006` schema implementation: `PASS — CLOSED`
 - B2-C R1 WebAuthn runtime:
-  `NOT STARTED / BLOCKED — ADR-019 DECISION REQUIRED`
+  `NOT STARTED / REQUIRES SEPARATE AUTHORIZATION`
 - ADR-017: `ACCEPTED` (`2026-08-29`)
 - ADR-018: `ACCEPTED` (`2026-08-29`)
-- ADR-019: `PROPOSED — AWAITING GPT REVIEW / USER ACCEPTANCE` (decision date
-  `NONE`)
+- ADR-019: `ACCEPTED` (proposal date `2026-08-29`, decision date `2026-08-31`)
 - CP3-C2-B2-D: `NOT STARTED`
 - Migration implementation: additive `0005` implemented in B2-A; production
   database application `0`
@@ -646,16 +645,17 @@ request cannot be the reviewer.
 ### 9.1 Concrete local data-steward authentication trust root
 
 This section preserves the exact historically accepted B1 language, including
-`Windows Hello-backed platform credential only`. Revised ADR-019 does not
-rewrite that history. If independently reviewed and explicitly accepted, it
-amends only the authenticator-vendor provenance condition; every other B1,
-ADR-017 and ADR-018 control in this section remains in force.
+`Windows Hello-backed platform credential only`. Accepted ADR-019 does not
+rewrite that history and amends only the authenticator-vendor provenance
+condition; every other B1, ADR-017 and ADR-018 control in this section remains
+in force.
 
-The only approval trust root for this contract is a registered Windows
-Hello-backed WebAuthn/passkey platform credential bound to the server-owned
-`LOCAL_DATA_STEWARD` principal. Loopback access, process ownership, a Windows
-login by itself, Codex/GPT, a CLI flag, an environment variable, a cookie, or a
-caller assertion of identity/role is not approval authentication.
+The only approval trust root for this contract is a previously registered
+trusted human WebAuthn credential bound to the server-owned
+`LOCAL_DATA_STEWARD` principal and a fresh cryptographically verified assertion
+under the exact accepted controls. Loopback access, process ownership, a
+Windows login by itself, Codex/GPT, a CLI flag, an environment variable, a
+cookie, or a caller assertion of identity/role is not approval authentication.
 
 #### 9.1.1 Principal and credential enrollment
 
@@ -1604,7 +1604,7 @@ contract or retroactively broaden the B1 closeout approval.
 - ADR-016: `ACCEPTED` (`2026-08-28`)
 - Migration `0006`: `PASS — CLOSED`
 - B2-C WebAuthn/human-approval runtime:
-  `NOT STARTED / BLOCKED — ADR-019 DECISION REQUIRED`
+  `NOT STARTED / REQUIRES SEPARATE AUTHORIZATION`
 - CP3-C2-B2-D: `NOT STARTED`
 - CP3-C2-C: `NOT STARTED`
 - CP3-D: `NOT STARTED`
@@ -1783,7 +1783,7 @@ on `2026-08-28`. This adds no WebAuthn/human-approval runtime.
 - CP3-C2-B2-C `0006` schema implementation: `PASS — CLOSED`
 - Migration `0006`: `PASS — CLOSED`
 - B2-C WebAuthn/human-approval runtime:
-  `NOT STARTED / BLOCKED — ADR-019 DECISION REQUIRED`
+  `NOT STARTED / REQUIRES SEPARATE AUTHORIZATION`
 - CP3-C2-B2-D / CP3-C2-C / CP3-D: `NOT STARTED`
 - Automatic progression: `PROHIBITED`
 
@@ -1829,7 +1829,7 @@ documented hash dependency DAG has no cycle.
 - ADR-018: `PROPOSED`, decision date `NONE`
 - `0006`: `PASS — CLOSED`
 - R1 application/schema/test/dependency changes: `0`
-- R1 status: `NOT STARTED / BLOCKED — ADR-019 DECISION REQUIRED`
+- R1 status: `NOT STARTED / REQUIRES SEPARATE AUTHORIZATION`
 - Migration `0007`: necessary under ADR-018 Option C, `NOT CREATED / NOT
   AUTHORIZED`, creation/application `0`
 - Actual Windows Hello or issuer approval: `0`
@@ -1862,10 +1862,10 @@ retroactive failure. The exact counter-decision vectors and schema audit are in
 - ADR-015 / ADR-016: `ACCEPTED`
 - ADR-017: `ACCEPTED` (`2026-08-29`)
 - ADR-018: `ACCEPTED` (`2026-08-29`)
-- ADR-019: `PROPOSED — AWAITING GPT REVIEW / USER ACCEPTANCE`
+- ADR-019: `ACCEPTED` (`2026-08-31`; proposal date `2026-08-29`)
 - `0006`: `PASS — CLOSED`
 - future `0007`: `NOT CREATED / NOT AUTHORIZED`
-- R1: `NOT STARTED / BLOCKED`
+- R1: `NOT STARTED / REQUIRES SEPARATE AUTHORIZATION`
 - B2-D / CP3-C2-C / CP3-D: `NOT STARTED`
 - Automatic progression: `PROHIBITED`
 
@@ -1974,23 +1974,23 @@ proves a user-verifying platform WebAuthn credential on Windows, not uniquely
 Microsoft Windows Hello. `attestation=none` yields no vendor provenance trust
 path, and Windows WebAuthn can route to plugin authenticators.
 
-Revised ADR-019 now proposes that authenticator vendor/product identity is not
-authority. The proposed human-authority property is a fresh cryptographically
+Accepted ADR-019 establishes that authenticator vendor/product identity is not
+authority. The human-authority property is a fresh cryptographically
 verified assertion from a previously registered trusted WebAuthn credential
 under the exact accepted RP/origin/challenge/UP/UV/credential/signature/
 counter/audit rules. Windows Hello may be the actual authenticator, but proving
 that product identity is not an authorization condition. The historical B1
-phrase remains recorded; only that vendor requirement would be amended if
-ADR-019 is later accepted. No additional mobile credential, hardware key,
+phrase remains recorded; only that vendor requirement is amended. No additional
+mobile credential, hardware key,
 attestation mode, trust root, recovery or runtime is authorized here. R1
-therefore remains blocked on ADR-019 review and explicit user acceptance.
+remains not started and requires separate authorization.
 
 - ADR-017: `ACCEPTED` (`2026-08-29`)
 - ADR-018: `ACCEPTED` (`2026-08-29`)
-- ADR-019: `PROPOSED — AWAITING GPT REVIEW / USER ACCEPTANCE`
+- ADR-019: `ACCEPTED` (`2026-08-31`; proposal date `2026-08-29`)
 - RG-08/RG-09/RG-10: not self-declared closed
 - `0006`: `PASS — CLOSED`
 - `0007`: `NOT CREATED / NOT AUTHORIZED`
-- R1: `NOT STARTED / BLOCKED`
+- R1: `NOT STARTED / REQUIRES SEPARATE AUTHORIZATION`
 - B2-D / CP3-C2-C / CP3-D: `NOT STARTED`
 - Automatic progression: `PROHIBITED`

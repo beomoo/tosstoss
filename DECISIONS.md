@@ -1246,10 +1246,10 @@ registration proof flags. These findings do not reopen `0006`; it remains
 `PASS — CLOSED`.
 
 Implementing any one reasonable interpretation would create incompatible
-persisted identities. Therefore R1 stays `NOT STARTED / BLOCKED` pending
-`ADR-019` user decision, even after ADR-017/ADR-018 acceptance. Future schema and
-runtime work remain separately authorized. ADR-015/ADR-016 acceptance and the
-`0006 PASS — CLOSED` schema result are unchanged.
+persisted identities. ADR-017/ADR-018 and the later ADR-019 are now accepted,
+but R1 remains `NOT STARTED / REQUIRES SEPARATE AUTHORIZATION`. Future schema
+and runtime work remain separately authorized. ADR-015/ADR-016 acceptance and
+the `0006 PASS — CLOSED` schema result are unchanged.
 
 ### 제안 — common canonicalization
 
@@ -1802,7 +1802,8 @@ ADR-017 is `ACCEPTED` (`2026-08-29`); ADR-018 below is separately
 `ACCEPTED`; Codex does not self-implement. `RG-08/RG-09/RG-10` are closed as
 contract/design-level matters from GPT independent review and explicit user
 acceptance; `RG-11` and all requested FR findings are accepted.
-R1 remains `BLOCKED / NOT STARTED` pending `ADR-019`, with application, schema,
+ADR-019 is now accepted, but R1 remains
+`NOT STARTED / REQUIRES SEPARATE AUTHORIZATION`, with application, schema,
 migration, test, fixture and dependency changes all `0`. Future `0007` is
 necessary under the selected proposal but is `NOT CREATED / NOT AUTHORIZED`.
 ADR-015 and ADR-016 remain `ACCEPTED`; `0006` remains `PASS — CLOSED`. B2-D,
@@ -2002,8 +2003,9 @@ additional cross-ledger guards. No existing row or migration is rewritten.
 
 ADR-018 is `ACCEPTED` (`2026-08-29`) and not self-implemented; it is fully
 frozen as control-plane/runtime-contract design only. Future `0007` is necessary
-for full Option C and is `NOT CREATED / NOT AUTHORIZED`. ADR-017 is `ACCEPTED`;
-R1 remains `BLOCKED / NOT STARTED` pending `ADR-019` acceptance. RG-08~RG-11 and
+for full Option C and is `NOT CREATED / NOT AUTHORIZED`. ADR-017 and ADR-019 are
+`ACCEPTED`; R1 remains `NOT STARTED / REQUIRES SEPARATE AUTHORIZATION`.
+RG-08~RG-11 and
 FR-01~FR-03 are treated as contractually closed. ADR-015 and ADR-016 remain
 `ACCEPTED`; `0006` remains `PASS — CLOSED`; B2-D, CP3-C2-C and CP3-D remain
 `NOT STARTED`; automatic progression remains `PROHIBITED`.
@@ -2012,9 +2014,9 @@ FR-01~FR-03 are treated as contractually closed. ADR-015 and ADR-016 remain
 
 ## ADR-019 — Vendor-Neutral WebAuthn Human Authority Boundary
 
-- 상태: `PROPOSED — AWAITING GPT REVIEW / USER ACCEPTANCE`
+- 상태: `ACCEPTED`
 - 제안일: `2026-08-29`
-- 결정일: `NONE`
+- 결정일: `2026-08-31`
 - 선행 결정: ADR-014/B1, ADR-017 and ADR-018 are `ACCEPTED`
 - 적용 gate: `CP3-C2-B2-C R1`
 
@@ -2029,11 +2031,10 @@ or product is specifically Microsoft Windows Hello.
 The product requirement has now changed: authenticator vendor/product identity
 is not human authority. Strict Microsoft Windows Hello provenance is no longer
 the intended authorization property. This ADR does not rewrite B1 history or
-pretend the accepted phrase originally had a different meaning. If accepted,
-ADR-019 amends and supersedes only that affected authenticator-vendor
-requirement.
+pretend the accepted phrase originally had a different meaning. This accepted
+ADR amends and supersedes only that affected authenticator-vendor requirement.
 
-### 제안
+### 결정
 
 A privileged human action requires a fresh, cryptographically verified
 WebAuthn assertion from a previously registered trusted human credential that
@@ -2117,10 +2118,10 @@ deployment and automated trading both remain future, unauthorized checkpoints.
 
 ### 상태 효과
 
-ADR-019 remains `PROPOSED — AWAITING GPT REVIEW / USER ACCEPTANCE`; Codex does
-not self-accept it and the decision date remains `NONE`. R1 remains
-`BLOCKED / NOT STARTED — ADR-019 DECISION REQUIRED`. ADR-017 and ADR-018 remain
-`ACCEPTED`; `0006` remains `PASS — CLOSED`; future `0007` is
+The user explicitly accepted ADR-019 on `2026-08-31`; its proposal date remains
+`2026-08-29`. This acceptance does not authorize implementation. R1 remains
+`NOT STARTED / REQUIRES SEPARATE AUTHORIZATION`. ADR-015, ADR-016, ADR-017 and
+ADR-018 remain `ACCEPTED`; `0006` remains `PASS — CLOSED`; future `0007` is
 `NOT CREATED / NOT AUTHORIZED`; B2-D, CP3-C2-C and CP3-D remain `NOT STARTED`;
 automatic progression remains `PROHIBITED`.
 

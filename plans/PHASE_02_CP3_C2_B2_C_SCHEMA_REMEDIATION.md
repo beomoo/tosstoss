@@ -28,9 +28,9 @@
 - Counter bootstrap amendment: ADR-018
   `ACCEPTED` (`2026-08-29`)
 - Vendor-neutral WebAuthn human-authority boundary: ADR-019
-  `PROPOSED — AWAITING GPT REVIEW / USER ACCEPTANCE`, decision date `NONE`
+  `ACCEPTED`; proposal date `2026-08-29`, decision date `2026-08-31`
 - Runtime implementation:
-  `0 / NOT STARTED / BLOCKED — ADR-019 DECISION REQUIRED`
+  `0 / NOT STARTED / REQUIRES SEPARATE AUTHORIZATION`
 - Migration file creation: `1` (additive `0006`); persistent application: `0`
 - Automatic progression: `PROHIBITED`
 
@@ -40,7 +40,7 @@ This document is the ADR-015/ADR-016-approved schema architecture for the
 minimum additive ledger needed before CP3-C2-B2-C can faithfully implement
 trusted-human WebAuthn steward enrollment and credential lifecycle
 authorization. The accepted historical B1 phrase was Windows Hello-backed;
-revised ADR-019 proposes to amend only its vendor-provenance condition. GPT
+accepted ADR-019 amends only its vendor-provenance condition. GPT
 independent review of SHA
 `4104973d84307b80a236d9b737b2d29339b27153` returned P0 `0` / P1 `0`, and the
 user explicitly accepted ADR-016 on `2026-08-28`.
@@ -1510,8 +1510,8 @@ ADR-016 passed GPT independent review and was explicitly accepted by the user.
 The separately authorized `0006` implementation also passed independent review
 at SHA `1be18a622006a6b6a46e251350e2d861d596823d` and received explicit user
 closeout approval on `2026-08-28`. Only this schema substep is `PASS — CLOSED`.
-B2-C WebAuthn/human-approval runtime is now `NOT STARTED / BLOCKED — ADR-019
-DECISION REQUIRED` as detailed below.
+B2-C WebAuthn/human-approval runtime is now
+`NOT STARTED / REQUIRES SEPARATE AUTHORIZATION` as detailed below.
 
 ## 15. ADR-017 runtime canonicalization gate — proposal only
 
@@ -1552,7 +1552,7 @@ hash is copied into an ancestor preimage.
 - ADR-017: `ACCEPTED` (`2026-08-29`)
 - ADR-018: `ACCEPTED` (`2026-08-29`)
 - `0006`: `PASS — CLOSED`, byte-identical in this documentation task
-- R1: `NOT STARTED / BLOCKED — ADR-019 DECISION REQUIRED`, runtime changed
+- R1: `NOT STARTED / REQUIRES SEPARATE AUTHORIZATION`, runtime changed
   files `0`
 - application/schema/migration/test/script/frontend/fixture/dependency changes:
   `0`
@@ -1632,13 +1632,13 @@ attachment, and canonical ES256/RS256 public material.
 
 - ADR-017: `ACCEPTED` (`2026-08-29`)
 - ADR-018: `ACCEPTED` (`2026-08-29`)
-- ADR-019: `PROPOSED — AWAITING GPT REVIEW / USER ACCEPTANCE`
+- ADR-019: `ACCEPTED` (`2026-08-31`; proposal date `2026-08-29`)
 - RG-08/RG-09/RG-10: not self-declared closed
 - `0006`: `PASS — CLOSED`
 - proposed `0007_phase_02_cp3_c2_b2_c_counter_capability_bootstrap`:
   `NOT CREATED / NOT AUTHORIZED`
 - application/migration/test/dependency/frontend changes: `0`
-- R1: `NOT STARTED / BLOCKED — ADR-019 DECISION REQUIRED`
+- R1: `NOT STARTED / REQUIRES SEPARATE AUTHORIZATION`
 - B2-D / CP3-C2-C / CP3-D: `NOT STARTED`
 - Automatic progression: `PROHIBITED`
 
@@ -1683,18 +1683,18 @@ objects, races, API failures, or mismatch fail closed; raw SIDs are transient.
 
 Platform attachment + UV + none attestation proves only a user-verifying
 Windows platform WebAuthn credential, not strict Windows Hello provenance.
-That historical audit remains valid. Revised ADR-019 is proposed, not accepted:
-it makes authenticator vendor/product identity non-authoritative and requires a
+That historical audit remains valid. Accepted ADR-019 makes authenticator
+vendor/product identity non-authoritative and requires a
 fresh cryptographically verified assertion from a previously registered
 trusted WebAuthn credential under all unchanged exact controls. It amends only
-the historical B1 vendor-provenance requirement if accepted. No additional
+the historical B1 vendor-provenance requirement. No additional
 credential type, trust root, recovery or runtime is authorized.
 
 - ADR-017: `ACCEPTED` (`2026-08-29`)
 - ADR-018: `ACCEPTED` (`2026-08-29`)
-- ADR-019: `PROPOSED — AWAITING GPT REVIEW / USER ACCEPTANCE`
+- ADR-019: `ACCEPTED` (`2026-08-31`; proposal date `2026-08-29`)
 - `0006`: `PASS — CLOSED`
 - `0007`: `NOT CREATED / NOT AUTHORIZED`
-- R1: `NOT STARTED / BLOCKED — ADR-019 DECISION REQUIRED`
+- R1: `NOT STARTED / REQUIRES SEPARATE AUTHORIZATION`
 - B2-D / CP3-C2-C / CP3-D: `NOT STARTED`
 - automatic progression: `PROHIBITED`

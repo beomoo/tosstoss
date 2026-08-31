@@ -4,13 +4,12 @@
 
 - ADR-017: `ACCEPTED` (`2026-08-29`)
 - ADR-018: `ACCEPTED` (`2026-08-29`)
-- ADR-019: `PROPOSED — AWAITING GPT REVIEW / USER ACCEPTANCE`, decision date
-  `NONE`
+- ADR-019: `ACCEPTED`; proposal date `2026-08-29`, decision date `2026-08-31`
 - `0006`: `PASS — CLOSED`
 - proposed future migration:
   `0007_phase_02_cp3_c2_b2_c_counter_capability_bootstrap`
 - `0007`: `NOT CREATED / NOT AUTHORIZED`
-- R1: `NOT STARTED / BLOCKED — ADR-019 DECISION REQUIRED`
+- R1: `NOT STARTED / REQUIRES SEPARATE AUTHORIZATION`
 - automatic progression: `PROHIBITED`
 
 This document is the implementation-ready, normative schema companion to
@@ -669,7 +668,7 @@ assertion hash. The graph is acyclic.
 
 This proposal changes application, migration, test, dependency, fixture, and
 frontend files by `0`. It performs no trusted-human WebAuthn or issuer-approval
-runtime. ADR-017 and ADR-018 are accepted. Revised ADR-019 is vendor-neutral,
-remains proposed, and changes none of this schema companion unless separately
-accepted. `0007` is not created and not authorized. R1, B2-D, CP3-C2-C, and
-CP3-D remain not started. R1 remains blocked on ADR-019.
+runtime. ADR-017, ADR-018 and ADR-019 are accepted. ADR-019 is vendor-neutral
+and amends only authenticator-vendor provenance; it changes none of this schema
+companion. `0007` is not created and not authorized. R1, B2-D, CP3-C2-C, and
+CP3-D remain not started. R1 requires separate authorization.

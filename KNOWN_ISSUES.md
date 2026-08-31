@@ -147,7 +147,7 @@
   evidence is absent. The user explicitly approved closeout on `2026-08-28`.
   The additive `0006` schema implementation is therefore `PASS — CLOSED`, and
   SG-01/SG-02/P1-SR-01/P1-SR-02/P1-SR-03/IG-01/IG-02 remain `CLOSED`.
-  B2-C R1 is now `NOT STARTED / BLOCKED — ADR-017/ADR-018/ADR-019 REVIEW REQUIRED`;
+  B2-C R1 is now `NOT STARTED / REQUIRES SEPARATE AUTHORIZATION`;
   later checkpoints remain
   `NOT STARTED`; automatic progression is `PROHIBITED`.
 - 비차단 정정: issuer `SUPERSEDED`는 현재 schema blocker가 아니다. Existing
@@ -163,8 +163,7 @@
 
 ## KI-016 — WebAuthn runtime schema and human-authority amendment gate
 
-- 상태: `P1 BLOCKING — ADR-017 ACCEPTED /
-  ADR-018 ACCEPTED / ADR-019 PROPOSED — AWAITING GPT REVIEW / USER ACCEPTANCE`
+- 상태: `CLOSED — ADR-017/ADR-018/ADR-019 ACCEPTED / R1 SEPARATELY UNAUTHORIZED`
 - 관찰: R1 pre-implementation audit에서 accepted ADR-015/ADR-016 schema가
   `principal_content_hash`, `credential_content_hash`, deterministic COSE_Key
   bytes/TEXT, raw challenge digest/binding, operation/issuer authentication
@@ -206,18 +205,39 @@
   transaction과 `PRAGMA foreign_key_check`를 통과했고 임시 파일은 삭제됐다.
   Production R1은 기존 `PROJECT_ROOT/var/dashboard.db`만 authority path로
   인정하고 directory OWNER SID와 process `TOKEN_USER`를 `EqualSid`로 비교한
-  뒤에만 SID hash를 만든다. Revised ADR-019는 authenticator vendor/product
+  뒤에만 SID hash를 만든다. Accepted ADR-019는 authenticator vendor/product
   identity를 authority에서 제외하고, previously registered trusted human
-  credential의 fresh cryptographically verified WebAuthn assertion을 제안한다.
+  credential의 fresh cryptographically verified WebAuthn assertion을 요구한다.
   이는 strict Microsoft Windows Hello provenance requirement만 amendment하며
   exact RP/origin/challenge/UV/credential/counter/audit, first enrollment와 SID
   ownership control을 약화하지 않는다.
-- 해제 조건: ADR-017/ADR-018은 이미 채택되었으므로
-  revised ADR-019가 GPT review된 뒤 사용자가 explicit `ACCEPTED`로
-  결정해야 한다. 이후에도 future `0007`과 R1 runtime은 각각 별도 승인해야
-  한다. Codex는 어느 ADR도 self-accept하지 않는다.
+- closeout: 사용자가 revised ADR-019를 `2026-08-31`에 explicit `ACCEPTED`로
+  결정했다. Proposal date `2026-08-29`는 유지하며, acceptance는 strict
+  Microsoft Windows Hello authenticator-vendor provenance requirement만
+  amendment한다. 이후에도 future `0007`과 R1 runtime은 각각 별도 승인해야
+  한다.
 - 현재 gate: ADR-015/ADR-016 `ACCEPTED`, `0006 PASS — CLOSED`, ADR-017
   `ACCEPTED`, ADR-018 `ACCEPTED`, ADR-019
-  `PROPOSED — AWAITING GPT REVIEW / USER ACCEPTANCE`, R1 `NOT STARTED /
-  BLOCKED`, future `0007` `NOT CREATED / NOT AUTHORIZED`, later
+  `ACCEPTED`, R1 `NOT STARTED / REQUIRES SEPARATE AUTHORIZATION`, future `0007`
+  `NOT CREATED / NOT AUTHORIZED`, later
   checkpoints `NOT STARTED`, automatic progression `PROHIBITED`.
+
+## KI-017 — Future public source redistribution/publication eligibility
+
+- 상태: `P2 OPEN — NONBLOCKING / FUTURE CHECKPOINT`
+- 영향: 현재 내부 사용이 허용된 source 또는 derived field가 미래 anonymous
+  public read model에서 재배포·공개 가능한지는 별도 약관, 라이선스와 source별
+  publication eligibility 판단이 필요하다.
+- 현재 대응: `Public Read-only Deployment`는 `FUTURE / NOT AUTHORIZED / NOT
+  STARTED`로 유지한다. 별도 승인 checkpoint 전 source별 redistribution,
+  attribution, retention, derived-output publication eligibility를 검토하고
+  승인된 public-safe projection에만 포함한다. 현재 local-only runtime에는
+  영향이 없다.
+
+## KI-018 — GitHub CI execution evidence absent
+
+- 상태: `P2 OPEN — NONBLOCKING`
+- 영향: 로컬 검증은 GitHub commit status/check-run 실행 증거를 대체하지 않는다.
+- 현재 대응: 이 documentation-only closeout의 로컬 QA 결과를 GitHub CI로
+  표현하지 않는다. CI workflow와 실행 증거는 별도 승인된 infrastructure
+  checkpoint로 이월한다.
