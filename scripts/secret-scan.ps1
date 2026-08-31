@@ -226,12 +226,19 @@ function Add-StructuredSha256Exceptions {
 }
 
 function Add-FrozenMigrationBlobExceptions {
-    $migrationPath = Join-Path $repoRoot (
-        "services\api\alembic\versions\" +
-        "0006_phase_02_cp3_c2_b2_c_reviewer_operations.py"
+    $legacySourcePaths = @(
+        (Join-Path $repoRoot (
+            "services\api\alembic\versions\" +
+            "0006_phase_02_cp3_c2_b2_c_reviewer_operations.py"
+        )),
+        (Join-Path $repoRoot "tests\backend\test_reviewer_operation_migration.py")
     )
-    $testPath = Join-Path $repoRoot (
-        "tests\backend\test_reviewer_operation_migration.py"
+    $counterBootstrapSourcePaths = @(
+        (Join-Path $repoRoot (
+            "services\api\alembic\versions\" +
+            "0007_phase_02_cp3_c2_b2_c_counter_capability_bootstrap.py"
+        )),
+        (Join-Path $repoRoot "tests\backend\test_counter_capability_migration.py")
     )
     $frozenMigrations = @(
         [pscustomobject]@{
@@ -263,6 +270,15 @@ function Add-FrozenMigrationBlobExceptions {
             Blob = [string]::Concat(
                 "81976b8f", "70a1f610", "7526a13a", "cadf23f3", "69b196e3"
             )
+        },
+        [pscustomobject]@{
+            Path = (
+                "services/api/alembic/versions/" +
+                "0006_phase_02_cp3_c2_b2_c_reviewer_operations.py"
+            )
+            Blob = [string]::Concat(
+                "f10e7f5b", "c21e232f", "c68b3814", "4f5b8fb1", "24f31698"
+            )
         }
     )
     foreach ($frozenMigration in $frozenMigrations) {
@@ -276,7 +292,13 @@ function Add-FrozenMigrationBlobExceptions {
         ) {
             throw "A frozen predecessor migration does not match its approved Git blob."
         }
-        foreach ($sourcePath in @($migrationPath, $testPath)) {
+        $sourcePaths = if ($frozenMigration.Path -like "*/0006_*") {
+            $counterBootstrapSourcePaths
+        }
+        else {
+            @($legacySourcePaths) + @($counterBootstrapSourcePaths)
+        }
+        foreach ($sourcePath in $sourcePaths) {
             Add-AllowedArtifactSecretAtMatchingLines `
                 -Path $sourcePath `
                 -Value $frozenMigration.Blob

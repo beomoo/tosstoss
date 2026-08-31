@@ -218,8 +218,8 @@
   한다.
 - 현재 gate: ADR-015/ADR-016 `ACCEPTED`, `0006 PASS — CLOSED`, ADR-017
   `ACCEPTED`, ADR-018 `ACCEPTED`, ADR-019
-  `ACCEPTED`, R1 `NOT STARTED / REQUIRES SEPARATE AUTHORIZATION`, future `0007`
-  `NOT CREATED / NOT AUTHORIZED`, later
+  `ACCEPTED`, `0007 IMPLEMENTED — AWAITING GPT INDEPENDENT REVIEW`, R1
+  `NOT STARTED / REQUIRES SEPARATE AUTHORIZATION`, later
   checkpoints `NOT STARTED`, automatic progression `PROHIBITED`.
 
 ## KI-017 — Future public source redistribution/publication eligibility
@@ -238,6 +238,6 @@
 
 - 상태: `P2 OPEN — NONBLOCKING`
 - 영향: 로컬 검증은 GitHub commit status/check-run 실행 증거를 대체하지 않는다.
-- 현재 대응: 이 documentation-only closeout의 로컬 QA 결과를 GitHub CI로
-  표현하지 않는다. CI workflow와 실행 증거는 별도 승인된 infrastructure
-  checkpoint로 이월한다.
+- 현재 대응: `0007` implementation의 LOCAL QA 결과를 GitHub CI로 표현하지
+  않는다. 현재 authoritative branch에는 CI workflow/check-run 실행 증거가
+  없으며, 별도 승인된 infrastructure checkpoint로 이월한다.

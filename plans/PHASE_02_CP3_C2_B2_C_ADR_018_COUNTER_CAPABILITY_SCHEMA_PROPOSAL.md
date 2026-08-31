@@ -6,15 +6,17 @@
 - ADR-018: `ACCEPTED` (`2026-08-29`)
 - ADR-019: `ACCEPTED`; proposal date `2026-08-29`, decision date `2026-08-31`
 - `0006`: `PASS — CLOSED`
-- proposed future migration:
+- separately authorized additive migration:
   `0007_phase_02_cp3_c2_b2_c_counter_capability_bootstrap`
-- `0007`: `NOT CREATED / NOT AUTHORIZED`
+- `0007`: `IMPLEMENTED — AWAITING GPT INDEPENDENT REVIEW`
 - R1: `NOT STARTED / REQUIRES SEPARATE AUTHORIZATION`
 - automatic progression: `PROHIBITED`
 
 This document is the implementation-ready, normative schema companion to
-accepted ADR-018. It describes a future additive migration only. It does not
-authorize or create that migration and does not alter `0001`–`0006`.
+accepted ADR-018. It originally described a future additive migration only;
+subsequent separate user authorization permitted only the exact `0007` migration
+and migration tests. That implementation does not authorize R1 and does not
+alter frozen `0001`–`0006`.
 
 ## 2. Selected state machine
 
@@ -666,9 +668,13 @@ assertion hash. The graph is acyclic.
 
 ## 13. Scope and gate
 
-This proposal changes application, migration, test, dependency, fixture, and
-frontend files by `0`. It performs no trusted-human WebAuthn or issuer-approval
-runtime. ADR-017, ADR-018 and ADR-019 are accepted. ADR-019 is vendor-neutral
-and amends only authenticator-vendor provenance; it changes none of this schema
-companion. `0007` is not created and not authorized. R1, B2-D, CP3-C2-C, and
-CP3-D remain not started. R1 requires separate authorization.
+At proposal time this document changed application, migration, test, dependency,
+fixture, and frontend files by `0`. A later, separately authorized implementation
+created only the exact additive `0007`, dedicated/integration migration tests,
+and one additive database-revision compatibility allowlist entry. It added no
+trusted-human WebAuthn or issuer-approval runtime and no dependency. ADR-017,
+ADR-018 and ADR-019 are accepted. ADR-019 is vendor-neutral and amends only
+authenticator-vendor provenance; it changes none of this schema companion.
+`0007` is `IMPLEMENTED — AWAITING GPT INDEPENDENT REVIEW`, not `PASS` or
+`CLOSED`. R1, B2-D, CP3-C2-C, and CP3-D remain not started. R1 requires separate
+authorization.

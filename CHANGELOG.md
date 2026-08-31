@@ -1,5 +1,41 @@
 # Changelog
 
+## Unreleased — Phase 2 CP3-C2-B2-C 0007 Counter-Capability Migration — 2026-08-31
+
+- Implemented the separately authorized exact additive
+  `0007_phase_02_cp3_c2_b2_c_counter_capability_bootstrap` migration while
+  preserving frozen migrations `0001`–`0006` byte-identically.
+- Added the three ADR-018 append-only counter-capability tables, the exact 23
+  index inventory, 15 new insert/append-only guards, and version-replaced
+  exactly the two frozen counter-union triggers with exact `0006` restoration
+  on downgrade.
+- Added 66 dedicated migration tests covering exact schema/FK/index/trigger,
+  late-upgrade cleanup, exact identity, clean upgrade/downgrade/re-upgrade,
+  FIRST/ADD/REPLACE nine-terminal
+  branches, expiry/issuance ordering, failure-result verification matrices,
+  append-only enforcement, distinct child/overall safe-code projection,
+  projection negatives, and counter-union continuation/replay behavior. The
+  integrated backend inventory is now exactly 851 tests.
+- Production application change is limited to one additive database-revision
+  compatibility allowlist entry. WebAuthn ceremony/runtime, services, routes,
+  UI, human approval execution, and new dependencies remain `0`; persistent
+  `var/dashboard.db` migration application remains `0`.
+- Final staged implementation-snapshot LOCAL QA passed through the standard
+  `scripts/test.ps1` harness: backend `851 passed in 971.60s`, frontend `43`
+  passed, E2E `2` passed, disposable migration round-trip/repeat PASS, fixture
+  import `13` inserted then `13` unchanged, production build, lint/format,
+  typecheck, secret scan, and policy scan PASS. Focused evidence also includes
+  dedicated `66`, reviewer-migration `83`, authority-migration `19`, and generic
+  migration `2` passing tests. A final evidence-only documentation update was
+  followed by diff, policy, secret, integrity, artifact, and remote-ref rechecks.
+- Current status is `IMPLEMENTED — AWAITING GPT INDEPENDENT REVIEW`; this entry
+  does not declare `PASS` or `CLOSED`. B2-C R1 remains `NOT STARTED / REQUIRES
+  SEPARATE AUTHORIZATION`; Public Read-only Deployment and Automated Trading
+  remain `FUTURE / NOT AUTHORIZED / NOT STARTED`.
+- Lower dated entries preserve their historical checkpoint state; their former
+  current-state statements about an uncreated `0007` are superseded only by
+  this latest implementation record.
+
 ## Unreleased — ADR-019 USER-ACCEPTANCE CLOSEOUT — 2026-08-31
 
 - Recorded explicit user acceptance of ADR-019, `Vendor-Neutral WebAuthn Human

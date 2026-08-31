@@ -59,6 +59,9 @@ REVIEWER_OPERATION_TABLES = {
     "reviewer_credential_operation_authentication_events",
     "reviewer_webauthn_credential_event_authorizations",
     "reviewer_credential_operation_outcomes",
+    "reviewer_webauthn_counter_capability_registrations",
+    "reviewer_webauthn_counter_capability_challenges",
+    "reviewer_webauthn_counter_capability_assertions",
 }
 
 
@@ -602,7 +605,7 @@ def test_downgrade_and_reupgrade(workspace_tmp_path: Path) -> None:
         with engine.connect() as connection:
             assert (
                 connection.execute(text("SELECT version_num FROM alembic_version")).scalar_one()
-                == "0006_phase_02_cp3_c2_b2_c_reviewer_operations"
+                == "0007_phase_02_cp3_c2_b2_c_counter_capability_bootstrap"
             )
     finally:
         engine.dispose()

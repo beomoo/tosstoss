@@ -1,17 +1,17 @@
 # Project Status
 
-- 프로젝트 상태: `PHASE 2 IMPLEMENTATION IN PROGRESS — CP2 COMPLETE / CP3-A PASS — CONTRACT APPROVED AND CLOSED / CP3-B PASS — CLOSED / CP3-C1 PASS — CLOSED / CP3-C2-A PASS — CONTRACT APPROVED AND CLOSED / CP3-C2-B1 PASS — CONTRACT APPROVED AND CLOSED / CP3-C2-B IMPLEMENTATION IN PROGRESS / CP3-C2-B2-A PASS — CLOSED / CP3-C2-B2-B PASS — CLOSED / ADR-015 ACCEPTED / ADR-016 ACCEPTED / ADR-017 ACCEPTED / ADR-018 ACCEPTED / ADR-019 ACCEPTED / CP3-C2-B2-C 0006 PASS — CLOSED / B2-C R1 NOT STARTED — REQUIRES SEPARATE AUTHORIZATION / CP3-C2-B2-D NOT STARTED / CP3-C2-C NOT STARTED / CP3-D NOT STARTED`
-- 현재 Phase: `Phase 2 — CP3-C2-B2-A PASS — CLOSED; CP3-C2-B2-B PASS — CLOSED; CP3-C2-B implementation IN PROGRESS; CP3-C2-B2-C 0006 schema PASS — CLOSED; B2-C R1 NOT STARTED — REQUIRES SEPARATE AUTHORIZATION`
+- 프로젝트 상태: `PHASE 2 IMPLEMENTATION IN PROGRESS — CP2 COMPLETE / CP3-A PASS — CONTRACT APPROVED AND CLOSED / CP3-B PASS — CLOSED / CP3-C1 PASS — CLOSED / CP3-C2-A PASS — CONTRACT APPROVED AND CLOSED / CP3-C2-B1 PASS — CONTRACT APPROVED AND CLOSED / CP3-C2-B IMPLEMENTATION IN PROGRESS / CP3-C2-B2-A PASS — CLOSED / CP3-C2-B2-B PASS — CLOSED / ADR-015 ACCEPTED / ADR-016 ACCEPTED / ADR-017 ACCEPTED / ADR-018 ACCEPTED / ADR-019 ACCEPTED / CP3-C2-B2-C 0006 PASS — CLOSED / CP3-C2-B2-C 0007 IMPLEMENTED — AWAITING GPT INDEPENDENT REVIEW / B2-C R1 NOT STARTED — REQUIRES SEPARATE AUTHORIZATION / CP3-C2-B2-D NOT STARTED / CP3-C2-C NOT STARTED / CP3-D NOT STARTED`
+- 현재 Phase: `Phase 2 — CP3-C2-B2-A PASS — CLOSED; CP3-C2-B2-B PASS — CLOSED; CP3-C2-B implementation IN PROGRESS; CP3-C2-B2-C 0006 schema PASS — CLOSED; 0007 IMPLEMENTED — AWAITING GPT INDEPENDENT REVIEW; B2-C R1 NOT STARTED — REQUIRES SEPARATE AUTHORIZATION`
 - 현재 버전: `0.1.0`
 - Phase 1 최종 검증 commit: `57b2a63ead06d03191d8094e1689b8d2ab3d7764`
 - Phase 1 PR: `#1`
 - Phase 1 merge commit: `b1829a7375704271a21267e1fcf62808147be593`
 - Release baseline tag: `v0.1.0`
-- 최종 QA일: `2026-08-31 (ADR-019 USER-ACCEPTANCE CLOSEOUT; R1 remains NOT STARTED and separately unauthorized)`
+- 최종 QA일: `2026-08-31 (0007 COUNTER-CAPABILITY MIGRATION LOCAL QA; AWAITING GPT INDEPENDENT REVIEW; R1 remains NOT STARTED and separately unauthorized)`
 - 실제 API 연결: `CP2-D2 one-shot PASS — OAuth + GET /api/v1/stocks만 검증`
 - 실제 주문 기능: `비활성 / 비범위`
 - OpenAI API 사용: `아니오`
-- Phase 2 상태: `CP1 PASS / CP2 COMPLETE / CP3-A PASS — CONTRACT APPROVED AND CLOSED / CP3-B PASS — CLOSED / CP3-C1 PASS — CLOSED / CP3-C2-A PASS — CONTRACT APPROVED AND CLOSED / CP3-C2-B1 PASS — CONTRACT APPROVED AND CLOSED / CP3-C2-B IMPLEMENTATION IN PROGRESS / CP3-C2-B2-A PASS — CLOSED / CP3-C2-B2-B PASS — CLOSED / ADR-015 ACCEPTED / ADR-016 ACCEPTED / ADR-017 ACCEPTED / ADR-018 ACCEPTED / ADR-019 ACCEPTED / CP3-C2-B2-C 0006 PASS — CLOSED / B2-C R1 NOT STARTED — REQUIRES SEPARATE AUTHORIZATION / CP3-C2-B2-D NOT STARTED / CP3-C2-C NOT STARTED / CP3-D NOT STARTED`
+- Phase 2 상태: `CP1 PASS / CP2 COMPLETE / CP3-A PASS — CONTRACT APPROVED AND CLOSED / CP3-B PASS — CLOSED / CP3-C1 PASS — CLOSED / CP3-C2-A PASS — CONTRACT APPROVED AND CLOSED / CP3-C2-B1 PASS — CONTRACT APPROVED AND CLOSED / CP3-C2-B IMPLEMENTATION IN PROGRESS / CP3-C2-B2-A PASS — CLOSED / CP3-C2-B2-B PASS — CLOSED / ADR-015 ACCEPTED / ADR-016 ACCEPTED / ADR-017 ACCEPTED / ADR-018 ACCEPTED / ADR-019 ACCEPTED / CP3-C2-B2-C 0006 PASS — CLOSED / CP3-C2-B2-C 0007 IMPLEMENTED — AWAITING GPT INDEPENDENT REVIEW / B2-C R1 NOT STARTED — REQUIRES SEPARATE AUTHORIZATION / CP3-C2-B2-D NOT STARTED / CP3-C2-C NOT STARTED / CP3-D NOT STARTED`
 - CP3-B: `PASS — CLOSED`
 - CP3-C1: `PASS — CLOSED`
 - CP3-C2-A: `PASS — CONTRACT APPROVED AND CLOSED`
@@ -30,8 +30,8 @@
 - `0006`: `PASS — CLOSED`
 - B2-C WebAuthn/human-approval runtime:
   `NOT STARTED / REQUIRES SEPARATE AUTHORIZATION`
-- Future `0007_phase_02_cp3_c2_b2_c_counter_capability_bootstrap`:
-  `NOT CREATED / NOT AUTHORIZED`
+- `0007_phase_02_cp3_c2_b2_c_counter_capability_bootstrap`:
+  `IMPLEMENTED — AWAITING GPT INDEPENDENT REVIEW`
 - CP3-C2-B2-D: `NOT STARTED`
 - CP3-C2-C: `NOT STARTED`
 - CP3-D: `NOT STARTED`
@@ -214,6 +214,17 @@
 - [x] ADR-019를 vendor-neutral WebAuthn human-authority proposal로 개정하고 strict Windows Hello vendor provenance requirement만 amendment 대상으로 한정
 - [x] 현재 local-only 구현과 미래 Public Read-only Deployment / Automated Trading 신뢰 경계를 상위 계획에 분리
 - [x] 사용자 ADR-019 explicit acceptance (`2026-08-31`), proposal date `2026-08-29` 유지
+- [x] 별도 사용자 승인에 따른 additive `0007` counter-capability bootstrap migration 구현
+- [x] frozen `0001`~`0006` blob 보존, exact three append-only tables / 23 indexes /
+      15 new triggers와 same-name two counter-union trigger version replacement
+- [x] `0007` dedicated 66 tests: schema/FK/index/trigger/failed-upgrade 왕복, FIRST/ADD/REPLACE
+      9 terminal branches, expiry/issuance-time, full failure-result matrix,
+      append-only, safe-code projection과 counter negative 검증
+- [x] application WebAuthn/service/route/UI/dependency 구현 `0`, persistent
+      `var/dashboard.db` migration application `0`
+- [x] `0007` final LOCAL QA: standard `scripts/test.ps1` PASS, backend
+      `851 passed in 971.60s`, frontend `43` PASS, E2E `2` PASS,
+      migration/fixture/build/lint/typecheck/secret/policy PASS
 - [ ] 별도 R1 implementation authority 확인 및 재개
 - [ ] CP3-C2-B2-D 별도 시작 승인
 - [ ] CP3-C2-C 별도 시작 승인
@@ -329,7 +340,9 @@ explicitly accepted it on `2026-08-31`, preserving proposal date `2026-08-29`.
 ADR-019 amends only strict Microsoft Windows Hello vendor provenance as an
 authority condition; the historical B1 wording, strong fresh registered-
 credential WebAuthn proof and all unaffected B1/ADR-017/ADR-018 controls remain.
-No migration was created or authorized. B2-C R1 is
+At that documentation checkpoint no migration was created or authorized. A
+later separate authorization produced only additive `0007`, whose current
+status is `IMPLEMENTED — AWAITING GPT INDEPENDENT REVIEW`. B2-C R1 is
 `NOT STARTED / REQUIRES SEPARATE AUTHORIZATION`. B2-D,
 CP3-C2-C and CP3-D remain `NOT STARTED`; automatic progression is
 `PROHIBITED`.
@@ -344,5 +357,5 @@ is absent. LOCAL checks are not GitHub CI evidence.
 - Node.js 지원 범위는 24.16 이상 25 미만이며 QA 기준은 24.19.0이다.
 - ADR-009는 아직 `PROPOSED`이며 독립 리뷰·승인 대상이다.
 - 모든 표시 데이터는 합성 fixture이고 실제 투자 판단 자료가 아니다.
-- Toss market connector는 CP2 범위에서 구현됐고 CP3-C1은 호출 없는 offline Security Master staging/reconciliation만 추가했다. CP3-C2-A와 B1은 approved authority/runtime-schema contract를 확정했고, B2-A는 immutable authority ledger와 additive `0005` foundation, B2-B는 trusted pre-admitted immutable evidence만 평가하는 offline bridge/collision/freshness machine engine을 구현했다. 신규 production evidence operational admission은 fail closed이며 live ingestion은 구현하지 않았다. Additive `0006` reviewer credential-operation ledger는 구현·독립검토·사용자 closeout을 마쳐 `PASS — CLOSED`지만 WebAuthn runtime, approval route/execution, canonical Issuer/Security promotion, VERIFIED mapping, Current Price normalization/storage, scheduler와 화면 연결은 구현하지 않았다. CP3-C2-B2-A/B2-B/0006 schema는 `PASS — CLOSED`; ADR-015/ADR-016/ADR-017/ADR-018/ADR-019는 `ACCEPTED`; future `0007`은 `NOT CREATED / NOT AUTHORIZED`; B2-C R1은 `NOT STARTED / REQUIRES SEPARATE AUTHORIZATION`; B2-D와 CP3-C2-C/CP3-D는 `NOT STARTED`, automatic checkpoint progression은 `PROHIBITED`다. OpenDART/SEC/IROS/US state registry/news/macro live connector, 계좌와 주문도 구현하지 않았다. Public Read-only Deployment와 Automated Trading은 모두 `FUTURE / NOT AUTHORIZED / NOT STARTED`이며 현재 runtime은 계속 `LOCAL_ONLY=true`, `TRADING_ENABLED=false`, `DRY_RUN=true`다.
+- Toss market connector는 CP2 범위에서 구현됐고 CP3-C1은 호출 없는 offline Security Master staging/reconciliation만 추가했다. CP3-C2-A와 B1은 approved authority/runtime-schema contract를 확정했고, B2-A는 immutable authority ledger와 additive `0005` foundation, B2-B는 trusted pre-admitted immutable evidence만 평가하는 offline bridge/collision/freshness machine engine을 구현했다. 신규 production evidence operational admission은 fail closed이며 live ingestion은 구현하지 않았다. Additive `0006` reviewer credential-operation ledger는 구현·독립검토·사용자 closeout을 마쳐 `PASS — CLOSED`다. 별도 승인된 additive `0007` counter-capability bootstrap migration은 `IMPLEMENTED — AWAITING GPT INDEPENDENT REVIEW`이며 WebAuthn runtime, approval route/execution, canonical Issuer/Security promotion, VERIFIED mapping, Current Price normalization/storage, scheduler와 화면 연결은 구현하지 않았다. CP3-C2-B2-A/B2-B/0006 schema는 `PASS — CLOSED`; ADR-015/ADR-016/ADR-017/ADR-018/ADR-019는 `ACCEPTED`; B2-C R1은 `NOT STARTED / REQUIRES SEPARATE AUTHORIZATION`; B2-D와 CP3-C2-C/CP3-D는 `NOT STARTED`, automatic checkpoint progression은 `PROHIBITED`다. OpenDART/SEC/IROS/US state registry/news/macro live connector, 계좌와 주문도 구현하지 않았다. Public Read-only Deployment와 Automated Trading은 모두 `FUTURE / NOT AUTHORIZED / NOT STARTED`이며 현재 runtime은 계속 `LOCAL_ONLY=true`, `TRADING_ENABLED=false`, `DRY_RUN=true`다.
 - Windows 개발·QA 저장소는 현재 ASCII-only parent path를 사용한다. non-ASCII parent path의 setuptools editable build 실패는 `P2 DEFERRED / ENVIRONMENT CONSTRAINT`이며 CP2 business logic 결함으로 분류하지 않는다.

@@ -1698,3 +1698,20 @@ credential type, trust root, recovery or runtime is authorized.
 - R1: `NOT STARTED / REQUIRES SEPARATE AUTHORIZATION`
 - B2-D / CP3-C2-C / CP3-D: `NOT STARTED`
 - automatic progression: `PROHIBITED`
+
+## Later `0007` migration implementation status — non-normative
+
+All earlier `0007 NOT CREATED / NOT AUTHORIZED` statements in this remediation
+record describe the proposal-era checkpoint. A later, separate user authorization
+produced only the exact additive
+`0007_phase_02_cp3_c2_b2_c_counter_capability_bootstrap` migration, dedicated and
+integration migration tests, and one additive database-revision compatibility
+allowlist entry. Its current status is `IMPLEMENTED — AWAITING GPT INDEPENDENT
+REVIEW`, not `PASS` or `CLOSED`.
+
+The implementation preserves frozen migrations `0001`–`0006`, applies nothing
+to persistent `var/dashboard.db`, and adds no WebAuthn ceremony/runtime, service,
+route, UI, human-approval execution, or dependency. R1 remains `NOT STARTED /
+REQUIRES SEPARATE AUTHORIZATION`; Public Read-only Deployment and Automated
+Trading remain `FUTURE / NOT AUTHORIZED / NOT STARTED`; automatic progression
+remains `PROHIBITED`.

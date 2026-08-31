@@ -1994,3 +1994,20 @@ remains not started and requires separate authorization.
 - R1: `NOT STARTED / REQUIRES SEPARATE AUTHORIZATION`
 - B2-D / CP3-C2-C / CP3-D: `NOT STARTED`
 - Automatic progression: `PROHIBITED`
+
+## 25. Later `0007` migration implementation status — non-normative
+
+The earlier `0007 NOT CREATED / NOT AUTHORIZED` statements in this contract are
+historical proposal-era snapshots. A later, separate user authorization produced
+only the exact additive
+`0007_phase_02_cp3_c2_b2_c_counter_capability_bootstrap` migration, dedicated and
+integration migration tests, and one additive database-revision compatibility
+allowlist entry. Its current status is `IMPLEMENTED — AWAITING GPT INDEPENDENT
+REVIEW`, not `PASS` or `CLOSED`.
+
+This later schema work did not start R1 and added no WebAuthn ceremony/runtime,
+service, route, UI, human-approval execution, or dependency. Frozen migrations
+`0001`–`0006` remain unchanged, persistent `var/dashboard.db` application is
+`0`, and R1 remains `NOT STARTED / REQUIRES SEPARATE AUTHORIZATION`. Public
+Read-only Deployment and Automated Trading remain `FUTURE / NOT AUTHORIZED /
+NOT STARTED`; automatic progression remains `PROHIBITED`.
