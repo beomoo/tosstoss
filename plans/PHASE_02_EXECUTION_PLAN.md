@@ -1,9 +1,13 @@
 # Phase 2 토스증권 읽기 전용 데이터 실행계획
 
+## Current R1 closeout — 2026-09-28
+
+B2-C R1 backend core is `PASS — CLOSED` following user closeout. R1 Windows Final QA is `PASS WITH ISSUES` with Critical `0`, Major `0`, required code fixes `0`, and required QA reruns `0`. Remote-volume and missing-ACL Windows negative cases used controlled simulations rather than physical remote or missing-ACL devices; this P2 is non-blocking. CP3-C2-B implementation remains `IN PROGRESS`; B2-D, CP3-C2-C and CP3-D remain `NOT STARTED`; Phase 2 remains `IMPLEMENTATION IN PROGRESS`. Earlier dated STOP and failed-QA entries below are historical evidence.
+
 - 계획 상태: `PHASE 2 IMPLEMENTATION IN PROGRESS`
-- Current checkpoint: `CP3-C2-B2-A PASS — CLOSED / CP3-C2-B2-B PASS — CLOSED / CP3-C2-B IMPLEMENTATION IN PROGRESS / ADR-015 ACCEPTED / ADR-016 ACCEPTED / ADR-017 ACCEPTED / ADR-018 ACCEPTED / ADR-019 ACCEPTED / CP3-C2-B2-C 0006 PASS — CLOSED / 0007 PASS — CLOSED / B2-C R1 BACKEND CORE NOT VERIFIED — FINAL QA BLOCKED`
+- Current checkpoint: `CP3-C2-B2-A PASS — CLOSED / CP3-C2-B2-B PASS — CLOSED / CP3-C2-B IMPLEMENTATION IN PROGRESS / ADR-015 ACCEPTED / ADR-016 ACCEPTED / ADR-017 ACCEPTED / ADR-018 ACCEPTED / ADR-019 ACCEPTED / CP3-C2-B2-C 0006 PASS — CLOSED / 0007 PASS — CLOSED / B2-C R1 BACKEND CORE PASS — CLOSED`
 - 최초 작성·공식 문서 조사일: `2026-08-23` (`Asia/Seoul`)
-- 현재 상태 갱신일: `2026-09-13` (`Asia/Seoul`)
+- 현재 상태 갱신일: `2026-09-28` (`Asia/Seoul`)
 - 기준 브랜치: `feature/phase-02-toss`
 - CP3-A 시작 commit: `6bd5d2ae9c26f02f2cd4bd75a474633a9082fa16`
 - Remote main/merge-base: `353159da45cfbe3a7f444bf476ce86fa9aece17c`
@@ -32,8 +36,8 @@
 - ADR-018: `ACCEPTED` (`2026-08-29`)
 - ADR-019: `ACCEPTED`; proposal date `2026-08-29`, decision date `2026-08-31`
 - `0006`: `PASS — CLOSED`
-- B2-C R1 backend core: `NOT VERIFIED — FINAL QA BLOCKED`
-- Current limited work (2026-09-13): exact scanner cache-tag provenance URL
+- B2-C R1 backend core: `PASS — CLOSED` (2026-09-28 user closeout)
+- Historical limited work (2026-09-13): exact scanner cache-tag provenance URL
   policy exception only; scanner/runtime/CSV/OBS-04 unchanged. URL focused
   exit 0: four positive checks/35 named negatives plus unchanged 18 URL
   negatives/two allowed-origin calls. Review and stage exact policy/docs,
@@ -230,7 +234,7 @@ in `DECISIONS.md` and the latest report. The following dated plan and R1-SCAN-01
 STOP are historical evidence, not a pending choice or permission to proceed.
 
 The user accepts the diagnosis as `PASS WITH ISSUES`, not R1 acceptance. R1 stays
-`NOT VERIFIED — FINAL QA BLOCKED`. Preserve runtime, existing functional test
+`NOT VERIFIED — FINAL QA BLOCKED` at that time. Preserve runtime, existing functional test
 expectations, dependencies, frozen migrations and historical QA results. Add only
 per-finding exceptions after exact current-source/generator validation in the
 existing scanner, with its existing self-canaries supplying negative evidence.
@@ -280,7 +284,7 @@ DB/process-crash replay safety remain unverified even if new local gates pass.
 CP3-A approved repository contract는 기존 Phase 1 계약을 breaking 변경하지 않고 provider staging identity, nullable provider source time, raw/source revision, provider-scoped current latest와 additive migration 전략을 정의한다. CP3-B의 9개 source/identity foundation table과 `0003` invariants는 `PASS — CLOSED`다. CP3-C1은 semantic normalized master record, source-linked staging/lifecycle observation, identity-state event와 partial-detail batch audit 네 table만 additive `0004`로 추가했고 independent re-review closeout 뒤 `PASS — CLOSED`다. canonical Issuer/Security mapping row를 생성하지 않고 eligible candidate evidence에서 멈춘다. `plans/PHASE_02_CP3_C2_PROMOTION_AUTHORITY.md`와 ADR-013은 independent re-review와 사용자 승인 뒤 accepted/closed 상태다. CP3-C2-B1은 `plans/PHASE_02_CP3_C2_B1_RUNTIME_CONTRACT.md`와 ADR-014에 approved runtime/schema design을 기록한다. Independently reviewed SHA `f3a7a3c4cc99de9cd9656544c1b29e3d03df6911`은 `PASS WITH CLOSEOUT CONDITION`, P0 0 / P1 0이며 P1-01~P1-04가 모두 `CLOSED`다. 명시적 사용자 승인으로 ADR-014는 `ACCEPTED`, CP3-C2-B1은 `PASS — CONTRACT APPROVED AND CLOSED`다. 별도 implementation 시작 승인 뒤 B2-A는 immutable authority ledger contract/storage와 additive `0005` foundation을 구현했고 remediated SHA `57e9bbbf2a1fd117b8e31c7288f2f08475c7e4ae`의 independent re-review/documentation closeout 뒤 `PASS — CLOSED`다. 이어 별도 B2-B 승인으로 exact source admission/issuer bridge/collision/freshness decision engine을 구현했다. 첫 remediation P1-01~P1-05는 independent re-review에서 `CLOSED`로 확인됐다. Reviewed SHA `722a5036d7d05ad6b8de0314ff6ac5ee8dafacc2`의 두 신규 P1에 대한 second remediation은 exact official legal-name/history gate와 compatible historical SEC multi-filing semantics를 추가했다. CP3-C2-B implementation은 `IN PROGRESS`, B2-B는 `PASS — CLOSED`, B2-C `0006` schema는 `PASS — CLOSED`, B2-C runtime과 B2-D, CP3-C2-C/CP3-D는 `NOT STARTED`다.
 
 The preceding sentence preserves the pre-R1 snapshot. Current R1 state is
-`NOT VERIFIED — FINAL QA BLOCKED` for backend core only. `0007` is
+`PASS — CLOSED` after 2026-09-28 user closeout for backend core only. `0007` is
 `PASS — CLOSED` under explicit user closeout `2026-09-05`;
 B2-D, CP3-C2-C and CP3-D remain `NOT STARTED`.
 
@@ -939,7 +943,7 @@ CP2-A의 통과는 CP2 전체 통과가 아니며, 아래 기존 완료 조건�
 - B2-B output/non-scope: machine state는 `UNRESOLVED`,
   `READY_FOR_MANUAL_REVIEW`, `STALE`, `REVIEW_REQUIRED`뿐이며 human
   disposition/WebAuthn/approval/link/canonical write/live collection은 0이다.
-- B2-C: `0006 PASS — CLOSED / 0007 PASS — CLOSED`; R1 backend core는 `NOT VERIFIED — FINAL QA BLOCKED`; CSV257 final focused 및 generated 회귀 통과, exact gate 후 전체 QA 1회 예정
+- B2-C: `0006 PASS — CLOSED / 0007 PASS — CLOSED`; R1 backend core는 `PASS — CLOSED` (2026-09-28 user closeout)
 - B2-C 시작 승인: 완료. Implementation-entry audit에서 SG-01 first-enrollment
   bootstrap와 SG-02 credential-management reauthentication/counter ledger gap
   확인
@@ -994,7 +998,7 @@ CP2-A의 통과는 CP2 전체 통과가 아니며, 아래 기존 완료 조건�
 - `0006`: `PASS — CLOSED`
 - `0007`: `PASS — CLOSED`; user closeout `2026-09-05`.
   Frozen `0001`–`0007` remain unchanged during the separately authorized R1 work
-- B2-C R1 backend core: `NOT VERIFIED — FINAL QA BLOCKED`
+- B2-C R1 backend core: `PASS — CLOSED` (2026-09-28 user closeout)
 - Routes/browser ceremonies/issuer approval: `NOT STARTED / REQUIRES SEPARATE AUTHORIZATION`
 - B2-D: `NOT STARTED`
 - B2-C schema implementation: ADR-016 was accepted, and additive `0006` at
@@ -1267,7 +1271,7 @@ now proposes all-operation integration, exact userHandle/SID/registration proof,
 and implementation-ready future `0007`. ADR-017, ADR-018 and ADR-019 are now
 accepted. A later separate authorization produced the exact additive `0007`,
 whose current status is `PASS — CLOSED` under user closeout `2026-09-05`.
-R1 backend core is separately `NOT VERIFIED — FINAL QA BLOCKED`.
+R1 backend core is separately `PASS — CLOSED` after 2026-09-28 user closeout.
 Routes, browser ceremonies and issuer-approval execution remain separately unauthorized;
 B2-D/CP3-C2-C/CP3-D remain `NOT STARTED`, and automatic progression remains
 `PROHIBITED`.

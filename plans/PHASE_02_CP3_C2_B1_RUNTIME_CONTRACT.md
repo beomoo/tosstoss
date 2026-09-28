@@ -1,5 +1,9 @@
 # Phase 2 CP3-C2-B1 — Issuer Authority Runtime Contract and Additive Migration Design
 
+## Current downstream R1 status — 2026-09-28
+
+The B1 contract remains `PASS — CONTRACT APPROVED AND CLOSED`. Separately implemented B2-C R1 backend core is `PASS — CLOSED` after user closeout and R1 Windows Final QA `PASS WITH ISSUES` (Critical `0`, Major `0`, required code fixes `0`, required QA reruns `0`). Remote-volume and missing-ACL Windows negative cases used controlled simulations; physical remote and missing-ACL devices were not validated, a non-blocking P2. CP3-C2-B remains `IN PROGRESS`; B2-D, CP3-C2-C and CP3-D remain `NOT STARTED`; Phase 2 remains `IMPLEMENTATION IN PROGRESS`. Earlier B1-era and dated R1 STOP statements below are historical snapshots.
+
 - Checkpoint: `CP3-C2-B1`
 - Status: `PASS — CONTRACT APPROVED AND CLOSED`
 - Initial design starting SHA: `959f78415aade27e57d191db3025c66ea4266999`
@@ -2009,8 +2013,8 @@ user closeout on `2026-09-05` recorded in
 This later schema work did not start R1 and added no WebAuthn ceremony/runtime,
 service, route, UI, human-approval execution, or dependency. Frozen migrations
 `0001`–`0006` remain unchanged, persistent `var/dashboard.db` application is
-`0`. R1 backend core is now separately `NOT VERIFIED — FINAL QA BLOCKED`.
-The latest CSV257 correction (2026-09-09) passed final CSV and unchanged generated
+`0`. R1 backend core is now separately `PASS — CLOSED` after 2026-09-28 user closeout.
+At the 2026-09-09 snapshot, the CSV257 correction passed final CSV and unchanged generated
 focused gates; exact policy/index/document synchronization precedes one authorized
 full QA. Its full result/final scans are still pending; no commit/push is allowed.
 OBS-04 local PASS and all original CSVs are preserved. No B1 contract is amended.

@@ -1,5 +1,9 @@
 # Known Issues and Open Questions
 
+## Current R1 status — 2026-09-28
+
+B2-C R1 is `PASS — CLOSED` after R1 Windows Final QA `PASS WITH ISSUES` and user closeout. Critical `0`, Major `0`, required code fixes `0`, required QA reruns `0`. The remaining non-blocking P2 is controlled simulation of remote-volume and missing-ACL Windows negative cases without physical remote or missing-ACL devices. Earlier dated R1 STOP entries below are historical evidence. CP3-C2-B remains `IN PROGRESS`; B2-D, CP3-C2-C and CP3-D remain `NOT STARTED`; Phase 2 remains `IMPLEMENTATION IN PROGRESS`.
+
 ## KI-001 — 토스증권 실제 API 세부 계약 부분 검증
 
 - 상태: `OPEN — PARTIALLY LIVE VERIFIED`
@@ -218,8 +222,7 @@
   한다.
 - 현재 gate: ADR-015/ADR-016 `ACCEPTED`, `0006 PASS — CLOSED`, ADR-017
   `ACCEPTED`, ADR-018 `ACCEPTED`, ADR-019
-  `ACCEPTED`, `0007 PASS — CLOSED` (user closeout `2026-09-05`), R1 backend core
-  `NOT VERIFIED — FINAL QA BLOCKED`, later
+  `ACCEPTED`, `0007 PASS — CLOSED` (user closeout `2026-09-05`), R1 backend core `PASS — CLOSED` (2026-09-28 user closeout), later
   checkpoints `NOT STARTED`, automatic progression `PROHIBITED`.
 - Latest limited correction (`2026-09-09`): CSV257 exact exception implemented;
   direct original-byte provenance 259/259, final CSV focused 8 positive/100

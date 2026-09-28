@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased — B2-C R1 closeout — 2026-09-28
+
+- Persisted the independently verified R1/WSL working candidate and recorded user closeout of B2-C R1 backend core as `PASS — CLOSED`.
+- R1 Windows Final QA: `PASS WITH ISSUES`; Critical `0`, Major `0`, required code fixes `0`, required QA reruns `0`.
+- Non-blocking P2: remote-volume and missing-ACL Windows negative cases used controlled simulations; physical remote and missing-ACL devices were not validated.
+- CP3-C2-B remains `IN PROGRESS`; B2-D, CP3-C2-C and CP3-D remain `NOT STARTED`; Phase 2 remains `IMPLEMENTATION IN PROGRESS`. Earlier STOP and failed-QA entries remain historical evidence.
+
 ## Unreleased — CSV257 exact exception focused verified; full QA entry — 2026-09-09
 
 - Proved all 259 original source byte hashes before changes; preserved exact

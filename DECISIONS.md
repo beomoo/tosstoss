@@ -1,5 +1,13 @@
 # Architecture Decision Record
 
+## R1 backend core closeout record — 2026-09-28
+
+- User decision: B2-C R1 `PASS — CLOSED` following GPT independent R1 Windows Final QA `PASS WITH ISSUES`.
+- Critical `0`; Major `0`; required code fixes `0`; required QA reruns `0`.
+- Non-blocking P2: remote-volume and missing-ACL Windows negative cases used controlled simulations; physical remote and missing-ACL devices were not validated.
+- CP3-C2-B implementation remains `IN PROGRESS`; B2-D, CP3-C2-C and CP3-D remain `NOT STARTED`; Phase 2 remains `IMPLEMENTATION IN PROGRESS`.
+- Dated R1-TIME-01, R1-REPLAY-01, R1-SCAN-01, R1-SCAN-02 and failed-QA STOP records below retain their historical meaning. This closeout supersedes only their earlier current-status conclusions.
+
 ## ADR-001 — 초기 운영은 로컬 읽기 전용으로 제한
 
 - 상태: `ACCEPTED`
