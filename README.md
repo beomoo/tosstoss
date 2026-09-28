@@ -1,6 +1,10 @@
 # Toss Invest Research Dashboard
 
-로컬 Windows에서 실행되는 읽기 전용 기업분석 대시보드의 Phase 1 Foundation입니다.
+로컬에서 실행되는 읽기 전용 기업분석 대시보드의 Phase 1 Foundation입니다.
+
+Ubuntu 26.04 WSL/Linux에서는 `bash scripts/setup.sh`로 시작합니다.
+시스템 사전조건, 고정 런타임, 별도 개발 DB와 실행 방법은
+[Linux 개발 계약](docs/LINUX_DEVELOPMENT.md)을 따릅니다. Windows 절차는 아래와 같습니다.
 
 현재 데이터는 모두 합성 fixture입니다. 실제 시세·공시·기관 보유가 아니며 투자 판단에 사용하면 안 됩니다. 실제 외부 API, 계좌 조회, 주문, OpenAI API 호출은 구현되어 있지 않습니다.
 

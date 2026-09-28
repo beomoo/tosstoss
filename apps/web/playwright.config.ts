@@ -22,13 +22,17 @@ export default defineConfig({
   ],
   webServer: [
     {
-      command: "pwsh -NoProfile -ExecutionPolicy Bypass -File .\\tests\\e2e\\start-backend.ps1",
+      command: process.platform === "linux"
+        ? "../../.venv/bin/python -I -B -S ./tests/e2e/start-linux.py backend"
+        : "pwsh -NoProfile -ExecutionPolicy Bypass -File .\\tests\\e2e\\start-backend.ps1",
       url: "http://127.0.0.1:8000/health",
       reuseExistingServer: false,
       timeout: 120_000,
     },
     {
-      command: "pwsh -NoProfile -ExecutionPolicy Bypass -File .\\tests\\e2e\\start-frontend.ps1",
+      command: process.platform === "linux"
+        ? "../../.venv/bin/python -I -B -S ./tests/e2e/start-linux.py frontend"
+        : "pwsh -NoProfile -ExecutionPolicy Bypass -File .\\tests\\e2e\\start-frontend.ps1",
       url: "http://127.0.0.1:3000",
       reuseExistingServer: false,
       timeout: 120_000,

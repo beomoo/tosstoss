@@ -163,7 +163,7 @@
 
 ## KI-016 — WebAuthn runtime schema and human-authority amendment gate
 
-- 상태: `CLOSED — ADR-017/ADR-018/ADR-019 ACCEPTED / R1 SEPARATELY UNAUTHORIZED`
+- 상태: `CLOSED — ADR-017/ADR-018/ADR-019 ACCEPTED / R1 BACKEND CORE SEPARATELY AUTHORIZED`
 - 관찰: R1 pre-implementation audit에서 accepted ADR-015/ADR-016 schema가
   `principal_content_hash`, `credential_content_hash`, deterministic COSE_Key
   bytes/TEXT, raw challenge digest/binding, operation/issuer authentication
@@ -218,9 +218,37 @@
   한다.
 - 현재 gate: ADR-015/ADR-016 `ACCEPTED`, `0006 PASS — CLOSED`, ADR-017
   `ACCEPTED`, ADR-018 `ACCEPTED`, ADR-019
-  `ACCEPTED`, `0007 IMPLEMENTED — AWAITING GPT INDEPENDENT REVIEW`, R1
-  `NOT STARTED / REQUIRES SEPARATE AUTHORIZATION`, later
+  `ACCEPTED`, `0007 PASS — CLOSED` (user closeout `2026-09-05`), R1 backend core
+  `NOT VERIFIED — FINAL QA BLOCKED`, later
   checkpoints `NOT STARTED`, automatic progression `PROHIBITED`.
+- Latest limited correction (`2026-09-09`): CSV257 exact exception implemented;
+  direct original-byte provenance 259/259, final CSV focused 8 positive/100
+  negative and actual P=259/D=E=257, plus unchanged generated P=2406/D=E=2401,
+  both exit 0. OBS-04 local PASS retained. Full QA/final scans remain pending
+  their exact entry gates; no commit/push. Historical canary cause and general
+  DB/process-failure replay safety stay NOT VERIFIED, not automatically waived
+  or declared nonblocking by this scanner correction. See current R1 report.
+- Historical limited correction (`2026-09-08`): SCAN02-01/02 implemented; final focused
+  exit 0 with P=2406/D=E=2401 and five proof-only keys unregistered. NV-CSV remains
+  blocking: external result observer exit 1, actual CSV driver exit/completion/
+  findings NOT VERIFIED. Its Windows path-comparison defect is source-confirmed;
+  exact executed failure line was not retained. No rerun, CSV exception, policy
+  sync, staging, full QA/scans or commit/push. See latest report; R1 still blocked.
+- Historical limited authorization (`2026-09-07`): revised F.3/F.4 admit only strictly
+  proven artifacts; adverse candidate retention is not required. Synthetic
+  self-canaries passed, but one focused run exited 1 at production proof on empty
+  source-byte argument binding (`R1-SCAN-02`, PROPOSED/BLOCKING). No fix, retry,
+  policy sync, staging, full QA/scans or commit/push followed. R1 remains blocked.
+  The original R1-SCAN-01 witness and two failures are retained; see latest report.
+- Historical limited authorization (`2026-09-05`): diagnosis `PASS WITH ISSUES` is
+  not R1 acceptance. Exact generated-artifact secret exception verification
+  stopped at `R1-SCAN-01` (PROPOSED/BLOCKING in `DECISIONS.md`): two focused runs
+  exited 1 on F3 actual-candidate preservation. The strict validator rejects the
+  unknown field, but the unchanged detector's ID filter suppresses the synthetic
+  candidate after `version_id`. Full QA/scans, policy update and commit/push did
+  not follow; no validation/filter weakening or remediation choice was made.
+  Historical canary cause and general DB/process-crash replay safety remain
+  `NOT VERIFIED`; the four diagnostic CSVs remain local-only evidence.
 
 ## KI-017 — Future public source redistribution/publication eligibility
 
@@ -238,6 +266,6 @@
 
 - 상태: `P2 OPEN — NONBLOCKING`
 - 영향: 로컬 검증은 GitHub commit status/check-run 실행 증거를 대체하지 않는다.
-- 현재 대응: `0007` implementation의 LOCAL QA 결과를 GitHub CI로 표현하지
+- 현재 대응: `0007` 및 R1 implementation의 LOCAL QA 결과를 GitHub CI로 표현하지
   않는다. 현재 authoritative branch에는 CI workflow/check-run 실행 증거가
   없으며, 별도 승인된 infrastructure checkpoint로 이월한다.

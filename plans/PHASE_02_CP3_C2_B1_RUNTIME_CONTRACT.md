@@ -18,7 +18,7 @@
 - CP3-C2-B2-A: `PASS — CLOSED`
 - CP3-C2-B2-B: `PASS — CLOSED`
 - CP3-C2-B2-C `0006` schema implementation: `PASS — CLOSED`
-- B2-C R1 WebAuthn runtime:
+- B1 closeout snapshot of B2-C R1 WebAuthn runtime:
   `NOT STARTED / REQUIRES SEPARATE AUTHORIZATION`
 - ADR-017: `ACCEPTED` (`2026-08-29`)
 - ADR-018: `ACCEPTED` (`2026-08-29`)
@@ -2002,12 +2002,25 @@ historical proposal-era snapshots. A later, separate user authorization produced
 only the exact additive
 `0007_phase_02_cp3_c2_b2_c_counter_capability_bootstrap` migration, dedicated and
 integration migration tests, and one additive database-revision compatibility
-allowlist entry. Its current status is `IMPLEMENTED — AWAITING GPT INDEPENDENT
-REVIEW`, not `PASS` or `CLOSED`.
+allowlist entry. Its current status is `PASS — CLOSED`, following the explicit
+user closeout on `2026-09-05` recorded in
+`qa/PHASE_02_CP3_C2_B2_C_0007_ACCEPTANCE_CLOSEOUT_GPT_REPORT.md`.
 
 This later schema work did not start R1 and added no WebAuthn ceremony/runtime,
 service, route, UI, human-approval execution, or dependency. Frozen migrations
 `0001`–`0006` remain unchanged, persistent `var/dashboard.db` application is
-`0`, and R1 remains `NOT STARTED / REQUIRES SEPARATE AUTHORIZATION`. Public
+`0`. R1 backend core is now separately `NOT VERIFIED — FINAL QA BLOCKED`.
+The latest CSV257 correction (2026-09-09) passed final CSV and unchanged generated
+focused gates; exact policy/index/document synchronization precedes one authorized
+full QA. Its full result/final scans are still pending; no commit/push is allowed.
+OBS-04 local PASS and all original CSVs are preserved. No B1 contract is amended.
+The historical SCAN02-01/02 correction passed final focused verification on 2026-09-08
+but stopped before full QA at `NV-CSV` (CSV result observer unverified);
+see the dated entries in `DECISIONS.md`. Historical scanner failures and witness
+remain preserved. No B1 contract is amended.
+The accepted continuation-expiry and server-derived target-selection clarifications
+are recorded in the dated R1 authority addendum in `DECISIONS.md`. Routes, browser
+ceremonies, real enrollment and issuer-approval execution remain not started and
+require separate authorization. Public
 Read-only Deployment and Automated Trading remain `FUTURE / NOT AUTHORIZED /
 NOT STARTED`; automatic progression remains `PROHIBITED`.

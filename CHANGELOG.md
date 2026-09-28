@@ -1,5 +1,105 @@
 # Changelog
 
+## Unreleased — CSV257 exact exception focused verified; full QA entry — 2026-09-09
+
+- Proved all 259 original source byte hashes before changes; preserved exact
+  historical CSVs. Added a fixed-version CSV-only Hex finding proof/matcher,
+  detached registration and self-canaries in the existing secret scanner.
+- Final CSV focused exit 0: 8 positive/100 negative groups, two unchanged-driver
+  outside-scope canaries, actual P=259/D=E=257 and two proof-only keys absent.
+  Same final scanner's generated regression exit 0: unchanged 79 negatives,
+  31-file batch and P=2406/D=E=2401 with five proof-only keys absent.
+- Preserved all development failures and earlier positive byte snapshots;
+  corrected only new CSV exact-string/identity and generic-dispatch integration.
+  Updated only the exact policy control digest (85 files) and current docs.
+  Full QA entry requires exact index/preservation/cleanup gates; full result and
+  final scans are not yet claimed. No commit/push; R1 is not accepted or closed.
+- OBS-04 local PASS, historical failures, frozen migrations, runtime/dependencies,
+  four untracked CSVs and KI-017/KI-018 remain preserved. General DB/process
+  failure replay and historical canary cause remain NOT VERIFIED.
+
+## Unreleased — SCAN02-01/02 focused verified; CSV preflight unverified — 2026-09-08
+
+- Added generated-only empty-byte hashing without changing the shared helper.
+  Registered only actual proof-matching findings through an atomic map update.
+  Final focused command exit 0: existing 41 plus empty 17 and registration 21
+  negative checks; 31-file detector batch; 854 metadata, two tags and 704 TS
+  sources proved. P=2406, D=E=2401, applied=2401, proof-only unregistered=5.
+- Preserved development exit 1 on a Windows reserved test name and non-final
+  exit 0 separately from the final source run. No detector/runtime change.
+- CSV-only observer exited 1 and failed to retain a verified result; NV-CSV is
+  blocking. No CSV rewrite/exception/retry, policy sync, staging, full QA, final
+  scans, commit or push. R1 remains `NOT VERIFIED — FINAL QA BLOCKED`.
+
+## Unreleased — R1 scanner acceptance addendum and STOP — 2026-09-07
+
+- User accepted revised F.3/F.4 strict rejection, proof/exception zero and input
+  preservation without requiring adverse-order candidate retention. Added the
+  separate favorable-order witness; detector/filter/scope settings are unchanged.
+- One focused run passed 41 synthetic negative checks and a 31-file detector
+  batch, then exited 1 on empty-byte argument binding in production source proof
+  (`R1-SCAN-02`). No complete focused/population PASS, policy synchronization,
+  full QA, staging, commit or push. R1 remains `NOT VERIFIED — FINAL QA BLOCKED`.
+- Preserved prior STOP executions/witness, original 27 staged files and four
+  untracked diagnostic CSVs. Only scanner self-canaries and current documentation
+  changed; zero-byte hashing correction is proposed, not implemented. See latest
+  R1 report. The following dated entries are historical, not current instructions.
+
+## Unreleased — Phase 2 CP3-C2-B2-C R1 WebAuthn Backend Core — 2026-09-05
+
+- Latest authorization: the user accepted the diagnosis as `PASS WITH ISSUES`,
+  not R1 acceptance. R1 remains `NOT VERIFIED — FINAL QA BLOCKED`. Narrow,
+  independently regenerated per-finding secret exceptions and fail-closed
+  self-canaries were authorized. Their focused verification stopped at
+  `R1-SCAN-01`: two `-GeneratedArtifactSelfTest` runs exited 1 because an F3
+  synthetic hex candidate was filtered by the unchanged detector when placed
+  after `version_id`, despite strict unknown-field rejection. No field-order,
+  assertion or detector/filter weakening was applied. Full QA, full secret scan,
+  policy scan, commit and push were not run; exact policy digest update remains
+  gated on focused PASS. Separate requirement/detection design approval is needed.
+  The new diagnostic population alone is `PROVEN_NOT_SECRET=2401`; historical
+  2401 identities remain `NOT VERIFIED` (2392 recovered metadata + 9 missing).
+  Four diagnostic CSVs remain local evidence, excluded from the R1 commit.
+  Prior failures below remain historical; the canary's past cause is unverified,
+  its behavior stays unchanged, and general DB/process-crash replay safety and
+  real browser/device ceremony remain `NOT VERIFIED`.
+- Partially implemented separately authorized, unrouted backend core for canonicalization,
+  real WebAuthn verification, Windows OWNER/TOKEN_USER binding, immutable
+  credential lifecycle and frozen 0006/0007 transaction/counter reconstruction.
+- Added focused offline tests with ephemeral real ES256/RS256 keys; synchronized
+  exact approved dependency and test/source policy inventories.
+- Synchronized current 0007 status to PASS — CLOSED (user closeout 2026-09-05).
+  R1 was stopped at the frozen SQLite timestamp precision gap (R1-TIME-01).
+  The subsequent conditional user authorization resumes R1-only integer
+  millisecond server-time generation, raw-time expiry and explicit historical
+  SQL-conflict handling. Fresh focused 213, regression 277, full backend 1064,
+  frontend 43 and E2E 2 passed. Final secret scan is blocked by generated Ruff
+  binary cache inputs; targeted cleanup was rejected before execution. No
+  scanner weakening or alternate deletion path was added. Full QA closeout is
+  incomplete; the older interrupted run remains historical, not full QA PASS.
+  Full QA was deliberately interrupted; implementation completion and independent
+  review are not claimed. No commit/push was performed at this STOP.
+- Preserved frozen 0001–0007, no 0008, no operational DB writes, no routes/frontend,
+  no issuer promotion and no public/trading implementation. See
+  `qa/PHASE_02_CP3_C2_B2_C_R1_WEBAUTHN_CORE_CODEX_REPORT.md`.
+- Subsequent approved R1-REPLAY-01 remediation adds immutable unfinished-path
+  time-profile admission before crypto; preserves completed historical records.
+  Exact red/green reproductions, new-process persistence, focused 229 and specified
+  regression 277 passed. Exact two-file Ruff cache cleanup succeeded with source
+  hashes unchanged. The next secret scan exited 1 on a disposable SQLite journal;
+  STOP without other cleanup, policy/full-QA execution, commit or push. Prior
+  failed/interrupted runs above remain historical; no R1 closeout is claimed.
+- Approved stale-resource resumption validated and disposed of three complete
+  test directories through unchanged standard cleanup. Actual 1080/43/2 passed,
+  but the first full run exited 1 on unstaged-document/index mismatch. All nine
+  document changes were then staged with exact raw blob equality; the next full
+  run exited 1 at the process-cleanup canary manifest timeout. No code/scanner
+  change, further cleanup, commit/push or R1 acceptance follows this new STOP.
+- Subsequent post-document standalone policy scan exited 0; secret scan exited 1
+  with 2401 unadjudicated potential-secret findings, including displayed mypy
+  metadata and Next.js cache paths. No additional deletion, exception or retry;
+  the final reporting-only STOP update is not a successful scanned commit snapshot.
+
 ## Unreleased — Phase 2 CP3-C2-B2-C 0007 Counter-Capability Migration — 2026-08-31
 
 - Implemented the separately authorized exact additive

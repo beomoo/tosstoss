@@ -1195,6 +1195,386 @@ commit할 수 없다.
 
 ---
 
+## R1 implementation authority — 2026-09-05 current addendum
+
+The user separately authorized R1 trusted-human WebAuthn **backend core only**
+from `87748c8311242e0bd45bac86e8d60da24ac8ba8a` on
+`feature/phase-02-b2c-r1-webauthn-core`. The authoritative
+`qa/PHASE_02_CP3_C2_B2_C_0007_ACCEPTANCE_CLOSEOUT_GPT_REPORT.md` closes `0007`
+as `PASS — CLOSED`, user decision `2026-09-05`; earlier awaiting-review records
+remain historical. `0006` remains `PASS — CLOSED`; ADR-015–ADR-019 remain
+`ACCEPTED`. R1 is authorized, not independently accepted or closed.
+
+The user explicitly clarified two R1 runtime rules:
+
+- Ordinary `0006` challenges expire exactly five minutes after issuance. Only
+  `0007` `COUNTER_CAPABILITY_ASSERTION` uses
+  `min(issued_at + 5 minutes, parent_registration_challenge.expires_at)`.
+  Its duration must be positive and at most five minutes. An already expired
+  parent issues no child and terminalizes the original operation as `EXPIRED`.
+  Successful verification must finish before both child and parent expiry.
+- REPLACE/REVOKE target credential ID is untrusted operation intent only.
+  The server resolves its exact current steward membership, registration and
+  ACTIVE state, derives its fingerprint and all trust fields, and fixes them
+  in the operation/hash/challenge. The server constructs the nonempty ACTIVE
+  authorizer allow list; authorizer and target may differ. Fresh verified
+  assertion is still mandatory. Target and state are revalidated at assertion
+  completion and immediately before terminal projection; no target substitution,
+  unrelated lifecycle change, or final-revoke bootstrap reopening is allowed.
+
+These clarifications authorize no migration change (`0001`–`0007` frozen; no
+`0008`), production database mutation during this task, HTTP route, frontend,
+real ceremony, issuer approval/promotion, public deployment or trading.
+Automatic progression remains `PROHIBITED`; future Public Read-only Deployment
+and Automated Trading remain `FUTURE / NOT AUTHORIZED / NOT STARTED`.
+
+### R1-TIME-01 — frozen SQLite timestamp precision — PROPOSED / BLOCKING
+
+- Discovered during R1 boundary verification on `2026-09-05`; not a change to
+  accepted ADR-017/018/019, and not a reopening of 0006/0007 closeout.
+- The approved UTC serialization permits six fractional digits. With parent
+  expiry `2026-09-05T00:05:00.123456Z` and an issuance/verification timestamp
+  `2026-09-05T00:05:00.123455Z`, the approved min rule produces a positive
+  one-microsecond continuation. SQLite `julianday()` treats these two timestamps
+  as equal. Frozen 0007's live-parent predicate and positive-child-duration
+  predicate therefore cannot represent this exact case.
+- A disposable frozen-0007 database with real synthetic registration verification
+  reproduced `counter capability registration exact live parent mismatch`.
+  Transaction rollback left pending/child/consumption/outcome/credential counts
+  all zero. Frozen 0006 also selects EXPIRED versus non-EXPIRED consumption using
+  `julianday()`, so changing the min formula alone does not resolve the boundary.
+- R1 is now `BLOCKED — TIMESTAMP PRECISION CONTRACT GAP`, with partial code/tests
+  retained and full QA intentionally interrupted. No commit/push or next step.
+- Proposed resolution for explicit user decision: define an exact compatible
+  server timestamp precision/quantization policy, without weakening high-resolution
+  expiry verification, the ordinary exact-five-minute rule, or the approved min
+  rule. Candidate: floor newly issued/persisted server timestamps to whole UTC
+  milliseconds; calculate expiry from those issued timestamps using the unchanged
+  formulas; check deadlines with the unrounded current server UTC time. Do not
+  rewrite or normalize existing ledger rows. This candidate is not approved.
+  No such rounding, truncation, early-expiry convention, frozen migration
+  change, new migration or alternate terminalization has been approved or applied.
+- Evidence and unfinished verification are in
+  `qa/PHASE_02_CP3_C2_B2_C_R1_WEBAUTHN_CORE_CODEX_REPORT.md`.
+
+### R1-TIME-01 — subsequent conditional user authorization (2026-09-05)
+
+The preceding discovery/STOP is historical. The user now explicitly permits
+resuming R1 with integer millisecond flooring only for newly generated R1
+server-clock ledger timestamps, before any hash preimage is constructed.
+Raw high-resolution UTC remains the sole expiry authority (`now_raw >= expiry`
+is expired). One fresh sample after crypto and writer-state revalidation supplies
+both the terminal verdict and all identical audit/projection times via its floor.
+Ordinary expiry is canonical issued_at + five minutes. Only the approved 0007
+child uses min(child issued_at + five minutes, immutable parent expiry).
+
+Existing rows, copied times, external timestamps, canonicalizer behavior and ten
+golden vectors are not normalized or rewritten. Nonzero fractions remain six
+digits (e.g. .123000Z). Historical off-grid raw/SQL conflicts must be explicitly
+reported and fail closed without false EXPIRED, adjusted audit times, ignored
+IntegrityError or partial lifecycle writes; committed authorizer history remains.
+The field/generation inventory and fresh boundary/full-QA evidence belong in the
+execution plan and R1 report. Earlier 164/277 passes are historical, not a new
+full QA result. Frozen 0001–0007, no 0008, no production DB writes and all R1 scope
+and independent-review/STOP gates remain unchanged. This is not R1 PASS/CLOSED.
+
+### R1-REPLAY-01 — precision-conflict rollback permits successful resubmission — PROPOSED / BLOCKING
+
+The subsequent cache-cleanup authorization explicitly required distinguishing
+same-assertion success from later expiry terminalization, and STOP on any new
+contract conflict. Read-only source review plus an in-memory diagnostic using
+the actual frozen 0001–0007 migrations confirmed a conflict with original R1
+prompt section 12: first terminal verification consumes the challenge, and no
+retry of the same challenge/assertion is allowed.
+
+Historical REVOKE challenge issued at `2026-09-05T00:00:01.123900Z`, expiring
+exactly five minutes later: the first cryptographically valid assertion at
+`.123901Z` fails `TIMESTAMP_PRECISION_CONFLICT` because its stored floor
+`.123000Z` compares below historical issuance in SQLite. Every row rolls back.
+At `.124000Z`, resubmitting the byte-identical assertion succeeds before expiry;
+the target becomes REVOKED and the authorizer counter advances 7 to 8.
+No clock rollback, altered assertion, new challenge or migration change was used.
+
+In contrast, for a historical deadline ending `.123456Z`, a first attempt at
+deadline minus 1 microsecond conflicts, then the same bytes submitted at deadline
+plus 544 microseconds terminalize EXPIRED; lifecycle/counter stay unchanged.
+These are different paths. The earlier QA phrase "later fresh attempt" was
+incomplete and must not be interpreted as an approved retry policy or a claim
+that resubmission can only expire.
+
+Current code raises outside terminalization at `runtime.py:380`, rolls back at
+line 219, and the next call checks only committed consumption/outcome/bootstrap
+rows (lines 297–319). There is no persisted precision-conflict attempt marker.
+The existing historical time test verifies rollback but not a second submission.
+The R1 report records the full sanitized evidence and verification limitations.
+
+Status: implementation/QA closeout blocked pending explicit independent review
+and direction. No remedy or new semantic policy is chosen or authorized here.
+No runtime/test/dependency/migration change, cache deletion, QA rerun, commit or
+push occurred in this follow-up. Accepted ADRs and frozen schema closeouts remain
+unchanged. Do not advance R1 to implemented/awaiting-review, PASS or CLOSED.
+
+### R1-REPLAY-01 — subsequent user-approved compatibility restriction
+
+The user explicitly accepts the blocker and authorizes implementation of a
+deterministic execution profile for unfinished historical operation paths.
+Non-millisecond-aligned immutable comparison fields must cause
+R1_TIME_PROFILE_INCOMPATIBLE before actual crypto, independent of clock, input,
+attempt count, runtime instance or process restart. No writes, fake terminal
+records, normalization, memory blacklist, sidecar or automatic recovery/expiry
+cleanup is authorized. Completed historical records and their ACTIVE credentials
+retain their original canonical/hash/counter/lifecycle semantics.
+
+The execution plan inventories exact fields and boundaries. Only directly
+affected historical unfinished-path test expectations may change; the input
+microseconds, frozen migration tests and ten golden vectors remain unchanged.
+The previous discovery and STOP remain historical evidence, not overwritten.
+Implementation/testing is not GPT independent acceptance; maximum eventual
+status is IMPLEMENTED — AWAITING GPT INDEPENDENT REVIEW after all required QA.
+
+Operational follow-up STOP: the approved profile remediation passed focused 229
+and specified regression 277 tests. Exact authorized Ruff cache cleanup succeeded
+with unchanged working-source hashes. The next unchanged secret scan exited 1 on
+`var/tmp/backend-tests/668b5718e39c4293af072b3776f22632/counter-bootstrap.sqlite3-journal`.
+The user requires STOP for another failing file: no deletion/rename, scanner
+change, broad cleanup, full QA, commit or push is authorized past that gate.
+This is an execution-artifact blocker, not a new timestamp/retry semantic decision.
+Details and historical failures remain in the R1 QA report; independent review
+and final QA remain outstanding.
+
+Subsequent user authorization allowed only prevalidated whole stale test-directory
+disposal through the unchanged standard runner. Three recorded directories were
+removed; the new backend 1080/frontend 43/E2E 2 all passed, but that first resumed
+script exited 1 because the assistant had not staged the nine preserved document
+changes before the strict secret index gate. After those documents were staged
+and all 341 raw working/index blobs matched, a second unchanged standard run
+exited 1 at the process-cleanup canary's 10-second manifest wait. The exact cause
+is unverified; this is a new operational QA blocker requiring separate direction,
+not authorization to relax the canary/scanner or alter R1 semantics. No journal
+recurred, no extra deletion was made, and no commit/push or independent closeout
+is claimed. Both failed attempts remain in the QA report.
+
+The subsequent post-document standalone policy scan exited 0, but the secret
+scan exited 1 with 2401 potential-secret findings. Their classification remains
+unverified; this additional blocker does not authorize cache deletion or scanner
+exceptions. Reporting-only STOP updates follow, with no further retry or commit.
+
+### R1 diagnostic review and exact secret-exception authorization — 2026-09-05
+
+The preceding operational/diagnostic STOP records remain historical. The user
+independently reviewed the diagnosis as `PASS WITH ISSUES`; R1 as a whole remains
+`NOT VERIFIED — FINAL QA BLOCKED`. Only the new diagnostic snapshot receives
+`PROVEN_NOT_SECRET=2401`: mypy source/interface hashes 1703, complete public mypy
+and Ruff tags 1 each, and TypeScript source-version hashes 696. The older 2401
+identities remain `NOT VERIFIED`; 2392 recovered metadata rows and nine missing
+rows are not retroactively completed with the newer snapshot.
+
+The user now permits narrowly scoped additions to the existing exact finding
+exception mechanism in `scripts/secret-scan.ps1`. Every run must independently
+verify pinned generators, complete strict schemas, duplicate/extra-key rejection,
+source roots and link safety, exact source/companion/generated-value equality,
+complete tag bytes, and all same-line candidate occurrences before registering
+an exception. Unknown fields, altered bytes, missing/out-of-root/linked sources
+or unexplained candidate values must remain unexcepted or fail closed. No
+directory, extension, ignore, threshold, encoding or coverage bypass is approved.
+Use existing self-canaries for the required synthetic negative tests; do not
+weaken existing tests. Only necessary exact policy digest/inventory
+synchronization and minimal current-state/QA documentation changes accompany
+this scanner work. The subsequent focused verification STOP below supersedes the
+implementation-in-progress state; it does not grant a weakened F3 requirement.
+
+Document/index mismatch is procedural; its checker is not to be changed. Review
+and stage all commit targets, prove raw index/worktree equality and both diff
+checks, then freeze documents during the one authorized standard full QA run.
+That run is allowed only after focused scanner/self-canary validation passes.
+Any failed gate stops the attempt without another full run. The unchanged
+process canary retains 20 iterations, 10-second waits, ownership and retry rules;
+even a new pass would not explain its earlier failure. If only final result
+documents change after full exit 0, stage those documents and repeat final
+standalone secret/policy scans and diff/index checks before commit/push.
+
+The four diagnostic CSVs are `local diagnostic evidence — not part of R1 commit`
+and must remain preserved until independent verification finishes. No runtime,
+semantic policy, migration, dependency, frontend, canary behavior, extra cleanup
+or scope expansion is authorized. Frozen 0001–0007, no 0008/operational DB writes,
+KI-017/KI-018, future public/trading gates and prohibited automatic progression
+remain. General DB/process-crash ambiguous-commit replay safety and actual
+browser/device ceremony are still `NOT VERIFIED`. Successful submission may
+reach only `IMPLEMENTED — AWAITING GPT INDEPENDENT REVIEW`, never PASS/CLOSED.
+
+### R1 scanner F.3/F.4 acceptance addendum — ACCEPTED — 2026-09-07
+
+The user accepts the prior R1-SCAN-01 STOP and diagnosis, not R1. F.3/F.4 now
+require strict schema/occurrence rejection, proof/exception zero, unchanged input
+and fail-closed generated admission. Candidate retention in adverse ordering and
+JSON-occurrence-specific findings are not required. A/B ordering and the prior
+witness remain; detector semantics/settings and all other safeguards are fixed.
+No supplementary detector is authorized. This explicitly selects the acceptance
+amendment, superseding the unresolved-choice wording in the dated historical
+entry below without altering its failed-run evidence or existing ADRs.
+
+One new final-source focused run passed its synthetic self-canaries (41 negative
+checks, 31-file detector batch), then failed production proof collection with
+exit 1. A retained the unknown candidate; B omitted it; both rejected admission.
+Omission is an observation, not a security success criterion. There is no complete
+focused PASS, production 2401 acceptance, full QA or R1 acceptance.
+
+### CSV257 exact historical finding exception — ACCEPTED limited scope — 2026-09-09
+
+The two mandatory CSV257 instructions dated 2026-09-08 authorize one fixed
+49504-byte historical diagnostic snapshot version only, preserving all four
+original CSVs and OBS-04. All 259 original sources were directly rehashed before
+scanner changes (258 current originals plus one raw historical Git blob).
+This one-off provenance gate is not a runtime requirement to match current
+sources to historical values. No WebAuthn or other semantic policy changes.
+
+Final CSV focused exit 0: 8 positive/100 negative groups; P=259, D=E=applied=257,
+two proof-only keys absent, other three CSVs zero findings/new exceptions.
+Same final scanner's existing generated regression exit 0: P=2406, D=E=2401,
+five proof-only keys absent. Exact ordinal identity, Hex-only typed keys and
+detached publication remain enforced by both focused and normal scanner paths.
+
+Only exact 85-file policy digest/current-document synchronization and explicit
+staging follow these gates. One standard full QA is authorized after exact
+index/worktree, preservation and cleanup-safety checks; final standalone scans
+follow only full exit 0. No retry after a full-run failure and no commit/push,
+merge, tag or release. R1 stays NOT VERIFIED pending the remaining gates, with
+maximum IMPLEMENTED — AWAITING GPT INDEPENDENT REVIEW, not PASS/CLOSED.
+Historical failures below and the R1 report are preserved. OBS-04 PASS does not
+waive general DB/process-failure replay requirements, KI-017/KI-018, actual
+ceremony exclusions or future checkpoint authorization.
+
+### Fixed cache-tag provenance URL policy exception — ACCEPTED limited scope — 2026-09-13
+
+The user explicitly authorizes one narrow policy exception for R1 QA tooling:
+one fixed cache-tag provenance literal in the current exact scanner version,
+bound to exact path/source/function/literal conditions. This is not a general
+external URL allowlist and grants zero network authority. The scanner source
+and its cache-tag bytes remain unchanged. The approved literal is
+`https://bford.info/cachedir/`, only in `Get-ValidatedCacheTagProof`'s exact Mypy
+explanatory assignment in `scripts/secret-scan.ps1`.
+
+The complete scanner raw-byte SHA-256 was directly calculated as
+`5af0c8b095f35ff91c8714b9c81df5e1747c8b78621bfa0926f2ac9c7fa201d9`.
+Policy binds that fixed digest, canonical path, strict UTF-8/Ordinal equality
+between inspected Content and the disk snapshot, exact AST ancestry and
+assignment/literal hashes, and exactly one occurrence. Only the 28-character
+URL span is removed from an inspection copy before the unchanged raw and
+normalized checks. The actual source/tag text is not rewritten or split.
+
+Final local URL focused exit 0: four positive checks, 35 named negative cases
+(including 19 pure structural cases also rejected by the production boundary),
+plus the unchanged 18 URL negatives and two Toss/issuer positive calls. Byte
+mutation is tested through the production snapshot helper, not by editing the
+immutable disk scanner. The 85-file phase-control digest is unchanged because
+policy is excluded from that inventory and every input remains unchanged.
+
+An initial preimplementation STOP found the user's live development server.
+The user subsequently permitted its shutdown; exact launcher termination let
+the existing controller finally clean its own resources. This is not a QA
+failure or Ctrl+C ceremony. Prior STOP evidence remains preserved externally.
+After source review/staging, raw index equality and both diff checks, exactly
+one standard full QA may run. Any failure stops it without retry or new policy
+exceptions. Final document/scans are allowed only after full exit 0. No
+commit/push. Historical first failing policy file and canary cause remain
+NOT VERIFIED. General DB/process-crash replay, real ceremony, KI-017/KI-018 and
+all original scope/independent-review boundaries remain unchanged.
+
+### Historical SCAN02-01/02 limited correction — ACCEPTED scope; local focused verified — 2026-09-08
+
+The user supplied the R1-SCAN-02 independent review and remediation instructions.
+Only generated-proof/self-test empty-byte hashing and actual finding/proof
+intersection registration are authorized, plus related negative tests and
+conditional later QA. Keep the common hash helper, driver/detector settings,
+runtime, migrations, dependencies and all historical evidence unchanged.
+
+Implementation preserves non-null exact empty bytes and explicitly rejects null.
+All strict proofs remain required; raw scan JSON/structure and completed input
+hashes bind D to P. Registration now publishes a detached, fully validated map
+with E=D, preserving other families and leaving proof-only keys absent. Final
+focused command exit 0: 854 metadata, two tags, 704 TS sources; P=2406, D=E=2401,
+applied=2401 and proof-only unregistered=5; existing 41 plus new 17/21 negative
+checks and unchanged 31-file detector batch pass. This is not R1 acceptance.
+
+NV-CSV is still blocking. One external result observer exited 1 without retaining
+driver exit/completion/finding metadata. Source inspection confirms its Windows
+path comparison is defective, but the exact executed failure line is NOT VERIFIED.
+No actual finding count or absence is inferred; no CSV rewrite/exception/retry is
+authorized by this result. The report proposes safe canonical-path and diagnostic
+stage capture for a separately identified future attempt, not a scanner policy
+change. No policy sync, staging, full QA/scans, commit or push followed.
+
+The 2026-09-07 proposal/failure below is historical and is superseded only by the
+explicit two-fix authorization; its execution evidence remains unchanged. All
+other NOT VERIFIED boundaries, KI-017/KI-018 and future-checkpoint prohibitions
+remain. R1 stays `NOT VERIFIED — FINAL QA BLOCKED`; no automatic progression.
+
+### Historical R1-SCAN-02 — zero-byte generated-source hashing input — PROPOSED / BLOCKING as of 2026-09-07
+
+The mandatory byte-array parameter of existing `Get-Sha256HexFromBytes` rejects
+an empty array passed by new `Get-GeneratedArtifactSnapshot`; production mypy
+proof stops before registration. Read-only metadata inventory finds 16 legitimate
+zero-byte sources with exact stored size/source-SHA1 equality. Exact failed
+source identity was not logged and remains NOT VERIFIED. See the R1 QA report.
+
+Minimum proposal only: support exact non-null zero-length hashing in the scoped
+generated-proof path, or separately review the shared helper's empty-collection
+contract and all callers; preserve all validation/drift/link/missing-input guards.
+Add empty-source positive and mutation/missing/null/link/invalid-input regressions
+before integrated proof/population verification. No fix or rerun is performed.
+STOP prevents policy digest synchronization, staging, full QA and commit/push.
+Original work and four local diagnostic CSVs are preserved. R1 remains
+`NOT VERIFIED — FINAL QA BLOCKED`; historical canary/general replay/real ceremony
+NOT VERIFIED boundaries and KI-017/KI-018 remain. No subsequent step is authorized
+by this proposal.
+
+### Historical R1-SCAN-01 — F3 candidate suppressed by existing ID filter — PROPOSED / BLOCKING as of 2026-09-05
+
+The approved remediation requires an unknown high-entropy hex value added to
+mypy metadata to remain detected (attachment F3), in addition to denying an
+exception. Two focused `secret-scan.ps1 -GeneratedArtifactSelfTest` executions
+exited 1 at the actual-candidate-preservation assertion. The new strict validator
+rejects the unknown field and registers no exception; this alone does not
+satisfy the required standard-detector finding.
+
+The unchanged detect-secrets `is_likely_id_string` filter suppresses the synthetic
+high-entropy hex candidate when it occurs after `version_id`. In an in-memory
+standard-driver comparison, the same candidate before `version_id` is detected
+and the ID filter returns false; after `version_id` it is not detected and the
+filter returns true. Both cases have entropy greater than the unchanged 3.0
+threshold. The sanitized focused evidence belongs in the R1 QA report; no raw
+candidate or matched source line is included here. This is not proof that the
+new exact-exception code allowed the candidate, nor a pass of the required F3.
+
+STOP applies before full QA. No field-order alteration, assertion weakening,
+detector/filter change or replacement success claim was made to satisfy F3.
+Full QA executions: 0; full repository secret scans: 0; policy scans: 0;
+commit/push: 0 in this remediation attempt. The exact policy control digest
+remains unchanged because its synchronization was gated on focused PASS. Original
+R1 work/index and local diagnostic CSVs remain preserved; frozen schema and
+operational-DB preservation are to be reconfirmed in the final snapshot.
+
+Minimal options requiring separate explicit approval, neither selected nor
+implemented:
+
+- Option A: explicitly amend F3 acceptance to permit a fail-closed schema error
+  instead of requiring the standard detector to retain that exact finding.
+  This changes the approved validation contract and cannot be inferred from
+  unknown-field rejection or chosen by the implementation agent.
+- Option B: approve a separately reviewed narrow supplementary-detection design
+  for this exact generated-artifact situation, preserving the original F3
+  detection requirement. Its scope, candidate provenance, same-line binding,
+  existing detector/filter behavior, fail-closed handling and negative regression
+  coverage must be specified before implementation; no general filter relaxation
+  or directory bypass is implied.
+
+Both options must preserve the before/after-`version_id` reproduction and same-
+candidate comparison, unknown/duplicate fields, same-line copied allowed values,
+unrelated synthetic credential-shaped values and the unchanged scanner safeguards.
+No further remediation, scan/full-QA retry or commit/push is authorized by this
+proposal. R1 remains `NOT VERIFIED — FINAL QA BLOCKED`; KI-017/KI-018 and the
+historical canary/general replay/real-ceremony NOT VERIFIED boundaries remain.
+
 ## ADR-017 — WebAuthn Runtime Canonicalization and Hash Preimage Amendment
 
 - 상태: `ACCEPTED`
