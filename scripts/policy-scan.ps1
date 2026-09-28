@@ -202,6 +202,12 @@ function Test-IsRuntimePolicySourcePath {
             (Join-Path $repoRoot "scripts\python_runtime_guard.py")
         )
     )
+    $approvedDevelopmentBootstrapPaths = @(
+        [System.IO.Path]::GetFullPath((Join-Path $repoRoot "scripts\build_linux.py")),
+        [System.IO.Path]::GetFullPath((Join-Path $repoRoot "scripts\check_linux_setup.py")),
+        [System.IO.Path]::GetFullPath((Join-Path $repoRoot "scripts\linux_setup.py")),
+        [System.IO.Path]::GetFullPath((Join-Path $repoRoot "scripts\setup.sh"))
+    )
     $testRoot = [System.IO.Path]::GetFullPath((Join-Path $repoRoot "tests"))
     $webSourceRoot = [System.IO.Path]::GetFullPath((Join-Path $repoRoot "apps\web\src"))
     $webTestRoot = [System.IO.Path]::GetFullPath((Join-Path $repoRoot "apps\web\tests"))
@@ -218,6 +224,10 @@ function Test-IsRuntimePolicySourcePath {
         # These files intentionally contain hostile-address and bind canaries.
         # Their exact bytes are pinned by the Phase control-plane digest and
         # their behavior is exercised by the runtime preflight/self-tests.
+        return $false
+    }
+    if ($approvedDevelopmentBootstrapPaths -contains $fullPath) {
+        # These exact tools remain pinned by the Phase control-plane digest.
         return $false
     }
     if ($fullPath.StartsWith($testRootPrefix, [System.StringComparison]::OrdinalIgnoreCase)) {
@@ -358,6 +368,34 @@ $runtimeScopeCanaries = @(
     },
     @{
         Path = Join-Path $repoRoot "scripts\network-wrapper.cjs"
+        Expected = $true
+    },
+    @{
+        Path = Join-Path $repoRoot "scripts\build_linux.py"
+        Expected = $false
+    },
+    @{
+        Path = Join-Path $repoRoot "scripts\check_linux_setup.py"
+        Expected = $false
+    },
+    @{
+        Path = Join-Path $repoRoot "scripts\linux_setup.py"
+        Expected = $false
+    },
+    @{
+        Path = Join-Path $repoRoot "scripts\setup.sh"
+        Expected = $false
+    },
+    @{
+        Path = Join-Path $repoRoot "scripts\linux_setup_copy.py"
+        Expected = $true
+    },
+    @{
+        Path = Join-Path $repoRoot "scripts\subdir\linux_setup.py"
+        Expected = $true
+    },
+    @{
+        Path = Join-Path $repoRoot "services\api\src\linux_setup.py"
         Expected = $true
     }
 )
@@ -1162,6 +1200,7 @@ catch {
 }
 $allowedPythonSpecifiers = [ordered]@{
     "alembic" = "==1.16.5"
+    "cbor2" = "==6.1.4"
     "detect-secrets" = "==1.5.0"
     "fastapi" = "==0.116.1"
     "httpx" = "==0.28.1"
@@ -1176,6 +1215,7 @@ $allowedPythonSpecifiers = [ordered]@{
     "typing-extensions" = "==4.14.1"
     "tzdata" = "==2025.2"
     "uvicorn" = "==0.35.0"
+    "webauthn" = "==3.0.0"
 }
 $allowedPythonDependencies = New-OrdinalIgnoreCaseSet -Values @($allowedPythonSpecifiers.Keys)
 $pythonDependencyNames = @($pythonDependencyRecords | ForEach-Object { [string] $_.name })
@@ -1260,10 +1300,10 @@ if (-not (Test-Path -LiteralPath $requirementsLockPath -PathType Leaf)) {
     throw "requirements.lock is missing."
 }
 $approvedRequirementsLockSha256 = [string]::Concat(
-    "77c659d8", "79ecc4ed",
-    "595e790b", "1af3b747",
-    "353c6494", "a85d1ec8",
-    "21bdf0ac", "0a1b552d"
+    "12d1d6bf", "6a7319a7",
+    "d1c11378", "4d608138",
+    "9eca15a8", "734dc80d",
+    "965b9034", "0ceca06d"
 )
 $actualRequirementsLockSha256 = (
     Get-FileHash -LiteralPath $requirementsLockPath -Algorithm SHA256
@@ -1298,10 +1338,13 @@ $allowedLockedPythonDependencies = New-OrdinalIgnoreCaseSet -Values @(
     "alembic",
     "annotated-types",
     "anyio",
+    "cbor2",
     "certifi",
+    "cffi",
     "charset-normalizer",
     "click",
     "colorama",
+    "cryptography",
     "detect-secrets",
     "fastapi",
     "greenlet",
@@ -1317,10 +1360,14 @@ $allowedLockedPythonDependencies = New-OrdinalIgnoreCaseSet -Values @(
     "packaging",
     "pathspec",
     "pluggy",
+    "pyasn1",
+    "pyasn1-modules",
+    "pycparser",
     "pydantic",
     "pydantic-core",
     "pydantic-settings",
     "pygments",
+    "pyopenssl",
     "pytest",
     "pytest-socket",
     "python-dotenv",
@@ -1334,7 +1381,8 @@ $allowedLockedPythonDependencies = New-OrdinalIgnoreCaseSet -Values @(
     "typing-inspection",
     "tzdata",
     "urllib3",
-    "uvicorn"
+    "uvicorn",
+    "webauthn"
 )
 $uniqueLockedPythonDependencies = New-OrdinalIgnoreCaseSet -Values $lockedPythonNames
 if (
@@ -1438,8 +1486,8 @@ $approvedTestConfigurationDigests = @(
     [pscustomobject]@{
         Path = Join-Path $repoRoot "pyproject.toml"
         Sha256 = [string]::Concat(
-            "f3475a0d", "c0e1b12c", "7277c4ec", "0a2d931f",
-            "eb39008c", "b0603fad", "5dfcb01e", "d676381f"
+            "a0105042", "f1b972f9", "bdb0b09d", "8a72ce86",
+            "891179e9", "142ea0c5", "288c4f6b", "a704eeca"
         )
     },
     [pscustomobject]@{
@@ -1452,8 +1500,8 @@ $approvedTestConfigurationDigests = @(
     [pscustomobject]@{
         Path = Join-Path $repoRoot "apps\web\playwright.config.ts"
         Sha256 = [string]::Concat(
-            "06833529", "ead8b7e9", "d821a0eb", "4c30a32f",
-            "c6209bd7", "6277dfc0", "d544b85c", "74688210"
+            "079f0b3e", "b9be3259", "e42ac078", "1308ed11",
+            "19b4acc8", "58764698", "8f801837", "65a388f0"
         )
     },
     [pscustomobject]@{
@@ -1505,6 +1553,7 @@ $expectedBackendTestFiles = @(
     "tests/backend/test_contract_required_fields.py",
     "tests/backend/test_contract_roundtrip.py",
     "tests/backend/test_contract_time.py",
+    "tests/backend/test_counter_capability_migration.py",
     "tests/backend/test_error_isolation.py",
     "tests/backend/test_fixture_import.py",
     "tests/backend/test_logging_redaction.py",
@@ -1517,6 +1566,11 @@ $expectedBackendTestFiles = @(
     "tests/backend/test_provider_repository.py",
     "tests/backend/test_provider_source_contracts.py",
     "tests/backend/test_reviewer_operation_migration.py",
+    "tests/backend/test_reviewer_runtime.py",
+    "tests/backend/test_reviewer_runtime_time.py",
+    "tests/backend/test_reviewer_time_profile.py",
+    "tests/backend/test_reviewer_webauthn_core.py",
+    "tests/backend/test_reviewer_windows_owner.py",
     "tests/backend/test_security_master_reconciliation.py",
     "tests/backend/test_rejection_matrix.py",
     "tests/backend/test_repositories.py",
@@ -1649,16 +1703,16 @@ $phaseControlFiles = @(
         Where-Object { $_.Name -match '\.test\.(?:ts|tsx)$' }
     Get-ChildItem -LiteralPath (Join-Path $repoRoot "apps\web\tests\e2e") `
         -Recurse -File -Force |
-        Where-Object { $_.Extension -in @(".ps1", ".ts", ".tsx") }
+        Where-Object { $_.Extension -in @(".ps1", ".ts", ".tsx", ".py") }
     Get-ChildItem -LiteralPath (Join-Path $repoRoot "scripts") -File -Force |
         Where-Object { $_.Name -cne "policy-scan.ps1" }
 )
 $approvedPhaseControlDigest = [string]::Concat(
-    "ba435d5e", "8a38c988", "f07aae35", "b0e04864",
-    "f434ef86", "9e68eda6", "e02ecb6d", "5ad2f544"
+    "2943e077", "8571b036", "bb47d689", "0696a82e",
+    "4a3acbe0", "cf1f88b5", "b1cdc114", "19681168"
 )
 if (
-    $phaseControlFiles.Count -ne 78 -or
+    $phaseControlFiles.Count -ne 90 -or
     (Get-FileSetManifestSha256 -Files $phaseControlFiles) -cne
         $approvedPhaseControlDigest
 ) {
@@ -1708,15 +1762,177 @@ function Get-NormalizedConstantStringContent {
     )
 }
 
+function Assert-ApprovedCacheTagScannerSnapshot {
+    param(
+        [Parameter(Mandatory = $true)][byte[]] $SourceBytes,
+        [Parameter(Mandatory = $true)][string] $Content
+    )
+
+    # This pin was calculated from the approved scanner's complete raw bytes.
+    # It is not learned from the current input and has no caller override.
+    $approvedSourceSha256 = [string]::Concat(
+        "62bc41ac", "c404cdb7", "887f82bf", "16fa13b3",
+        "06f5e8cd", "e9d1b5ac", "da0a5e3c", "1f967b77"
+    )
+    $actualSourceSha256 = [Convert]::ToHexString(
+        [Security.Cryptography.SHA256]::HashData($SourceBytes)
+    ).ToLowerInvariant()
+    if (
+        $SourceBytes.Length -ne 249357 -or
+        -not [string]::Equals(
+            $actualSourceSha256, $approvedSourceSha256,
+            [StringComparison]::Ordinal
+        )
+    ) {
+        throw "The fixed cache-tag provenance scanner raw-byte pin does not match."
+    }
+    $sourceText = [Text.UTF8Encoding]::new($false, $true).GetString($SourceBytes)
+    if (-not [string]::Equals($Content, $sourceText, [StringComparison]::Ordinal)) {
+        throw "The URL inspection content differs from the pinned scanner disk snapshot."
+    }
+}
+
+function Get-CacheTagProvenanceUrlSpan {
+    param([Parameter(Mandatory = $true)][string] $Content)
+
+    # This pure structural proof grants no path or source-version authority.
+    # Production must authenticate the disk bytes and Content before calling it.
+    $parseErrors = $null
+    $ast = [Management.Automation.Language.Parser]::ParseInput(
+        $Content, [ref] $null, [ref] $parseErrors
+    )
+    if (@($parseErrors).Count -ne 0) {
+        throw "The cache-tag provenance source has a PowerShell parse error."
+    }
+    $functions = @($ast.FindAll({
+        param($node)
+        $node -is [Management.Automation.Language.FunctionDefinitionAst] -and
+        [string]::Equals(
+            $node.Name, "Get-ValidatedCacheTagProof", [StringComparison]::Ordinal
+        )
+    }, $true))
+    if (
+        $functions.Count -ne 1 -or
+        $functions[0].Parent -isnot [Management.Automation.Language.NamedBlockAst] -or
+        -not [object]::ReferenceEquals($functions[0].Parent.Parent, $ast)
+    ) {
+        throw "The fixed cache-tag provenance function is not unique and top-level."
+    }
+    $function = $functions[0]
+    $prefix = "`r`n# For information about cache directory tags see "
+    $suffix = "`r`n"
+    $assignments = @($function.FindAll({
+        param($node)
+        $node -is [Management.Automation.Language.AssignmentStatementAst] -and
+        $node.Right -is [Management.Automation.Language.CommandExpressionAst] -and
+        $node.Right.Expression -is [Management.Automation.Language.StringConstantExpressionAst] -and
+        $node.Right.Expression.Value.StartsWith($prefix, [StringComparison]::Ordinal)
+    }, $true))
+    if ($assignments.Count -ne 1) {
+        throw "The fixed cache-tag explanatory assignment is not unique."
+    }
+    $assignment = $assignments[0]
+    $literal = $assignment.Right.Expression
+    $block = $assignment.Parent
+    $branch = $block.Parent
+    if (
+        $assignment.Operator -ne [Management.Automation.Language.TokenKind]::PlusEquals -or
+        $assignment.Left -isnot [Management.Automation.Language.VariableExpressionAst] -or
+        -not [string]::Equals(
+            $assignment.Left.VariablePath.UserPath, "expectedText", [StringComparison]::Ordinal
+        ) -or
+        @($assignment.Right.Redirections).Count -ne 0 -or
+        $literal.StringConstantType -ne [Management.Automation.Language.StringConstantType]::DoubleQuoted -or
+        $block -isnot [Management.Automation.Language.StatementBlockAst] -or
+        $block.Statements.Count -ne 2 -or
+        -not [object]::ReferenceEquals($block.Statements[1], $assignment) -or
+        $branch -isnot [Management.Automation.Language.IfStatementAst] -or
+        $branch.Clauses.Count -ne 1 -or $null -ne $branch.ElseClause -or
+        -not [object]::ReferenceEquals($branch.Clauses[0].Item2, $block) -or
+        -not [object]::ReferenceEquals($branch.Parent, $function.Body.EndBlock) -or
+        -not [string]::Equals(
+            $branch.Clauses[0].Item1.Extent.Text, '$Kind -ceq "Mypy"',
+            [StringComparison]::Ordinal
+        )
+    ) {
+        throw "The cache-tag reference is not the exact inert Mypy explanation statement."
+    }
+    $approvedAssignmentSha256 = [string]::Concat(
+        "aa543a2a", "b94923c4", "9f35f74d", "32a46bee",
+        "043263eb", "5c7ba064", "8ce18c07", "91170019"
+    )
+    $approvedLiteralSha256 = [string]::Concat(
+        "3bedb276", "79d3593b", "221b889e", "74cfb6ea",
+        "416d090a", "2a582fd3", "ff1b5000", "5a94beb2"
+    )
+    $assignmentSha256 = [Convert]::ToHexString(
+        [Security.Cryptography.SHA256]::HashData(
+            [Text.Encoding]::UTF8.GetBytes($assignment.Extent.Text)
+        )
+    ).ToLowerInvariant()
+    $literalSha256 = [Convert]::ToHexString(
+        [Security.Cryptography.SHA256]::HashData([Text.Encoding]::UTF8.GetBytes($literal.Value))
+    ).ToLowerInvariant()
+    if (
+        $assignment.Extent.Text.Length -ne 104 -or
+        $literal.Extent.Text.Length -ne 87 -or $literal.Value.Length -ne 81 -or
+        -not [string]::Equals($assignmentSha256, $approvedAssignmentSha256, [StringComparison]::Ordinal) -or
+        -not [string]::Equals($literalSha256, $approvedLiteralSha256, [StringComparison]::Ordinal) -or
+        -not $literal.Value.EndsWith($suffix, [StringComparison]::Ordinal)
+    ) {
+        throw "The fixed cache-tag explanatory statement or literal has changed."
+    }
+
+    # Extract the unchanged public reference from its authenticated AST constant.
+    # No second URL, encoded URL, domain allowlist, or network destination is added.
+    $url = $literal.Value.Substring($prefix.Length, $literal.Value.Length - $prefix.Length - $suffix.Length)
+    $literalIndex = $literal.Extent.Text.IndexOf($url, [StringComparison]::Ordinal)
+    $sourceIndex = $Content.IndexOf($url, [StringComparison]::Ordinal)
+    $spanStart = $literal.Extent.StartOffset + $literalIndex
+    if (
+        $url.Length -ne 28 -or $literalIndex -lt 0 -or $sourceIndex -ne $spanStart -or
+        $Content.IndexOf($url, $sourceIndex + $url.Length, [StringComparison]::Ordinal) -ne -1
+    ) {
+        throw "The fixed cache-tag reference must occur in exactly one approved source span."
+    }
+    return [pscustomobject]@{
+        Start = $spanStart; Length = $url.Length; Literal = $url; OccurrenceCount = 1
+    }
+}
+
+function Get-CacheTagProvenanceInspectionContent {
+    param(
+        [Parameter(Mandatory = $true)][string] $Path,
+        [Parameter(Mandatory = $true)][string] $Content
+    )
+
+    $approvedPath = [IO.Path]::GetFullPath((Join-Path $repoRoot "scripts\secret-scan.ps1"))
+    if (-not [string]::Equals($Path.Replace("/", "\"), $approvedPath, [StringComparison]::Ordinal)) {
+        return $Content
+    }
+    Assert-SafeRepositoryPath -Path $approvedPath
+    $sourceItem = Get-Item -LiteralPath $approvedPath -Force -ErrorAction Stop
+    if ($sourceItem.PSIsContainer -or [string] $sourceItem.LinkType -ceq "HardLink") {
+        throw "The fixed cache-tag provenance source must be an ordinary repository file."
+    }
+    $sourceBytes = [IO.File]::ReadAllBytes($approvedPath)
+    Assert-ApprovedCacheTagScannerSnapshot -SourceBytes $sourceBytes -Content $Content
+    $span = Get-CacheTagProvenanceUrlSpan -Content $Content
+    # Only this span is removed from the inspection copy, before BOTH original
+    # raw and normalized checks. The disk source and expected tag bytes are intact.
+    return $Content.Remove($span.Start, $span.Length)
+}
+
 function Assert-ExternalUrlTextAllowed {
     param(
         [Parameter(Mandatory = $true)][string] $Path,
         [Parameter(Mandatory = $true)][string] $Content
     )
 
+    $inspectionContent = Get-CacheTagProvenanceInspectionContent -Path $Path -Content $Content
     foreach ($candidate in @(
-        $Content,
-        (Get-NormalizedConstantStringContent -Content $Content)
+        $inspectionContent,
+        (Get-NormalizedConstantStringContent -Content $inspectionContent)
     )) {
         $inspected = $candidate
         if (Test-IsTossConnectorSourcePath -Path $Path) {
@@ -1738,6 +1954,143 @@ function Assert-ExternalUrlTextAllowed {
         if ($inspected -match $nonLocalUrlPattern) {
             throw "An unapproved external URL was found in runtime source: $Path"
         }
+    }
+}
+
+function Assert-CacheTagProvenanceUrlCanaries {
+    param(
+        [Parameter(Mandatory = $true)][string[]] $RawUrlCanaries,
+        [Parameter(Mandatory = $true)][string[]] $NormalizedUrlCanaries
+    )
+
+    $scannerPath = [IO.Path]::GetFullPath((Join-Path $repoRoot "scripts\secret-scan.ps1"))
+    $sourceBytes = [IO.File]::ReadAllBytes($scannerPath)
+    $content = [Text.UTF8Encoding]::new($false, $true).GetString($sourceBytes)
+    Assert-ApprovedCacheTagScannerSnapshot -SourceBytes $sourceBytes -Content $content
+    $span = Get-CacheTagProvenanceUrlSpan -Content $content
+    $url = $span.Literal
+    $inspection = Get-CacheTagProvenanceInspectionContent -Path $scannerPath -Content $content
+    if (
+        $span.OccurrenceCount -ne 1 -or $span.Length -ne 28 -or
+        -not [string]::Equals(
+            $inspection, $content.Remove($span.Start, $span.Length), [StringComparison]::Ordinal
+        ) -or $inspection.Length -ne $content.Length - 28
+    ) {
+        throw "The fixed provenance exception did not remove exactly one approved span."
+    }
+    Assert-ExternalUrlTextAllowed -Path $scannerPath -Content $content
+    $otherPath = Join-Path $repoRoot "scripts\url-policy-negative-canary.ps1"
+    Assert-ExternalUrlTextAllowed -Path $otherPath -Content '$value = "ordinary source"'
+    if (
+        $inspection -match $nonLocalUrlPattern -or
+        (Get-NormalizedConstantStringContent -Content $inspection) -match $nonLocalUrlPattern
+    ) {
+        throw "The exact approved scanner retained an unapproved URL after span inspection."
+    }
+
+    $negativeIds = [Collections.Generic.List[string]]::new()
+    $ast = [Management.Automation.Language.Parser]::ParseInput($content, [ref] $null, [ref] $null)
+    $assignment = $ast.Find({
+        param($node)
+        $node -is [Management.Automation.Language.AssignmentStatementAst] -and
+        $node.Extent.StartOffset -le $span.Start -and $node.Extent.EndOffset -ge $span.Start + $span.Length
+    }, $true).Extent.Text
+    $structuralMutants = [ordered]@{
+        "function-renamed" = $content.Replace("function Get-ValidatedCacheTagProof {", "function DifferentCacheTagProof {")
+        "other-function-occurrence" = $content + "`r`nfunction OtherProvenance { '" + $url + "' }"
+        "second-explanatory-assignment" = $content.Replace($assignment, $assignment + "`r`n        " + $assignment)
+        "same-function-other-statement" = $content.Replace($assignment, $assignment + "`r`n        '" + $url + "'")
+        "moved-other-function" = $content.Replace($assignment, '') + "`r`nfunction OtherProvenance { " + $assignment + " }"
+        "moved-network-argument" = $content.Replace($assignment, "Invoke-WebRequest -Uri '" + $url + "'")
+        "wrong-assignment-target" = $content.Replace($assignment, $assignment.Replace('$expectedText +=', '$endpoint +='))
+        "wrong-branch" = $content.Replace('$Kind -ceq "Mypy"', '$Kind -ceq "Ruff"')
+        "comment-occurrence" = $content + "`r`n# " + $url
+        "changed-provenance-prefix" = $content.Replace("For information about cache directory tags see ", "Network endpoint ")
+        "statement-escaping-drift" = $content.Replace($assignment, $assignment.Replace('`r`n', '`n'))
+    }
+    # Variant construction is confined to negative inputs derived from the
+    # authenticated literal. It is never an allowance or source rewrite.
+    $urlVariants = [ordered]@{
+        "scheme" = $url.Replace("https:", "http:")
+        "domain-root" = $url.Replace("cachedir/", "")
+        "path-extension" = $url + "anything"
+        "query" = $url + "?check=1"
+        "fragment" = $url + "#reference"
+        "other-domain-path" = $url.Replace("cachedir/", "other/")
+        "literal-case" = $url.ToUpperInvariant()
+        "adjacent-external-url" = $url + $url.Replace("bford.info", "outside.invalid")
+    }
+    foreach ($entry in $urlVariants.GetEnumerator()) {
+        $structuralMutants.Add("variant-" + $entry.Key, $content.Replace($url, $entry.Value))
+    }
+    foreach ($entry in $structuralMutants.GetEnumerator()) {
+        Assert-PolicyCanaryRejected -Action {
+            $null = Get-CacheTagProvenanceUrlSpan -Content $entry.Value
+        } -Message "The pure provenance structure accepted negative canary $($entry.Key)."
+        Assert-PolicyCanaryRejected -Action {
+            Assert-ExternalUrlTextAllowed -Path $scannerPath -Content $entry.Value
+        } -Message "The production provenance boundary accepted negative canary $($entry.Key)."
+        $negativeIds.Add("structure-and-production:" + $entry.Key)
+    }
+
+    foreach ($pathEntry in @(
+        [pscustomobject]@{ Id = "other-file"; Path = $otherPath },
+        [pscustomobject]@{ Id = "dot-alias"; Path = (Join-Path $repoRoot "scripts\.\secret-scan.ps1") },
+        [pscustomobject]@{ Id = "case-alias"; Path = $scannerPath.Replace("secret-scan.ps1", "SECRET-SCAN.ps1") },
+        [pscustomobject]@{ Id = "relative-alias"; Path = "scripts\secret-scan.ps1" }
+    )) {
+        Assert-PolicyCanaryRejected -Action {
+            Assert-ExternalUrlTextAllowed -Path $pathEntry.Path -Content $content
+        } -Message "The provenance path boundary accepted negative canary $($pathEntry.Id)."
+        $negativeIds.Add("path:" + $pathEntry.Id)
+    }
+    $changedBytes = [byte[]] $sourceBytes.Clone()
+    $changedBytes[0] = $changedBytes[0] -bxor 1
+    Assert-PolicyCanaryRejected -Action {
+        Assert-ApprovedCacheTagScannerSnapshot -SourceBytes $changedBytes -Content $content
+    } -Message "The raw scanner pin accepted a one-byte mutation."
+    $negativeIds.Add("raw-pin:one-byte-change")
+    Assert-PolicyCanaryRejected -Action {
+        Assert-ApprovedCacheTagScannerSnapshot -SourceBytes $sourceBytes -Content ($content + " ")
+    } -Message "The source snapshot accepted content that differs from its exact disk bytes."
+    $negativeIds.Add("content:disk-mismatch")
+    Assert-PolicyCanaryRejected -Action {
+        Assert-ExternalUrlTextAllowed -Path $scannerPath -Content ($content + " ")
+    } -Message "The production path accepted content that differs from the scanner disk bytes."
+    $negativeIds.Add("production:disk-content-mismatch")
+
+    # Reach the original raw/normalized checks independently of the outer pin:
+    # the pure AST proof removes only its span, leaving every prior URL canary.
+    foreach ($group in @(
+        [pscustomobject]@{ Name = "raw"; Values = $RawUrlCanaries },
+        [pscustomobject]@{ Name = "normalized"; Values = $NormalizedUrlCanaries }
+    )) {
+        $index = 0
+        foreach ($outsideUrl in $group.Values) {
+            $index += 1
+            $mutant = $content + "`r`n# " + $outsideUrl
+            $mutantSpan = Get-CacheTagProvenanceUrlSpan -Content $mutant
+            $remaining = $mutant.Remove($mutantSpan.Start, $mutantSpan.Length)
+            $rawHit = $remaining -match $nonLocalUrlPattern
+            $normalizedHit = (Get-NormalizedConstantStringContent -Content $remaining) -match $nonLocalUrlPattern
+            if (($group.Name -ceq "raw" -and -not $rawHit) -or -not $normalizedHit) {
+                throw "The single-span view hid an existing $($group.Name) URL canary."
+            }
+            Assert-PolicyCanaryRejected -Action {
+                Assert-ExternalUrlTextAllowed -Path $otherPath -Content $remaining
+            } -Message "The original URL check accepted an outside-span $($group.Name) canary."
+            Assert-PolicyCanaryRejected -Action {
+                Assert-ExternalUrlTextAllowed -Path $scannerPath -Content $mutant
+            } -Message "The production scanner boundary accepted an added $($group.Name) URL canary."
+            $negativeIds.Add("outside-span:" + $group.Name + ":" + $index)
+        }
+    }
+    return [pscustomobject]@{
+        PositiveCount = 4
+        NegativeCount = $negativeIds.Count
+        StructuralNegativeCount = $structuralMutants.Count
+        ApprovedSpanCount = $span.OccurrenceCount
+        NegativeIds = $negativeIds.ToArray()
     }
 }
 
@@ -2085,6 +2438,14 @@ foreach ($canary in $authorityRegistryBoundaryCanaries) {
         } `
         -Message "The exact issuer-authority locator policy accepted a path, host, or credential bypass canary."
 }
+$cacheTagUrlCanaryResult = Assert-CacheTagProvenanceUrlCanaries `
+    -RawUrlCanaries $urlCanaries -NormalizedUrlCanaries $normalizedUrlCanaries
+Write-Host (
+    "Fixed cache-tag provenance URL canaries passed: " +
+    "$($cacheTagUrlCanaryResult.PositiveCount) positive, " +
+    "$($cacheTagUrlCanaryResult.NegativeCount) negative; " +
+    "$($cacheTagUrlCanaryResult.ApprovedSpanCount) approved source span; network authority 0."
+)
 $httpxImportCanary = [string]::Concat("import http", "x")
 Assert-RawPatternRejectsCanary `
     -Pattern $httpxImportPattern `
@@ -2405,10 +2766,26 @@ Assert-NoRawPattern `
     -Pattern $prohibitedProviderRuntimePattern `
     -Message "A prohibited provider import or call was found." `
     -Files $sourceFiles
+# R1 expressly requires Win32 OWNER/TOKEN_USER calls. Only this exact R1
+# artifact may cross the native-API boundary; edits or copies elsewhere fail.
+# All other policy checks still scan this file, and all escape canaries above
+# remain mandatory. This grants no general ctypes/process/network exception.
+$r1OwnerBoundaryPath = [System.IO.Path]::GetFullPath(
+    (Join-Path $repoRoot "services\api\src\toss_dashboard_api\reviewer\windows_owner.py")
+)
+Assert-ApprovedFileSha256 -Path $r1OwnerBoundaryPath -ExpectedSha256 ([string]::Concat(
+    "7965cd9c", "838bd8b4", "02ca482d", "40fba56d",
+    "03474600", "4e2aaecb", "475c5053", "92076a9b"
+))
+$r1NonNativeApplicationSources = @(
+    $applicationRuntimeSourceFiles | Where-Object {
+        $_.FullName -cne $r1OwnerBoundaryPath
+    }
+)
 Assert-NoRawPattern `
     -Pattern $prohibitedApplicationEscapePattern `
     -Message "A low-level process, native-network, or unmediated browser escape was found." `
-    -Files $applicationRuntimeSourceFiles
+    -Files $r1NonNativeApplicationSources
 $httpxForbiddenRuntimeSourceFiles = @(
     $runtimeSourceFiles | Where-Object {
         -not (Test-IsTossConnectorSourcePath -Path $_.FullName)

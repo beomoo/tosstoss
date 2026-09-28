@@ -29,7 +29,7 @@
   `ACCEPTED` (`2026-08-29`)
 - Vendor-neutral WebAuthn human-authority boundary: ADR-019
   `ACCEPTED`; proposal date `2026-08-29`, decision date `2026-08-31`
-- Runtime implementation:
+- Historical runtime implementation at the 0006 schema closeout:
   `0 / NOT STARTED / REQUIRES SEPARATE AUTHORIZATION`
 - Migration file creation: `1` (additive `0006`); persistent application: `0`
 - Automatic progression: `PROHIBITED`
@@ -1698,3 +1698,33 @@ credential type, trust root, recovery or runtime is authorized.
 - R1: `NOT STARTED / REQUIRES SEPARATE AUTHORIZATION`
 - B2-D / CP3-C2-C / CP3-D: `NOT STARTED`
 - automatic progression: `PROHIBITED`
+
+## Later `0007` migration implementation status — non-normative
+
+All earlier `0007 NOT CREATED / NOT AUTHORIZED` statements in this remediation
+record describe the proposal-era checkpoint. A later, separate user authorization
+produced only the exact additive
+`0007_phase_02_cp3_c2_b2_c_counter_capability_bootstrap` migration, dedicated and
+integration migration tests, and one additive database-revision compatibility
+allowlist entry. Its current status is `PASS — CLOSED`; explicit user closeout
+`2026-09-05` is recorded in
+`qa/PHASE_02_CP3_C2_B2_C_0007_ACCEPTANCE_CLOSEOUT_GPT_REPORT.md`.
+
+The implementation preserves frozen migrations `0001`–`0006`, applies nothing
+to persistent `var/dashboard.db`, and adds no WebAuthn ceremony/runtime, service,
+route, UI, human-approval execution, or dependency at that schema checkpoint.
+R1 backend core is now separately `NOT VERIFIED — FINAL QA BLOCKED`.
+The latest CSV257 correction (2026-09-09) passed final CSV and unchanged generated
+focused gates. Exact policy/index/document and preservation checks precede one
+authorized full QA; full result/final scans remain pending, with no commit/push.
+OBS-04 local PASS and original CSVs remain preserved; this changes no schema.
+Its historical SCAN02-01/02 correction passed final focused verification on 2026-09-08,
+then stopped before full QA at `NV-CSV` (CSV result observer unverified).
+The dated entry in `DECISIONS.md` does not alter this frozen schema;
+historical scanner failures and witness remain preserved.
+All seven migrations remain frozen. The dated R1 authority addendum in
+`DECISIONS.md` records the accepted expiry/target-selection clarifications.
+Routes, browser ceremonies and issuer-approval execution remain not started and
+require separate authorization. Public Read-only Deployment and Automated
+Trading remain `FUTURE / NOT AUTHORIZED / NOT STARTED`; automatic progression
+remains `PROHIBITED`.

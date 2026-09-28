@@ -6,15 +6,24 @@
 - ADR-018: `ACCEPTED` (`2026-08-29`)
 - ADR-019: `ACCEPTED`; proposal date `2026-08-29`, decision date `2026-08-31`
 - `0006`: `PASS — CLOSED`
-- proposed future migration:
+- separately authorized additive migration:
   `0007_phase_02_cp3_c2_b2_c_counter_capability_bootstrap`
-- `0007`: `NOT CREATED / NOT AUTHORIZED`
-- R1: `NOT STARTED / REQUIRES SEPARATE AUTHORIZATION`
+- `0007`: `PASS — CLOSED`; explicit user closeout `2026-09-05`
+- R1 backend core: `NOT VERIFIED — FINAL QA BLOCKED`
+- Latest limited work (`2026-09-09`): CSV257 direct provenance/focused and
+  unchanged generated regression passed; one full QA follows only exact
+  policy/index/document and preservation/cleanup gates. Full result and final
+  scans remain pending. No schema/runtime amendment or commit/push.
+- Historical operational STOP (`2026-09-08`): SCAN02-01/02 final focused exit 0, but
+  `NV-CSV` result observer remains unverified, blocking full QA. Historical
+  scanner evidence retained; no schema or runtime semantic amendment.
 - automatic progression: `PROHIBITED`
 
 This document is the implementation-ready, normative schema companion to
-accepted ADR-018. It describes a future additive migration only. It does not
-authorize or create that migration and does not alter `0001`–`0006`.
+accepted ADR-018. It originally described a future additive migration only;
+subsequent separate user authorization permitted only the exact `0007` migration
+and migration tests. That implementation does not authorize R1 and does not
+alter frozen `0001`–`0006`.
 
 ## 2. Selected state machine
 
@@ -666,9 +675,20 @@ assertion hash. The graph is acyclic.
 
 ## 13. Scope and gate
 
-This proposal changes application, migration, test, dependency, fixture, and
-frontend files by `0`. It performs no trusted-human WebAuthn or issuer-approval
-runtime. ADR-017, ADR-018 and ADR-019 are accepted. ADR-019 is vendor-neutral
-and amends only authenticator-vendor provenance; it changes none of this schema
-companion. `0007` is not created and not authorized. R1, B2-D, CP3-C2-C, and
-CP3-D remain not started. R1 requires separate authorization.
+At proposal time this document changed application, migration, test, dependency,
+fixture, and frontend files by `0`. A later, separately authorized implementation
+created only the exact additive `0007`, dedicated/integration migration tests,
+and one additive database-revision compatibility allowlist entry. It added no
+trusted-human WebAuthn or issuer-approval runtime and no dependency. ADR-017,
+ADR-018 and ADR-019 are accepted. ADR-019 is vendor-neutral and amends only
+authenticator-vendor provenance; it changes none of this schema companion.
+`0007` is now `PASS — CLOSED` under the explicit user closeout dated `2026-09-05`
+in `qa/PHASE_02_CP3_C2_B2_C_0007_ACCEPTANCE_CLOSEOUT_GPT_REPORT.md`.
+R1 backend core is separately `NOT VERIFIED — FINAL QA BLOCKED`.
+The user-approved continuation expiry is exactly
+`min(issued_at + 5 minutes, parent_registration_challenge.expires_at)` with
+strictly positive duration; an already-expired parent receives no child and
+terminalizes `EXPIRED`. Every ordinary 0006 challenge still expires exactly five
+minutes after issuance. Frozen `0001`–`0007` are unchanged; no `0008`.
+B2-D, CP3-C2-C, CP3-D, routes/browser ceremonies and issuer-approval execution
+remain not started and require separate authorization.

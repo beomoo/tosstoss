@@ -1001,9 +1001,9 @@ async function verifyLoopbackAllowance(fetchState) {
 }
 
 async function main() {
-  assert.equal(process.platform, "win32", "Phase 1 requires Windows.");
-  assert.equal(process.arch, "x64", "Phase 1 requires Windows x64.");
-  require("@next/swc-win32-x64-msvc");
+  assert.ok(["win32", "linux"].includes(process.platform), "Phase 1 requires Windows or Linux.");
+  assert.equal(process.arch, "x64", "Phase 1 requires x64.");
+  require(process.platform === "win32" ? "@next/swc-win32-x64-msvc" : "@next/swc-linux-x64-gnu");
 
   for (const prohibitedPackage of ["@img/sharp-wasm32", "@emnapi/runtime"]) {
     assert.throws(

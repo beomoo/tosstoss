@@ -54,6 +54,8 @@ _APPROVED_RUFF_ARGUMENTS = (
 _PROCESS_CREATION_EVENTS = frozenset(
     {
         "os.exec",
+        "os.fork",
+        "os.forkpty",
         "os.posix_spawn",
         "os.spawn",
         "os.startfile",
@@ -310,10 +312,25 @@ def _is_approved_guarded_uvicorn_child(arguments: tuple[object, ...]) -> bool:
     if (
         type(executable) is not str
         or executable != sys.executable
-        or type(command_line) is not str
         or type(working_directory) is not str
         or working_directory != str(_REPO_ROOT)
     ):
+        return False
+    if type(command_line) is list:
+        if (
+            sys.platform == "win32"
+            or len(command_line) != 16
+            or any(type(part) is not str for part in command_line)
+        ):
+            return False
+        port_text = command_line[12]
+        if not (port_text.isascii() and port_text.isdecimal() and 1 <= int(port_text) <= 65535):
+            return False
+        return any(
+            command_line == _approved_guarded_uvicorn_argv(application, int(port_text))
+            for application in _APPROVED_UVICORN_APPLICATIONS
+        )
+    if sys.platform != "win32" or type(command_line) is not str:
         return False
 
     suffix = _LIST2CMDLINE(["--no-access-log", "--log-config", str(_UVICORN_LOG_CONFIG)])
@@ -403,13 +420,16 @@ def _activate_guarded_site() -> None:
     site.main()
     try:
         active_prefix = Path(sys.prefix).resolve(strict=True)
-        active_executable = Path(sys.executable).resolve(strict=True)
         expected_venv = _VENV_ROOT.resolve(strict=True)
+        active_executable = Path(sys.executable).absolute()
+        resolved_executable = Path(sys.executable).resolve(strict=True)
     except OSError as error:
         raise RuntimeError("The guarded Python virtual environment is invalid.") from error
     if (
         active_prefix != expected_venv
-        or active_executable.parent.parent != expected_venv
+        or active_executable
+        != expected_venv / ("Scripts/python.exe" if sys.platform == "win32" else "bin/python")
+        or (sys.platform == "win32" and resolved_executable.parent.parent != expected_venv)
         or site.ENABLE_USER_SITE is not False
     ):
         raise RuntimeError("The guarded Python runtime did not activate the exact repository venv.")
@@ -452,7 +472,7 @@ def _assert_process_creation_guard() -> None:
     )
     approved_audit_arguments: tuple[object, ...] = (
         sys.executable,
-        _LIST2CMDLINE(approved_argv),
+        _LIST2CMDLINE(approved_argv) if sys.platform == "win32" else approved_argv,
         str(_REPO_ROOT),
         {},
     )
@@ -463,7 +483,7 @@ def _assert_process_creation_guard() -> None:
     if _is_approved_guarded_uvicorn_child(
         (
             sys.executable,
-            _LIST2CMDLINE(rejected_command),
+            _LIST2CMDLINE(rejected_command) if sys.platform == "win32" else rejected_command,
             str(_REPO_ROOT),
             {},
         )
