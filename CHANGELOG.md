@@ -1,5 +1,11 @@
 # Changelog
 
+# 2026-09-29 — CP3-C2-C1 Security authority design handoff
+
+- Added a versioned, Security-specific authority contract and proposed ADR-020 for an additive 0008 schema, KR KRX ISIN and US SEC registered-class anchors, issuer-head prerequisite, collision/cascade behavior, two-authorization supersession, and a v2 current mapping head.
+- Recorded the design checkpoint in `STATUS.md` and `plans/PHASE_02_EXECUTION_PLAN.md`. C1 is `DESIGNED — GPT INDEPENDENT REVIEW REQUIRED`; ADR-020 remains `PROPOSED`. No runtime or migration was implemented, and C2/C3 remain unauthorized.
+
+
 ## Unreleased — CP3-C2-B2-D and CP3-C2-B user closeout — 2026-09-29
 
 - The user accepted independent GPT final review of B2-D candidate `3216043a531372a1ff04002b76f522d38ed03568`: `PASS WITH ISSUES`, Critical `0`, Major `0`, M1/M2 `CLOSED`, unauthorized changes `0`, required code fixes `0`, required B2-D QA reruns `0`. CP3-C2-B2-D is `PASS WITH ISSUES — CLOSED`.
