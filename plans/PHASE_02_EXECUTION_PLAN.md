@@ -1,13 +1,20 @@
 # Phase 2 토스증권 읽기 전용 데이터 실행계획
 
-## Current R1 closeout — 2026-09-28
+## Current CP3-C2-B implementation closeout — 2026-09-29
+
+- Exact B2-D candidate `3216043a531372a1ff04002b76f522d38ed03568` was independently reviewed `PASS WITH ISSUES` (Critical `0`, Major `0`, M1/M2 `CLOSED`, required code fixes `0`, required B2-D QA reruns `0`) and accepted by the user as CP3-C2-B2-D `PASS WITH ISSUES — CLOSED`.
+- Integration merge `1eedc36e571d408c3fe33e726521907224efb971` has approved base and candidate as parents and exactly the approved candidate tree. With B1, B2-A, B2-B, B2-C/0006/0007 and R1 backend core already closed, CP3-C2-B implementation is `PASS WITH ISSUES — CLOSED`.
+- The qualification preserves randomized secret-scan self-canary reproducibility, absent separately named exact-duplicate REJECTED/REVOKED tests, and R1 physical remote-volume/missing-ACL negative cases validated only by controlled simulations.
+- CP3-C2-C Canonical Security Authority / Final Mapping and CP3-D remain `NOT STARTED`; Phase 2 remains `IMPLEMENTATION IN PROGRESS`. Starting CP3-C2-C requires a new explicit user authorization. No Security creation, VERIFIED mapping, final security-class/ISIN/CUSIP/listing authority or automatic progression is authorized by this closeout.
+
+## Historical R1 closeout — 2026-09-28
 
 B2-C R1 backend core is `PASS — CLOSED` following user closeout. R1 Windows Final QA is `PASS WITH ISSUES` with Critical `0`, Major `0`, required code fixes `0`, and required QA reruns `0`. Remote-volume and missing-ACL Windows negative cases used controlled simulations rather than physical remote or missing-ACL devices; this P2 is non-blocking. CP3-C2-B implementation remains `IN PROGRESS`; B2-D, CP3-C2-C and CP3-D remain `NOT STARTED`; Phase 2 remains `IMPLEMENTATION IN PROGRESS`. Earlier dated STOP and failed-QA entries below are historical evidence.
 
 - 계획 상태: `PHASE 2 IMPLEMENTATION IN PROGRESS`
-- Current checkpoint: `CP3-C2-B2-A PASS — CLOSED / CP3-C2-B2-B PASS — CLOSED / CP3-C2-B IMPLEMENTATION IN PROGRESS / ADR-015 ACCEPTED / ADR-016 ACCEPTED / ADR-017 ACCEPTED / ADR-018 ACCEPTED / ADR-019 ACCEPTED / CP3-C2-B2-C 0006 PASS — CLOSED / 0007 PASS — CLOSED / B2-C R1 BACKEND CORE PASS — CLOSED`
+- Current checkpoint: `CP3-C2-B1 PASS — CONTRACT APPROVED AND CLOSED / CP3-C2-B2-A PASS — CLOSED / CP3-C2-B2-B PASS — CLOSED / CP3-C2-B2-C 0006 PASS — CLOSED / 0007 PASS — CLOSED / B2-C R1 BACKEND CORE PASS — CLOSED / CP3-C2-B2-D PASS WITH ISSUES — CLOSED / CP3-C2-B IMPLEMENTATION PASS WITH ISSUES — CLOSED / CP3-C2-C NOT STARTED / CP3-D NOT STARTED`
 - 최초 작성·공식 문서 조사일: `2026-08-23` (`Asia/Seoul`)
-- 현재 상태 갱신일: `2026-09-28` (`Asia/Seoul`)
+- 현재 상태 갱신일: `2026-09-29` (`Asia/Seoul`)
 - 기준 브랜치: `feature/phase-02-toss`
 - CP3-A 시작 commit: `6bd5d2ae9c26f02f2cd4bd75a474633a9082fa16`
 - Remote main/merge-base: `353159da45cfbe3a7f444bf476ce86fa9aece17c`
@@ -26,7 +33,7 @@ B2-C R1 backend core is `PASS — CLOSED` following user closeout. R1 Windows Fi
 - CP3-C1: `PASS — CLOSED`
 - CP3-C2-A canonical promotion authority: `PASS — CONTRACT APPROVED AND CLOSED`
 - CP3-C2-B1 issuer-authority runtime contract/migration design: `PASS — CONTRACT APPROVED AND CLOSED`
-- CP3-C2-B implementation: `IN PROGRESS`
+- CP3-C2-B implementation: `PASS WITH ISSUES — CLOSED`
 - CP3-C2-B2-A: `PASS — CLOSED`
 - CP3-C2-B2-B: `PASS — CLOSED`
 - CP3-C2-B2-C schema: `PASS — CLOSED`
@@ -52,10 +59,10 @@ B2-C R1 backend core is `PASS — CLOSED` following user closeout. R1 Windows Fi
 - Historical limited work (2026-09-08): SCAN02-01/02 final focused exit 0; P=2406, D=E=2401,
   proof-only unregistered=5. STOP at NV-CSV (result observer unverified). Earlier
   failures/witness retained. No full QA/scans, policy update, staging or commit/push.
-- Routes/browser ceremonies/issuer approval: `NOT STARTED / REQUIRES SEPARATE AUTHORIZATION`
+- Browser ceremonies/route/UI integration: `NOT STARTED`; local B2-D issuer disposition backend: `PASS WITH ISSUES — CLOSED`
 - `0007_phase_02_cp3_c2_b2_c_counter_capability_bootstrap`:
   `PASS — CLOSED`; user closeout `2026-09-05`
-- CP3-C2-B2-D: `NOT STARTED`
+- CP3-C2-B2-D: `PASS WITH ISSUES — CLOSED`
 - CP3-C2-C: `NOT STARTED`
 - CP3-D: `NOT STARTED`
 - Public Read-only Deployment: `FUTURE / NOT AUTHORIZED / NOT STARTED`
@@ -872,10 +879,9 @@ CP2-A의 통과는 CP2 전체 통과가 아니며, 아래 기존 완료 조건�
 
 ### CP3-C2-B implementation — Canonical Issuer Authority / Mapping
 
-- 상태: `IN PROGRESS`
+- 상태: `PASS WITH ISSUES — CLOSED` (2026-09-29 user closeout)
 - 진입 승인: B1 closeout 뒤 별개의 명시적 사용자 implementation 시작 승인 완료
-- 현재 implementation: CP3-C2-B2-C `0007 PASS — CLOSED`; 별도 승인된 R1 backend
-  core는 최종 QA 미완료; CSV257 전수 검산과 최종 CSV/generated focused 통과 후 exact policy/index/보존 gate 및 전체 QA 1회 진입 단계. 이후 sub-checkpoint에는 진입하지 않음
+- 현재 closeout: B2-A/B2-B/B2-C/0006/0007/R1 backend core `PASS — CLOSED`; B2-D `PASS WITH ISSUES — CLOSED`; overall CP3-C2-B implementation `PASS WITH ISSUES — CLOSED`. The earlier implementation-entry QA sequence below records its historical checkpoint state.
 - B2-A 상태: `PASS — CLOSED`
 - B2-A 범위: versioned source-policy/evidence/observation/relation/application/
   bundle/claim/decision contract, deterministic ID/hash, additive 21-table

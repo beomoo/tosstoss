@@ -1,6 +1,10 @@
 # Phase 2 CP3-C2-B1 — Issuer Authority Runtime Contract and Additive Migration Design
 
-## Current downstream R1 status — 2026-09-28
+## Current downstream implementation closeout — 2026-09-29
+
+The B1 contract remains `PASS — CONTRACT APPROVED AND CLOSED`. The user accepted independent GPT verification of exact B2-D candidate `3216043a531372a1ff04002b76f522d38ed03568` as `PASS WITH ISSUES` (Critical `0`, Major `0`, M1/M2 `CLOSED`, required code fixes `0`, required B2-D QA reruns `0`) and closed CP3-C2-B2-D as `PASS WITH ISSUES — CLOSED`. After exact integration, overall CP3-C2-B implementation is `PASS WITH ISSUES — CLOSED`. Non-blocking scanner self-canary reproducibility, absent separately named exact-duplicate REJECTED/REVOKED tests and physical R1 remote-volume/missing-ACL negatives remain. CP3-C2-C Canonical Security Authority / Final Mapping and CP3-D are `NOT STARTED`; Phase 2 remains `IMPLEMENTATION IN PROGRESS`. This documentation closeout does not change the B1 normative contract or authorize Security/VERIFIED mapping work.
+
+## Historical downstream R1 status — 2026-09-28
 
 The B1 contract remains `PASS — CONTRACT APPROVED AND CLOSED`. Separately implemented B2-C R1 backend core is `PASS — CLOSED` after user closeout and R1 Windows Final QA `PASS WITH ISSUES` (Critical `0`, Major `0`, required code fixes `0`, required QA reruns `0`). Remote-volume and missing-ACL Windows negative cases used controlled simulations; physical remote and missing-ACL devices were not validated, a non-blocking P2. CP3-C2-B remains `IN PROGRESS`; B2-D, CP3-C2-C and CP3-D remain `NOT STARTED`; Phase 2 remains `IMPLEMENTATION IN PROGRESS`. Earlier B1-era and dated R1 STOP statements below are historical snapshots.
 
@@ -18,7 +22,7 @@ The B1 contract remains `PASS — CONTRACT APPROVED AND CLOSED`. Separately impl
 - Closeout decision: `ADR-014 — ACCEPTED`
 - B1 closeout production-implementation snapshot:
   `NOT STARTED — REQUIRES SEPARATE USER START APPROVAL`
-- Current implementation status: `IN PROGRESS`
+- Current implementation status: `PASS WITH ISSUES — CLOSED`
 - CP3-C2-B2-A: `PASS — CLOSED`
 - CP3-C2-B2-B: `PASS — CLOSED`
 - CP3-C2-B2-C `0006` schema implementation: `PASS — CLOSED`
@@ -27,7 +31,7 @@ The B1 contract remains `PASS — CONTRACT APPROVED AND CLOSED`. Separately impl
 - ADR-017: `ACCEPTED` (`2026-08-29`)
 - ADR-018: `ACCEPTED` (`2026-08-29`)
 - ADR-019: `ACCEPTED` (proposal date `2026-08-29`, decision date `2026-08-31`)
-- CP3-C2-B2-D: `NOT STARTED`
+- CP3-C2-B2-D: `PASS WITH ISSUES — CLOSED`
 - Migration implementation: additive `0005` implemented in B2-A; production
   database application `0`
 - Automatic checkpoint progression: `PROHIBITED`

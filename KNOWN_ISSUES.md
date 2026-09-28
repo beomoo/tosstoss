@@ -1,16 +1,27 @@
 # Known Issues and Open Questions
 
+## Current CP3-C2-B closeout issues — 2026-09-29
+
+CP3-C2-B2-D and overall CP3-C2-B implementation are `PASS WITH ISSUES — CLOSED` after the user's acceptance of independent review. Non-blocking limitations remain: KI-014 randomized scanner self-canary reproducibility; KI-021 missing separately named exact-duplicate REJECTED/REVOKED regression cases; and R1 physical remote-volume/missing-ACL negative cases validated through controlled simulations, not physical devices. None is represented as a required B2-D code fix or QA rerun. CP3-C2-C and CP3-D remain `NOT STARTED`.
+
 ## KI-019 — B2-D standard secret scanner artifact population
 
-- 상태: `RESOLVED FOR B2-D CANDIDATE — GPT FINAL INDEPENDENT VERIFICATION REQUIRED` (`2026-09-28`).
+- 상태: `RESOLVED FOR B2-D — PASS WITH ISSUES — CLOSED` (`2026-09-29`).
 - 이전 차단: 새 B2-D production Python 모듈로 pinned Windows mypy metadata가 854에서 855로 늘어 기존 strict scan이 exit `1`이었다.
 - 해결 증거: 동일 Windows-native Python/mypy에서 base 67 source/854 metadata와 candidate 68 source/855 metadata를 비교했다. 추가된 metadata는 승인된 `reviewer/issuer_disposition.py` 하나뿐이다. 고정 inventory/proof/finding 수만 정확히 동기화했고, 최종 standard secret scan은 exit `0`이었다. 탐지·임계값·예외·제외 범위는 변경하지 않았다. `qa/CP3_C2_B2_D_SCANNER_COUNT_PROOF.txt` 참조.
 
 ## KI-020 — B2-D Windows OWNER verification context
 
-- 상태: `RESOLVED FOR BOUNDED B2-D OWNER QA — GPT FINAL INDEPENDENT VERIFICATION REQUIRED` (`2026-09-28`).
+- 상태: `RESOLVED FOR BOUNDED B2-D OWNER QA — PASS WITH ISSUES — CLOSED` (`2026-09-29`).
 - 이전 차단: Linux backend의 frozen OWNER 7건은 `WINDOWS_REQUIRED`였고 Computer Use는 WSL 경로에서 초기화되지 않았다. 이 결과는 Windows OWNER 증명이 아니다.
 - 해결 증거: Windows-local byte-identical candidate에서 `python -B`로 B2-D production entry와 기존 R1 Win32 OWNER/TOKEN_USER `EqualSid` 경계를 통과하는 disposable-DB probe 및 직접 관련 R1 test가 `2 passed` (exit `0`)였다. Windows-native full backend `1121 passed` (exit `0`)에도 OWNER tests가 포함됐다. `qa/CP3_C2_B2_D_WINDOWS_OWNER_PROOF.txt` 참조.
+
+## KI-021 — B2-D exact-duplicate REJECTED/REVOKED named regression coverage
+
+- 상태: `OPEN — NON-BLOCKING TEST COVERAGE LIMITATION` (`2026-09-29`).
+- 관찰: B2-D focused tests cover common idempotency, duplicate APPROVED, challenge completion, concurrency and rollback, but do not contain separately named exact-duplicate regression cases for `REJECTED` and `REVOKED`.
+- 독립검증: GPT inspected the common idempotency implementation and found no functional defect; Critical `0`, Major `0`, required B2-D code fixes `0`, required B2-D QA reruns `0`. This remains a coverage limitation, not a B2-D closeout blocker.
+- 대응 경계: No test or implementation change is authorized by this documentation closeout. Preserve the limitation for a separately authorized future QA task.
 
 ## Historical R1 status — 2026-09-28
 
@@ -99,6 +110,8 @@ B2-C R1 is `PASS — CLOSED` after R1 Windows Final QA `PASS WITH ISSUES` and us
 - 관찰: CP3-C1 Codex self-report의 final successful run 전 실행 기록에서 변경되지 않은 secret-scan의 randomized self-canary가 간헐적으로 자체 거부 조건을 만족하지 못한 현상이 관찰됐다. 이후 독립 secret-scan과 최종 전체 회귀에서는 PASS했다.
 - 영향: 랜덤 self-canary의 재현성에 관한 비차단 QA infrastructure P2다. repository secret 노출이나 CP3-C1 기능 결함의 증거는 확인되지 않았다.
 - 현재 대응: scanner source, threshold, filter, scope를 변경하지 않는다. self-report의 exact entropy 설명은 GPT가 독립적으로 검증하지 않았으며 확립된 원인으로 기록하지 않는다. 근본 원인은 미검증 상태로 별도 QA infrastructure 조사에 이월한다.
+
+- B2-D final-tree observation: one standalone scan failed within the unchanged randomized high-entropy self-canary before repository verdict; one exact unchanged rerun and the standard full secret scan passed. Independent review accepted this as non-blocking QA reproducibility, not an implementation defect. The scanner detector, threshold, exceptions and coverage remain unchanged.
 
 ## KI-015 — CP3-C2-B2-C WebAuthn enrollment/credential-operation schema gap
 

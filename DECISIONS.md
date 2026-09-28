@@ -1,5 +1,14 @@
 # Architecture Decision Record
 
+## CP3-C2-B2-D and CP3-C2-B implementation user closeout — 2026-09-29
+
+- Reviewed candidate: `3216043a531372a1ff04002b76f522d38ed03568`, tree `d02154c54c971ffc26e6ea153f18c58f63ba58df`.
+- Independent GPT final verdict accepted by the user: CP3-C2-B2-D `PASS WITH ISSUES`, Critical `0`, Major `0`, M1/M2 `CLOSED`, unauthorized changes `0`, required code fixes `0`, required B2-D QA reruns `0`. User decision: CP3-C2-B2-D `PASS WITH ISSUES — CLOSED`.
+- Exact integration into `feature/phase-02-toss` used merge `1eedc36e571d408c3fe33e726521907224efb971`, parent 1 `48d4201281db2fabdb58f09ba6860bd184e722c8`, parent 2 `3216043a531372a1ff04002b76f522d38ed03568`, with merge tree equal to the approved candidate tree.
+- The user authorized CP3-C2-B implementation `PASS WITH ISSUES — CLOSED`, based on B1, B2-A, B2-B, B2-C/0006/0007, R1 backend core and B2-D accepted closeouts. This does not close CP3-C2 or Phase 2.
+- Non-blocking issues remain open: randomized secret-scan self-canary reproducibility; no separately named exact-duplicate REJECTED/REVOKED regression cases despite inspected common idempotency behavior; and untested physical remote-volume and missing-ACL Windows negatives (controlled simulations only). Acceptance does not claim their resolution.
+- CP3-C2-C Canonical Security Authority / Final Mapping and CP3-D remain `NOT STARTED`. Security creation, VERIFIED provider mapping, security-class/ISIN/CUSIP/listing final authority, public exposure and trading require separate authorization. No automatic progression, main merge, tag, release or deployment is authorized.
+
 ## R1 backend core closeout record — 2026-09-28
 
 - User decision: B2-C R1 `PASS — CLOSED` following GPT independent R1 Windows Final QA `PASS WITH ISSUES`.

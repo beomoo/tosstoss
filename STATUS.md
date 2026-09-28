@@ -1,6 +1,14 @@
 # Project Status
 
-## Current B2-D candidate — 2026-09-28
+## Current CP3-C2-B closeout — 2026-09-29
+
+- The user accepted independent GPT final review of exact B2-D candidate `3216043a531372a1ff04002b76f522d38ed03568`: `PASS WITH ISSUES`, Critical `0`, Major `0`, required code fixes `0`, required B2-D QA reruns `0`; M1/M2 `CLOSED`. CP3-C2-B2-D is `PASS WITH ISSUES — CLOSED`.
+- Exact candidate integration merge `1eedc36e571d408c3fe33e726521907224efb971` on `feature/phase-02-toss` has parents `48d4201281db2fabdb58f09ba6860bd184e722c8` and `3216043a531372a1ff04002b76f522d38ed03568`; merge tree `d02154c54c971ffc26e6ea153f18c58f63ba58df` equals the approved candidate tree. No application, test, migration, scanner-semantic, dependency or frontend change followed the reviewed candidate.
+- CP3-C2-B1: `PASS — CONTRACT APPROVED AND CLOSED`; B2-A/B2-B/B2-C, `0006`, `0007`, and B2-C R1 backend core: `PASS — CLOSED` at their respective accepted checkpoints. Overall CP3-C2-B implementation: `PASS WITH ISSUES — CLOSED`.
+- The `WITH ISSUES` qualification preserves the non-blocking B2-D randomized secret-scan self-canary reproducibility limitation, absent separately named exact-duplicate REJECTED/REVOKED tests, and R1 physical remote-volume/missing-ACL negative cases validated only by controlled simulation. See `KNOWN_ISSUES.md`.
+- CP3-C2-C Canonical Security Authority / Final Mapping: `NOT STARTED`; CP3-D: `NOT STARTED`; Phase 2: `IMPLEMENTATION IN PROGRESS`. No Security creation, VERIFIED mapping, security-class/ISIN/CUSIP/listing final authority, main merge, tag, release, deployment or automatic next-checkpoint start is authorized.
+
+## Historical B2-D implementation handoff — 2026-09-28
 
 - CP3-C2-B2-D issuer disposition backend: `IMPLEMENTED — GPT FINAL INDEPENDENT VERIFICATION REQUIRED`. The first independent review returned FAIL (Critical 0, Major 2); the bounded remediation and local QA are complete. This is not PASS/CLOSED and does not start CP3-C2-C.
 - Candidate branch: `feature/phase-02-b2d-issuer-disposition`; exact base `48d4201281db2fabdb58f09ba6860bd184e722c8`.
@@ -8,7 +16,7 @@
 - Final focused B2-D: `41 passed`; relevant B2-B/R1/migration regression: `544 passed`; Windows-native repository-standard QA: backend `1121 passed`, frontend unit `43 passed`, E2E `2 passed`, migration repeat/downgrade/re-upgrade, fixture import idempotency, build, lint, typecheck, API contract, secret scan and policy scan all exit `0`. No required test was skipped, xfailed or deselected.
 - Bounded Windows-native B2-D→frozen R1 OWNER/TOKEN_USER `EqualSid` probe plus directly relevant R1 integration test: `2 passed`, exit `0`. The earlier Linux-only 7 `WINDOWS_REQUIRED` failures and Computer Use setup error remain historical platform evidence, superseded for this bounded QA by Windows-native execution.
 - The scanner's fixed mypy metadata inventory is now exactly `855`, proven as the sole authorized B2-D module addition; no detector, threshold, exception or coverage rule changed. See `qa/CP3_C2_B2_D_SCANNER_COUNT_PROOF.txt`.
-- Exact commands, limits, frozen-file proofs, scope audit and final independent-review request: `qa/PHASE_02_CP3_C2_B2_D_SELF_QA.md` and `qa/CP3_C2_B2_D_GPT_REVIEW_REQUEST.md`. Independent final review remains `NOT VERIFIED`.
+- Exact commands, limits, frozen-file proofs, scope audit and final independent-review request: `qa/PHASE_02_CP3_C2_B2_D_SELF_QA.md` and `qa/CP3_C2_B2_D_GPT_REVIEW_REQUEST.md`. Independent final review was `NOT VERIFIED` at that handoff.
 
 ## Historical R1 closeout — 2026-09-28
 
@@ -18,18 +26,18 @@
 - CP3-C2-B implementation: `IN PROGRESS`; CP3-C2-B2-D, CP3-C2-C and CP3-D: `NOT STARTED`; Phase 2: `IMPLEMENTATION IN PROGRESS`.
 - Earlier dated R1 STOP and failed-QA entries below remain historical evidence. This closeout supersedes their then-current status and does not authorize later checkpoints.
 
-- 프로젝트 상태: `PHASE 2 IMPLEMENTATION IN PROGRESS — CP2 COMPLETE / CP3-A PASS — CONTRACT APPROVED AND CLOSED / CP3-B PASS — CLOSED / CP3-C1 PASS — CLOSED / CP3-C2-A PASS — CONTRACT APPROVED AND CLOSED / CP3-C2-B1 PASS — CONTRACT APPROVED AND CLOSED / CP3-C2-B IMPLEMENTATION IN PROGRESS / CP3-C2-B2-A PASS — CLOSED / CP3-C2-B2-B PASS — CLOSED / ADR-015 ACCEPTED / ADR-016 ACCEPTED / ADR-017 ACCEPTED / ADR-018 ACCEPTED / ADR-019 ACCEPTED / CP3-C2-B2-C 0006 PASS — CLOSED / CP3-C2-B2-C 0007 PASS — CLOSED / B2-C R1 PASS — CLOSED / CP3-C2-B2-D IMPLEMENTED — GPT FINAL INDEPENDENT VERIFICATION REQUIRED / CP3-C2-C NOT STARTED / CP3-D NOT STARTED`
-- 현재 Phase: `Phase 2 — CP3-C2-B2-A PASS — CLOSED; CP3-C2-B2-B PASS — CLOSED; CP3-C2-B implementation IN PROGRESS; CP3-C2-B2-C 0006 schema PASS — CLOSED; 0007 PASS — CLOSED; B2-C R1 PASS — CLOSED`
+- 프로젝트 상태: `PHASE 2 IMPLEMENTATION IN PROGRESS — CP2 COMPLETE / CP3-A PASS — CONTRACT APPROVED AND CLOSED / CP3-B PASS — CLOSED / CP3-C1 PASS — CLOSED / CP3-C2-A PASS — CONTRACT APPROVED AND CLOSED / CP3-C2-B1 PASS — CONTRACT APPROVED AND CLOSED / CP3-C2-B PASS WITH ISSUES — CLOSED / CP3-C2-B2-A PASS — CLOSED / CP3-C2-B2-B PASS — CLOSED / ADR-015 ACCEPTED / ADR-016 ACCEPTED / ADR-017 ACCEPTED / ADR-018 ACCEPTED / ADR-019 ACCEPTED / CP3-C2-B2-C 0006 PASS — CLOSED / CP3-C2-B2-C 0007 PASS — CLOSED / B2-C R1 PASS — CLOSED / CP3-C2-B2-D PASS WITH ISSUES — CLOSED / CP3-C2-C NOT STARTED / CP3-D NOT STARTED`
+- 현재 Phase: `Phase 2 — CP3-C2-B implementation PASS WITH ISSUES — CLOSED; CP3-C2-C NOT STARTED; CP3-D NOT STARTED`
 - 현재 버전: `0.1.0`
 - Phase 1 최종 검증 commit: `57b2a63ead06d03191d8094e1689b8d2ab3d7764`
 - Phase 1 PR: `#1`
 - Phase 1 merge commit: `b1829a7375704271a21267e1fcf62808147be593`
 - Release baseline tag: `v0.1.0`
-- 최종 QA일: `2026-09-28 (R1 Windows Final QA PASS WITH ISSUES; backend 1080 / frontend 43 / E2E 2 passed; full QA, final policy and final secret exit 0)`
+- 최종 구현 QA일: `2026-09-29 (B2-D independently reviewed candidate: Windows-native backend 1121 / frontend 43 / E2E 2 passed; required B2-D QA reruns 0)`; closeout integrity gates are recorded in the documentation closeout record.
 - 실제 API 연결: `CP2-D2 one-shot PASS — OAuth + GET /api/v1/stocks만 검증`
 - 실제 주문 기능: `비활성 / 비범위`
 - OpenAI API 사용: `아니오`
-- Phase 2 상태: `CP1 PASS / CP2 COMPLETE / CP3-A PASS — CONTRACT APPROVED AND CLOSED / CP3-B PASS — CLOSED / CP3-C1 PASS — CLOSED / CP3-C2-A PASS — CONTRACT APPROVED AND CLOSED / CP3-C2-B1 PASS — CONTRACT APPROVED AND CLOSED / CP3-C2-B IMPLEMENTATION IN PROGRESS / CP3-C2-B2-A PASS — CLOSED / CP3-C2-B2-B PASS — CLOSED / ADR-015 ACCEPTED / ADR-016 ACCEPTED / ADR-017 ACCEPTED / ADR-018 ACCEPTED / ADR-019 ACCEPTED / CP3-C2-B2-C 0006 PASS — CLOSED / CP3-C2-B2-C 0007 PASS — CLOSED / B2-C R1 PASS — CLOSED / CP3-C2-B2-D IMPLEMENTED — GPT FINAL INDEPENDENT VERIFICATION REQUIRED / CP3-C2-C NOT STARTED / CP3-D NOT STARTED`
+- Phase 2 상태: `CP1 PASS / CP2 COMPLETE / CP3-A PASS — CONTRACT APPROVED AND CLOSED / CP3-B PASS — CLOSED / CP3-C1 PASS — CLOSED / CP3-C2-A PASS — CONTRACT APPROVED AND CLOSED / CP3-C2-B1 PASS — CONTRACT APPROVED AND CLOSED / CP3-C2-B PASS WITH ISSUES — CLOSED / CP3-C2-B2-A PASS — CLOSED / CP3-C2-B2-B PASS — CLOSED / ADR-015 ACCEPTED / ADR-016 ACCEPTED / ADR-017 ACCEPTED / ADR-018 ACCEPTED / ADR-019 ACCEPTED / CP3-C2-B2-C 0006 PASS — CLOSED / CP3-C2-B2-C 0007 PASS — CLOSED / B2-C R1 PASS — CLOSED / CP3-C2-B2-D PASS WITH ISSUES — CLOSED / CP3-C2-C NOT STARTED / CP3-D NOT STARTED`
 - CP3-B: `PASS — CLOSED`
 - CP3-C1: `PASS — CLOSED`
 - CP3-C2-A: `PASS — CONTRACT APPROVED AND CLOSED`
@@ -41,13 +49,13 @@
 - ADR-018: `ACCEPTED` (`2026-08-29`)
 - ADR-019: `ACCEPTED`; proposal date `2026-08-29`, decision date `2026-08-31`
 - CP3-C2-B1: `PASS — CONTRACT APPROVED AND CLOSED`
-- CP3-C2-B implementation: `IN PROGRESS`
+- CP3-C2-B implementation: `PASS WITH ISSUES — CLOSED`
 - CP3-C2-B2-A: `PASS — CLOSED`
 - CP3-C2-B2-B: `PASS — CLOSED`
 - CP3-C2-B2-C `0006` schema implementation: `PASS — CLOSED`
 - `0006`: `PASS — CLOSED`
 - B2-C WebAuthn/human-approval runtime:
-  `BACKEND CORE PASS — CLOSED; ISSUER APPROVAL NOT STARTED`
+  `BACKEND CORE PASS — CLOSED; B2-D ISSUER DISPOSITION PASS WITH ISSUES — CLOSED`
 - Historical 한정 수정 (`2026-09-13`): exact scanner의 cache-tag provenance URL
   한 곳만 path/raw-byte SHA/Content/AST/occurrence로 결박하는 policy 구현.
   URL focused exit 0: 긍정 검증4/부정 사례35, 기존 URL 부정18/허용2 유지.
@@ -67,7 +75,7 @@
   commit/push는 미실행. 기존 실패와 witness 보존; R1 승인은 미주장.
 - `0007_phase_02_cp3_c2_b2_c_counter_capability_bootstrap`:
   `PASS — CLOSED`; user closeout `2026-09-05`
-- CP3-C2-B2-D: `IMPLEMENTED — GPT FINAL INDEPENDENT VERIFICATION REQUIRED`
+- CP3-C2-B2-D: `PASS WITH ISSUES — CLOSED`
 - CP3-C2-C: `NOT STARTED`
 - CP3-D: `NOT STARTED`
 - Public Read-only Deployment: `FUTURE / NOT AUTHORIZED / NOT STARTED`
@@ -261,7 +269,8 @@
       `851 passed in 971.60s`, frontend `43` PASS, E2E `2` PASS,
       migration/fixture/build/lint/typecheck/secret/policy PASS
 - [x] 별도 R1 backend-core implementation authority 및 두 보완 규칙 확인; 구현/검증 진행
-- [ ] CP3-C2-B2-D 별도 시작 승인
+- [x] CP3-C2-B2-D 별도 시작 승인, exact candidate 독립검증 및 사용자 `PASS WITH ISSUES — CLOSED` 수락
+- [x] CP3-C2-B implementation `PASS WITH ISSUES — CLOSED` 사용자 closeout 승인
 - [ ] CP3-C2-C 별도 시작 승인
 - [ ] CP3-D 별도 시작 승인
 

@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased — CP3-C2-B2-D and CP3-C2-B user closeout — 2026-09-29
+
+- The user accepted independent GPT final review of B2-D candidate `3216043a531372a1ff04002b76f522d38ed03568`: `PASS WITH ISSUES`, Critical `0`, Major `0`, M1/M2 `CLOSED`, unauthorized changes `0`, required code fixes `0`, required B2-D QA reruns `0`. CP3-C2-B2-D is `PASS WITH ISSUES — CLOSED`.
+- Integrated that exact candidate into `feature/phase-02-toss` with explicit merge `1eedc36e571d408c3fe33e726521907224efb971`: parents `48d4201281db2fabdb58f09ba6860bd184e722c8` and `3216043a531372a1ff04002b76f522d38ed03568`; merge tree `d02154c54c971ffc26e6ea153f18c58f63ba58df` equals the reviewed candidate tree.
+- With B1, B2-A, B2-B, B2-C/0006/0007, R1 backend core and B2-D accepted, the user authorized overall CP3-C2-B implementation `PASS WITH ISSUES — CLOSED`. The qualification retains B2-D randomized scanner self-canary reproducibility, absent separately named exact-duplicate REJECTED/REVOKED regressions, and R1 physical remote-volume/missing-ACL negative cases covered only by controlled simulation.
+- Closeout changes only current-state documentation. CP3-C2-C Canonical Security Authority / Final Mapping and CP3-D remain `NOT STARTED`; Phase 2 remains `IMPLEMENTATION IN PROGRESS`. No main merge, tag, release, deployment or automatic checkpoint progression follows.
+
 ## Unreleased — CP3-C2-B2-D bounded remediation — 2026-09-28
 
 - Corrected the issuer challenge to exactly 32 OS-CSPRNG bytes, `canonical.digest(raw_challenge)` and the unchanged ADR-017 issuer challenge canonical field set; direct production-path GV-09 regression uses the accepted digest and binding values.
