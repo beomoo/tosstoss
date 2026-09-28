@@ -1,6 +1,18 @@
 # Known Issues and Open Questions
 
-## Current R1 status — 2026-09-28
+## KI-019 — B2-D standard secret scanner artifact population
+
+- 상태: `RESOLVED FOR B2-D CANDIDATE — GPT FINAL INDEPENDENT VERIFICATION REQUIRED` (`2026-09-28`).
+- 이전 차단: 새 B2-D production Python 모듈로 pinned Windows mypy metadata가 854에서 855로 늘어 기존 strict scan이 exit `1`이었다.
+- 해결 증거: 동일 Windows-native Python/mypy에서 base 67 source/854 metadata와 candidate 68 source/855 metadata를 비교했다. 추가된 metadata는 승인된 `reviewer/issuer_disposition.py` 하나뿐이다. 고정 inventory/proof/finding 수만 정확히 동기화했고, 최종 standard secret scan은 exit `0`이었다. 탐지·임계값·예외·제외 범위는 변경하지 않았다. `qa/CP3_C2_B2_D_SCANNER_COUNT_PROOF.txt` 참조.
+
+## KI-020 — B2-D Windows OWNER verification context
+
+- 상태: `RESOLVED FOR BOUNDED B2-D OWNER QA — GPT FINAL INDEPENDENT VERIFICATION REQUIRED` (`2026-09-28`).
+- 이전 차단: Linux backend의 frozen OWNER 7건은 `WINDOWS_REQUIRED`였고 Computer Use는 WSL 경로에서 초기화되지 않았다. 이 결과는 Windows OWNER 증명이 아니다.
+- 해결 증거: Windows-local byte-identical candidate에서 `python -B`로 B2-D production entry와 기존 R1 Win32 OWNER/TOKEN_USER `EqualSid` 경계를 통과하는 disposable-DB probe 및 직접 관련 R1 test가 `2 passed` (exit `0`)였다. Windows-native full backend `1121 passed` (exit `0`)에도 OWNER tests가 포함됐다. `qa/CP3_C2_B2_D_WINDOWS_OWNER_PROOF.txt` 참조.
+
+## Historical R1 status — 2026-09-28
 
 B2-C R1 is `PASS — CLOSED` after R1 Windows Final QA `PASS WITH ISSUES` and user closeout. Critical `0`, Major `0`, required code fixes `0`, required QA reruns `0`. The remaining non-blocking P2 is controlled simulation of remote-volume and missing-ACL Windows negative cases without physical remote or missing-ACL devices. Earlier dated R1 STOP entries below are historical evidence. CP3-C2-B remains `IN PROGRESS`; B2-D, CP3-C2-C and CP3-D remain `NOT STARTED`; Phase 2 remains `IMPLEMENTATION IN PROGRESS`.
 

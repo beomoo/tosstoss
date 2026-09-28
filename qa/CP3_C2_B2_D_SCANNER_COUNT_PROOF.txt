@@ -1,0 +1,19 @@
+2026-09-28 — Windows-local QA mirror, exact candidate source copy
+Base commit: 48d4201281db2fabdb58f09ba6860bd184e722c8
+Pinned Python environment: Python 3.13.15; detect-secrets 1.5.0
+Command: .venv\Scripts\python.exe -I -B -m mypy --cache-dir C:\Users\beomoo\b2d-mypy-count-20260928 services/api/src
+Result: Success: no issues found in 68 source files; exit 0
+Count: 855 *.meta.json files in the pinned 3.13 mypy cache
+Unchanged standard secret-scan.ps1 fixed checks: 854 *.meta.json files
+Standard secret-scan.ps1 result: exit 1; "The approved mypy artifact population has changed."
+This is a generator-population mismatch, not a completed secret scan or a verified absence of secrets. No scanner exception was changed.
+
+Remediation measurement (same date; previous failure retained above):
+Base 48d4201 exported to Windows-local C:\Users\beomoo\b2d-base-population-20260928.
+Windows-native pinned Python 3.13.15 `-m mypy --cache-dir C:\Users\beomoo\b2d-base-mypy-20260928 services/api/src` exit 0; 67 source files; 854 metadata files.
+Candidate pinned Windows mypy exit 0; 68 source files; 855 metadata files.
+Relative metadata set difference candidate minus base: exactly `toss_dashboard_api/reviewer/issuer_disposition.meta.json`.
+Relative metadata set difference base minus candidate: empty.
+New metadata `id=toss_dashboard_api.reviewer.issuer_disposition`, `path=services\\api\\src\\toss_dashboard_api\\reviewer\\issuer_disposition.py`; this is the authorized new B2-D module.
+Unmodified scanner detection measured from the generated-artifact plan: mypy artifacts 855; proof keys 1710; findings 1705. Previous values 854, 1708, 1703. The +1 artifact contributes exactly +2 proof keys and +2 findings.
+Only the fixed expected counts and their report text were synchronized; detector, threshold, exception, directory, extension and coverage controls were unchanged. The fixed `-ne 855` check rejects 854 and 856.

@@ -2,10 +2,10 @@ from __future__ import annotations
 
 import re
 import unicodedata
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
-from typing import Any
+from typing import Any, Protocol
 
 from pydantic import ValidationError
 from sqlalchemy import or_, select
@@ -123,6 +123,7 @@ class IssuerAuthorityDecisionEngineResult:
     inserted_claim_count: int
     bundle_inserted: bool
     decision_inserted: bool
+    affected_provider_ids: tuple[str, ...]
 
 
 @dataclass(frozen=True)
@@ -244,6 +245,28 @@ def _sorted(values: set[str] | list[str] | tuple[str, ...]) -> tuple[str, ...]:
     return tuple(sorted(set(values), key=lambda item: item.encode("utf-8")))
 
 
+class _LatestObservation(Protocol):
+    @property
+    def fetched_at(self) -> datetime | str: ...
+
+    @property
+    def authority_evidence_observation_id(self) -> str: ...
+
+
+def latest_authority_observation[T: _LatestObservation](
+    observations: Sequence[T],
+) -> T | None:
+    """Select the observation used by B2-B freshness and approval audit."""
+    return max(
+        observations,
+        key=lambda item: (
+            item.fetched_at if isinstance(item.fetched_at, datetime) else _utc(item.fetched_at),
+            item.authority_evidence_observation_id,
+        ),
+        default=None,
+    )
+
+
 def _exact_dict(value: Any, keys: set[str]) -> dict[str, Any] | None:
     if not isinstance(value, dict) or set(value) != keys:
         return None
@@ -274,16 +297,10 @@ class IssuerAuthorityDecisionEngine:
     def evaluate(
         self, request: IssuerAuthorityEvaluationRequest
     ) -> IssuerAuthorityDecisionEngineResult:
-        if request.candidate_identifier_value in _SYNTHETIC_IDENTIFIERS:
-            raise IssuerAuthorityDecisionEngineError(
-                "SYNTHETIC_IDENTIFIER_PROHIBITED",
-                "fixture/synthetic authority identifier cannot enter production evaluation",
-            )
         session = self._sessions()
         try:
             session.connection().exec_driver_sql("BEGIN IMMEDIATE")
-            evaluated_at = self._evaluation_time()
-            result = self._evaluate_locked(session, request, evaluated_at)
+            result = self.evaluate_locked(session, request)
             session.commit()
             return result
         except IssuerAuthorityDecisionEngineError:
@@ -302,6 +319,17 @@ class IssuerAuthorityDecisionEngine:
             ) from error
         finally:
             session.close()
+
+    def evaluate_locked(
+        self, session: Session, request: IssuerAuthorityEvaluationRequest
+    ) -> IssuerAuthorityDecisionEngineResult:
+        """Run the unchanged B2-B rules in a caller-owned SQLite writer transaction."""
+        if request.candidate_identifier_value in _SYNTHETIC_IDENTIFIERS:
+            raise IssuerAuthorityDecisionEngineError(
+                "SYNTHETIC_IDENTIFIER_PROHIBITED",
+                "fixture/synthetic authority identifier cannot enter production evaluation",
+            )
+        return self._evaluate_locked(session, request, self._evaluation_time())
 
     def _evaluation_time(self) -> datetime:
         try:
@@ -461,6 +489,7 @@ class IssuerAuthorityDecisionEngine:
             inserted_claim_count=inserted_claims,
             bundle_inserted=bundle_inserted,
             decision_inserted=decision_inserted,
+            affected_provider_ids=collision.affected_provider_ids,
         )
 
     @staticmethod
@@ -947,10 +976,8 @@ class IssuerAuthorityDecisionEngine:
             return AuthorityFreshnessResult.CURRENT
         if not snapshot.observations:
             return AuthorityFreshnessResult.UNAVAILABLE
-        latest = max(
-            snapshot.observations,
-            key=lambda item: (item.fetched_at, item.authority_evidence_observation_id),
-        )
+        latest = latest_authority_observation(snapshot.observations)
+        assert latest is not None
         if latest.retrieval_status != AuthorityRetrievalStatus.SUCCEEDED:
             return AuthorityFreshnessResult.UNAVAILABLE
         if latest.fetched_at - evaluated_at > FUTURE_CLOCK_SKEW_LIMIT:
@@ -3103,13 +3130,8 @@ class IssuerAuthorityDecisionEngine:
         for assessment in assessments:
             latest_status = None
             if assessment.snapshot.observations:
-                latest = max(
-                    assessment.snapshot.observations,
-                    key=lambda item: (
-                        item.fetched_at,
-                        item.authority_evidence_observation_id,
-                    ),
-                )
+                latest = latest_authority_observation(assessment.snapshot.observations)
+                assert latest is not None
                 latest_status = {
                     "raw_content_hash": latest.raw_content_hash,
                     "retrieval_status": latest.retrieval_status,

@@ -1,0 +1,9 @@
+2026-09-28 bounded Windows-native OWNER QA
+Candidate source: /home/beomooo/.codex/worktrees/b2d-issuer-disposition/tosstoss
+Windows-local QA clone: C:\Users\beomoo\b2d-qa-20260928
+Base: 48d4201281db2fabdb58f09ba6860bd184e722c8
+Before the run, all 16 changed/new candidate paths copied to the Windows-local clone had matching SHA-256 bytes and were staged in the QA clone. The implementation worktree was not staged.
+Python: Windows-native 3.13.15 virtual environment, `-B`, `PYTHONDONTWRITEBYTECODE=1`.
+Command: `.venv\Scripts\python.exe -B -m pytest tests/backend/test_reviewer_windows_owner.py::test_real_windows_owner_token_user_and_canonical_sid_hash qa/CP3_C2_B2_D_WINDOWS_OWNER_PROBE.py::test_b2d_entry_uses_real_win32_owner_and_token_user -q --disable-warnings --maxfail=1`
+Result: 2 passed, 0 failed, exit 0.
+The B2-D probe uses a disposable migrated SQLite database and the actual `IssuerDispositionService.issue`/`complete` path. Its owner callback calls frozen `windows_owner._verify_directory` with `_Win32`, which compares filesystem OWNER SID to process TOKEN_USER SID using Win32 `EqualSid` in `owner_hash`; the real OWNER test independently exercises the same comparison. No production database was opened, no security source was changed, and no SID/plaintext secret was logged.

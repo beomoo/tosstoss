@@ -1,5 +1,20 @@
 # Changelog
 
+## Unreleased — CP3-C2-B2-D bounded remediation — 2026-09-28
+
+- Corrected the issuer challenge to exactly 32 OS-CSPRNG bytes, `canonical.digest(raw_challenge)` and the unchanged ADR-017 issuer challenge canonical field set; direct production-path GV-09 regression uses the accepted digest and binding values.
+- Reused B2-B's latest observation selector for approval membership; the immutable approval audit now binds exact ordered observation references. Added historical/current observation, post-authorization change and tamper regressions.
+- Added real separate-connection SQLite race/idempotency tests and a narrow production-callable path that revalidates every collision-affected approved provider under one writer transaction, projecting both heads to REVIEW_REQUIRED in the two-provider fixture.
+- Proved the strict mypy artifact delta is exactly one authorized B2-D source module; synchronized only fixed scanner population counts, the standard backend test inventory and the policy source/test digest.
+- Final focused `41 passed`, relevant regression `544 passed`, Windows-native full standard QA backend `1121 passed`, frontend `43 passed`, E2E `2 passed`; migration, fixture idempotency, build, API contract, lint/typecheck, secret and policy gates exit `0`. Bounded B2-D→R1 Win32 OWNER/TOKEN_USER `EqualSid` probe plus direct R1 integration test: `2 passed`.
+- Frozen 0001–0007 migrations and R1 security core remain byte-identical; 0008 absent. Status ceiling: `IMPLEMENTED — GPT FINAL INDEPENDENT VERIFICATION REQUIRED`. The preceding B2-D failed candidate entry remains historical; no PASS/CLOSED or next checkpoint claim.
+
+## Unreleased — CP3-C2-B2-D issuer disposition candidate — 2026-09-28
+
+- Added the local unrouted issuer disposition service over the accepted R1 WebAuthn verifier and frozen 0005–0007 ledger: challenge issuance/consumption, authenticated APPROVED/REJECTED/REVOKED/SUPERSEDED, canonical Issuer insert-or-verify, append-only event/link history, and guarded head transitions.
+- Exposed B2-B evaluation under a caller-owned writer transaction without changing its rules. Added post-approval REVIEW_REQUIRED projection and focused relational/concurrency tests.
+- Final B2-D focused QA passed 30 tests. Full Linux backend QA exited `1` with 7 frozen Win32 OWNER tests returning `WINDOWS_REQUIRED`; Computer Use could not initialize in this WSL-local App context; the standard secret scan exited `1` on its 854-versus-855 generated-artifact count. No commit/push or PASS/CLOSED claim followed. See `qa/PHASE_02_CP3_C2_B2_D_SELF_QA.md`.
+
 ## Unreleased — B2-C R1 closeout — 2026-09-28
 
 - Persisted the independently verified R1/WSL working candidate and recorded user closeout of B2-C R1 backend core as `PASS — CLOSED`.

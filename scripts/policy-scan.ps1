@@ -1556,6 +1556,7 @@ $expectedBackendTestFiles = @(
     "tests/backend/test_counter_capability_migration.py",
     "tests/backend/test_error_isolation.py",
     "tests/backend/test_fixture_import.py",
+    "tests/backend/test_issuer_disposition.py",
     "tests/backend/test_logging_redaction.py",
     "tests/backend/test_migrations.py",
     "tests/backend/test_no_external_network.py",
@@ -1708,11 +1709,11 @@ $phaseControlFiles = @(
         Where-Object { $_.Name -cne "policy-scan.ps1" }
 )
 $approvedPhaseControlDigest = [string]::Concat(
-    "2943e077", "8571b036", "bb47d689", "0696a82e",
-    "4a3acbe0", "cf1f88b5", "b1cdc114", "19681168"
+    "b499f4be", "b907c645", "0816b6e8", "47caa0d5",
+    "ed0457a8", "62213c4b", "adccd490", "f7459d0e"
 )
 if (
-    $phaseControlFiles.Count -ne 90 -or
+    $phaseControlFiles.Count -ne 91 -or
     (Get-FileSetManifestSha256 -Files $phaseControlFiles) -cne
         $approvedPhaseControlDigest
 ) {
@@ -1771,8 +1772,8 @@ function Assert-ApprovedCacheTagScannerSnapshot {
     # This pin was calculated from the approved scanner's complete raw bytes.
     # It is not learned from the current input and has no caller override.
     $approvedSourceSha256 = [string]::Concat(
-        "62bc41ac", "c404cdb7", "887f82bf", "16fa13b3",
-        "06f5e8cd", "e9d1b5ac", "da0a5e3c", "1f967b77"
+        "0823d1d6", "d834d2dc", "83204d9c", "9ee2ecf1",
+        "9d27b8b5", "e56ab851", "49141617", "546ff1f4"
     )
     $actualSourceSha256 = [Convert]::ToHexString(
         [Security.Cryptography.SHA256]::HashData($SourceBytes)
