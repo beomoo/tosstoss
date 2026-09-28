@@ -1,0 +1,14 @@
+{
+  "sample_kind": "disposable_fixture_db",
+  "live_api_calls": 0,
+  "result": {
+    "approval_event_id": "iap_1bcdd53ed6aa8857a68540790ef88a7d5a24b7215111852e443f1e2843fad8e3",
+    "issuer_id": "issuer_235f1cca165d798d201e0cd960ff8029957e251960617c60a171b070672b4469",
+    "link_id": "ial_d3c55303d7830d00d97f26b08e5462ce4913a7a40b0d061ada530bc8dcdb88f2"
+  },
+  "event_state": "APPROVED",
+  "link_state": "APPROVED",
+  "head_link_matches": true,
+  "security_resolution_state": "UNRESOLVED",
+  "approval_observation_count": 6
+}

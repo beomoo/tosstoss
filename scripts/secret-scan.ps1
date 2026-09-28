@@ -1436,7 +1436,7 @@ function Get-GeneratedArtifactExceptionProofs {
     $mypyRoot = Join-Path $ProofRoot "mypy-cache\3.13"
     Assert-SafeGeneratedProofInputPath -Path $mypyRoot
     $metadataFiles = @(Get-ChildItem -LiteralPath $mypyRoot -Recurse -File -Force -Filter "*.meta.json")
-    if ($metadataFiles.Count -ne 854) {
+    if ($metadataFiles.Count -ne 855) {
         throw "The approved mypy artifact population has changed."
     }
     foreach ($file in $metadataFiles) {
@@ -1648,16 +1648,16 @@ function Add-ValidatedGeneratedArtifactExceptions {
     param([object[]] $Proofs, [object] $Scan, [string] $ScanJsonPath)
 
     $plan = Get-GeneratedArtifactRegistrationPlan -Proofs $Proofs -Scan $Scan -ScanJsonPath $ScanJsonPath
-    if ($plan.FindingCounts.Mypy -ne 1703 -or $plan.FindingCounts.Tag -ne 2 -or
-        $plan.FindingCounts.TypeScript -ne 696 -or $plan.ProofCounts.Mypy -ne 1708 -or
+    if ($plan.FindingCounts.Mypy -ne 1705 -or $plan.FindingCounts.Tag -ne 2 -or
+        $plan.FindingCounts.TypeScript -ne 696 -or $plan.ProofCounts.Mypy -ne 1710 -or
         $plan.ProofCounts.Tag -ne 2 -or $plan.ProofCounts.TypeScript -ne 696 -or
-        $plan.ArtifactCounts.Mypy -ne 854 -or $plan.ArtifactCounts.Tag -ne 2 -or
+        $plan.ArtifactCounts.Mypy -ne 855 -or $plan.ArtifactCounts.Tag -ne 2 -or
         $plan.ArtifactCounts.TypeScript -ne 1) {
         throw "The approved generated-artifact proof or finding population has changed."
     }
     $summary = Publish-GeneratedArtifactRegistrationPlan -Plan $plan
-    Write-Host "Generated-artifact proof: metadata=854; tags=2; TypeScript=704/704 sources"
-    Write-Host "Generated-artifact sets: P=$($summary.ProofKeys) (1708/2/696); D=$($summary.Findings) (1703/2/696); E=$($summary.NewKeys); applied=$($summary.AppliedFindings); proof-only unregistered=$($summary.ProofOnlyUnregistered)"
+    Write-Host "Generated-artifact proof: metadata=855; tags=2; TypeScript=704/704 sources"
+    Write-Host "Generated-artifact sets: P=$($summary.ProofKeys) (1710/2/696); D=$($summary.Findings) (1705/2/696); E=$($summary.NewKeys); applied=$($summary.AppliedFindings); proof-only unregistered=$($summary.ProofOnlyUnregistered)"
 }
 
 function Resolve-FrozenDiagnosticScanPath {
