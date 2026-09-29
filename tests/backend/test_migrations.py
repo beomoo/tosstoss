@@ -52,6 +52,32 @@ AUTHORITY_TABLES = {
     "issuer_authority_links",
     "issuer_authority_link_heads",
 }
+
+SECURITY_AUTHORITY_TABLES = {
+    "security_authority_source_policies",
+    "security_authority_evidence",
+    "security_authority_evidence_observations",
+    "security_authority_evidence_relations",
+    "security_authority_evidence_applications",
+    "security_authority_bundles",
+    "security_authority_bundle_evidence_applications",
+    "security_authority_bundle_scope_results",
+    "security_authority_bundle_provider_observations",
+    "security_identifier_claims",
+    "security_class_claims",
+    "security_listing_claims",
+    "security_decisions",
+    "security_approval_challenges",
+    "security_approval_challenge_consumptions",
+    "security_reviewer_authentication_events",
+    "security_approval_events",
+    "security_approval_evidence_observations",
+    "security_supersession_pairs",
+    "canonical_security_subjects",
+    "security_authority_profiles",
+    "security_authority_links",
+    "security_authority_link_heads",
+}
 REVIEWER_OPERATION_TABLES = {
     "reviewer_credential_operations",
     "reviewer_credential_operation_challenges",
@@ -365,6 +391,7 @@ def _assert_expected_schema(database_url: str) -> None:
             set(expected_columns)
             | AUTHORITY_TABLES
             | REVIEWER_OPERATION_TABLES
+            | SECURITY_AUTHORITY_TABLES
             | {"alembic_version"}
         )
         for table, expected in expected_columns.items():
@@ -458,6 +485,13 @@ def _assert_expected_schema(database_url: str) -> None:
             } == expected_uniques[table]
 
         expected_indexes = {
+            "provider_security_master_observations": {
+                (
+                    "uq_0008_provider_observation_binding",
+                    ("observation_id", "provider_security_identity_id"),
+                    True,
+                )
+            },
             "provider_source_versions": {
                 (
                     "uq_provider_source_versions_original_root",
@@ -605,7 +639,7 @@ def test_downgrade_and_reupgrade(workspace_tmp_path: Path) -> None:
         with engine.connect() as connection:
             assert (
                 connection.execute(text("SELECT version_num FROM alembic_version")).scalar_one()
-                == "0007_phase_02_cp3_c2_b2_c_counter_capability_bootstrap"
+                == "0008_phase_02_cp3_c2_c_security_authority"
             )
     finally:
         engine.dispose()

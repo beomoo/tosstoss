@@ -1,6 +1,23 @@
 # Phase 2 토스증권 읽기 전용 데이터 실행계획
 
-## Current CP3-C2-C1 architecture closeout routing — 2026-09-29
+## Current bounded 0008 remediation — 2026-09-29
+
+- The user authorized only independent-review M1 (SourcePolicy production fail-closed validation), M2 (exact scanner raw-byte pin), Minor-01 (source/document token parity), and required verification of the existing uncommitted candidate. Status: **FINAL QA BLOCKED — STOP**.
+- Contract and 0008 DDL now share the existing B scheme set, concrete ASCII locator syntax without wildcard/pattern/credential/query/fragment/control characters, and isolated zero-weight fixture requirements. Source/document tokens are `[A-Z][A-Z0-9_]*`, length 1–128, in policies, evidence and applications. NUL is explicitly rejected by SQL; CGS/taint production blocks and the repository production guard remain.
+- Scanner bytes remain exactly the STOP snapshot (249357 bytes; SHA-256 `b312ef430496a6cfa53c383a92173c3bf9d879456cd5e7f7552b26566ae6c6f5`). The policy raw-byte pin is synchronized to those measured bytes. Required test/control inventories are 1246 backend cases and 97 control files; no detector, threshold, exception, exclusion or canary behavior changes.
+- Final Linux/WSL focused 125 and Windows regression 482 passed. Full Windows standard attempt 02 failed: backend 1245 passed / 1 failed, exit 1, 1711.74 seconds. The unchanged existing runtime logging test failed before receiving /health; two targeted diagnostic runs reproduced 1 failed / 1 passed, and the second captured child process exit 3. Root cause of startup termination remains NOT VERIFIED. No timeout/assertion/runtime/scanner change was made. Later full-QA gates, final secret/policy, commit and push were not executed. No independent PASS/CLOSED or next checkpoint is authorized.
+- C2/C3, shared-counter runtime, B writer cascade, current Security readers, live authority and production mappings remain NOT VERIFIED / NOT AUTHORIZED. Accepted B/C1 closeout qualifications and ADR-020 remain unchanged.
+
+## Historical initial 0008 implementation checkpoint — 2026-09-29
+
+- User-authorized foundation candidate based on `6c0ed087106d0fdb94615b74a9472df17be08706`, branch `feature/phase-02-c2c-0008-security-authority`: **FINAL QA BLOCKED — STOP**. This separately authorizes 0008 foundation implementation only; accepted C1 architecture is unchanged.
+- Added the 23-table Security ledger, separate canonical contracts/models, immutable storage support, exact relational guards and migration/relational tests. Frozen 0001–0007, R1 and B runtime source are preserved. See `qa/PHASE_02_CP3_C2_C_0008_SELF_QA.md` for evidence, retained failed attempts and exact limits.
+- C2 machine engine, C3 WebAuthn/human writer, production VERIFIED mapping, mixed-counter runtime, B-writer cascade, current-reader migration, live sources and CP3-D remain **NOT IMPLEMENTED / NOT VERIFIED / NOT AUTHORIZED** as applicable. SQL fixture proofs do not establish those runtime behaviors.
+- CP3-C2-B and CP3-C2-C1 remain **PASS WITH ISSUES — CLOSED**, with their existing qualifications; ADR-020 remains **ACCEPTED**. Phase 2 remains **IMPLEMENTATION IN PROGRESS**. No integration merge, main merge, deployment or later-checkpoint start is authorized by this handoff.
+- Windows standard QA stopped at the initial fixed cache-tag scanner raw-byte pin policy gate (exit 1). No post-failure repair/rerun or primary staging/commit/push; final full QA is NOT VERIFIED. Candidate source and safe STOP evidence are preserved for independent review.
+- The earlier C1-only 0008-not-implemented/not-authorized statements below are historical and are superseded only for this explicitly authorized foundation checkpoint.
+
+## Historical CP3-C2-C1 architecture closeout routing — 2026-09-29
 
 - Exact C1 candidate `6270547c91e861f2615c92cb027d5d5cf86ce937` was integrated without design changes in merge `ea17105be49c063662d70d286637d90407f36087` (matching tree). The user accepted independent GPT re-review **PASS WITH ISSUES** (Critical 0, Major 0; M1/M2/M3 closed). **ADR-020 ACCEPTED**; **CP3-C2-C1 PASS WITH ISSUES — CLOSED**.
 - The qualification preserves the prior-ZIP evidence-package limitation recorded in `STATUS.md`; the updated 31-check ZIP was not independently rerun. C1 closes architecture only: `0008` is **DESIGNED ONLY / NOT IMPLEMENTED**. Full DDL/upgrade/downgrade, Security WebAuthn and shared-counter runtime, B-writer cascade, current Security-head reads, C2/C3 implementation, current official-source contracts, and production mapping remain **NOT VERIFIED**.

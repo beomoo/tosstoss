@@ -20,6 +20,7 @@ _INTERNAL_ADDITIVE_REVISIONS = frozenset(
         "0005_phase_02_cp3_c2_b_issuer_authority",
         "0006_phase_02_cp3_c2_b2_c_reviewer_operations",
         "0007_phase_02_cp3_c2_b2_c_counter_capability_bootstrap",
+        "0008_phase_02_cp3_c2_c_security_authority",
     }
 )
 

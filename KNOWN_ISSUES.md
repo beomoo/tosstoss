@@ -1,5 +1,21 @@
 # Known Issues and Open Questions
 
+## Current bounded 0008 remediation — 2026-09-29
+
+- The user authorized only independent-review M1 (SourcePolicy production fail-closed validation), M2 (exact scanner raw-byte pin), Minor-01 (source/document token parity), and required verification of the existing uncommitted candidate. Status: **FINAL QA BLOCKED — STOP**.
+- Contract and 0008 DDL now share the existing B scheme set, concrete ASCII locator syntax without wildcard/pattern/credential/query/fragment/control characters, and isolated zero-weight fixture requirements. Source/document tokens are `[A-Z][A-Z0-9_]*`, length 1–128, in policies, evidence and applications. NUL is explicitly rejected by SQL; CGS/taint production blocks and the repository production guard remain.
+- Scanner bytes remain exactly the STOP snapshot (249357 bytes; SHA-256 `b312ef430496a6cfa53c383a92173c3bf9d879456cd5e7f7552b26566ae6c6f5`). The policy raw-byte pin is synchronized to those measured bytes. Required test/control inventories are 1246 backend cases and 97 control files; no detector, threshold, exception, exclusion or canary behavior changes.
+- Final Linux/WSL focused 125 and Windows regression 482 passed. Full Windows standard attempt 02 failed: backend 1245 passed / 1 failed, exit 1, 1711.74 seconds. The unchanged existing runtime logging test failed before receiving /health; two targeted diagnostic runs reproduced 1 failed / 1 passed, and the second captured child process exit 3. Root cause of startup termination remains NOT VERIFIED. No timeout/assertion/runtime/scanner change was made. Later full-QA gates, final secret/policy, commit and push were not executed. No independent PASS/CLOSED or next checkpoint is authorized.
+- C2/C3, shared-counter runtime, B writer cascade, current Security readers, live authority and production mappings remain NOT VERIFIED / NOT AUTHORIZED. Accepted B/C1 closeout qualifications and ADR-020 remain unchanged.
+
+## Historical initial 0008 foundation limits — 2026-09-29
+
+- Windows standard QA policy gate rejected the fixed cache-tag scanner raw-byte pin after the measured scanner inventory changes. The whole-file pin still references base bytes. No pin repair or rerun is authorized after this STOP.
+- **FINAL QA BLOCKED — STOP**. Independent GPT review remains required; no foundation completion, overall PASS or CLOSED is declared.
+- Schema/SQL proofs do not verify C2/C3 runtime, live authority sources, shared R1 counter reading, B-writer cascade, current-reader cutover or production mappings. These remain separate checkpoints.
+- The frozen B engine conservatively rejects the same issuer identifier across providers. The issuer-wide Security guard test uses a complete synthetic parent graph with FKs/triggers enabled; it does not claim B runtime multi-provider admission.
+- Existing accepted B/C1 non-blocking qualifications and historical failure records below remain open or historical as previously recorded. See the 0008 SELF_QA for exact evidence boundaries.
+
 ## Current CP3-C2-B closeout issues — 2026-09-29
 
 CP3-C2-B2-D and overall CP3-C2-B implementation are `PASS WITH ISSUES — CLOSED` after the user's acceptance of independent review. Non-blocking limitations remain: KI-014 randomized scanner self-canary reproducibility; KI-021 missing separately named exact-duplicate REJECTED/REVOKED regression cases; and R1 physical remote-volume/missing-ACL negative cases validated through controlled simulations, not physical devices. None is represented as a required B2-D code fix or QA rerun. CP3-C2-C and CP3-D remain `NOT STARTED`.
