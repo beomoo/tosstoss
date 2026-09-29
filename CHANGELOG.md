@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-09-29 — CP3-C2-C1 bounded design remediation
+
+- Recorded the independent GPT verdict on C1 candidate `289266f1a230637d545ed0eef8f6fd73a933bbde`: **FAIL — DESIGN REMEDIATION REQUIRED**, three Major findings.
+- Corrected the Security contract and proposed ADR-020 for terminal authentication across business rollback, exact old/successor two-auth supersession constraints, and Security authentication participation in the single R1 credential counter graph.
+- Extended the disposable SQLite feasibility probe to 31 passing checks. The result is **REMEDIATED — GPT INDEPENDENT RE-REVIEW REQUIRED**; no migration or runtime code was changed.
+
 # 2026-09-29 — CP3-C2-C1 Security authority design handoff
 
 - Added a versioned, Security-specific authority contract and proposed ADR-020 for an additive 0008 schema, KR KRX ISIN and US SEC registered-class anchors, issuer-head prerequisite, collision/cascade behavior, two-authorization supersession, and a v2 current mapping head.

@@ -1,5 +1,12 @@
 # Project Status
 
+## Current CP3-C2-C1 bounded design remediation — 2026-09-29
+
+- Independent GPT review of candidate `289266f1a230637d545ed0eef8f6fd73a933bbde` returned **FAIL — DESIGN REMEDIATION REQUIRED** (Critical 0, Major 3). The three findings concerned terminal Security WebAuthn authentication, exact old/successor supersession binding, and the shared R1 signCount graph.
+- The bounded design correction is **REMEDIATED — GPT INDEPENDENT RE-REVIEW REQUIRED**. The C1 contract, proposed ADR-020, and self-QA now specify durable successful authentication before the business SAVEPOINT, relationally distinct A/old and B/successor supersession identities, and a future additive Security authentication edge in the single R1 counter read set. A disposable SQLite probe passed 31 checks; it is not full 0008 or runtime verification.
+- ADR-020 remains `PROPOSED`. The 0008 migration, C2 machine engine, and C3 human writer remain **NOT AUTHORIZED**; CP3-D remains **NOT STARTED**. CP3-C2-B remains **PASS WITH ISSUES — CLOSED**; Phase 2 remains **IMPLEMENTATION IN PROGRESS**.
+- The following C1 design handoff is a historical record of the prior candidate and its pre-review status.
+
 ## Current CP3-C2-C1 design handoff — 2026-09-29
 
 - User-authorized CP3-C2-C1 Security Authority Contract & additive 0008 **design only**: `DESIGNED — GPT INDEPENDENT REVIEW REQUIRED`. ADR-020 is `PROPOSED`, not accepted. The exact design is `plans/PHASE_02_CP3_C2_C1_SECURITY_AUTHORITY_CONTRACT.md`.

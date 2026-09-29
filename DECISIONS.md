@@ -2543,6 +2543,16 @@ KR identity uses the KRX 12-character ISIN anchor with exact KRX issue/listing, 
 
 Every positive mapping requires current approved issuer-head binding, complete field-owning Security evidence, collision CLEAR and fresh Security-specific WebAuthn approval. A lost issuer approval atomically appends Security REVIEW_REQUIRED links and suspends use. Supersession requires two distinct WebAuthn authorizations and one atomic pair transaction. Machine maximum is READY_FOR_MANUAL_REVIEW, with no automatic canonical or final mapping write.
 
+### CP3-C2-C1 bounded design remediation — still PROPOSED
+
+Independent review of candidate `289266f1a230637d545ed0eef8f6fd73a933bbde` found three Major design gaps. This proposal corrects only those gaps; it has no accepted or implemented effect.
+
+1. A successfully verified Security WebAuthn assertion is terminal. Its challenge consumption and Security authentication/counter edge commit in the outer `BEGIN IMMEDIATE` even when the later disposition business SAVEPOINT rolls back. The failure is returned after the outer commit. In two-auth supersession, both independently successful authentications remain terminal if the atomic business pair fails.
+2. The Security supersession pair binds authorization A to the exact old decision/bundle/hash, old approved event/link and `SUPERSEDED`; authorization B binds to the exact successor READY decision/bundle/hash, same provider and `APPROVED`. Distinct challenges, consumptions and authentications, composite FKs, literal state checks and deferred pair-completeness constraints reject swapped/same/partial pairs.
+3. `security_reviewer_authentication_events` is a later **additive edge source** for the single frozen R1 credential signCount reconstruction, alongside credential-operation and issuer authentication. The R1 cryptographic meaning, counter acceptance rules and replay semantics remain unchanged. C3 must register the Security table in the common read set before any Security authentication is accepted; a needed change to the meaning of R1 counter rules is `R1 SECURITY CONTRACT CHANGE REQUIRED — STOP`.
+
+The 23-object additive 0008 design, KR/US anchors, CGS prohibition, ShareClass and legacy mapping boundaries, issuer-head prerequisite/cascade and no automatic promotion are unchanged. `ADR-020` remains **PROPOSED**, and C2/C3 and 0008 implementation remain unauthorized.
+
 ### 대안과 영향
 
 Reusing B issuer evidence/approval tables is rejected because it changes their frozen meaning. Using ticker or provider identifier as the canonical anchor is rejected because it selects an unsupported winner. Rebuilding 0001 or rewriting legacy VERIFIED rows is rejected because the additive v2 namespace supports the required lifecycle. The proposed `0008` adds 23 tables plus indexes/triggers, with one mutable, rebuildable Security head projection; C2/C3 must be separately authorized and reviewed. Current application reads and B issuer-head writer integration are later C3 gates, not completed by C1.

@@ -1,5 +1,11 @@
 # Phase 2 토스증권 읽기 전용 데이터 실행계획
 
+## Current CP3-C2-C1 bounded remediation routing — 2026-09-29
+
+- Previous C1 candidate `289266f1a230637d545ed0eef8f6fd73a933bbde` received independent GPT **FAIL — DESIGN REMEDIATION REQUIRED** (Critical 0, Major 3). The bounded M1/M2/M3 design corrections are **REMEDIATED — GPT INDEPENDENT RE-REVIEW REQUIRED**, subject to another independent review.
+- ADR-020 stays `PROPOSED`; additive 0008 implementation, CP3-C2-C2, and CP3-C2-C3 are **NOT AUTHORIZED**. CP3-C2-B remains **PASS WITH ISSUES — CLOSED**. CP3-D is **NOT STARTED** and Phase 2 is **IMPLEMENTATION IN PROGRESS**.
+- The following C1 design routing is the historical pre-review handoff, not a current PASS or CLOSED assertion.
+
 ## Current CP3-C2-C1 design routing — 2026-09-29
 
 - The user authorized **CP3-C2-C1 Security Authority Contract & additive 0008 schema design only** on exact integration base `07c8a2a5d53cd3413d7479f56194aa12d63bb1e7`. Status: `DESIGNED — GPT INDEPENDENT REVIEW REQUIRED`; ADR-020: `PROPOSED`.
