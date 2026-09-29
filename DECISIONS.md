@@ -1,5 +1,21 @@
 # Architecture Decision Record
 
+## Current bounded 0008 remediation — 2026-09-29
+
+- The user authorized only independent-review M1 (SourcePolicy production fail-closed validation), M2 (exact scanner raw-byte pin), Minor-01 (source/document token parity), and required verification of the existing uncommitted candidate. Status: **FINAL QA BLOCKED — STOP**.
+- Contract and 0008 DDL now share the existing B scheme set, concrete ASCII locator syntax without wildcard/pattern/credential/query/fragment/control characters, and isolated zero-weight fixture requirements. Source/document tokens are `[A-Z][A-Z0-9_]*`, length 1–128, in policies, evidence and applications. NUL is explicitly rejected by SQL; CGS/taint production blocks and the repository production guard remain.
+- Scanner bytes remain exactly the STOP snapshot (249357 bytes; SHA-256 `b312ef430496a6cfa53c383a92173c3bf9d879456cd5e7f7552b26566ae6c6f5`). The policy raw-byte pin is synchronized to those measured bytes. Required test/control inventories are 1246 backend cases and 97 control files; no detector, threshold, exception, exclusion or canary behavior changes.
+- Final Linux/WSL focused 125 and Windows regression 482 passed. Full Windows standard attempt 02 failed: backend 1245 passed / 1 failed, exit 1, 1711.74 seconds. The unchanged existing runtime logging test failed before receiving /health; two targeted diagnostic runs reproduced 1 failed / 1 passed, and the second captured child process exit 3. Root cause of startup termination remains NOT VERIFIED. No timeout/assertion/runtime/scanner change was made. Later full-QA gates, final secret/policy, commit and push were not executed. No independent PASS/CLOSED or next checkpoint is authorized.
+- C2/C3, shared-counter runtime, B writer cascade, current Security readers, live authority and production mappings remain NOT VERIFIED / NOT AUTHORIZED. Accepted B/C1 closeout qualifications and ADR-020 remain unchanged.
+
+## 0008 implementation execution record — 2026-09-29
+
+The user separately authorized additive 0008 foundation implementation from exact base `6c0ed087106d0fdb94615b74a9472df17be08706` under ACCEPTED ADR-020. This execution record does not change the accepted architecture. Candidate status: **FINAL QA BLOCKED — STOP**.
+
+The implementation adds the accepted 23 Security objects in a separate namespace, two exact parent indexes and new relational safety triggers without rebuilding existing tables or editing migrations 0001–0007. Upstream reviewer/B runtime meaning remains frozen. The public metadata revision continues to expose the Phase 1 revision through its existing additive-revision mask; no current application reader migrates to Security heads.
+
+QA-control changes are confined to measured test/file/generated-cache inventories. No scanner exception, detector threshold, skip, xfail or deselection is introduced. M1/M2/M3 are implemented and tested only at the contract/schema/storage layer; their future runtime integration is not authorized or verified by this record. No design conflict requiring a new ADR was identified.
+
 ## CP3-C2-B2-D and CP3-C2-B implementation user closeout — 2026-09-29
 
 - Reviewed candidate: `3216043a531372a1ff04002b76f522d38ed03568`, tree `d02154c54c971ffc26e6ea153f18c58f63ba58df`.

@@ -1,5 +1,19 @@
 # Changelog
 
+## 2026-09-29 — bounded 0008 independent-review remediation
+
+- M1: shared contract/DDL locator scheme and concrete-token boundary; production fixture/wildcard/HTTP rejection and permanent isolated fixture requirements.
+- Minor-01: source/document token parity, 1–128 uppercase ASCII token; M2: synchronize the measured exact scanner raw-byte pin without scanner semantics changes.
+- Added 60 remediation cases and required suite/control inventory updates. Status: **FINAL QA BLOCKED — STOP**. Historical STOP and failed attempts are retained.
+
+Final Linux/WSL focused 125 and Windows regression 482 passed. Full Windows standard attempt 02 failed: backend 1245 passed / 1 failed, exit 1, 1711.74 seconds. The unchanged existing runtime logging test failed before receiving /health; two targeted diagnostic runs reproduced 1 failed / 1 passed, and the second captured child process exit 3. Root cause of startup termination remains NOT VERIFIED. No timeout/assertion/runtime/scanner change was made. Later full-QA gates, final secret/policy, commit and push were not executed. No independent PASS/CLOSED or next checkpoint is authorized.
+
+## 2026-09-29 — additive 0008 Security authority foundation candidate
+
+- Implemented separate 23-object contracts/schema/models and immutable storage, M1 terminal-auth persistence, exact M2 pairs, M3 counter fields without R1 runtime changes, append-only history and issuer/head guards.
+- Added 65 focused cases; synchronized required old head/table/index assertions and measured QA inventories (backend 1186, control files 96, mypy metadata 858).
+- Status: **FINAL QA BLOCKED — STOP**. No C2/C3 runtime, production authority admission or current-reader cutover. Details and limitations: `qa/PHASE_02_CP3_C2_C_0008_SELF_QA.md`.
+
 ## 2026-09-29 — CP3-C2-C1 architecture integration and closeout
 
 - Merged exact reviewed C1 design candidate `6270547c91e861f2615c92cb027d5d5cf86ce937` into `feature/phase-02-toss` as `ea17105be49c063662d70d286637d90407f36087`; merge tree equals candidate tree. The user accepted independent re-review **PASS WITH ISSUES** (Critical 0, Major 0; prior M1/M2/M3 closed) and accepted ADR-020. CP3-C2-C1 is **PASS WITH ISSUES — CLOSED**.
