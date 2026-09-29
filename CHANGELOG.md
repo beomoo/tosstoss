@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-09-29 — CP3-C2-C1 architecture integration and closeout
+
+- Merged exact reviewed C1 design candidate `6270547c91e861f2615c92cb027d5d5cf86ce937` into `feature/phase-02-toss` as `ea17105be49c063662d70d286637d90407f36087`; merge tree equals candidate tree. The user accepted independent re-review **PASS WITH ISSUES** (Critical 0, Major 0; prior M1/M2/M3 closed) and accepted ADR-020. CP3-C2-C1 is **PASS WITH ISSUES — CLOSED**.
+- Preserved the non-blocking evidence-package limitation: the reviewer received the previous ZIP, but inspected the remediated GitHub source and independently reproduced essential M1/M2/M3 mechanisms. The updated 31-check ZIP was not itself independently rerun.
+- `0008` remains designed only, and C2/C3 remain unauthorized. This closeout changes documentation only; runtime and migration verification remain future gates.
+
 ## 2026-09-29 — CP3-C2-C1 bounded design remediation
 
 - Recorded the independent GPT verdict on C1 candidate `289266f1a230637d545ed0eef8f6fd73a933bbde`: **FAIL — DESIGN REMEDIATION REQUIRED**, three Major findings.

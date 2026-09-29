@@ -2526,9 +2526,9 @@ automatic progression remains `PROHIBITED`.
 
 ## ADR-020 — Security Authority and Final Mapping Architecture
 
-- 상태: **PROPOSED** — GPT independent review required; not accepted
+- 상태: **ACCEPTED** — CP3-C2-C1 architecture/design only; independent GPT re-review `PASS WITH ISSUES` accepted by user
 - 제안일: 2026-09-29 (Asia/Seoul)
-- 결정일: 없음
+- 결정일: 2026-09-29 (Asia/Seoul)
 - 설계 계약: `plans/PHASE_02_CP3_C2_C1_SECURITY_AUTHORITY_CONTRACT.md`
 
 ### 문제
@@ -2543,7 +2543,13 @@ KR identity uses the KRX 12-character ISIN anchor with exact KRX issue/listing, 
 
 Every positive mapping requires current approved issuer-head binding, complete field-owning Security evidence, collision CLEAR and fresh Security-specific WebAuthn approval. A lost issuer approval atomically appends Security REVIEW_REQUIRED links and suspends use. Supersession requires two distinct WebAuthn authorizations and one atomic pair transaction. Machine maximum is READY_FOR_MANUAL_REVIEW, with no automatic canonical or final mapping write.
 
-### CP3-C2-C1 bounded design remediation — still PROPOSED
+### Acceptance record — 2026-09-29
+
+The user accepted the independent GPT re-review of exact remediated candidate `6270547c91e861f2615c92cb027d5d5cf86ce937` (Critical 0, Major 0; prior Major-01/02/03 closed; required design fixes 0). Acceptance includes terminal successful Security WebAuthn authentication across later business failure (M1), exact old/successor two-auth supersession binding (M2), and an additive Security authentication edge in the one frozen R1 signCount graph (M3). The accepted design was integrated unchanged in merge `ea17105be49c063662d70d286637d90407f36087`.
+
+`PASS WITH ISSUES — CLOSED` preserves the review-package limitation: the independent reviewer received the previous ZIP, inspected the remediated GitHub source, and reproduced essential mechanisms with a minimal SQLite model; the updated 31-check ZIP itself was not independently rerun. ADR acceptance does not implement `0008` or verify Security runtime, source adapters, or production mapping. C2 and C3 remain unauthorized.
+
+### Historical CP3-C2-C1 bounded design remediation — then PROPOSED
 
 Independent review of candidate `289266f1a230637d545ed0eef8f6fd73a933bbde` found three Major design gaps. This proposal corrects only those gaps; it has no accepted or implemented effect.
 

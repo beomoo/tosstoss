@@ -1,13 +1,21 @@
 # Project Status
 
-## Current CP3-C2-C1 bounded design remediation — 2026-09-29
+## Current CP3-C2-C1 architecture closeout — 2026-09-29
+
+- The user accepted the independent GPT re-review of exact remediated candidate `6270547c91e861f2615c92cb027d5d5cf86ce937`: **PASS WITH ISSUES**, Critical `0`, Major `0`; prior Major-01/02/03 **CLOSED**, required design fixes `0`, unauthorized changes `0`. The exact design was merged into `feature/phase-02-toss` as `ea17105be49c063662d70d286637d90407f36087`; its tree matches the reviewed candidate exactly. **CP3-C2-C1: PASS WITH ISSUES — CLOSED. ADR-020: ACCEPTED** on 2026-09-29.
+- `WITH ISSUES` preserves one non-blocking evidence-package limitation: the independent reviewer received the previous `289266f1...` ZIP, not the updated 31-check remediation ZIP. The reviewer directly inspected the remediated GitHub source and independently reproduced the essential M1/M2/M3 mechanisms with a minimal SQLite model. The 31-check package itself was **not** independently rerun.
+- This is architecture/design acceptance only. Additive `0008` is **DESIGNED ONLY / NOT IMPLEMENTED**. Full 23-table Alembic DDL and upgrade/downgrade, actual Security WebAuthn ceremony, mixed R1/issuer/Security counter runtime, B-writer safety cascade, current-reader migration to the Security head, C2 engine, C3 writer, current KRX/SEC/exchange contracts, and production Security mapping remain **NOT VERIFIED**.
+- CP3-C2-B remains **PASS WITH ISSUES — CLOSED**. CP3-C2-C2 and CP3-C2-C3 remain **NOT STARTED / NOT AUTHORIZED**; CP3-D remains **NOT STARTED**; Phase 2 remains **IMPLEMENTATION IN PROGRESS**. No C1 closeout action starts those stages.
+- The following C1 design-remediation and earlier handoff sections are historical records.
+
+## Historical CP3-C2-C1 bounded design remediation — 2026-09-29
 
 - Independent GPT review of candidate `289266f1a230637d545ed0eef8f6fd73a933bbde` returned **FAIL — DESIGN REMEDIATION REQUIRED** (Critical 0, Major 3). The three findings concerned terminal Security WebAuthn authentication, exact old/successor supersession binding, and the shared R1 signCount graph.
 - The bounded design correction is **REMEDIATED — GPT INDEPENDENT RE-REVIEW REQUIRED**. The C1 contract, proposed ADR-020, and self-QA now specify durable successful authentication before the business SAVEPOINT, relationally distinct A/old and B/successor supersession identities, and a future additive Security authentication edge in the single R1 counter read set. A disposable SQLite probe passed 31 checks; it is not full 0008 or runtime verification.
 - ADR-020 remains `PROPOSED`. The 0008 migration, C2 machine engine, and C3 human writer remain **NOT AUTHORIZED**; CP3-D remains **NOT STARTED**. CP3-C2-B remains **PASS WITH ISSUES — CLOSED**; Phase 2 remains **IMPLEMENTATION IN PROGRESS**.
 - The following C1 design handoff is a historical record of the prior candidate and its pre-review status.
 
-## Current CP3-C2-C1 design handoff — 2026-09-29
+## Historical CP3-C2-C1 design handoff — 2026-09-29
 
 - User-authorized CP3-C2-C1 Security Authority Contract & additive 0008 **design only**: `DESIGNED — GPT INDEPENDENT REVIEW REQUIRED`. ADR-020 is `PROPOSED`, not accepted. The exact design is `plans/PHASE_02_CP3_C2_C1_SECURITY_AUTHORITY_CONTRACT.md`.
 - Baseline `origin/feature/phase-02-toss` was fetched and matched `07c8a2a5d53cd3413d7479f56194aa12d63bb1e7`. The isolated design branch preserves the separate R1 checkout and all frozen B/0001–0007 files.
@@ -285,7 +293,8 @@
 - [x] 별도 R1 backend-core implementation authority 및 두 보완 규칙 확인; 구현/검증 진행
 - [x] CP3-C2-B2-D 별도 시작 승인, exact candidate 독립검증 및 사용자 `PASS WITH ISSUES — CLOSED` 수락
 - [x] CP3-C2-B implementation `PASS WITH ISSUES — CLOSED` 사용자 closeout 승인
-- [ ] CP3-C2-C 별도 시작 승인
+- [x] CP3-C2-C1 architecture/design 별도 승인, 독립검증 `PASS WITH ISSUES`, ADR-020 `ACCEPTED`, `PASS WITH ISSUES — CLOSED`
+- [ ] CP3-C2-C2 / CP3-C2-C3 별도 시작 승인 (`0008` 구현 포함)
 - [ ] CP3-D 별도 시작 승인
 
 ## Phase 1 종료 기준

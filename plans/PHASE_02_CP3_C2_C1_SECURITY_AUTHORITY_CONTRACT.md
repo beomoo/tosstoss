@@ -2,7 +2,9 @@
 
 - Proposal date: 2026-09-29 (Asia/Seoul)
 - Baseline: `07c8a2a5d53cd3413d7479f56194aa12d63bb1e7`, `feature/phase-02-toss`
-- Status: **REMEDIATED — GPT INDEPENDENT RE-REVIEW REQUIRED** after independent review of candidate `289266f1a230637d545ed0eef8f6fd73a933bbde` returned **FAIL — DESIGN REMEDIATION REQUIRED** (Critical 0, Major 3). ADR-020 remains `PROPOSED`.
+- Current status: **PASS WITH ISSUES — CLOSED** as an architecture/design contract. The user accepted independent GPT re-review of remediated candidate `6270547c91e861f2615c92cb027d5d5cf86ce937` (Critical 0, Major 0; prior M1/M2/M3 closed); ADR-020 is **ACCEPTED** on 2026-09-29. The design was integrated unchanged in merge `ea17105be49c063662d70d286637d90407f36087`.
+- Historical remediation status: **REMEDIATED — GPT INDEPENDENT RE-REVIEW REQUIRED** after the previous `289266f1a230637d545ed0eef8f6fd73a933bbde` candidate received **FAIL — DESIGN REMEDIATION REQUIRED** (Critical 0, Major 3).
+- Closeout qualification: the independent reviewer inspected the remediated GitHub source and reproduced essential M1/M2/M3 mechanisms but received the previous ZIP; the updated 31-check package was not independently rerun. `0008` and all runtime behavior remain unimplemented/unverified under the terminal design boundary below.
 - Terminal boundary: design only. `0008` creation, runtime, collection, migration execution, WebAuthn ceremonies, canonical writes, and final mapping writes are **not authorized**. C2 and C3 require separate starts and reviews.
 
 ## 1. Authority boundary and repository findings

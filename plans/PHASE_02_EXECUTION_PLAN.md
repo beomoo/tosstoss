@@ -1,12 +1,19 @@
 # Phase 2 토스증권 읽기 전용 데이터 실행계획
 
-## Current CP3-C2-C1 bounded remediation routing — 2026-09-29
+## Current CP3-C2-C1 architecture closeout routing — 2026-09-29
+
+- Exact C1 candidate `6270547c91e861f2615c92cb027d5d5cf86ce937` was integrated without design changes in merge `ea17105be49c063662d70d286637d90407f36087` (matching tree). The user accepted independent GPT re-review **PASS WITH ISSUES** (Critical 0, Major 0; M1/M2/M3 closed). **ADR-020 ACCEPTED**; **CP3-C2-C1 PASS WITH ISSUES — CLOSED**.
+- The qualification preserves the prior-ZIP evidence-package limitation recorded in `STATUS.md`; the updated 31-check ZIP was not independently rerun. C1 closes architecture only: `0008` is **DESIGNED ONLY / NOT IMPLEMENTED**. Full DDL/upgrade/downgrade, Security WebAuthn and shared-counter runtime, B-writer cascade, current Security-head reads, C2/C3 implementation, current official-source contracts, and production mapping remain **NOT VERIFIED**.
+- CP3-C2-B remains **PASS WITH ISSUES — CLOSED**. CP3-C2-C2 and CP3-C2-C3 remain **NOT STARTED / NOT AUTHORIZED**; CP3-D **NOT STARTED**; Phase 2 **IMPLEMENTATION IN PROGRESS**. A separate user authorization is required before 0008, C2, or C3 work.
+- The following C1 remediation and earlier routing sections are historical records.
+
+## Historical CP3-C2-C1 bounded remediation routing — 2026-09-29
 
 - Previous C1 candidate `289266f1a230637d545ed0eef8f6fd73a933bbde` received independent GPT **FAIL — DESIGN REMEDIATION REQUIRED** (Critical 0, Major 3). The bounded M1/M2/M3 design corrections are **REMEDIATED — GPT INDEPENDENT RE-REVIEW REQUIRED**, subject to another independent review.
 - ADR-020 stays `PROPOSED`; additive 0008 implementation, CP3-C2-C2, and CP3-C2-C3 are **NOT AUTHORIZED**. CP3-C2-B remains **PASS WITH ISSUES — CLOSED**. CP3-D is **NOT STARTED** and Phase 2 is **IMPLEMENTATION IN PROGRESS**.
 - The following C1 design routing is the historical pre-review handoff, not a current PASS or CLOSED assertion.
 
-## Current CP3-C2-C1 design routing — 2026-09-29
+## Historical CP3-C2-C1 design routing — 2026-09-29
 
 - The user authorized **CP3-C2-C1 Security Authority Contract & additive 0008 schema design only** on exact integration base `07c8a2a5d53cd3413d7479f56194aa12d63bb1e7`. Status: `DESIGNED — GPT INDEPENDENT REVIEW REQUIRED`; ADR-020: `PROPOSED`.
 - Design record: `plans/PHASE_02_CP3_C2_C1_SECURITY_AUTHORITY_CONTRACT.md`. Proposed split: C1 contract/additive schema foundation; C2 machine Security authority engine; C3 fresh WebAuthn human approval and final mapping. C2/C3 and 0008 implementation are `NOT AUTHORIZED / NOT STARTED`.
@@ -75,7 +82,8 @@ B2-C R1 backend core is `PASS — CLOSED` following user closeout. R1 Windows Fi
 - `0007_phase_02_cp3_c2_b2_c_counter_capability_bootstrap`:
   `PASS — CLOSED`; user closeout `2026-09-05`
 - CP3-C2-B2-D: `PASS WITH ISSUES — CLOSED`
-- CP3-C2-C: `NOT STARTED`
+- CP3-C2-C1 architecture/design: `PASS WITH ISSUES — CLOSED`; ADR-020: `ACCEPTED`; `0008`: `DESIGNED ONLY / NOT IMPLEMENTED`
+- CP3-C2-C2 / CP3-C2-C3: `NOT STARTED / NOT AUTHORIZED`
 - CP3-D: `NOT STARTED`
 - Public Read-only Deployment: `FUTURE / NOT AUTHORIZED / NOT STARTED`
 - Automated Trading: `FUTURE / NOT AUTHORIZED / NOT STARTED`
@@ -305,7 +313,9 @@ CP3-A approved repository contract는 기존 Phase 1 계약을 breaking 변경�
 The preceding sentence preserves the pre-R1 snapshot. Current R1 state is
 `PASS — CLOSED` after 2026-09-28 user closeout for backend core only. `0007` is
 `PASS — CLOSED` under explicit user closeout `2026-09-05`;
-B2-D, CP3-C2-C and CP3-D remain `NOT STARTED`.
+B2-D is `PASS WITH ISSUES — CLOSED`; CP3-C2-C1 architecture/design is
+`PASS WITH ISSUES — CLOSED`; CP3-C2-C2/CP3-C2-C3 and CP3-D remain
+`NOT STARTED / NOT AUTHORIZED`.
 
 Second independently reviewed SHA `8093ee9389d4f7ae716482a87de5eae252e08eff`는
 P1-01~P1-07을 `CLOSED`로 확인하고 P1-08 exact legal-entity name-history
