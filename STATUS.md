@@ -1,5 +1,19 @@
 # Project Status
 
+## Current CP3-C2-C1 bounded design remediation — 2026-09-29
+
+- Independent GPT review of candidate `289266f1a230637d545ed0eef8f6fd73a933bbde` returned **FAIL — DESIGN REMEDIATION REQUIRED** (Critical 0, Major 3). The three findings concerned terminal Security WebAuthn authentication, exact old/successor supersession binding, and the shared R1 signCount graph.
+- The bounded design correction is **REMEDIATED — GPT INDEPENDENT RE-REVIEW REQUIRED**. The C1 contract, proposed ADR-020, and self-QA now specify durable successful authentication before the business SAVEPOINT, relationally distinct A/old and B/successor supersession identities, and a future additive Security authentication edge in the single R1 counter read set. A disposable SQLite probe passed 31 checks; it is not full 0008 or runtime verification.
+- ADR-020 remains `PROPOSED`. The 0008 migration, C2 machine engine, and C3 human writer remain **NOT AUTHORIZED**; CP3-D remains **NOT STARTED**. CP3-C2-B remains **PASS WITH ISSUES — CLOSED**; Phase 2 remains **IMPLEMENTATION IN PROGRESS**.
+- The following C1 design handoff is a historical record of the prior candidate and its pre-review status.
+
+## Current CP3-C2-C1 design handoff — 2026-09-29
+
+- User-authorized CP3-C2-C1 Security Authority Contract & additive 0008 **design only**: `DESIGNED — GPT INDEPENDENT REVIEW REQUIRED`. ADR-020 is `PROPOSED`, not accepted. The exact design is `plans/PHASE_02_CP3_C2_C1_SECURITY_AUTHORITY_CONTRACT.md`.
+- Baseline `origin/feature/phase-02-toss` was fetched and matched `07c8a2a5d53cd3413d7479f56194aa12d63bb1e7`. The isolated design branch preserves the separate R1 checkout and all frozen B/0001–0007 files.
+- Proposed C ledger, v2 canonical Security subject/profile and current head are documentation only. Migration `0008`, runtime, live official/provider calls, WebAuthn ceremonies, production DB writes and VERIFIED mapping writes: `0`. CP3-C2-C2 and CP3-C2-C3: `NOT AUTHORIZED / NOT STARTED`; CP3-D remains `NOT STARTED`. No C1 PASS/CLOSED declaration.
+- The earlier dated CP3-C2-C `NOT STARTED` entries below describe their then-current historical state; this entry supersedes them only for C1 design status. CP3-C2-B remains `PASS WITH ISSUES — CLOSED` with its original meaning.
+
 ## Current CP3-C2-B closeout — 2026-09-29
 
 - The user accepted independent GPT final review of exact B2-D candidate `3216043a531372a1ff04002b76f522d38ed03568`: `PASS WITH ISSUES`, Critical `0`, Major `0`, required code fixes `0`, required B2-D QA reruns `0`; M1/M2 `CLOSED`. CP3-C2-B2-D is `PASS WITH ISSUES — CLOSED`.

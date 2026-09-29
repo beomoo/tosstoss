@@ -2524,6 +2524,45 @@ automatic progression remains `PROHIBITED`.
 
 ---
 
+## ADR-020 — Security Authority and Final Mapping Architecture
+
+- 상태: **PROPOSED** — GPT independent review required; not accepted
+- 제안일: 2026-09-29 (Asia/Seoul)
+- 결정일: 없음
+- 설계 계약: `plans/PHASE_02_CP3_C2_C1_SECURITY_AUTHORITY_CONTRACT.md`
+
+### 문제
+
+An approved issuer does not establish an instrument, class, listing, or provider-to-Security bridge. Existing issuer authority tables are issuer-specific. Phase 1 `ShareClass.COMMON` and `(market, exchange, ticker, share_class)` uniqueness cannot represent all distinct classes and ticker reuse. The legacy `provider_identity_mappings` current VERIFIED index cannot truthfully handle revocation and successor approval without changing history or inventing `valid_to`.
+
+### 제안
+
+Use a separate versioned Security authority ledger and additive `0008_phase_02_cp3_c2_c_security_authority`; keep `0001`–`0007` byte-identical. A new immutable canonical Security subject/profile namespace is the C source of truth; a guarded `security_authority_link_heads` projection gives effective current mapping only while its captured B issuer head remains exactly APPROVED. Existing Phase 1 Security/mapping rows stay compatibility and fixture history, never new C authority. C3 writes no new legacy VERIFIED row; its effective `MappingStatus.VERIFIED` is a read projection bound to the exact approved Security link and human approval. A consumer of old mapping reads must migrate before C3 operation.
+
+KR identity uses the KRX 12-character ISIN anchor with exact KRX issue/listing, OpenDART and provider bridge. US identity uses a verified registrant CIK plus accepted SEC registered-class accession and deterministic class-row identity, cross-checked with current field-owning primary exchange. Provider ticker/name/CUSIP/ISIN never supply authority. CGS is disabled absent separate license and authorization. Unsupported/unknown instruments remain unresolved; only proven COMMON_EQUITY may create a canonical Security, without widening Phase 1 `ShareClass`.
+
+Every positive mapping requires current approved issuer-head binding, complete field-owning Security evidence, collision CLEAR and fresh Security-specific WebAuthn approval. A lost issuer approval atomically appends Security REVIEW_REQUIRED links and suspends use. Supersession requires two distinct WebAuthn authorizations and one atomic pair transaction. Machine maximum is READY_FOR_MANUAL_REVIEW, with no automatic canonical or final mapping write.
+
+### CP3-C2-C1 bounded design remediation — still PROPOSED
+
+Independent review of candidate `289266f1a230637d545ed0eef8f6fd73a933bbde` found three Major design gaps. This proposal corrects only those gaps; it has no accepted or implemented effect.
+
+1. A successfully verified Security WebAuthn assertion is terminal. Its challenge consumption and Security authentication/counter edge commit in the outer `BEGIN IMMEDIATE` even when the later disposition business SAVEPOINT rolls back. The failure is returned after the outer commit. In two-auth supersession, both independently successful authentications remain terminal if the atomic business pair fails.
+2. The Security supersession pair binds authorization A to the exact old decision/bundle/hash, old approved event/link and `SUPERSEDED`; authorization B binds to the exact successor READY decision/bundle/hash, same provider and `APPROVED`. Distinct challenges, consumptions and authentications, composite FKs, literal state checks and deferred pair-completeness constraints reject swapped/same/partial pairs.
+3. `security_reviewer_authentication_events` is a later **additive edge source** for the single frozen R1 credential signCount reconstruction, alongside credential-operation and issuer authentication. The R1 cryptographic meaning, counter acceptance rules and replay semantics remain unchanged. C3 must register the Security table in the common read set before any Security authentication is accepted; a needed change to the meaning of R1 counter rules is `R1 SECURITY CONTRACT CHANGE REQUIRED — STOP`.
+
+The 23-object additive 0008 design, KR/US anchors, CGS prohibition, ShareClass and legacy mapping boundaries, issuer-head prerequisite/cascade and no automatic promotion are unchanged. `ADR-020` remains **PROPOSED**, and C2/C3 and 0008 implementation remain unauthorized.
+
+### 대안과 영향
+
+Reusing B issuer evidence/approval tables is rejected because it changes their frozen meaning. Using ticker or provider identifier as the canonical anchor is rejected because it selects an unsupported winner. Rebuilding 0001 or rewriting legacy VERIFIED rows is rejected because the additive v2 namespace supports the required lifecycle. The proposed `0008` adds 23 tables plus indexes/triggers, with one mutable, rebuildable Security head projection; C2/C3 must be separately authorized and reviewed. Current application reads and B issuer-head writer integration are later C3 gates, not completed by C1.
+
+### 마이그레이션·롤백 및 검증 상태
+
+No migration or runtime is created here. Later 0008 upgrade is additive; downgrade must refuse while any 0008 history exists. In-memory SQLite feasibility evidence and limits are in the C1 self-QA/review package. Official adapter field coverage, current licensing/access facts, full migration and Windows ceremony integration remain NOT VERIFIED. The proposal has no PASS/CLOSED effect.
+
+---
+
 ## 새 결정 기록 양식
 
 ```md

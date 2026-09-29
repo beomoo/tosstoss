@@ -1,5 +1,17 @@
 # Phase 2 토스증권 읽기 전용 데이터 실행계획
 
+## Current CP3-C2-C1 bounded remediation routing — 2026-09-29
+
+- Previous C1 candidate `289266f1a230637d545ed0eef8f6fd73a933bbde` received independent GPT **FAIL — DESIGN REMEDIATION REQUIRED** (Critical 0, Major 3). The bounded M1/M2/M3 design corrections are **REMEDIATED — GPT INDEPENDENT RE-REVIEW REQUIRED**, subject to another independent review.
+- ADR-020 stays `PROPOSED`; additive 0008 implementation, CP3-C2-C2, and CP3-C2-C3 are **NOT AUTHORIZED**. CP3-C2-B remains **PASS WITH ISSUES — CLOSED**. CP3-D is **NOT STARTED** and Phase 2 is **IMPLEMENTATION IN PROGRESS**.
+- The following C1 design routing is the historical pre-review handoff, not a current PASS or CLOSED assertion.
+
+## Current CP3-C2-C1 design routing — 2026-09-29
+
+- The user authorized **CP3-C2-C1 Security Authority Contract & additive 0008 schema design only** on exact integration base `07c8a2a5d53cd3413d7479f56194aa12d63bb1e7`. Status: `DESIGNED — GPT INDEPENDENT REVIEW REQUIRED`; ADR-020: `PROPOSED`.
+- Design record: `plans/PHASE_02_CP3_C2_C1_SECURITY_AUTHORITY_CONTRACT.md`. Proposed split: C1 contract/additive schema foundation; C2 machine Security authority engine; C3 fresh WebAuthn human approval and final mapping. C2/C3 and 0008 implementation are `NOT AUTHORIZED / NOT STARTED`.
+- The C Security ledger is separate from frozen B issuer authority. No application code, tests, migration, frontend, fixtures, dependencies or frozen 0001–0007 files change in this checkpoint. No collection, WebAuthn ceremony, canonical Security write or VERIFIED mapping occurs. The dated `NOT STARTED` entries below remain historical.
+
 ## Current CP3-C2-B implementation closeout — 2026-09-29
 
 - Exact B2-D candidate `3216043a531372a1ff04002b76f522d38ed03568` was independently reviewed `PASS WITH ISSUES` (Critical `0`, Major `0`, M1/M2 `CLOSED`, required code fixes `0`, required B2-D QA reruns `0`) and accepted by the user as CP3-C2-B2-D `PASS WITH ISSUES — CLOSED`.
