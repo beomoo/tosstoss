@@ -1,6 +1,38 @@
 # CP3-C2-C additive 0008 implementation self-QA
 
-## Current bounded remediation result
+## Current integration and closeout result — 2026-09-30
+
+Status: **0008 Security Authority Foundation — PASS WITH ISSUES — CLOSED**. This is the additive foundation checkpoint only; it does not close CP3-C2-C or Phase 2.
+
+### Accepted independent review
+
+The exact candidate `0c4702c8bffa58675a5d1b0b9f1b77ca25beb8e4` (tree `64132bf753e680eae9d47252e45859d129d01f7f`) received `PASS WITH ISSUES`: Critical `0`, Major `0`, required code/schema fixes `0`, unauthorized changes `0`, regression found `0`. The user accepted that result. CP3-C2-C1 architecture/design remains `PASS WITH ISSUES — CLOSED`; ADR-020 remains `ACCEPTED`.
+
+### Integration proof
+
+- Integration branch: `feature/phase-02-toss`.
+- Merge: `88dcb1e49551069b8e986c35185d9bcced89d4e5`.
+- Parent 1: `6c0ed087106d0fdb94615b74a9472df17be08706`.
+- Parent 2: `0c4702c8bffa58675a5d1b0b9f1b77ca25beb8e4`.
+- Merge tree: `64132bf753e680eae9d47252e45859d129d01f7f`, identical to the reviewed candidate tree.
+- At merge time, implementation/schema/test/scanner changes after the candidate were `0`.
+
+### Final Windows QA evidence carried from the reviewed candidate
+
+The Windows standard `scripts/test.ps1` run restarted from the first gate and exited `0`, reaching the final completion marker. Results: backend `1246 passed, 0 failed, 0 skipped, 0 xfail, 0 deselected`; frontend unit `10` test files and `43` tests passed; E2E `2 passed`; Ruff, format (`129` files already formatted), MyPy (`71` source files, no issues), frontend lint/typecheck/build, API contract, migration repeat/downgrade/re-upgrade, fixture idempotency, final secret scan and final policy scan all exited `0`. The earlier backend exit `1` without summary/traceback remains historical; the exact unchanged command passed, followed by the complete successful rerun. This integration closeout did not rerun the full suite.
+
+### Non-blocking review qualifications
+
+- **Issue A — resolved in current docs:** the reviewed candidate's current-state documents still displayed historical `FINAL QA BLOCKED — STOP` after full QA passed. This closeout updates current-state sections and leaves all dated STOP/failure evidence intact.
+- **Issue B — review-package completeness:** the final review ZIP duplicated the bounded-remediation request in the slot intended for the original implementation request. Review remained possible because the original request was in the conversation and the accepted C1 contract/repository sources were included. This is not a code/schema defect; the prior ZIP remains preserved.
+
+### Current boundaries
+
+CP3-C2-C2 Machine Security Authority Engine is the next planned checkpoint and is not started; it must be its own implementation task. Under the new root `AGENTS.md`, no additional user approval is needed merely to begin that planned checkpoint. CP3-C2-C3 Human WebAuthn/final mapping and CP3-D remain not started; Phase 2 remains in progress. C2 evaluation, C3 disposition runtime, mixed-counter runtime, B-writer safety cascade, Security-head reader migration, live/current KRX/SEC/primary-exchange contracts and production Security mapping remain **NOT VERIFIED**. No main merge, deployment, production DB write or live authority call occurred.
+
+---
+
+## Historical pre-final remediation and STOP evidence — 2026-09-29
 
 Status: **FINAL QA BLOCKED — STOP**. Maximum successful handoff remains `0008 IMPLEMENTED — GPT FINAL INDEPENDENT VERIFICATION REQUIRED`.
 
@@ -16,7 +48,7 @@ Minor-01: source_namespace/document_kind share `[A-Z][A-Z0-9_]{0,127}` in all th
 
 M2: verified unchanged STOP scanner size 249357 and SHA-256 `b312ef430496a6cfa53c383a92173c3bf9d879456cd5e7f7552b26566ae6c6f5`, then updated the exact policy pin from base hash `0823d1d6d834d2dc83204d9c9ee2ecf19d27b8b5e56ab85149141617546ff1f4`. Every scanner difference from base is reproduced by seven fixed inventory literal substitutions on six lines; no other scanner difference exists. The control manifest excludes policy-scan.ps1. Its new digest is independently required by the added test module and test inventory edits, not by the pin update.
 
-### Current verification
+### Historical verification before final Windows QA
 
 - New policy matrix first attempt: 57 passed, one raw-SQL NUL locator rejection failed. The failure was preserved. An explicit SQL NUL guard and two token NUL cases were added; no test was weakened.
 - Final collection: focused 125 (65 existing + 60 remediation), backend 1246. Frontend 43 and E2E 2 remain required.

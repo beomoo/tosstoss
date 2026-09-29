@@ -1,6 +1,14 @@
 # Architecture Decision Record
 
-## Current bounded 0008 remediation — 2026-09-29
+## Current CP3-C2-C / 0008 Security Authority Foundation closeout — 2026-09-30
+
+- The exact reviewed candidate `0c4702c8bffa58675a5d1b0b9f1b77ca25beb8e4` (tree `64132bf753e680eae9d47252e45859d129d01f7f`) was integrated into `feature/phase-02-toss` by merge `88dcb1e49551069b8e986c35185d9bcced89d4e5`, with parents `6c0ed087106d0fdb94615b74a9472df17be08706` and `0c4702c8bffa58675a5d1b0b9f1b77ca25beb8e4`; the merge tree equals the reviewed candidate tree.
+- The user accepted the independent final result `PASS WITH ISSUES`: Critical `0`, Major `0`, required code/schema fixes `0`, unauthorized changes `0`, regression found `0`. CP3-C2-C1 architecture/design is `PASS WITH ISSUES — CLOSED`; ADR-020 is `ACCEPTED`; the additive 0008 Security Authority Foundation is `PASS WITH ISSUES — CLOSED`.
+- The two non-blocking qualifications are (A) candidate current-state documentation lagged the successful full QA and is corrected here while preserving historical STOP evidence, and (B) the final review ZIP duplicated the bounded-remediation request in the original-request slot, a package-completeness limitation rather than a code defect.
+- C2 Machine Security Authority Engine is the next planned checkpoint and is not started. C3 Human WebAuthn/final mapping and CP3-D remain not started; Phase 2 remains in progress. C2 evaluation, C3 disposition runtime, mixed-counter runtime, B-writer safety cascade, Security-head reader migration, current KRX/SEC/primary-exchange contracts and production Security mapping remain `NOT VERIFIED`.
+- Post-review implementation changes `0`; main merge `0`; deployments `0`; production DB writes `0`; live external-authority calls `0`. This closeout does not implement C2 or C3.
+
+## Historical bounded 0008 remediation — 2026-09-29
 
 - The user authorized only independent-review M1 (SourcePolicy production fail-closed validation), M2 (exact scanner raw-byte pin), Minor-01 (source/document token parity), and required verification of the existing uncommitted candidate. Status: **FINAL QA BLOCKED — STOP**.
 - Contract and 0008 DDL now share the existing B scheme set, concrete ASCII locator syntax without wildcard/pattern/credential/query/fragment/control characters, and isolated zero-weight fixture requirements. Source/document tokens are `[A-Z][A-Z0-9_]*`, length 1–128, in policies, evidence and applications. NUL is explicitly rejected by SQL; CGS/taint production blocks and the repository production guard remain.
@@ -8,7 +16,7 @@
 - Final Linux/WSL focused 125 and Windows regression 482 passed. Full Windows standard attempt 02 failed: backend 1245 passed / 1 failed, exit 1, 1711.74 seconds. The unchanged existing runtime logging test failed before receiving /health; two targeted diagnostic runs reproduced 1 failed / 1 passed, and the second captured child process exit 3. Root cause of startup termination remains NOT VERIFIED. No timeout/assertion/runtime/scanner change was made. Later full-QA gates, final secret/policy, commit and push were not executed. No independent PASS/CLOSED or next checkpoint is authorized.
 - C2/C3, shared-counter runtime, B writer cascade, current Security readers, live authority and production mappings remain NOT VERIFIED / NOT AUTHORIZED. Accepted B/C1 closeout qualifications and ADR-020 remain unchanged.
 
-## 0008 implementation execution record — 2026-09-29
+## Historical 0008 implementation execution record — 2026-09-29
 
 The user separately authorized additive 0008 foundation implementation from exact base `6c0ed087106d0fdb94615b74a9472df17be08706` under ACCEPTED ADR-020. This execution record does not change the accepted architecture. Candidate status: **FINAL QA BLOCKED — STOP**.
 
@@ -16,7 +24,7 @@ The implementation adds the accepted 23 Security objects in a separate namespace
 
 QA-control changes are confined to measured test/file/generated-cache inventories. No scanner exception, detector threshold, skip, xfail or deselection is introduced. M1/M2/M3 are implemented and tested only at the contract/schema/storage layer; their future runtime integration is not authorized or verified by this record. No design conflict requiring a new ADR was identified.
 
-## CP3-C2-B2-D and CP3-C2-B implementation user closeout — 2026-09-29
+## Historical CP3-C2-B2-D and CP3-C2-B implementation user closeout — 2026-09-29
 
 - Reviewed candidate: `3216043a531372a1ff04002b76f522d38ed03568`, tree `d02154c54c971ffc26e6ea153f18c58f63ba58df`.
 - Independent GPT final verdict accepted by the user: CP3-C2-B2-D `PASS WITH ISSUES`, Critical `0`, Major `0`, M1/M2 `CLOSED`, unauthorized changes `0`, required code fixes `0`, required B2-D QA reruns `0`. User decision: CP3-C2-B2-D `PASS WITH ISSUES — CLOSED`.
@@ -2573,7 +2581,7 @@ Independent review of candidate `289266f1a230637d545ed0eef8f6fd73a933bbde` found
 2. The Security supersession pair binds authorization A to the exact old decision/bundle/hash, old approved event/link and `SUPERSEDED`; authorization B binds to the exact successor READY decision/bundle/hash, same provider and `APPROVED`. Distinct challenges, consumptions and authentications, composite FKs, literal state checks and deferred pair-completeness constraints reject swapped/same/partial pairs.
 3. `security_reviewer_authentication_events` is a later **additive edge source** for the single frozen R1 credential signCount reconstruction, alongside credential-operation and issuer authentication. The R1 cryptographic meaning, counter acceptance rules and replay semantics remain unchanged. C3 must register the Security table in the common read set before any Security authentication is accepted; a needed change to the meaning of R1 counter rules is `R1 SECURITY CONTRACT CHANGE REQUIRED — STOP`.
 
-The 23-object additive 0008 design, KR/US anchors, CGS prohibition, ShareClass and legacy mapping boundaries, issuer-head prerequisite/cascade and no automatic promotion are unchanged. `ADR-020` remains **PROPOSED**, and C2/C3 and 0008 implementation remain unauthorized.
+The accepted 23-object additive 0008 design, KR/US anchors, CGS prohibition, ShareClass and legacy mapping boundaries, issuer-head prerequisite/cascade and no automatic promotion are unchanged. `ADR-020` is **ACCEPTED** for CP3-C2-C1 architecture/design. The additive 0008 Security Authority Foundation is implemented and `PASS WITH ISSUES — CLOSED`; C2/C3 runtime work remains not started and the unverified runtime/source boundaries are recorded in the current closeout above.
 
 ### 대안과 영향
 

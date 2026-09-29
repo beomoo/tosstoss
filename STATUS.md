@@ -1,6 +1,15 @@
 # Project Status
 
-## Current bounded 0008 remediation — 2026-09-29
+## Current CP3-C2-C / 0008 Security Authority Foundation closeout — 2026-09-30
+
+- Exact independently reviewed candidate `0c4702c8bffa58675a5d1b0b9f1b77ca25beb8e4` (tree `64132bf753e680eae9d47252e45859d129d01f7f`) was integrated into `feature/phase-02-toss` by merge `88dcb1e49551069b8e986c35185d9bcced89d4e5`; parents are the approved base `6c0ed087106d0fdb94615b74a9472df17be08706` and the exact candidate. Merge tree equals the reviewed candidate tree.
+- Independent final result accepted by the user: **PASS WITH ISSUES**; Critical `0`, Major `0`, required code/schema fixes `0`, unauthorized changes `0`, regression found `0`. `0008 Security Authority Foundation: PASS WITH ISSUES — CLOSED`; `CP3-C2-C1 architecture/design: PASS WITH ISSUES — CLOSED`; `ADR-020: ACCEPTED`.
+- The two non-blocking review qualifications are recorded in `KNOWN_ISSUES.md` and the 0008 self-QA. Issue A was that the candidate's current-state docs still showed a historical `FINAL QA BLOCKED — STOP` after the full QA passed; this closeout corrects current sections and preserves the prior STOP records. Issue B is a review-package completeness limitation: the final review ZIP duplicated the bounded-remediation request in a slot intended for the original implementation request. Review remained possible from the original request in the conversation and the included accepted C1 contract/repository sources. Neither issue is a code/schema defect.
+- Current position: CP3-C2-B `PASS WITH ISSUES — CLOSED`; CP3-C2-C1 architecture/design `PASS WITH ISSUES — CLOSED`; 0008 foundation `PASS WITH ISSUES — CLOSED`; CP3-C2-C2 Machine Security Authority Engine is the **NEXT PLANNED CHECKPOINT** and is not started; CP3-C2-C3 Human WebAuthn/final mapping is **NOT STARTED**; CP3-D is **NOT STARTED**; Phase 2 remains **IMPLEMENTATION IN PROGRESS**. C2, if begun, is a separate implementation task; the new root `AGENTS.md` says no additional approval is required merely to begin that planned checkpoint.
+- 0008 acceptance is limited to the additive foundation. C2 evaluation, C3 Security WebAuthn disposition runtime, R1/issuer/Security mixed-counter integration, B issuer-writer safety cascade, current application reads from the Security head, live/current KRX/SEC/primary-exchange authority contracts, and production Security mapping remain **NOT VERIFIED**.
+- Post-review implementation changes `0`; main merge `0`; deployments `0`; production DB writes `0`; live external-authority calls `0`. No C2/C3 implementation is part of this closeout.
+
+## Historical bounded 0008 remediation — 2026-09-29
 
 - The user authorized only independent-review M1 (SourcePolicy production fail-closed validation), M2 (exact scanner raw-byte pin), Minor-01 (source/document token parity), and required verification of the existing uncommitted candidate. Status: **FINAL QA BLOCKED — STOP**.
 - Contract and 0008 DDL now share the existing B scheme set, concrete ASCII locator syntax without wildcard/pattern/credential/query/fragment/control characters, and isolated zero-weight fixture requirements. Source/document tokens are `[A-Z][A-Z0-9_]*`, length 1–128, in policies, evidence and applications. NUL is explicitly rejected by SQL; CGS/taint production blocks and the repository production guard remain.
@@ -39,7 +48,7 @@
 - Proposed C ledger, v2 canonical Security subject/profile and current head are documentation only. Migration `0008`, runtime, live official/provider calls, WebAuthn ceremonies, production DB writes and VERIFIED mapping writes: `0`. CP3-C2-C2 and CP3-C2-C3: `NOT AUTHORIZED / NOT STARTED`; CP3-D remains `NOT STARTED`. No C1 PASS/CLOSED declaration.
 - The earlier dated CP3-C2-C `NOT STARTED` entries below describe their then-current historical state; this entry supersedes them only for C1 design status. CP3-C2-B remains `PASS WITH ISSUES — CLOSED` with its original meaning.
 
-## Current CP3-C2-B closeout — 2026-09-29
+## Historical CP3-C2-B closeout — 2026-09-29
 
 - The user accepted independent GPT final review of exact B2-D candidate `3216043a531372a1ff04002b76f522d38ed03568`: `PASS WITH ISSUES`, Critical `0`, Major `0`, required code fixes `0`, required B2-D QA reruns `0`; M1/M2 `CLOSED`. CP3-C2-B2-D is `PASS WITH ISSUES — CLOSED`.
 - Exact candidate integration merge `1eedc36e571d408c3fe33e726521907224efb971` on `feature/phase-02-toss` has parents `48d4201281db2fabdb58f09ba6860bd184e722c8` and `3216043a531372a1ff04002b76f522d38ed03568`; merge tree `d02154c54c971ffc26e6ea153f18c58f63ba58df` equals the approved candidate tree. No application, test, migration, scanner-semantic, dependency or frontend change followed the reviewed candidate.
@@ -65,18 +74,18 @@
 - CP3-C2-B implementation: `IN PROGRESS`; CP3-C2-B2-D, CP3-C2-C and CP3-D: `NOT STARTED`; Phase 2: `IMPLEMENTATION IN PROGRESS`.
 - Earlier dated R1 STOP and failed-QA entries below remain historical evidence. This closeout supersedes their then-current status and does not authorize later checkpoints.
 
-- 프로젝트 상태: `PHASE 2 IMPLEMENTATION IN PROGRESS — CP2 COMPLETE / CP3-A PASS — CONTRACT APPROVED AND CLOSED / CP3-B PASS — CLOSED / CP3-C1 PASS — CLOSED / CP3-C2-A PASS — CONTRACT APPROVED AND CLOSED / CP3-C2-B1 PASS — CONTRACT APPROVED AND CLOSED / CP3-C2-B PASS WITH ISSUES — CLOSED / CP3-C2-B2-A PASS — CLOSED / CP3-C2-B2-B PASS — CLOSED / ADR-015 ACCEPTED / ADR-016 ACCEPTED / ADR-017 ACCEPTED / ADR-018 ACCEPTED / ADR-019 ACCEPTED / CP3-C2-B2-C 0006 PASS — CLOSED / CP3-C2-B2-C 0007 PASS — CLOSED / B2-C R1 PASS — CLOSED / CP3-C2-B2-D PASS WITH ISSUES — CLOSED / CP3-C2-C NOT STARTED / CP3-D NOT STARTED`
-- 현재 Phase: `Phase 2 — CP3-C2-B implementation PASS WITH ISSUES — CLOSED; CP3-C2-C NOT STARTED; CP3-D NOT STARTED`
+- 프로젝트 상태: `PHASE 2 IMPLEMENTATION IN PROGRESS — CP2 COMPLETE / CP3-A PASS — CONTRACT APPROVED AND CLOSED / CP3-B PASS — CLOSED / CP3-C1 PASS — CLOSED / CP3-C2-A PASS — CONTRACT APPROVED AND CLOSED / CP3-C2-B1 PASS — CONTRACT APPROVED AND CLOSED / CP3-C2-B PASS WITH ISSUES — CLOSED / CP3-C2-B2-A PASS — CLOSED / CP3-C2-B2-B PASS — CLOSED / ADR-015 ACCEPTED / ADR-016 ACCEPTED / ADR-017 ACCEPTED / ADR-018 ACCEPTED / ADR-019 ACCEPTED / CP3-C2-B2-C 0006 PASS — CLOSED / CP3-C2-B2-C 0007 PASS — CLOSED / B2-C R1 PASS — CLOSED / CP3-C2-B2-D PASS WITH ISSUES — CLOSED / CP3-C2-C1 PASS WITH ISSUES — CLOSED / ADR-020 ACCEPTED / 0008 SECURITY AUTHORITY FOUNDATION PASS WITH ISSUES — CLOSED / CP3-C2-C2 NEXT PLANNED (NOT STARTED) / CP3-C2-C3 NOT STARTED / CP3-D NOT STARTED`
+- 현재 Phase: `Phase 2 — CP3-C2-C 0008 Security Authority Foundation PASS WITH ISSUES — CLOSED; CP3-C2-C2 NEXT PLANNED CHECKPOINT (NOT STARTED); CP3-C2-C3 NOT STARTED; CP3-D NOT STARTED`
 - 현재 버전: `0.1.0`
 - Phase 1 최종 검증 commit: `57b2a63ead06d03191d8094e1689b8d2ab3d7764`
 - Phase 1 PR: `#1`
 - Phase 1 merge commit: `b1829a7375704271a21267e1fcf62808147be593`
 - Release baseline tag: `v0.1.0`
-- 최종 구현 QA일: `2026-09-29 (B2-D independently reviewed candidate: Windows-native backend 1121 / frontend 43 / E2E 2 passed; required B2-D QA reruns 0)`; closeout integrity gates are recorded in the documentation closeout record.
+- 최종 구현 QA일: `2026-09-29 (0008 reviewed candidate: Windows standard scripts/test.ps1 exit 0; backend 1246 passed, frontend unit 43 passed, E2E 2 passed; all required gates completed)`; detailed counts and gates: `qa/PHASE_02_CP3_C2_C_0008_SELF_QA.md`.
 - 실제 API 연결: `CP2-D2 one-shot PASS — OAuth + GET /api/v1/stocks만 검증`
 - 실제 주문 기능: `비활성 / 비범위`
 - OpenAI API 사용: `아니오`
-- Phase 2 상태: `CP1 PASS / CP2 COMPLETE / CP3-A PASS — CONTRACT APPROVED AND CLOSED / CP3-B PASS — CLOSED / CP3-C1 PASS — CLOSED / CP3-C2-A PASS — CONTRACT APPROVED AND CLOSED / CP3-C2-B1 PASS — CONTRACT APPROVED AND CLOSED / CP3-C2-B PASS WITH ISSUES — CLOSED / CP3-C2-B2-A PASS — CLOSED / CP3-C2-B2-B PASS — CLOSED / ADR-015 ACCEPTED / ADR-016 ACCEPTED / ADR-017 ACCEPTED / ADR-018 ACCEPTED / ADR-019 ACCEPTED / CP3-C2-B2-C 0006 PASS — CLOSED / CP3-C2-B2-C 0007 PASS — CLOSED / B2-C R1 PASS — CLOSED / CP3-C2-B2-D PASS WITH ISSUES — CLOSED / CP3-C2-C NOT STARTED / CP3-D NOT STARTED`
+- Phase 2 상태: `CP1 PASS / CP2 COMPLETE / CP3-A PASS — CONTRACT APPROVED AND CLOSED / CP3-B PASS — CLOSED / CP3-C1 PASS — CLOSED / CP3-C2-A PASS — CONTRACT APPROVED AND CLOSED / CP3-C2-B1 PASS — CONTRACT APPROVED AND CLOSED / CP3-C2-B PASS WITH ISSUES — CLOSED / CP3-C2-C1 PASS WITH ISSUES — CLOSED / ADR-020 ACCEPTED / 0008 SECURITY AUTHORITY FOUNDATION PASS WITH ISSUES — CLOSED / CP3-C2-C2 NEXT PLANNED (NOT STARTED) / CP3-C2-C3 NOT STARTED / CP3-D NOT STARTED / PHASE 2 IMPLEMENTATION IN PROGRESS`
 - CP3-B: `PASS — CLOSED`
 - CP3-C1: `PASS — CLOSED`
 - CP3-C2-A: `PASS — CONTRACT APPROVED AND CLOSED`
@@ -115,11 +124,13 @@
 - `0007_phase_02_cp3_c2_b2_c_counter_capability_bootstrap`:
   `PASS — CLOSED`; user closeout `2026-09-05`
 - CP3-C2-B2-D: `PASS WITH ISSUES — CLOSED`
-- CP3-C2-C: `NOT STARTED`
+- CP3-C2-C1 architecture/design: `PASS WITH ISSUES — CLOSED`; ADR-020: `ACCEPTED`; 0008 Security Authority Foundation: `PASS WITH ISSUES — CLOSED`
+- CP3-C2-C2 Machine Security Authority Engine: `NEXT PLANNED CHECKPOINT — NOT STARTED`
+- CP3-C2-C3 Human WebAuthn / Final Mapping: `NOT STARTED`
 - CP3-D: `NOT STARTED`
 - Public Read-only Deployment: `FUTURE / NOT AUTHORIZED / NOT STARTED`
 - Automated Trading: `FUTURE / NOT AUTHORIZED / NOT STARTED`
-- Automatic checkpoint progression: `PROHIBITED`
+- Planned checkpoint progression is allowed within the approved plan under `AGENTS.md`; main merge, deployment, production mutation and live authority remain explicitly gated.
 - Non-blocking review issues: future Public deployment requires source
   redistribution/publication eligibility review; GitHub CI execution evidence
   remains absent.

@@ -1,6 +1,22 @@
 # Known Issues and Open Questions
 
-## Current bounded 0008 remediation — 2026-09-29
+## Current CP3-C2-C / 0008 review qualifications — 2026-09-30
+
+Accepted independent result: `PASS WITH ISSUES` (Critical 0, Major 0, required code/schema fixes 0, unauthorized changes 0, regression found 0). The two items below are non-blocking review qualifications, not code or schema defects.
+
+### Issue A — candidate current-state documents lagged the tested tree
+
+- The reviewed candidate's current-state documentation still displayed historical `FINAL QA BLOCKED — STOP` after the complete Windows standard QA had passed.
+- Status: **RESOLVED BY THIS CLOSEOUT**. Current-state sections now record the accepted 0008 closeout. Earlier STOP entries and failed-run evidence remain unchanged and labeled historical.
+
+### Issue B — final review ZIP authorization duplication
+
+- The final review ZIP duplicated the bounded-remediation request in a slot intended for the original implementation request.
+- Status: **NON-BLOCKING REVIEW-PACKAGE COMPLETENESS LIMITATION**. Independent review remained possible because the original implementation request was present in the conversation and the accepted C1 contract/repository sources were included. This is not an implementation defect; the prior package remains preserved as historical evidence.
+
+The accepted scope is the additive 0008 foundation only. C2 machine evaluation, C3 WebAuthn/final mapping runtime, shared-counter integration, B-writer cascade, Security-head reader cutover, live authority contracts and production Security mapping remain NOT VERIFIED. CP3-C2-C2 is next planned but not started; C3 and CP3-D remain not started.
+
+## Historical bounded 0008 remediation — 2026-09-29
 
 - The user authorized only independent-review M1 (SourcePolicy production fail-closed validation), M2 (exact scanner raw-byte pin), Minor-01 (source/document token parity), and required verification of the existing uncommitted candidate. Status: **FINAL QA BLOCKED — STOP**.
 - Contract and 0008 DDL now share the existing B scheme set, concrete ASCII locator syntax without wildcard/pattern/credential/query/fragment/control characters, and isolated zero-weight fixture requirements. Source/document tokens are `[A-Z][A-Z0-9_]*`, length 1–128, in policies, evidence and applications. NUL is explicitly rejected by SQL; CGS/taint production blocks and the repository production guard remain.
@@ -18,7 +34,7 @@
 
 ## Current CP3-C2-B closeout issues — 2026-09-29
 
-CP3-C2-B2-D and overall CP3-C2-B implementation are `PASS WITH ISSUES — CLOSED` after the user's acceptance of independent review. Non-blocking limitations remain: KI-014 randomized scanner self-canary reproducibility; KI-021 missing separately named exact-duplicate REJECTED/REVOKED regression cases; and R1 physical remote-volume/missing-ACL negative cases validated through controlled simulations, not physical devices. None is represented as a required B2-D code fix or QA rerun. CP3-C2-C and CP3-D remain `NOT STARTED`.
+CP3-C2-B2-D and overall CP3-C2-B implementation are `PASS WITH ISSUES — CLOSED` after the user's acceptance of independent review. Non-blocking limitations remain: KI-014 randomized scanner self-canary reproducibility; KI-021 missing separately named exact-duplicate REJECTED/REVOKED regression cases; and R1 physical remote-volume/missing-ACL negative cases validated through controlled simulations, not physical devices. None is represented as a required B2-D code fix or QA rerun. CP3-C2-C1/0008 foundation is `PASS WITH ISSUES — CLOSED`; CP3-C2-C2 is the next planned checkpoint and remains not started; CP3-C2-C3 and CP3-D remain `NOT STARTED`.
 
 ## KI-019 — B2-D standard secret scanner artifact population
 

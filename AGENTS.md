@@ -1,156 +1,349 @@
 # Project Instructions for Codex
 
-## 1. 프로젝트 목적
+## 1. 역할과 범위
 
-토스증권 Open API, OpenDART, SEC EDGAR 등 공식·합법적 데이터 소스를 이용해 현재는 개인용 로컬 **읽기 전용 기업분석 웹 대시보드**를 구축한다.
+현재 repository는 승인된 단계별 구현계획을 따른다.
 
-장기 제품 방향에는 별도 승인된 공개 읽기 전용 대시보드와 별도 승인된 자동매매 프로젝트가 포함될 수 있다. 이는 현재 구현·배포·거래 권한이 아니며 `PUBLIC`, `OWNER / ADMIN`, `TRADING`은 서로 다른 신뢰 도메인으로 유지한다.
+Codex는 승인된 범위를 구현하고 bounded self-repair와 self-QA를 수행한다.
 
-현재 저장소는 단계별 구현 방식으로 운영한다. 전체 사양을 참고하되, 현재 Phase의 명시적 범위를 넘어 구현하지 않는다.
+Architecture, security policy, schema meaning, transaction policy 또는 승인 범위를 임의로 변경하지 않는다.
 
----
-
-## 2. 작업 전 필수 확인
-
-모든 작업 시작 전에 다음을 읽는다.
-
-1. `README_START_HERE.md`
-2. `docs/00_MASTER_IMPLEMENTATION_PLAN.md`
-3. 현재 작업에 해당하는 `plans/PHASE_XX_*.md`
-4. 현재 작업과 직접 관련된 상세 사양서
-5. `docs/10_SECURITY_AND_OPERATIONS.md`
-6. `docs/11_ACCEPTANCE_TESTS.md`
-7. `STATUS.md`
-8. `DECISIONS.md`
-9. `KNOWN_ISSUES.md`
-
-문서 간 충돌이 있으면 임의로 선택하지 않는다. 충돌 위치와 영향을 `DECISIONS.md`에 `PROPOSED` 상태로 기록하고, 안전하고 되돌릴 수 있는 범위만 진행한다.
-
----
-
-## 3. 절대 조건
-
-- 현재 승인된 작업에서는 실제 주문 기능을 구현하거나 활성화하지 않는다.
-- `TRADING_ENABLED=false`, `DRY_RUN=true`, `LOCAL_ONLY=true`를 기본 원칙으로 유지한다.
-- OpenAI API를 호출하지 않는다.
-- 유료 데이터 API를 추가하지 않는다.
-- 토스 Client Secret, Access Token, DART 키 등 시크릿을 프론트엔드, Git, 로그, 테스트 fixture, 화면에 포함하지 않는다.
-- 브라우저에서 증권사 API를 직접 호출하지 않는다.
-- 누락·실패·미확인 데이터를 `0`, 빈 문자열, 임의 추정값으로 대체하지 않는다.
-- `source`, `observed_at`, `published_at`, `fetched_at`, `freshness_status`, `finality_status`, `revision_status`를 가능한 범위에서 보존한다.
-- 금액·주식 수·EPS 등 정밀 계산에 binary float를 사용하지 않는다.
-- 저장 시각은 UTC를 원칙으로 하고 화면 표시는 `Asia/Seoul`을 기본으로 한다.
-- 외부 API의 응답 구조나 엔드포인트를 추측하여 구현하지 않는다. 구현 시점의 공식 문서를 확인한다.
-- 테스트 실패를 삭제, skip, xfail 또는 조건부 우회로 숨기지 않는다.
-- mock/fixture 구현을 실제 연동 완료로 표현하지 않는다.
-- 사양과 완료 기준을 Codex가 임의로 낮추지 않는다.
-- 데이터 원문과 시스템 추론을 구분한다.
-
-현재 및 별도 승인되지 않은 모든 작업은 `LOCAL_ONLY=true`를 유지한다. 공개 네트워크 노출은 미래의 명시적인 `Public Read-only Deployment` 체크포인트에서만 검토할 수 있고, 그 승인은 승인된 public-safe 읽기 전용 출력에만 적용된다. `OWNER / ADMIN`, 내부 저장소, 시크릿, 증권사 자격증명과 `TRADING`의 인터넷 노출 또는 권한을 함께 승인하지 않는다. 현재 승인 범위에서는 `TRADING_ENABLED=false`와 `DRY_RUN=true`가 필수다.
-
----
-
-## 4. 구현 원칙
-
-- 작은 변경 단위와 검증 가능한 체크포인트를 사용한다.
-- 외부 API 커넥터, 정규화, 저장, 분석, UI를 분리한다.
-- 커넥터 원문 응답과 정규화 결과를 추적 가능하게 연결한다.
-- 모든 수집 작업은 멱등성을 가져야 한다.
-- 수정 공시, 재수집, 중복 이벤트를 고려한다.
-- 분석 결과에는 사용한 입력 데이터 버전과 계산식 버전을 남긴다.
-- UI는 최신값만 보여주는 대신 기준일과 수집일을 함께 보여준다.
-- 오류 시 전체 서비스가 멈추는 대신 해당 데이터 소스의 상태를 `ERROR`, `STALE`, `UNAVAILABLE`로 표시한다.
-- 실제 코드와 테스트가 없는 TODO를 완료로 간주하지 않는다.
-
----
-
-## 5. 권장 저장소 구조
+현재 승인되지 않은:
 
 ```text
-apps/web/                 Next.js + TypeScript
-services/api/             FastAPI + Python
-services/api/connectors/  외부 데이터 소스 커넥터
-services/api/domain/      도메인 모델과 규칙
-services/api/storage/     DB·Parquet 저장 계층
-services/api/jobs/        수집·재계산 작업
-services/api/routes/      REST API
-tests/                    단위·계약·통합 테스트
-fixtures/                 비식별·비밀정보 없는 샘플 데이터
-scripts/                  실행·검증 스크립트
-docs/
-plans/
-qa/
-prompts/
+production DB mutation
+public deployment
+live external authority
+Trading
 ```
 
-구조 변경이 필요하면 이유와 마이그레이션 영향을 `DECISIONS.md`에 먼저 기록한다.
+은 실행하지 않는다.
+
+기본 안전 원칙:
+
+```text
+LOCAL_ONLY=true
+TRADING_ENABLED=false
+DRY_RUN=true
+```
 
 ---
 
-## 6. 완료 전 필수 검증
+## 2. 작업 전 확인
 
-현재 Phase에 맞는 다음 명령을 실제로 실행한다.
+작업과 직접 관련된 범위에서 다음을 확인한다.
 
-- frontend lint
-- frontend typecheck
-- frontend test
-- frontend build
-- backend lint/format check
-- backend typecheck
-- backend unit test
-- backend integration test
-- DB migration test
-- fixture import idempotency test
-- secret scan
-- Phase별 acceptance test
+```text
+README_START_HERE.md
+docs/00_MASTER_IMPLEMENTATION_PLAN.md
+현재 Phase plan
+직접 관련 contract/spec
+docs/10_SECURITY_AND_OPERATIONS.md
+docs/11_ACCEPTANCE_TESTS.md
+STATUS.md
+DECISIONS.md
+KNOWN_ISSUES.md
+```
 
-명령이 아직 정의되지 않은 Phase에서는 실행 가능한 표준 스크립트를 먼저 만든다.
+현재 세션에서 이미 확인했고 변경되지 않은 자료를 이유 없이 반복해서 읽지 않는다.
 
----
-
-## 7. 완료 보고 형식
-
-각 Phase 종료 시 다음을 제출한다.
-
-1. 변경 파일 목록
-2. 구현된 요구사항
-3. 구현하지 않은 요구사항
-4. 실행한 명령과 결과
-5. 생성한 샘플 JSON 또는 화면
-6. 보안 확인 결과
-7. 알려진 제한사항
-8. 잔여 위험
-9. `qa/PHASE_XX_SELF_QA.md`
-10. 갱신된 `STATUS.md`, `CHANGELOG.md`, 필요 시 `KNOWN_ISSUES.md`
-
-완료 조건을 충족하지 못하면 `완료`라고 선언하지 않는다.
+Semantic conflict가 있으면 임의 결정하지 않고 STOP한다.
 
 ---
 
-## 8. GPT 독립검증 제출물과 전달문
+## 3. 작업 batching
 
-구현·수정·진단 결과를 독립검증에 제출하는 종료 보고에는 다음을 함께 제공한다.
-정상 구현 완료뿐 아니라 미완료·차단 이슈로 STOP하는 경우에도 적용한다.
+작업을 지나치게 작은 단계로 쪼개지 않는다.
 
-1. 한 번에 다운로드할 수 있는 검토용 ZIP 링크
-2. 실제 구현 범위, 실행한 테스트·exit code, 변경 파일, 남은 문제와
-   `NOT VERIFIED` 항목을 구분한 결과 요약
-3. 사용자가 GPT에 그대로 복사하여 보낼 수 있는 이번 작업 전용 검증 요청문
+### 단순 작업
 
-ZIP에는 공유가 허용된 필수 승인·수정 지침, 최신 보고서, 검토 대상 소스와
-diff, 안전한 테스트·실행 증거, 기준 snapshot과 파일 manifest를 필요한 범위에서
-포함한다. GPT 전달문도 `GPT_REVIEW_REQUEST.md`로 ZIP에 포함하고 최종 응답에
-본문을 함께 제공한다. 이전 실패와 원본 증거는 덮어쓰지 않으며 시크릿,
-원시 보안 로그, 후보 원문 등 공유 금지 데이터는 제외한다.
+다음은 가능한 한 하나의 작업 안에서 끝낸다.
 
-GPT 전달문에는 먼저 읽을 파일, 승인된 범위, 요구사항과 실제 코드·증거의
-대조 요청, 집중 검토할 문제, 미검증 항목 및 허용된 판정 상한을 명시한다.
-국소 수정 검증을 R1 전체 승인이나 다음 단계 시작으로 확대하도록 요청하지 않는다.
+```text
+QA mirror/path
+editable install
+fixture
+revision expectation
+lint/type/format
+disposable DB/environment
+단순 문서 정합성
+동일 QA 재실행
+```
 
-ZIP 하나만으로 해당 검증이 가능한지 확인한다. 필수 원문·소스·증거가 없거나
-더 넓은 검증에는 전체 checkout 또는 확정 commit이 필요하면 그 한계를 먼저
-알리고 추가 제출물을 정확히 명시한다. 부족한 내용을 추정·복원하거나
-독립검증에 충분하다고 과장하지 않는다.
+Architecture/security/schema/test 의미가 바뀌지 않는 한 중간 승인이나 GPT 독립검증을 반복하지 않는다.
 
-이 규칙은 제출 형식에 관한 것이며 구현 범위 확대, STOP 해제, 추가 QA 실행,
-staging, commit/push 또는 독립검증 전 PASS/CLOSED 선언을 승인하지 않는다.
+### 고정 범위 구현
+
+이미 architecture가 승인된 작업은 가능하면:
+
+```text
+implementation
+→ focused QA
+→ regression
+→ full QA
+→ handoff
+```
+
+까지 연속 진행한다.
+
+### 별도 STOP이 필요한 경우
+
+```text
+new architecture
+security/auth 의미 변경
+schema/migration 의미 변경
+transaction/data-integrity 정책 변경
+test/acceptance 완화
+scope 확대
+production mutation
+새 live external authority
+```
+
+가 필요할 때만 사용자 판단으로 돌아간다.
+
+---
+
+## 4. Bounded self-repair
+
+승인 범위 안의 일반 오류는 약 2~3회:
+
+```text
+diagnose
+→ minimal repair
+→ rerun
+```
+
+한다.
+
+허용 예:
+
+```text
+syntax/type/lint
+fixture
+SQL/FK/index
+path
+QA mirror
+editable install
+disposable environment
+revision expectation
+command invocation
+```
+
+단순 환경 문제 때문에 반복 STOP하지 않는다.
+
+Repository semantics를 바꿔야 하면 STOP한다.
+
+---
+
+## 5. 환경/QA 복구
+
+Repository source를 변경하지 않는 QA 환경 문제는 승인된 작업 안에서 연속 해결할 수 있다.
+
+예:
+
+```text
+candidate → disposable mirror synchronization
+editable install → exact mirror
+PATH/working directory
+disposable DB
+temporary QA state
+Git index/worktree synchronization in disposable mirror
+```
+
+조건:
+
+- authoritative candidate를 바꾸지 않는다.
+- dependency version을 임의 변경하지 않는다.
+- test 의미를 바꾸지 않는다.
+- scanner/policy 의미를 바꾸지 않는다.
+- 복구 후 candidate와 QA 환경의 equality를 재확인한다.
+
+---
+
+## 6. 독립검증이 필요한 경우
+
+정식 GPT 독립검증 package는 다음에만 만든다.
+
+```text
+최종 implementation/remediation candidate
+schema/migration/security/auth/transaction 최종 candidate
+integration 전 독립 acceptance가 필요한 checkpoint
+semantic/code 문제로 다음 수정 범위를 GPT가 판단해야 하는 경우
+```
+
+---
+
+## 7. 독립검증이 필요하지 않은 경우
+
+다음에는 review ZIP/GPT 요청문을 자동 생성하지 않는다.
+
+```text
+QA mirror drift
+editable/path 문제
+tool/command 오류
+disposable environment 문제
+dependency setup 문제
+read-only 중간 diagnosis
+source가 바뀌지 않은 QA rerun
+scanner preflight 환경 문제
+단순 staging/commit 준비
+```
+
+환경 STOP은 자동 GPT 독립검증 요청이 아니다.
+
+---
+
+## 8. GPT 독립검증 package
+
+실제로 필요할 때는:
+
+```text
+review ZIP
+GPT_REVIEW_REQUEST.md
+사용자가 그대로 붙여넣을 검증 요청문
+```
+
+을 제공한다.
+
+필요한 범위에서 포함:
+
+```text
+user request
+approved implementation/remediation prompt
+base/candidate identity
+actual diff
+candidate source
+relevant baseline
+test results / exit codes
+execution evidence
+scope/frozen proof
+manifest
+self-QA
+NOT VERIFIED items
+```
+
+시크릿·credential·production DB·민감 raw log는 제외한다.
+
+ZIP의 파일명이 실제 내용과 맞는지 확인하며 authorization 파일을 중복/오표기하지 않는다.
+
+---
+
+## 9. QA
+
+현재 checkpoint에 필요한 QA를 실제로 실행한다.
+
+과거 전체 suite를 이유 없이 반복하지 않는다.
+
+변경 영향 regression을 수행하고 final checkpoint가 요구하면 standard full QA를 수행한다.
+
+테스트를:
+
+```text
+삭제
+skip
+xfail
+assertion 완화
+조건부 우회
+```
+
+해서 통과시키지 않는다.
+
+---
+
+## 10. 완료 및 자동 진행
+
+승인된 전체 구현계획 안에서는 checkpoint가 정상 완료되면 다음 계획된 checkpoint로 별도 사용자 승인 없이 진행할 수 있다.
+
+예:
+
+```text
+C1 → C2
+implementation → focused → regression → full QA
+```
+
+단:
+
+```text
+main merge
+deploy
+production DB mutation
+live external authority
+Trading
+승인 범위를 넘어서는 irreversible action
+```
+
+은 자동 진행하지 않는다.
+
+계획 자체가 달라질 때만 STOP한다.
+
+---
+
+## 11. 주요 보고 마지막에 현재 위치 표시
+
+항상 짧게 적는다.
+
+```text
+지금 하는 작업
+현재까지 완료된 범위
+전체 계획에서 현재 위치
+다음 단계
+```
+
+---
+
+## 12. 실행 모델 권장
+
+### 환경·문서·QA orchestration
+
+```text
+Model: Astra
+Reasoning: Medium
+```
+
+### 구현·bounded remediation
+
+```text
+Model: Astra
+Reasoning: High
+```
+
+### security/auth/schema/migration/concurrency/transaction
+
+```text
+Model: Astra
+Reasoning: High
+```
+
+같은 candidate의 연속 작업은 기존 세션을 재사용한다.
+
+새 architecture checkpoint는 새 세션을 우선한다.
+
+고정 범위·재현 가능한 작업은 CLI를 우선 검토한다.
+
+---
+
+## 13. GPT 독립검증 권장 모드
+
+독립검증 package가 필요한 경우 요청문 마지막에 권장 GPT 모드를 적는다.
+
+일반 구현:
+
+```text
+GPT-5.6 Sol
+Thinking: High
+```
+
+Security/auth/migration/concurrency:
+
+```text
+GPT-5.6 Sol
+Thinking: Extra High 가능 시
+Fallback: High
+```
+
+Git identity/docs-only 경량 확인:
+
+```text
+GPT-5.6 Sol
+Thinking: Medium
+```

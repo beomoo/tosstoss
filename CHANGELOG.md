@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-09-30 — exact 0008 integration and closeout
+
+- Integrated reviewed candidate `0c4702c8bffa58675a5d1b0b9f1b77ca25beb8e4` into `feature/phase-02-toss` as explicit merge `88dcb1e49551069b8e986c35185d9bcced89d4e5`, parents `6c0ed087106d0fdb94615b74a9472df17be08706` and `0c4702c8bffa58675a5d1b0b9f1b77ca25beb8e4`, tree `64132bf753e680eae9d47252e45859d129d01f7f` equal to the reviewed candidate tree.
+- Accepted independent final result `PASS WITH ISSUES` (Critical 0, Major 0, required code/schema fixes 0, unauthorized changes 0, regression found 0). CP3-C2-C1 architecture/design and ADR-020 remain accepted; the additive 0008 Security Authority Foundation is `PASS WITH ISSUES — CLOSED`.
+- Recorded the two non-blocking review qualifications: stale current-state QA wording in candidate documentation (corrected here while preserving historical STOP evidence), and duplicated bounded-remediation authorization in the final review ZIP (package-completeness limitation, not an implementation defect).
+- Updated current-state documentation and replaced root `AGENTS.md` with the user-provided operating rules. No reviewed implementation, migration, scanner or test semantics changed. CP3-C2-C2 is the next planned checkpoint but is not started in this closeout; C3 and CP3-D remain not started; Phase 2 remains in progress.
+
 ## 2026-09-29 — bounded 0008 independent-review remediation
 
 - M1: shared contract/DDL locator scheme and concrete-token boundary; production fixture/wildcard/HTTP rejection and permanent isolated fixture requirements.
