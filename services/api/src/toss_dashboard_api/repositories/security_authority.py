@@ -341,6 +341,7 @@ class SQLiteSecurityAuthorityRepository:
             SecurityAuthorityDecisionEngine,
             _kr_family,
             _norm,
+            _periodic_cover_cross_check,
             _sec_class_identity,
             _sec_family,
         )
@@ -574,17 +575,12 @@ class SQLiteSecurityAuthorityRepository:
                         )
                     ):
                         raise SecurityLedgerConflict("SECURITY_READY_NEGATIVE_AUTHORITY")
-                    if (
-                        isinstance(fact, SecPeriodicCoverFact)
-                        and fact.registrant_cik == sec.registrant_cik
-                        and fact.ticker == provider.observation.symbol
-                        and (
-                            _norm(fact.class_title) != _norm(sec.registered_class_title)
-                            or (
-                                fact.exchange_name is not None
-                                and _norm(fact.exchange_name) != _norm(sec.exchange_name or "")
-                            )
-                        )
+                    if isinstance(fact, SecPeriodicCoverFact) and _periodic_cover_cross_check(
+                        fact,
+                        sec.registrant_cik,
+                        sec.registered_class_title,
+                        provider.observation.symbol,
+                        sec.exchange_name,
                     ):
                         raise SecurityLedgerConflict("SECURITY_READY_NEGATIVE_AUTHORITY")
         if (

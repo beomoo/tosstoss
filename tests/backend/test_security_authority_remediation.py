@@ -91,7 +91,7 @@ def fact_change(monkeypatch, namespace, **changes):
 def add_cover(
     context, *, venue="NASDAQ", title="Common Stock", cik=support.US_CIK, ticker=support.US_SYMBOL
 ):
-    support._source_fact(
+    return support._source_fact(
         context,
         "SEC_PERIODIC_COVER",
         c.SubjectRole.SEC_REGISTRANT,
@@ -409,6 +409,186 @@ def test_periodic_cover_support_and_relevant_contradictions(
         for app in result.applications
         if app.source_namespace == "SEC_PERIODIC_COVER"
     )
+
+
+@pytest.mark.parametrize(
+    "cover,expected_ready,expected_reason,relevant",
+    [
+        pytest.param({}, True, None, True, id="exact_matching_cover_support_only"),
+        pytest.param(
+            {"ticker": "OTHER"},
+            False,
+            "SEC_PERIODIC_TICKER_CONTRADICTION",
+            True,
+            id="same_class_wrong_ticker",
+        ),
+        pytest.param(
+            {"ticker": None, "venue": "NYSE"},
+            False,
+            "SEC_PERIODIC_VENUE_CONTRADICTION",
+            True,
+            id="same_class_no_ticker_wrong_exchange",
+        ),
+        pytest.param(
+            {"venue": "NYSE"},
+            False,
+            "SEC_PERIODIC_VENUE_CONTRADICTION",
+            True,
+            id="same_class_ticker_wrong_exchange",
+        ),
+        pytest.param(
+            {"title": "Preferred Stock"},
+            False,
+            "SEC_PERIODIC_CLASS_CONTRADICTION",
+            True,
+            id="same_ticker_wrong_class",
+        ),
+        pytest.param(
+            {"ticker": "OTHER", "venue": "NYSE"},
+            False,
+            "SEC_PERIODIC_TICKER_CONTRADICTION",
+            True,
+            id="multiple_contradictions",
+        ),
+        pytest.param(
+            {"title": "Preferred Stock", "ticker": "OTHER", "venue": "NYSE"},
+            True,
+            None,
+            False,
+            id="different_class_and_ticker_unrelated",
+        ),
+        pytest.param(
+            {"cik": "0000123456", "venue": "NYSE"},
+            True,
+            None,
+            False,
+            id="different_registrant_unrelated",
+        ),
+        pytest.param(
+            {"ticker": None},
+            True,
+            None,
+            True,
+            id="missing_ticker_consistent_exchange",
+        ),
+        pytest.param(
+            {"ticker": None, "venue": None},
+            True,
+            None,
+            True,
+            id="missing_ticker_and_exchange_not_fabricated",
+        ),
+        pytest.param({"venue": None}, True, None, True, id="missing_exchange_consistent_ticker"),
+        pytest.param(
+            {"title": " COMMON   STOCK ", "venue": " nasdaq "},
+            True,
+            None,
+            True,
+            id="existing_class_exchange_normalization",
+        ),
+    ],
+)
+def test_periodic_cover_class_ticker_exchange_cross_check_matrix(
+    database_context, cover, expected_ready, expected_reason, relevant
+):
+    harness, _ = prepare(database_context, "US")
+    support._us_base_facts(database_context)
+    evidence = add_cover(database_context, **cover)
+    result = evaluate(database_context, harness)
+    assert (result.machine_state == READY) == expected_ready
+    if expected_reason is not None:
+        assert result.machine_state == "REVIEW_REQUIRED"
+        assert expected_reason in result.reason_codes
+    applications = [
+        app for app in result.applications if app.source_namespace == "SEC_PERIODIC_COVER"
+    ]
+    assert bool(applications) == relevant
+    assert all(app.status == "SUPPORT_ONLY" and app.requested_weight == 2 for app in applications)
+    assert all(app.evidence_id == evidence.evidence_id for app in applications)
+
+
+@pytest.mark.parametrize(
+    "cover",
+    [
+        pytest.param({"ticker": "OTHER"}, id="same_class_wrong_ticker"),
+        pytest.param({"ticker": None, "venue": "NYSE"}, id="same_class_no_ticker_wrong_exchange"),
+        pytest.param({"venue": "NYSE"}, id="same_class_ticker_wrong_exchange"),
+        pytest.param({"title": "Preferred Stock"}, id="same_ticker_wrong_class"),
+        pytest.param({"ticker": "OTHER", "venue": "NYSE"}, id="multiple_contradictions"),
+    ],
+)
+def test_repository_rejects_false_ready_with_current_periodic_cover_contradiction(
+    database_context, monkeypatch, cover
+):
+    harness, _ = prepare(database_context, "US")
+    support._us_base_facts(database_context)
+    add_cover(database_context, **cover)
+    engine = SecurityAuthorityDecisionEngine(
+        session_factory(database_context.engine), clock=lambda: support.EVALUATED_AT
+    )
+    set_scope = engine._set_scope
+
+    def falsely_satisfy_cover(states, scope, result, reason=None):
+        if reason is None or not reason.startswith("SEC_PERIODIC_"):
+            set_scope(states, scope, result, reason)
+
+    monkeypatch.setattr(engine, "_set_scope", falsely_satisfy_cover)
+    with pytest.raises(SecurityAuthorityDecisionEngineError):
+        engine.evaluate(SecurityAuthorityEvaluationRequest(provider_id=harness.provider_id))
+    with session_factory(database_context.engine)() as session:
+        assert not session.scalars(select(SecurityDecisionRow)).all()
+
+
+@pytest.mark.parametrize(
+    "cover",
+    [
+        pytest.param({"ticker": "OTHER"}, id="ticker_correction"),
+        pytest.param({"ticker": None, "venue": "NYSE"}, id="exchange_correction_without_ticker"),
+    ],
+)
+def test_periodic_cover_exact_correction_replaces_current_conflict_and_preserves_history(
+    database_context, cover
+):
+    harness, _ = prepare(database_context, "US")
+    support._us_base_facts(database_context)
+    before = evaluate(database_context, harness)
+    prior = add_cover(database_context, **cover)
+    blocked = evaluate(database_context, harness)
+    assert blocked.machine_state == "REVIEW_REQUIRED"
+    assert blocked.decision.supersedes_decision_id == before.decision.decision_id
+    successor = add_cover(database_context)
+    support._relate_evidence(database_context, prior, successor)
+    restored = evaluate(database_context, harness)
+    assert restored.machine_state == READY
+    assert restored.decision.supersedes_decision_id == blocked.decision.decision_id
+    cover_ids = {
+        app.evidence_id
+        for app in restored.applications
+        if app.source_namespace == "SEC_PERIODIC_COVER"
+    }
+    assert cover_ids == {successor.evidence_id}
+    replay = evaluate(database_context, harness)
+    assert replay.idempotent and replay.decision.decision_id == restored.decision.decision_id
+    with session_factory(database_context.engine)() as session:
+        assert session.get(SecurityEvidenceRow, prior.evidence_id) is not None
+        rows = session.scalars(select(SecurityDecisionRow)).all()
+        superseded = {row.supersedes_decision_id for row in rows}
+        assert len(rows) == 3
+        assert [row.decision_id for row in rows if row.decision_id not in superseded] == [
+            restored.decision.decision_id
+        ]
+
+
+@pytest.mark.parametrize("missing_owner", ["SEC", "NASDAQ"])
+def test_matching_periodic_cover_cannot_replace_required_us_owner(database_context, missing_owner):
+    harness, _ = prepare(database_context, "US")
+    support._us_base_facts(
+        database_context,
+        include_sec=missing_owner != "SEC",
+        include_nasdaq=missing_owner != "NASDAQ",
+    )
+    add_cover(database_context)
+    assert evaluate(database_context, harness).machine_state != READY
 
 
 def test_provider_current_observation_loss_replay_and_restoration(database_context):

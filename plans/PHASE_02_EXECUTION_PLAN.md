@@ -1,6 +1,13 @@
 # Phase 2 토스증권 읽기 전용 데이터 실행계획
 
-## Current C2 consolidated remediation checkpoint — 2026-09-30
+
+## Current C2 final periodic-cover bounded remediation — 2026-10-01
+
+The reviewed candidate `00e01d87e08817d31a9ba6c9916ad8ba34bc32fb` remains FAIL (Critical 0 / Major 1). The only authorized new correction is SEC_PERIODIC_COVER deterministic relevance and complete non-null class/ticker/exchange cross-check, with independent C2-owned READY persistence rejection. Periodic cover remains SUPPORT-only; all accepted authority, normalization, taint/current relation-head and frozen schema/R1/B boundaries are preserved.
+
+Required sequence: direct old/new reproduction; complete C2 focused and previous R1–R5 regression; affected 0008/B/provider/migration regression; Windows `scripts/test.ps1` from the beginning; final secret/policy, mirror/source equality and frozen proof; explicit candidate staging/commit/push and remote/clean verification; fresh independent re-review ZIP. Successful maximum is `CP3-C2-C2 REMEDIATED — GPT FINAL INDEPENDENT RE-VERIFICATION REQUIRED`. C2 integration, C3 and CP3-D are not started by this task.
+
+## Historical C2 consolidated remediation checkpoint — 2026-09-30
 
 C1 architecture and 0008 foundation remain CLOSED with their accepted qualifications. Initial C2 candidate `8d02d24562f0567375c465cdcd79bb5e3f8c3dfc` is FAIL and must not be integrated. The authorized current task corrects R1–R5 within frozen contracts, executes the complete 14-case matrix, focused and affected regression QA, then Windows `scripts/test.ps1` from the beginning. Stage/commit/push on the same C2 implementation branch is authorized only after every final gate passes; integration is not authorized.
 

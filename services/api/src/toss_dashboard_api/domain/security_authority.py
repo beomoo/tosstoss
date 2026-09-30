@@ -213,6 +213,28 @@ def _norm(value: str) -> str:
     return " ".join(value.split()).casefold()
 
 
+def _periodic_cover_cross_check(
+    fact: SecPeriodicCoverFact,
+    registrant_cik: str | None,
+    class_title: str,
+    ticker: str,
+    exchange_name: str | None,
+) -> tuple[tuple[c.Scope, str], ...] | None:
+    """Return current cover conflicts, or None when class/ticker is unrelated."""
+    same_class = _norm(fact.class_title) == _norm(class_title)
+    same_ticker = fact.ticker == ticker
+    if fact.registrant_cik != registrant_cik or not (same_class or same_ticker):
+        return None
+    conflicts = []
+    if not same_class:
+        conflicts.append((c.Scope.REGISTERED_CLASS, "SEC_PERIODIC_CLASS_CONTRADICTION"))
+    if fact.ticker is not None and not same_ticker:
+        conflicts.append((c.Scope.LISTING_VENUE, "SEC_PERIODIC_TICKER_CONTRADICTION"))
+    if fact.exchange_name is not None and _norm(fact.exchange_name) != _norm(exchange_name or ""):
+        conflicts.append((c.Scope.LISTING_VENUE, "SEC_PERIODIC_VENUE_CONTRADICTION"))
+    return tuple(conflicts)
+
+
 def _sec_family(title: str) -> c.InstrumentFamily:
     if _COMMON_CLASS.fullmatch(_norm(title)):
         return c.InstrumentFamily.COMMON_EQUITY
@@ -1378,25 +1400,17 @@ class SecurityAuthorityDecisionEngine:
         else:
             self._set_scope(states, c.Scope.LISTING_VENUE, "SATISFIED")
         for cover in cover_rows:
-            same_class = _norm(cover.fact.class_title) == _norm(
-                class_identity.registered_class_title
-            )
-            same_ticker = cover.fact.ticker == provider.observation.symbol
-            if same_class and same_ticker:
-                if (
-                    cover.fact.exchange_name is not None
-                    and _norm(cover.fact.exchange_name) != "nasdaq"
-                ):
-                    self._set_scope(
-                        states,
-                        c.Scope.LISTING_VENUE,
-                        "CONFLICT",
-                        "SEC_PERIODIC_VENUE_CONTRADICTION",
-                    )
-            elif same_ticker:
-                self._set_scope(
-                    states, c.Scope.REGISTERED_CLASS, "CONFLICT", "SEC_PERIODIC_CLASS_CONTRADICTION"
+            for scope, reason in (
+                _periodic_cover_cross_check(
+                    cover.fact,
+                    issuer.issuer.cik,
+                    class_identity.registered_class_title,
+                    provider.observation.symbol,
+                    class_identity.registered_exchange_text,
                 )
+                or ()
+            ):
+                self._set_scope(states, scope, "CONFLICT", reason)
         # Compare accepted/effective chronology without using retrieval time as filing authority.
         later_nasdaq_event = any(
             item.fact.state in ("ISSUE_DELETION", "ISSUE_SUSPENSION")
@@ -1893,7 +1907,16 @@ class SecurityAuthorityDecisionEngine:
         if isinstance(fact, SecAccepted25Fact):
             return fact.registrant_cik == issuer.cik
         if isinstance(fact, SecPeriodicCoverFact):
-            return fact.registrant_cik == issuer.cik
+            return (
+                _periodic_cover_cross_check(
+                    fact,
+                    issuer.cik,
+                    identity.registered_class_title,
+                    provider.symbol,
+                    identity.registered_exchange_text,
+                )
+                is not None
+            )
         if isinstance(fact, NasdaqPrimaryFact):
             return fact.symbol == provider.symbol
         return False

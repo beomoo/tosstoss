@@ -1,6 +1,14 @@
 # Project Status
 
-## Current CP3-C2-C2 consolidated remediation candidate — 2026-09-30
+
+## Current CP3-C2-C2 final bounded remediation candidate — 2026-10-01
+
+- Independent re-verification of `00e01d87e08817d31a9ba6c9916ad8ba34bc32fb` returned **FAIL — BOUNDED REMEDIATION REQUIRED**, Critical 0 / Major 1. The previous R1–R5 fixes are largely closed; the remaining blocker is the SUPPORT-only SEC periodic-cover class/ticker/exchange cross-check.
+- This candidate associates a cover only by exact registrant CIK plus the same normalized registered class or exact ticker. Every supplied cross-check field must agree; absent ticker/exchange remains null. Engine and C2-owned persistence both enforce the rule. Current relation heads, admission, parser/adapter and taint rules are preserved.
+- Current position: **C2 FINAL BOUNDED REMEDIATION CANDIDATE — NOT INTEGRATED**. Full focused, affected regression and Windows standard QA are mandatory. Their actual counts/exits, final exact identity and provenance belong to the fresh external review package; this source snapshot does not declare independent acceptance.
+- Successful ceiling: `CP3-C2-C2 REMEDIATED — GPT FINAL INDEPENDENT RE-VERIFICATION REQUIRED`. Migrations 0001–0008, R1/B, global enums, source admission/licensing and C3 remain frozen. C3/CP3-D, live authority and production mapping are not started by this task. No integration or main merge is authorized.
+
+## Historical CP3-C2-C2 consolidated remediation candidate — 2026-09-30
 
 - Original candidate `8d02d24562f0567375c465cdcd79bb5e3f8c3dfc` remains **FAIL — C2 REMEDIATION REQUIRED** and must not be integrated. The combined GPT and Codex findings are the authority for this bounded remediation.
 - The candidate corrects R1 application-backed scope proof and repository READY validation; R2 persistent accepted negatives and relevant periodic-cover contradictions; R3 global active-listing collisions with atomic safety successors; R4 joint KR type/kind reconciliation; and R5 append-only negative successors when prerequisites disappear. The new regression module covers all 14 required counterexamples and preserves KR/US positive controls.

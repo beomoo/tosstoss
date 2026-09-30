@@ -1,5 +1,12 @@
 # Changelog
 
+
+## 2026-10-01 — CP3-C2-C2 final periodic-cover bounded remediation candidate
+
+- Address the sole Major remaining in independent review of `00e01d87`: deterministic same-CIK + class/ticker relevance, complete supplied-field class/ticker/exchange cross-check, and C2-owned READY persistence backstop. Support authority and existing normalization/current-head rules remain unchanged.
+- Add 21 regression cases for positive/unrelated/null controls, every reported contradiction, malformed internal READY, correction/history/replay and missing positive-owner authority; retain all previous R1–R5 tests.
+- No migration, source admission/licensing, R1/B/global-enum change, C3, live request or production write. Actual exact-tree QA and final identity belong to the fresh review package; independent acceptance and integration remain pending.
+
 ## 2026-09-30 — CP3-C2-C2 consolidated remediation candidate
 
 - Bind READY scopes to exact admitted applications and add independent repository guards for membership, hash, source currentness, class and canonical binding.

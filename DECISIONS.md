@@ -1,6 +1,17 @@
 # Architecture Decision Record
 
-## Current CP3-C2-C2 consolidated bounded remediation record — 2026-09-30
+
+## Current CP3-C2-C2 final bounded remediation record — 2026-10-01
+
+The user authorized only the remaining periodic-cover cross-check defect in exact reviewed candidate `00e01d87e08817d31a9ba6c9916ad8ba34bc32fb` (tree `c0b6d3b4398388c2aac54f84d6b0483be3a5327f`), independently FAIL with Critical 0 / Major 1. This is a correction under the existing C1/0008 contracts, not a new architecture ADR.
+
+Cover relevance requires the same registrant CIK and either the same registered class under existing class normalization or the exact same ticker. All supplied class/ticker/exchange fields are checked against accepted SEC/Nasdaq/provider context. Null support fields are not fabricated or treated as contradictions. Unrelated covers are excluded from candidate applications. Periodic cover remains SUPPORT-only and cannot replace SEC registered-class or Nasdaq listing ownership.
+
+A shared pure cross-check predicate is used when the engine derives scope conflicts and when the repository independently reconstructs a proposed READY write from current stored evidence. Exact correction/supersession heads remove superseded cover conflicts without deleting history. No source field, migration, authority/admission policy, R1/B semantics, global enum or C3 behavior changes. QA changes only synchronize measured fixed inventory; detector, thresholds, exceptions and canaries remain unchanged.
+
+Actual final QA and Git identity are supplied in the fresh final review package. Previous FAIL reports and original evidence remain historical; independent re-verification and integration remain pending.
+
+## Historical CP3-C2-C2 consolidated bounded remediation record — 2026-09-30
 
 The user authorized the combined R1–R5 defect set and all 14 counterexamples against exact prior candidate `8d02d24562f0567375c465cdcd79bb5e3f8c3dfc`, with integration base `120194fe6631db51c115776a49c55d3a25d93e7e`. This is an implementation correction under accepted C1/0008, not a new architecture decision. The old FAIL verdict remains historical authority and is not upgraded.
 

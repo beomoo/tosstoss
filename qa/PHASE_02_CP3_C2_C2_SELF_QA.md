@@ -1,6 +1,17 @@
 # CP3-C2-C2 Machine Security Authority Engine — Self-QA
 
-## Current consolidated remediation evidence boundary — 2026-09-30
+
+## Current final periodic-cover remediation evidence boundary — 2026-10-01
+
+- Exact prior reviewed candidate: `00e01d87e08817d31a9ba6c9916ad8ba34bc32fb`, tree `c0b6d3b4398388c2aac54f84d6b0483be3a5327f`; integration base `120194fe6631db51c115776a49c55d3a25d93e7e`. Prior verdict remains FAIL, Critical 0 / Major 1.
+- Direct unchanged-candidate reproduction confirmed READY with SUPPORT_ONLY periodic-cover applications for same class + wrong ticker and same class + missing ticker + NYSE exchange. The final fix associates covers only by same CIK plus class or ticker and checks every supplied field in engine and repository.
+- Added 21 named test cases: 12 cross-check/null/normalization/relevance matrix cases, 5 independent false-READY persistence attacks, 2 exact correction/current-head/history/replay sequences, and 2 missing-owner controls. Existing complete KR/US positives and all previous R1–R5 tests remain mandatory.
+- Periodic cover stays SUPPORT-only. Corrections use existing immutable EvidenceRelation records; no history mutation, migration, new source field, source admission/licensing, R1/B/global enum change or C3 implementation occurs.
+- Execute full C2 focused and affected regression, then Windows standard QA from the beginning against an exact byte-identical mirror with index equal to worktree. Synchronize measured fixed test/control inventory only. Detector, thresholds, exceptions, exclusions, canary behavior and secret scanner bytes stay unchanged.
+- Final counts/exits, exact tested/staged/committed tree, frozen proof, remote SHA and clean status are supplied in the fresh external final review package. Historical execution below belongs to earlier candidates and is not final-fix QA evidence. No PASS/CLOSED or integration is declared before independent re-verification.
+- Successful ceiling: `CP3-C2-C2 REMEDIATED — GPT FINAL INDEPENDENT RE-VERIFICATION REQUIRED`. Live authority/production mapping, C3, shared counter, B writer cascade, current-head readers and physical R1 qualifications remain unverified or unimplemented as previously recorded.
+
+## Historical consolidated remediation evidence boundary — 2026-09-30
 
 - Prior candidate: `8d02d24562f0567375c465cdcd79bb5e3f8c3dfc`; integration base: `120194fe6631db51c115776a49c55d3a25d93e7e`; same implementation branch. The prior candidate remains FAIL and is not eligible for integration.
 - R1–R5 corrections and `tests/backend/test_security_authority_remediation.py` address all 14 consolidated counterexamples, additional missing/excluded provenance paths, SUPPORT-only cover controls, joint KR type/kind checks, repository corruption, prerequisite loss, exact replay and restoration.
