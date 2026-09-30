@@ -1,5 +1,13 @@
 # Known Issues and Open Questions
 
+## Current C2 remediation review boundary — 2026-09-30
+
+The initial C2 candidate `8d02d24562f0567375c465cdcd79bb5e3f8c3dfc` failed independent GPT and Codex review. R1–R5 are addressed in the consolidated remediation candidate; acceptance remains pending final independent re-verification. Prior failed candidates, fixture failures and review evidence are preserved outside the checkout and included safely in the final evidence package.
+
+The same-Security/multiple-provider positive fixture uses native B authentication/approval and supported same-fact correction relations, because frozen B deliberately rejects concurrent duplicate provider issuer claims. No B/R1 trigger is disabled or changed. This C2 test establishes the exact stored approved-head inputs consumed by C2; it does not authorize a B-policy redesign or C3 runtime.
+
+Live source completeness, current licensing/access, production mapping, shared R1/Security counters, B writer cascade and Security-head reader cutover remain NOT VERIFIED. NYSE, CGS and the live KRX adapter remain disabled. C3 and CP3-D remain NOT STARTED. Historical qualifications below are preserved.
+
 ## Current CP3-C2-C / 0008 review qualifications — 2026-09-30
 
 Accepted independent result: `PASS WITH ISSUES` (Critical 0, Major 0, required code/schema fixes 0, unauthorized changes 0, regression found 0). The two items below are non-blocking review qualifications, not code or schema defects.

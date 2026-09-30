@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-09-30 — CP3-C2-C2 consolidated remediation candidate
+
+- Bind READY scopes to exact admitted applications and add independent repository guards for membership, hash, source currentness, class and canonical binding.
+- Preserve effective accepted Form 25 evidence across retrieval failures; reconcile relevant periodic-cover contradictions without promoting support to listing ownership.
+- Scan active venue/ticker collisions across providers, preserve same-Security and nonoverlapping-reuse controls, and append affected safety successors atomically.
+- Reconcile KR security type with stock kind and append persisted negative successors on issuer/provider/evidence prerequisite loss.
+- Add the combined 14-case differential matrix and supplementary positive, negative, persistence, replay and restoration tests. Synchronize only measured test/control inventory. Final QA/commit evidence is supplied by the external remediation review package; no independent PASS/CLOSED or integration is declared here.
+
 ## 2026-09-30 — CP3-C2-C2 synchronized full QA passed
 
 - The synchronized candidate passed the complete Windows standard `scripts/test.ps1` run from the beginning in attempt 09 (exit 0): backend 1,294 passed, frontend 43 passed, E2E 2 passed, and every static, API-contract, migration, fixture-idempotency, secret, and policy gate passed. Exact counts and exits are in `qa/PHASE_02_CP3_C2_C2_SELF_QA.md`.

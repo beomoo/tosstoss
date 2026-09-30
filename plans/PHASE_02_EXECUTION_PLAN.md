@@ -1,5 +1,11 @@
 # Phase 2 토스증권 읽기 전용 데이터 실행계획
 
+## Current C2 consolidated remediation checkpoint — 2026-09-30
+
+C1 architecture and 0008 foundation remain CLOSED with their accepted qualifications. Initial C2 candidate `8d02d24562f0567375c465cdcd79bb5e3f8c3dfc` is FAIL and must not be integrated. The authorized current task corrects R1–R5 within frozen contracts, executes the complete 14-case matrix, focused and affected regression QA, then Windows `scripts/test.ps1` from the beginning. Stage/commit/push on the same C2 implementation branch is authorized only after every final gate passes; integration is not authorized.
+
+The successful handoff ceiling is `CP3-C2-C2 REMEDIATED — GPT FINAL INDEPENDENT RE-VERIFICATION REQUIRED`. Actual final gate evidence and commit identity are supplied in the fresh external review package. C3, live authority, production mapping and CP3-D remain unstarted by this task. Earlier dated checkpoint records below remain historical evidence.
+
 ## Current CP3-C2-C / 0008 foundation closeout — 2026-09-30
 
 - Exact reviewed candidate `0c4702c8bffa58675a5d1b0b9f1b77ca25beb8e4` was integrated by merge `88dcb1e49551069b8e986c35185d9bcced89d4e5` on `feature/phase-02-toss`. The merge parents are the exact approved base and candidate; merge tree `64132bf753e680eae9d47252e45859d129d01f7f` equals the reviewed candidate tree.

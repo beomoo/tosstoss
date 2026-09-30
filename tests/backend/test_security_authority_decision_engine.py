@@ -140,6 +140,7 @@ def _source_fact(
         "OPENDART_CORP_CODE": "OPENDART_CORP_CODE_RECORD",
         "SEC_ACCEPTED_8A": "SEC_FORM_8A",
         "SEC_ACCEPTED_25": "SEC_FORM_25",
+        "SEC_PERIODIC_COVER": "SEC_PERIODIC_COVER",
         "NASDAQ_PRIMARY": "NASDAQ_SYMBOL_DIRECTORY",
     }
     fact_bytes = c.canonical_security_bytes(fact)

@@ -236,6 +236,59 @@ def _specs() -> tuple[PolicySpec, ...]:
 
 
 SOURCE_POLICY_SPECS = _specs()
+
+# Scope proof follows field ownership, rather than requiring OWNER on derived scopes.
+# Each tuple is (source namespace, application scope, minimum weight).
+REQUIRED_SCOPE_PROOF: dict[str, dict[c.Scope, tuple[tuple[str, c.Scope, int], ...]]] = {
+    "KR": {
+        c.Scope.SECURITY_IDENTIFIER: (("KRX_STANDARD_CODE", c.Scope.SECURITY_IDENTIFIER, 3),),
+        c.Scope.IDENTIFIER_PROVENANCE: (("KRX_STANDARD_CODE", c.Scope.IDENTIFIER_PROVENANCE, 3),),
+        c.Scope.INSTRUMENT_CLASS: (("KRX_ISSUE_BASIC", c.Scope.INSTRUMENT_CLASS, 3),),
+        c.Scope.LISTING_VENUE: (
+            ("KRX_ISSUE_BASIC", c.Scope.LISTING_VENUE, 3),
+            ("KRX_LISTING_LIFECYCLE", c.Scope.LISTING_VENUE, 3),
+        ),
+        c.Scope.LISTING_STATUS: (("KRX_LISTING_LIFECYCLE", c.Scope.LISTING_STATUS, 3),),
+        c.Scope.LISTING_INTERVAL: (("KRX_LISTING_LIFECYCLE", c.Scope.LISTING_INTERVAL, 3),),
+        c.Scope.ISSUER_SECURITY_BRIDGE: (
+            ("KRX_ISSUE_BASIC", c.Scope.ISSUER_SECURITY_BRIDGE, 3),
+            ("OPENDART_CORP_CODE", c.Scope.ISSUER_SECURITY_BRIDGE, 3),
+        ),
+        c.Scope.PROVIDER_SECURITY_BRIDGE: (),
+    },
+    "US": {
+        c.Scope.REGISTERED_CLASS: (("SEC_ACCEPTED_8A", c.Scope.REGISTERED_CLASS, 3),),
+        c.Scope.IDENTIFIER_PROVENANCE: (("SEC_ACCEPTED_8A", c.Scope.IDENTIFIER_PROVENANCE, 3),),
+        c.Scope.INSTRUMENT_CLASS: (("SEC_ACCEPTED_8A", c.Scope.REGISTERED_CLASS, 3),),
+        c.Scope.LISTING_VENUE: (("NASDAQ_PRIMARY", c.Scope.LISTING_VENUE, 3),),
+        c.Scope.LISTING_STATUS: (("NASDAQ_PRIMARY", c.Scope.LISTING_STATUS, 3),),
+        c.Scope.LISTING_INTERVAL: (("NASDAQ_PRIMARY", c.Scope.LISTING_INTERVAL, 3),),
+        c.Scope.PROVIDER_SECURITY_BRIDGE: (),
+    },
+}
+
+
+def scope_proof_ids(
+    jurisdiction: str, scope: c.Scope, applications: tuple[c.EvidenceApplication, ...]
+) -> tuple[str, ...] | None:
+    """Return the exact field-owning composition, or None when a required part is absent."""
+    required = REQUIRED_SCOPE_PROOF[jurisdiction][scope]
+    result: set[str] = set()
+    for namespace, application_scope, weight in required:
+        matches = {
+            app.application_id
+            for app in applications
+            if app.source_namespace == namespace
+            and app.scope == application_scope
+            and app.requested_weight >= weight
+            and app.status == "ADMITTED"
+        }
+        if not matches:
+            return None
+        result.update(matches)
+    return tuple(sorted(result))
+
+
 POLICY_BY_KEY = {
     (spec.namespace, spec.document_kind, spec.scope, spec.role): spec
     for spec in SOURCE_POLICY_SPECS

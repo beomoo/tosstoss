@@ -1,6 +1,14 @@
 # Architecture Decision Record
 
-## Current CP3-C2-C2 source-admission and implementation record — 2026-09-30
+## Current CP3-C2-C2 consolidated bounded remediation record — 2026-09-30
+
+The user authorized the combined R1–R5 defect set and all 14 counterexamples against exact prior candidate `8d02d24562f0567375c465cdcd79bb5e3f8c3dfc`, with integration base `120194fe6631db51c115776a49c55d3a25d93e7e`. This is an implementation correction under accepted C1/0008, not a new architecture decision. The old FAIL verdict remains historical authority and is not upgraded.
+
+READY now requires final admitted scope composition and repository reconstruction of exact membership, currentness, class and canonical binding. Accepted adverse events survive failed/unadmitted refresh attempts. Relevant SUPPORT-only periodic contradictions block readiness. Listing collision evaluation includes current prospective providers and exact class identities; incompatible active candidates invalidate affected prior leaves in the same writer transaction. KR type and kind must jointly describe common stock. Prerequisite loss appends an idempotent negative successor while preserving the frozen schema's captured historical issuer-link tuple; that tuple does not assert current approval for the negative bundle.
+
+No migration, R1/B semantic change, new authority source, licensing change, enum expansion, C3 writer or production mutation is authorized. Measured test inventory synchronization preserves detector, threshold, exclusion, canary and exception behavior. The fresh final review package supplies actual gate evidence and must ask to retest all 14 cases; independent acceptance and integration remain pending.
+
+## Historical initial CP3-C2-C2 source-admission and implementation record — 2026-09-30
 
 - The user approved the operational source-admission matrix in `plans/PHASE_02_CP3_C2_C2_SOURCE_AUTHORITY_REVIEW.md` under accepted ADR-020. This is not a new architecture ADR.
 - C2 may evaluate normalized stored KRX/OpenDART, SEC/Nasdaq, and human-assisted KRX lifecycle evidence only under the exact server-owned registry. NYSE and CGS remain `production_eligible=0`; KRX automated ingestion remains disabled pending exact specification/response capture. No live requests are authorized.

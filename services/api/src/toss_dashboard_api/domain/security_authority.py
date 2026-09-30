@@ -39,6 +39,7 @@ from toss_dashboard_api.domain.security_authority_registry import (
     build_policy,
     exact_policy_for,
     registry_hash,
+    scope_proof_ids,
 )
 from toss_dashboard_api.repositories.security_authority import (
     _C2_ENGINE_CAPABILITY,
@@ -149,6 +150,8 @@ class _ProviderSnapshot:
 class _EvidenceSnapshot:
     record: c.Evidence
     observation: c.EvidenceObservation | None
+    accepted_observation: c.EvidenceObservation | None
+    observation_conflict: bool
     current: bool
     relation_head_hash: str
     fact: Any
@@ -216,10 +219,10 @@ def _sec_family(title: str) -> c.InstrumentFamily:
     return c.InstrumentFamily.UNKNOWN
 
 
-def _kr_family(stock_kind: str) -> c.InstrumentFamily:
+def _kr_family(security_type: str, stock_kind: str) -> c.InstrumentFamily:
     return (
         c.InstrumentFamily.COMMON_EQUITY
-        if stock_kind.strip().upper() == "COMMON_EQUITY"
+        if (security_type, stock_kind) == ("STOCK", "COMMON_EQUITY")
         else c.InstrumentFamily.UNKNOWN
     )
 
@@ -248,6 +251,45 @@ def _fact_subject(fact: Any) -> str | None:
     if isinstance(fact, NasdaqPrimaryFact):
         return f"NASDAQ_ISSUE:{fact.symbol}"
     return None
+
+
+def _sec_class_identity(fact: SecAccepted8AFact) -> c.RegisteredClassIdentity:
+    return c.RegisteredClassIdentity(
+        verified_registrant_cik=fact.registrant_cik,
+        accepted_accession=fact.accepted_accession,
+        filing_document_digest=fact.filing_document_digest,
+        filing_form="8-A",
+        registered_class_title=fact.registered_class_title,
+        section_12_basis=fact.section_12_basis,
+        official_class_discriminator=fact.official_class_discriminator,
+        registered_exchange_text=fact.exchange_name,
+    )
+
+
+def _effective_removals(
+    sec: SecAccepted8AFact,
+    evidence: Sequence[_EvidenceSnapshot],
+    at: datetime,
+) -> tuple[_EvidenceSnapshot, ...]:
+    return tuple(
+        item
+        for item in evidence
+        if item.current
+        and not item.parse_error
+        and item.accepted_observation is not None
+        and item.record.origin_mode == "PRODUCTION_AUTHORITY"
+        and not item.record.fixture_taint
+        and not item.record.test_taint
+        and isinstance(item.fact, SecAccepted25Fact)
+        and item.fact.registrant_cik == sec.registrant_cik
+        and _norm(item.fact.class_description) == _norm(sec.registered_class_title)
+        and _norm(item.fact.exchange_name) == _norm(sec.exchange_name or "")
+        and item.fact.effective_date <= at.date()
+        and (
+            item.fact.accepted_at > sec.accepted_at
+            or item.fact.effective_date >= sec.accepted_at.date()
+        )
+    )
 
 
 class SecurityAuthorityDecisionEngine:
@@ -302,31 +344,53 @@ class SecurityAuthorityDecisionEngine:
             raise SecurityAuthorityDecisionEngineError("SERVER_CLOCK_INVALID", "UTC clock required")
         provider = self._provider_snapshot(session, request.provider_id)
         if provider is None:
-            return self._empty(request.provider_id, "UNRESOLVED", "PROVIDER_OBSERVATION_MISSING")
+            return self._negative_successor(
+                session, request.provider_id, "STALE", "PROVIDER_OBSERVATION_MISSING", at
+            )
         issuer = self._issuer_snapshot(session, request.provider_id)
         if issuer is None:
-            return self._empty(request.provider_id, "UNRESOLVED", "APPROVED_ISSUER_HEAD_MISSING")
+            return self._negative_successor(
+                session,
+                request.provider_id,
+                "REVIEW_REQUIRED",
+                "ISSUER_AUTHORITY_NO_LONGER_APPROVED",
+                at,
+            )
         if issuer.issuer.jurisdiction not in _MANDATORY_SCOPES:
-            return self._empty(
+            return self._negative_successor(
+                session,
                 request.provider_id,
                 "UNRESOLVED",
                 "UNSUPPORTED_LEGAL_JURISDICTION",
-                issuer_id=issuer.issuer.issuer_id,
+                at,
             )
 
         evidence, _, relation_conflict = self._evidence_snapshot(session, at)
         policies = tuple(build_policy(spec, recorded_at=at) for spec in SOURCE_POLICY_SPECS)
         draft = self._draft(session, provider, issuer, evidence, policies, at, relation_conflict)
         if draft is None:
-            return self._empty(
+            return self._negative_successor(
+                session,
                 request.provider_id,
                 "REVIEW_REQUIRED" if relation_conflict else "UNRESOLVED",
                 "EVIDENCE_RELATION_CONFLICT"
                 if relation_conflict
                 else "SECURITY_ANCHOR_UNAVAILABLE",
-                issuer_id=issuer.issuer.issuer_id,
+                at,
             )
-        return self._persist(session, provider, issuer, draft, at)
+        result = self._persist(session, provider, issuer, draft, at)
+        if result.collision.result == "CONFLICT":
+            for affected_id in result.affected_provider_ids:
+                if affected_id != request.provider_id:
+                    self._negative_successor(
+                        session,
+                        affected_id,
+                        "REVIEW_REQUIRED",
+                        "GLOBAL_LISTING_COLLISION",
+                        at,
+                        collision=result.collision,
+                    )
+        return result
 
     def _evaluation_time(self) -> datetime:
         try:
@@ -339,6 +403,159 @@ class SecurityAuthorityDecisionEngine:
         if result is None:
             raise SecurityAuthorityDecisionEngineError("SERVER_CLOCK_INVALID", "UTC clock required")
         return result
+
+    def _negative_successor(
+        self,
+        session: Session,
+        provider_id: str,
+        state: c.MachineState,
+        reason: str,
+        at: datetime,
+        *,
+        collision: SecurityCollisionResult | None = None,
+    ) -> SecurityAuthorityDecisionEngineResult:
+        """Record prerequisite loss against captured historical authority."""
+        prior = self._current_decision_leaf(session, provider_id)
+        if prior is None:
+            return self._empty(
+                provider_id,
+                "UNRESOLVED",
+                "APPROVED_ISSUER_HEAD_MISSING"
+                if reason == "ISSUER_AUTHORITY_NO_LONGER_APPROVED"
+                else reason,
+            )
+        stored_bundle = session.get(sm.SecurityBundleRow, prior.bundle_id)
+        if stored_bundle is None:
+            raise SecurityLedgerConflict("SECURITY_DECISION_BUNDLE_MISSING_OR_CHANGED")
+        historical = c.Bundle.model_validate_json(stored_bundle.payload_json)
+        prior_scopes = session.scalars(
+            select(sm.SecurityBundleScopeResultRow).where(
+                sm.SecurityBundleScopeResultRow.bundle_id == historical.bundle_id
+            )
+        ).all()
+        scope_values = sorted((row.scope, "MISSING", (reason,), ()) for row in prior_scopes)
+        if collision is None:
+            current_identity = session.get(ProviderSecurityIdentityRow, provider_id)
+            current_head = session.get(IssuerAuthorityLinkHeadRow, provider_id)
+            collision = SecurityCollisionResult(
+                result="CLEAR",
+                reason_codes=(),
+                affected_provider_ids=(),
+                digest=c.security_hash(
+                    {
+                        "prerequisite_loss": reason,
+                        "provider": None
+                        if current_identity is None
+                        else (
+                            current_identity.identity_state,
+                            current_identity.latest_source_version_id,
+                        ),
+                        "issuer_head": None
+                        if current_head is None
+                        else (
+                            current_head.issuer_authority_link_id,
+                            current_head.link_state,
+                            current_head.state_hash,
+                        ),
+                    }
+                ),
+            )
+        # APPROVED and the head hash here describe the captured historical B link.
+        # Current approval is explicitly unavailable, so no READY can use this bundle.
+        fields = historical.model_dump(mode="python")
+        for name in ("content_hash", "audit_hash", "bundle_id", "recorded_at"):
+            fields.pop(name)
+        fields["membership_hash"] = c.security_hash(
+            {"applications": [], "scopes": scope_values, "providers": []}
+        )
+        fields["collision_scan_hash"] = collision.digest
+        bundle = c.seal_security_record(
+            c.Bundle, **fields, bundle_id=_safe_id("sec_bundle_", fields), recorded_at=at
+        )
+        scopes = tuple(
+            c.seal_security_record(
+                c.BundleScopeResult,
+                contract_version="security-authority-bundle-scope-result/0.1.0",
+                bundle_id=bundle.bundle_id,
+                bundle_hash=bundle.content_hash,
+                scope=scope,
+                result=result,
+                reason_codes=reasons,
+                owner_application_ids=ids,
+                recorded_at=at,
+            )
+            for scope, result, reasons, ids in scope_values
+        )
+        freshness = "STALE" if state == "STALE" else "UNKNOWN"
+        idempotent = (
+            prior.bundle_hash == bundle.content_hash
+            and prior.machine_state == state
+            and prior.reason_codes == (reason,)
+            and prior.freshness_result == freshness
+            and prior.collision_result == collision.result
+        )
+        decision = (
+            prior
+            if idempotent
+            else c.seal_security_record(
+                c.Decision,
+                contract_version="security-decision/0.1.0",
+                decision_id=_safe_id(
+                    "sec_decision_",
+                    (provider_id, bundle.content_hash, state, reason, prior.decision_id),
+                ),
+                provider_id=provider_id,
+                issuer_id=historical.issuer_id,
+                security_id=historical.security_id,
+                bundle_id=bundle.bundle_id,
+                bundle_hash=bundle.content_hash,
+                issuer_link_id=historical.issuer_link_id,
+                issuer_link_hash=historical.issuer_link_hash,
+                issuer_link_state="APPROVED",
+                issuer_head_state_hash=historical.issuer_head_state_hash,
+                machine_state=state,
+                reason_codes=(reason,),
+                freshness_result=freshness,
+                collision_result=collision.result,
+                supersedes_decision_id=prior.decision_id,
+                evaluated_at=at,
+                recorded_at=at,
+            )
+        )
+        counts = (
+            {}
+            if idempotent
+            else self._repository.insert_machine_evaluation(
+                session,
+                capability=_C2_ENGINE_CAPABILITY,
+                policies=(),
+                applications=(),
+                claims=(),
+                bundle=bundle,
+                bundle_applications=(),
+                scopes=scopes,
+                providers=(),
+                decision=decision,
+            )
+        )
+        return SecurityAuthorityDecisionEngineResult(
+            provider_id=provider_id,
+            issuer_id=historical.issuer_id,
+            security_id=historical.security_id,
+            machine_state=state,
+            reason_codes=decision.reason_codes,
+            applications=(),
+            identifier_claims=(),
+            class_claims=(),
+            listing_claims=(),
+            scope_results=scopes,
+            bundle=bundle,
+            decision=decision,
+            collision=collision,
+            affected_provider_ids=collision.affected_provider_ids,
+            insert_counts=tuple(sorted((key, value) for key, value in counts.items() if value)),
+            idempotent=idempotent,
+        )
 
     @staticmethod
     def _empty(
@@ -535,8 +752,20 @@ class SecurityAuthorityDecisionEngine:
                 latest = min(latest_rows, key=lambda item: item.observation_id)
                 if latest.access_result != "SUCCEEDED" or latest.raw_digest != record.raw_digest:
                     observation_conflict = True
+            accepted = [
+                item
+                for item in candidates
+                if item.access_result == "SUCCEEDED"
+                and item.evidence_hash == record.content_hash
+                and item.raw_digest == record.raw_digest
+                and item.adapter_version == ADAPTER_VERSION
+                and item.parser_version == PARSER_VERSION
+            ]
+            accepted_observation = max(
+                accepted, key=lambda item: (item.retrieved_at, item.observation_id), default=None
+            )
             fact: Any | None = None
-            parse_error = observation_conflict
+            parse_error = False
             expected = _FACT_MODEL.get(record.source_namespace)
             if expected is not None:
                 expected_document, model = expected
@@ -552,6 +781,8 @@ class SecurityAuthorityDecisionEngine:
             snapshots[evidence_id] = _EvidenceSnapshot(
                 record=record,
                 observation=latest,
+                accepted_observation=accepted_observation,
+                observation_conflict=observation_conflict,
                 current=evidence_id in current_ids,
                 relation_head_hash=relation_head_hash,
                 fact=fact,
@@ -736,7 +967,7 @@ class SecurityAuthorityDecisionEngine:
             cast(KrxListingLifecycleFact, lifecycle.fact) if lifecycle is not None else None
         )
         family = (
-            _kr_family(current_issue.stock_kind)
+            _kr_family(current_issue.security_type, current_issue.stock_kind)
             if current_issue is not None
             else c.InstrumentFamily.UNKNOWN
         )
@@ -844,6 +1075,23 @@ class SecurityAuthorityDecisionEngine:
             )
         else:
             self._set_scope(states, c.Scope.INSTRUMENT_CLASS, "SATISFIED")
+        if (
+            current_issue is not None
+            and current_listing is not None
+            and (
+                (
+                    current_listing.security_type is not None
+                    and current_listing.security_type != current_issue.security_type
+                )
+                or (
+                    current_listing.stock_kind is not None
+                    and current_listing.stock_kind != current_issue.stock_kind
+                )
+            )
+        ):
+            self._set_scope(
+                states, c.Scope.INSTRUMENT_CLASS, "CONFLICT", "KRX_CLASS_TYPE_CONTRADICTION"
+            )
         if current_issue is None or current_listing is None:
             self._set_scope(states, c.Scope.LISTING_VENUE, "MISSING", "KRX_LISTING_VENUE_MISSING")
         elif current_issue.market != current_listing.market:
@@ -1010,16 +1258,7 @@ class SecurityAuthorityDecisionEngine:
         row_identities: dict[str, tuple[_EvidenceSnapshot, c.RegisteredClassIdentity]] = {}
         for item in selected_rows:
             fact = item.fact
-            identity = c.RegisteredClassIdentity(
-                verified_registrant_cik=fact.registrant_cik,
-                accepted_accession=fact.accepted_accession,
-                filing_document_digest=fact.filing_document_digest,
-                filing_form="8-A",
-                registered_class_title=fact.registered_class_title,
-                section_12_basis=fact.section_12_basis,
-                official_class_discriminator=fact.official_class_discriminator,
-                registered_exchange_text=fact.exchange_name,
-            )
+            identity = _sec_class_identity(fact)
             row_identities[identity.class_row_id()] = (item, identity)
         if len(row_identities) != 1:
             return None
@@ -1031,13 +1270,18 @@ class SecurityAuthorityDecisionEngine:
             item
             for item in sec25_rows
             if item.fact.registrant_cik == issuer.issuer.cik
+            and item.accepted_observation is not None
             and _norm(item.fact.exchange_name)
             == _norm(class_identity.registered_exchange_text or "")
             and _norm(item.fact.class_description) == _norm(class_identity.registered_class_title)
         )
+        effective_form25 = _effective_removals(sec.fact, tuple(evidence.values()), at)
         cover_rows = self._snapshot_namespace(facts, "SEC_PERIODIC_COVER", SecPeriodicCoverFact)
         cover_rows = tuple(
-            item for item in cover_rows if item.fact.registrant_cik == issuer.issuer.cik
+            item
+            for item in cover_rows
+            if item.fact.registrant_cik == issuer.issuer.cik
+            and item.accepted_observation is not None
         )
         relevant_nasdaq = tuple(
             item
@@ -1086,7 +1330,7 @@ class SecurityAuthorityDecisionEngine:
                     at,
                 )
             )
-        if nasdaq is not None:
+        if nasdaq is not None and not effective_form25:
             for scope in (c.Scope.LISTING_VENUE, c.Scope.LISTING_STATUS, c.Scope.LISTING_INTERVAL):
                 listing_app = app_map.get((nasdaq.record.evidence_id, scope))
                 if listing_app is not None and listing_app.status == "ADMITTED":
@@ -1133,16 +1377,27 @@ class SecurityAuthorityDecisionEngine:
             self._set_scope(states, c.Scope.LISTING_VENUE, "CONFLICT", "SEC_EXCHANGE_MISMATCH")
         else:
             self._set_scope(states, c.Scope.LISTING_VENUE, "SATISFIED")
-        # Compare accepted/effective chronology without using retrieval time as filing authority.
-        effective_form25 = tuple(
-            item
-            for item in sec25_rows
-            if item.fact.effective_date <= at.date()
-            and (
-                item.fact.accepted_at > sec.fact.accepted_at
-                or item.fact.effective_date >= sec.fact.accepted_at.date()
+        for cover in cover_rows:
+            same_class = _norm(cover.fact.class_title) == _norm(
+                class_identity.registered_class_title
             )
-        )
+            same_ticker = cover.fact.ticker == provider.observation.symbol
+            if same_class and same_ticker:
+                if (
+                    cover.fact.exchange_name is not None
+                    and _norm(cover.fact.exchange_name) != "nasdaq"
+                ):
+                    self._set_scope(
+                        states,
+                        c.Scope.LISTING_VENUE,
+                        "CONFLICT",
+                        "SEC_PERIODIC_VENUE_CONTRADICTION",
+                    )
+            elif same_ticker:
+                self._set_scope(
+                    states, c.Scope.REGISTERED_CLASS, "CONFLICT", "SEC_PERIODIC_CLASS_CONTRADICTION"
+                )
+        # Compare accepted/effective chronology without using retrieval time as filing authority.
         later_nasdaq_event = any(
             item.fact.state in ("ISSUE_DELETION", "ISSUE_SUSPENSION")
             and item.fact.file_creation_time
@@ -1676,7 +1931,11 @@ class SecurityAuthorityDecisionEngine:
                 or record.document_kind != expected[0]
                 or snapshot.fact is None
                 or snapshot.parse_error
+                or snapshot.observation_conflict
                 or snapshot.observation is None
+                or snapshot.observation.access_result != "SUCCEEDED"
+                or snapshot.observation.evidence_hash != record.content_hash
+                or snapshot.observation.raw_digest != record.raw_digest
                 or snapshot.observation.adapter_version != ADAPTER_VERSION
                 or snapshot.observation.parser_version != PARSER_VERSION
             ):
@@ -1873,12 +2132,8 @@ class SecurityAuthorityDecisionEngine:
     ) -> tuple[c.BundleScopeResult, ...]:
         app_ids_by_scope: dict[c.Scope, tuple[str, ...]] = {}
         for scope in mandatory:
-            app_ids_by_scope[scope] = tuple(
-                sorted(
-                    app.application_id
-                    for app in applications
-                    if app.scope == scope and app.status == "ADMITTED"
-                )
+            app_ids_by_scope[scope] = (
+                scope_proof_ids(issuer.issuer.jurisdiction, scope, tuple(applications)) or ()
             )
         return tuple(
             c.seal_security_record(
@@ -1919,7 +2174,12 @@ class SecurityAuthorityDecisionEngine:
             record = snapshot.record
             obs = snapshot.observation
             fresh = False
-            if obs is not None and obs.access_result == "SUCCEEDED" and not snapshot.parse_error:
+            if (
+                obs is not None
+                and obs.access_result == "SUCCEEDED"
+                and not snapshot.parse_error
+                and not snapshot.observation_conflict
+            ):
                 namespace = record.source_namespace
                 if namespace in ("KRX_STANDARD_CODE", "KRX_ISSUE_BASIC"):
                     fresh = (
@@ -1948,9 +2208,13 @@ class SecurityAuthorityDecisionEngine:
         freshness: dict[str, bool],
     ) -> None:
         for scope, (current, _) in tuple(states.items()):
-            relevant = [
-                app for app in applications if app.scope == scope and app.status == "ADMITTED"
-            ]
+            jurisdiction = "KR" if c.Scope.SECURITY_IDENTIFIER in states else "US"
+            proof_ids = scope_proof_ids(jurisdiction, scope, tuple(applications))
+            if proof_ids is None:
+                if current == "SATISFIED":
+                    states[scope] = ("MISSING", "REQUIRED_APPLICATION_PROOF_MISSING")
+                continue
+            relevant = [app for app in applications if app.application_id in proof_ids]
             stale = any(not freshness.get(app.evidence_id, False) for app in relevant)
             if scope == c.Scope.PROVIDER_SECURITY_BRIDGE:
                 stale = stale or not freshness.get("__provider__", False)
@@ -2136,6 +2400,108 @@ class SecurityAuthorityDecisionEngine:
                         reasons.add("CURRENT_LISTING_CLAIM_CONFLICT")
                         affected.add(key[0])
 
+        active_listings: dict[tuple[str, str], list[Any]] = defaultdict(list)
+        removed_securities = {
+            claim.security_id
+            for claim in claims
+            if isinstance(claim, c.ClassClaim)
+            for item in evidence.values()
+            if isinstance(item.fact, SecAccepted8AFact)
+            and _sec_class_identity(item.fact).class_row_id() == claim.registered_row_id
+            and _effective_removals(item.fact, tuple(evidence.values()), at)
+        }
+        for claim in claims:
+            if (
+                isinstance(claim, c.ListingClaim)
+                and claim.listing_status == "ACTIVE"
+                and claim.security_id not in removed_securities
+            ):
+                active_listings[(claim.venue, claim.ticker)].append(claim)
+        for listing_values in active_listings.values():
+            for index, left in enumerate(listing_values):
+                for right in listing_values[index + 1 :]:
+                    if left.security_id != right.security_id and self._intervals_overlap(
+                        left, right, today
+                    ):
+                        reasons.add("GLOBAL_ACTIVE_LISTING_COLLISION")
+                        affected.update((left.provider_id, right.provider_id))
+
+        # Inspect unevaluated providers as well: insertion order cannot choose a winner.
+        # The B head proves issuer identity; the accepted SEC row proves class identity.
+        # No Nasdaq CIK, company-name inference or ticker-derived Security ID is used.
+        prospective: dict[tuple[str, str], list[tuple[str, str, date | None]]] = defaultdict(list)
+        for identity in session.scalars(select(ProviderSecurityIdentityRow)).all():
+            candidate_provider = self._provider_snapshot(
+                session, identity.provider_security_identity_id
+            )
+            candidate_issuer = self._issuer_snapshot(
+                session, identity.provider_security_identity_id
+            )
+            if (
+                candidate_provider is None
+                or candidate_issuer is None
+                or candidate_issuer.issuer.jurisdiction != "US"
+            ):
+                continue
+            for sec in evidence.values():
+                if (
+                    not sec.current
+                    or sec.parse_error
+                    or not self._production_evidence(sec.record)
+                    or not isinstance(sec.fact, SecAccepted8AFact)
+                    or sec.fact.registrant_cik != candidate_issuer.issuer.cik
+                    or _norm(sec.fact.exchange_name or "") != "nasdaq"
+                ):
+                    continue
+                if _effective_removals(sec.fact, tuple(evidence.values()), at):
+                    continue
+                for exchange in evidence.values():
+                    if (
+                        not exchange.current
+                        or exchange.parse_error
+                        or not self._production_evidence(exchange.record)
+                        or not isinstance(exchange.fact, NasdaqPrimaryFact)
+                        or exchange.fact.symbol != candidate_provider.observation.symbol
+                        or exchange.fact.state != "ACTIVE"
+                        or exchange.fact.test_issue
+                        or _norm(exchange.fact.security_name)
+                        != _norm(sec.fact.registered_class_title)
+                    ):
+                        continue
+                    class_identity = _sec_class_identity(sec.fact)
+                    candidate_id = c.security_id_for_anchor(
+                        c.us_anchor(candidate_issuer.issuer.issuer_id, class_identity)
+                    )
+                    policies = tuple(
+                        build_policy(spec, recorded_at=at) for spec in SOURCE_POLICY_SPECS
+                    )
+                    apps = self._applications(
+                        (sec, exchange),
+                        policies,
+                        candidate_provider,
+                        candidate_issuer,
+                        candidate_id,
+                        at,
+                    )
+                    fresh = self._freshness_map((sec, exchange), candidate_provider, at)
+                    if (
+                        scope_proof_ids("US", c.Scope.REGISTERED_CLASS, apps) is None
+                        or scope_proof_ids("US", c.Scope.LISTING_STATUS, apps) is None
+                        or not all(fresh.values())
+                    ):
+                        continue
+                    prospective[("NASDAQ", exchange.fact.symbol)].append(
+                        (
+                            identity.provider_security_identity_id,
+                            candidate_id,
+                            exchange.fact.listing_date,
+                        )
+                    )
+        for values in prospective.values():
+            if len({item[1] for item in values}) > 1:
+                reasons.add("GLOBAL_ACTIVE_LISTING_COLLISION")
+                affected.update(item[0] for item in values)
+
         candidate_isins = {
             proposed_identifier.identifier_value
             for proposed_identifier in proposed_identifiers
@@ -2178,6 +2544,10 @@ class SecurityAuthorityDecisionEngine:
                 "reasons": reason_codes,
                 "affected_provider_ids": affected_ids,
                 "claims": sorted((claim.claim_id, claim.content_hash) for claim in claims),
+                "prospective_listings": sorted(
+                    (key, sorted(values)) for key, values in prospective.items()
+                ),
+                "removed_securities": sorted(removed_securities),
             }
         )
         return SecurityCollisionResult(

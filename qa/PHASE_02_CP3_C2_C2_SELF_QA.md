@@ -1,5 +1,15 @@
 # CP3-C2-C2 Machine Security Authority Engine — Self-QA
 
+## Current consolidated remediation evidence boundary — 2026-09-30
+
+- Prior candidate: `8d02d24562f0567375c465cdcd79bb5e3f8c3dfc`; integration base: `120194fe6631db51c115776a49c55d3a25d93e7e`; same implementation branch. The prior candidate remains FAIL and is not eligible for integration.
+- R1–R5 corrections and `tests/backend/test_security_authority_remediation.py` address all 14 consolidated counterexamples, additional missing/excluded provenance paths, SUPPORT-only cover controls, joint KR type/kind checks, repository corruption, prerequisite loss, exact replay and restoration.
+- Repository READY reconstruction checks current issuer/provider membership, exact admitted scope composition, evidence/policy hashes, adapter/parser and relation head, required-source freshness, class facts, canonical binding, adverse facts and global collision. It does not trust SATISFIED labels supplied by the draft.
+- Full Windows QA must run from the beginning after focused/regression PASS, on the byte-identical mirror with an index matching its worktree. All gate counts/exits, final scanner pins, before/after equality, frozen proof and final commit/tree are recorded in the fresh external final review package. This source snapshot does not claim full-QA success from historical runs below.
+- Successful maximum: `CP3-C2-C2 REMEDIATED — GPT FINAL INDEPENDENT RE-VERIFICATION REQUIRED`. No integration merge, C3, live authority, production writes, shared counter runtime or Security-head reader cutover is part of this work.
+
+## Historical initial C2 self-QA (unchanged prior candidate evidence)
+
 - Date: 2026-09-30
 - Branch: `feature/phase-02-c2c2-machine-security-authority`
 - Base: `120194fe6631db51c115776a49c55d3a25d93e7e`

@@ -1,6 +1,13 @@
 # Project Status
 
-## Current CP3-C2-C2 Machine Security Authority Engine — 2026-09-30
+## Current CP3-C2-C2 consolidated remediation candidate — 2026-09-30
+
+- Original candidate `8d02d24562f0567375c465cdcd79bb5e3f8c3dfc` remains **FAIL — C2 REMEDIATION REQUIRED** and must not be integrated. The combined GPT and Codex findings are the authority for this bounded remediation.
+- The candidate corrects R1 application-backed scope proof and repository READY validation; R2 persistent accepted negatives and relevant periodic-cover contradictions; R3 global active-listing collisions with atomic safety successors; R4 joint KR type/kind reconciliation; and R5 append-only negative successors when prerequisites disappear. The new regression module covers all 14 required counterexamples and preserves KR/US positive controls.
+- Current position: **C2 CONSOLIDATED REMEDIATION CANDIDATE — NOT INTEGRATED**. The final committed identity, exact focused/regression/Windows gates and delivery verdict belong to the fresh external review package. Its successful ceiling is `CP3-C2-C2 REMEDIATED — GPT FINAL INDEPENDENT RE-VERIFICATION REQUIRED`; this source record does not declare QA success or independent acceptance.
+- Migrations 0001–0008, R1/B semantics, source admission, global enums and C3 remain frozen. No live source call or production write occurs. C3 and CP3-D remain NOT STARTED; no integration or main merge is authorized.
+
+## Historical initial CP3-C2-C2 Machine Security Authority Engine — 2026-09-30
 
 - The user-approved C2 source-authority precheck is recorded in `plans/PHASE_02_CP3_C2_C2_SOURCE_AUTHORITY_REVIEW.md`. It admits only the exact C1 source/scope tuples listed there; NYSE and CGS remain disabled, and the KRX automated adapter remains disabled pending exact specification/response capture.
 - CP3-C2-C2 implementation is complete on `feature/phase-02-c2c2-machine-security-authority`, based on `120194fe6631db51c115776a49c55d3a25d93e7e`. The synchronized candidate passed the complete Windows standard QA from the beginning in attempt 09 (exit 0); exact gates and counts are in `qa/PHASE_02_CP3_C2_C2_SELF_QA.md`. The frozen-scope comparison is clean.
