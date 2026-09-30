@@ -1573,6 +1573,7 @@ $expectedBackendTestFiles = @(
     "tests/backend/test_reviewer_webauthn_core.py",
     "tests/backend/test_reviewer_windows_owner.py",
     "tests/backend/test_security_authority_contracts.py",
+    "tests/backend/test_security_authority_decision_engine.py",
     "tests/backend/test_security_authority_migration.py",
     "tests/backend/test_security_authority_relations.py",
     "tests/backend/test_security_authority_repository.py",
@@ -1714,11 +1715,11 @@ $phaseControlFiles = @(
         Where-Object { $_.Name -cne "policy-scan.ps1" }
 )
 $approvedPhaseControlDigest = [string]::Concat(
-    "c613a1e4", "fe2cdbf0", "9be13417", "b81f8e9c",
-    "e4b69c73", "8b173990", "4be8b42c", "0db6d451"
+    "69bca14f", "c545c0c8", "1ba7a72f", "39e996c5",
+    "c38938cd", "56346f8c", "fa46b262", "e63944e4"
 )
 if (
-    $phaseControlFiles.Count -ne 97 -or
+    $phaseControlFiles.Count -ne 98 -or
     (Get-FileSetManifestSha256 -Files $phaseControlFiles) -cne
         $approvedPhaseControlDigest
 ) {
@@ -1752,6 +1753,13 @@ $approvedAuthorityLocatorRoots = @(
     [string]::Concat("http", "s://opendart.fss.or.kr/"),
     [string]::Concat("http", "s://www.sec.gov/Archives/edgar/data/")
 )
+$securityAuthoritySourceRegistryPath = [System.IO.Path]::GetFullPath(
+    (Join-Path $repoRoot "services\api\src\toss_dashboard_api\domain\security_authority_registry.py")
+)
+$approvedSecurityAuthorityLocatorRoots = @(
+    [string]::Concat("http", "s://www.sec.gov/"),
+    [string]::Concat("http", "s://www.nasdaqtrader.com/")
+)
 
 function Get-NormalizedConstantStringContent {
     param([Parameter(Mandatory = $true)][string] $Content)
@@ -1776,15 +1784,15 @@ function Assert-ApprovedCacheTagScannerSnapshot {
 
     # This pin was calculated from the approved scanner's complete raw bytes.
     # It is not learned from the current input and has no caller override.
-    $approvedSourceSha256 = [string]::Concat(
-        "b312ef43", "0496a6cf", "a53c383a", "92173c3b",
-        "f9d87945", "6cd5e7f7", "552b2656", "6ae6c6f5"
+$approvedSourceSha256 = [string]::Concat(
+    "9fb0e899", "c1914bd0", "49af4690", "c0d38d7a",
+    "479d1eb2", "84fa498d", "fdb62d28", "9ea20162"
     )
     $actualSourceSha256 = [Convert]::ToHexString(
         [Security.Cryptography.SHA256]::HashData($SourceBytes)
     ).ToLowerInvariant()
     if (
-        $SourceBytes.Length -ne 249357 -or
+    $SourceBytes.Length -ne 249357 -or
         -not [string]::Equals(
             $actualSourceSha256, $approvedSourceSha256,
             [StringComparison]::Ordinal
@@ -1954,6 +1962,14 @@ function Assert-ExternalUrlTextAllowed {
                 $issuerAuthoritySourceRegistryPath
         ) {
             foreach ($locatorRoot in $approvedAuthorityLocatorRoots) {
+                $inspected = $inspected.Replace($locatorRoot, "http://127.0.0.1/")
+            }
+        }
+        elseif (
+            [System.IO.Path]::GetFullPath($Path) -ceq
+                $securityAuthoritySourceRegistryPath
+        ) {
+            foreach ($locatorRoot in $approvedSecurityAuthorityLocatorRoots) {
                 $inspected = $inspected.Replace($locatorRoot, "http://127.0.0.1/")
             }
         }
@@ -2443,6 +2459,36 @@ foreach ($canary in $authorityRegistryBoundaryCanaries) {
             Assert-ExternalUrlTextAllowed -Path $canary.Path -Content $canary.Content
         } `
         -Message "The exact issuer-authority locator policy accepted a path, host, or credential bypass canary."
+}
+$securityAuthorityRegistryAllowedContent = $approvedSecurityAuthorityLocatorRoots |
+    ForEach-Object { 'ROOT = "' + $_ + '"' }
+Assert-ExternalUrlTextAllowed `
+    -Path $securityAuthoritySourceRegistryPath `
+    -Content ($securityAuthorityRegistryAllowedContent -join [Environment]::NewLine)
+$securityAuthorityRegistryBoundaryCanaries = @(
+    [pscustomobject]@{
+        Path = Join-Path $repoRoot "services\api\src\toss_dashboard_api\domain\issuer.py"
+        Content = [string]::Concat('ROOT = "http', 's://www.sec.gov/')
+    },
+    [pscustomobject]@{
+        Path = $securityAuthoritySourceRegistryPath
+        Content = [string]::Concat('ROOT = "http', 's://www.sec.gov.evil.example/')
+    },
+    [pscustomobject]@{
+        Path = $securityAuthoritySourceRegistryPath
+        Content = [string]::Concat('ROOT = "http', 's://www.nasdaqtrader.com.evil.example/')
+    },
+    [pscustomobject]@{
+        Path = $securityAuthoritySourceRegistryPath
+        Content = [string]::Concat('ROOT = "http', 's://user:pass', 'word@www.nasdaqtrader.com/')
+    }
+)
+foreach ($canary in $securityAuthorityRegistryBoundaryCanaries) {
+    Assert-PolicyCanaryRejected `
+        -Action {
+            Assert-ExternalUrlTextAllowed -Path $canary.Path -Content $canary.Content
+        } `
+        -Message "The exact Security authority locator policy accepted path, host, or credential bypass canary."
 }
 $cacheTagUrlCanaryResult = Assert-CacheTagProvenanceUrlCanaries `
     -RawUrlCanaries $urlCanaries -NormalizedUrlCanaries $normalizedUrlCanaries

@@ -1,6 +1,12 @@
 # Project Status
 
-## Current CP3-C2-C / 0008 Security Authority Foundation closeout — 2026-09-30
+## Current CP3-C2-C2 Machine Security Authority Engine — 2026-09-30
+
+- The user-approved C2 source-authority precheck is recorded in `plans/PHASE_02_CP3_C2_C2_SOURCE_AUTHORITY_REVIEW.md`. It admits only the exact C1 source/scope tuples listed there; NYSE and CGS remain disabled, and the KRX automated adapter remains disabled pending exact specification/response capture.
+- CP3-C2-C2 implementation is complete on `feature/phase-02-c2c2-machine-security-authority`, based on `120194fe6631db51c115776a49c55d3a25d93e7e`. The synchronized candidate passed the complete Windows standard QA from the beginning in attempt 09 (exit 0); exact gates and counts are in `qa/PHASE_02_CP3_C2_C2_SELF_QA.md`. The frozen-scope comparison is clean.
+- The engine consumes normalized stored evidence and writes only C2 machine-evaluation records. No live source call, production DB write, public exposure, Security approval, canonical Security promotion, or C3 operation is authorized. The checkpoint ceiling is `CP3-C2-C2 IMPLEMENTED — GPT FINAL INDEPENDENT VERIFICATION REQUIRED`; CP3-C2-C3 and CP3-D remain unstarted.
+
+## Historical CP3-C2-C / 0008 Security Authority Foundation closeout — 2026-09-30
 
 - Exact independently reviewed candidate `0c4702c8bffa58675a5d1b0b9f1b77ca25beb8e4` (tree `64132bf753e680eae9d47252e45859d129d01f7f`) was integrated into `feature/phase-02-toss` by merge `88dcb1e49551069b8e986c35185d9bcced89d4e5`; parents are the approved base `6c0ed087106d0fdb94615b74a9472df17be08706` and the exact candidate. Merge tree equals the reviewed candidate tree.
 - Independent final result accepted by the user: **PASS WITH ISSUES**; Critical `0`, Major `0`, required code/schema fixes `0`, unauthorized changes `0`, regression found `0`. `0008 Security Authority Foundation: PASS WITH ISSUES — CLOSED`; `CP3-C2-C1 architecture/design: PASS WITH ISSUES — CLOSED`; `ADR-020: ACCEPTED`.

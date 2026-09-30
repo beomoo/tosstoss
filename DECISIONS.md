@@ -1,6 +1,12 @@
 # Architecture Decision Record
 
-## Current CP3-C2-C / 0008 Security Authority Foundation closeout — 2026-09-30
+## Current CP3-C2-C2 source-admission and implementation record — 2026-09-30
+
+- The user approved the operational source-admission matrix in `plans/PHASE_02_CP3_C2_C2_SOURCE_AUTHORITY_REVIEW.md` under accepted ADR-020. This is not a new architecture ADR.
+- C2 may evaluate normalized stored KRX/OpenDART, SEC/Nasdaq, and human-assisted KRX lifecycle evidence only under the exact server-owned registry. NYSE and CGS remain `production_eligible=0`; KRX automated ingestion remains disabled pending exact specification/response capture. No live requests are authorized.
+- CP3-C2-C2 implementation is active on `feature/phase-02-c2c2-machine-security-authority` from base `120194fe6631db51c115776a49c55d3a25d93e7e`. C3, canonical Security writes, Security links/heads, and legacy `VERIFIED` mappings remain out of scope.
+
+## Historical CP3-C2-C / 0008 Security Authority Foundation closeout — 2026-09-30
 
 - The exact reviewed candidate `0c4702c8bffa58675a5d1b0b9f1b77ca25beb8e4` (tree `64132bf753e680eae9d47252e45859d129d01f7f`) was integrated into `feature/phase-02-toss` by merge `88dcb1e49551069b8e986c35185d9bcced89d4e5`, with parents `6c0ed087106d0fdb94615b74a9472df17be08706` and `0c4702c8bffa58675a5d1b0b9f1b77ca25beb8e4`; the merge tree equals the reviewed candidate tree.
 - The user accepted the independent final result `PASS WITH ISSUES`: Critical `0`, Major `0`, required code/schema fixes `0`, unauthorized changes `0`, regression found `0`. CP3-C2-C1 architecture/design is `PASS WITH ISSUES — CLOSED`; ADR-020 is `ACCEPTED`; the additive 0008 Security Authority Foundation is `PASS WITH ISSUES — CLOSED`.
