@@ -2650,3 +2650,48 @@ No migration or runtime is created here. Later 0008 upgrade is additive; downgra
 
 ### 마이그레이션·롤백
 ```
+
+
+## ADR-021 — C3-entry profile / identifier compatibility correction
+
+- Date: 2026-10-01.
+- Status: **PROPOSED / IMPLEMENTED FOR INDEPENDENT REVIEW**. Not ACCEPTED or CLOSED.
+- Authority: the user-authorized CP3-C2-C3-ENTRY remediation against `81ef70a76b812c6cf6c4cbbcfc4a1f24b7f7ca86`, tree `5fee605a16785d58ec3a08939997c651acd95ba6`. Original raw-byte authority and separate CLI dispatch wrapper are preserved in the review evidence.
+
+### Problem and bounded decision
+
+Accepted C2 produced an aggregate profile summary hash rather than the hash of any materializable AuthorityProfile. Frozen 0008 requires the exact same profile hash in both the canonical profile and machine bundle link FKs. US READY also lacked an identifier claim: SEC owns IDENTIFIER_PROVENANCE and REGISTERED_CLASS, not SECURITY_IDENTIFIER. Direct unmodified-baseline reproductions establish both failures separately from candidate positive tests.
+
+Keep 0001–0008 byte-identical. Add only `0009_phase_02_cp3_c2_c3_identifier_claim_contract`. Keep v0.1 historical payloads, hashes and read validation intact. The v0.2 scope/kind contract permits only KRX_ISIN/SECURITY_IDENTIFIER and SEC_REGISTERED_CLASS/IDENTIFIER_PROVENANCE. The insert guard rejects all newly inserted SEC registered-class claims unless they use v0.2 and the exact existing SEC_ACCEPTED_8A / SEC_FORM_8A / SEC_REGISTRANT / IDENTIFIER_PROVENANCE / ADMITTED / weight-3 untainted application. This preserves even representable historical v0.1 rows without allowing that broad old read contract to authorize new US proof. The original application FK and all applicable indexes/immutability guards remain intact.
+
+0009 reconstructs only the identifier table under an explicit rollback-capable transaction. It compares old/new complete rows, runs foreign_key_check before commit, and restores FK enforcement on failure or success. No row is resealed and no decision is generated. Downgrade refuses any v0.2 history; without it the exact original schema is reconstructed. Populated child relations, immutability, repeat migration and injected post-copy rollback are tested.
+
+C2 and repository use the same pure AuthorityProfile constructor, existing canonicalization and content hashing. It selects exactly one legal OWNER proof per role: KR standard-code identifier, issue-basic class and lifecycle interval; US SEC 8-A provenance identifier, SEC registered class and Nasdaq interval. Application IDs/hashes, provider/issuer/security bindings and registered-class anchor value must agree. No second hash algorithm is introduced. Profile identity and audit time are excluded by the existing contract. If exact proof is missing/ambiguous, C2 cannot become READY; a negative-only bundle may carry the canonical null digest, never a materializable profile claim.
+
+The repository independently rechecks current provider/issuer/evidence/application relation heads, legal proof bindings, uniqueness, class facts, listing interval facts, reconstructed profile hash, contradictions, freshness and collision proof. It does not trust a supplied bundle hash or SATISFIED flag. All bundle applications, scope results, class/identifier and supporting listing evidence remain. Existing bundles/decisions remain immutable; normal reevaluation appends a corrected successor under existing lineage.
+
+### Scope and verification ceiling
+
+No source registry/admission/weight/production-eligibility change, SEC SECURITY_IDENTIFIER grant, anchor/security_id change, legacy ShareClass or VERIFIED mapping write, R1/WebAuthn/counter change, M1/M2/M3/transaction change, canonical C2 write, C3 product, B cascade, reader cutover, live authority/API, production DB, deployment, merge or Trading. ADR-020 is unchanged.
+
+Required evidence includes baseline negatives; exact KR/US synthetic schema link positives; adversarial matrix; old READY successor; previous 14 C2 counterexamples; migration/relations/prerequisites/frozen R1 regression; standard Windows full QA from beginning; scans and frozen byte proof. Synthetic Security auth rows are not real WebAuthn evidence. Package source manifests/diff are reproducible; pre-commit candidate SHA and final tree are finalized only by the parent after authorized commit/push. Independent GPT verification and user closeout remain pending. Maximum: `CP3-C2-C3-ENTRY REMEDIATED — GPT FINAL INDEPENDENT VERIFICATION REQUIRED`.
+
+### ADR-021 execution boundary — 2026-10-01
+
+Status remains **PROPOSED / IMPLEMENTED FOR INDEPENDENT REVIEW**. Exact 0009 HEAD expectations are updated in three existing tests. The existing internal additive-revision inventory receives only 0009 so the public Phase 1 revision remains unchanged; all metadata repository functions/classes and all source authority policy remain unchanged. This is required migration inventory maintenance, not a new public contract or authority grant.
+
+Final focused: 36 passed, exit 0. Completed affected Linux run: 829 passed / 8 failed, exit 1; one stale HEAD expectation and seven frozen Win32 `WINDOWS_REQUIRED` failures. An initial 18-case bounded rerun exposed the missing additive-revision entry (17 passed / 1 failed); after preserving the existing public revision assertion and correcting that inventory, the final 24-case rerun passed. Previous C2 14 counterexamples all passed. Original failures and sequential frozen-source evidence are retained.
+
+Standard Windows full QA was attempted from the beginning once with exact source/mirror/index equality and stopped in null-valued-expression preflight. Policy scan could not resolve Windows child git; secret scan lacked detect-secrets after blocked setup. Each exited 1. Full Windows QA, Windows/R1 and both scans remain **BLOCKED / NOT VERIFIED**. No detector, test, assertion, canary or standard runner was weakened or bypassed.
+
+The successful remediation ceiling is not reached; no acceptance, closeout, C3 completion or overall QA PASS is declared. Candidate commit SHA/tree are NOT CREATED. The parent must validate the provisional source-manifest package, resolve the concrete environment blocker and obtain mandatory gates before any staging/commit/push or closeout. Independent GPT verification remains required. ADR-020 and all prior decision bytes remain intact.
+
+### ADR-021 Windows verification successor — 2026-10-01
+
+This successor records the completed QA after the preceding environment-blocked execution entry; that historical entry is retained unchanged. **CP3-C2-C3-ENTRY REMEDIATED — GPT FINAL INDEPENDENT VERIFICATION REQUIRED**. ADR-021 remains **PROPOSED / IMPLEMENTED FOR INDEPENDENT REVIEW**. Candidate commit SHA/tree are **NOT CREATED**; the parent owns final staging/commit/push after validating the source-manifest package. No acceptance, closeout or C3 completion is claimed.
+
+Windows focused: **36 passed**, affected: **111 passed**, each exit 0 and zero skips. The affected suite includes the Windows OWNER module (8 tests, including native directory OWNER/TOKEN_USER verification) and the previous 14 C2 counterexamples. The unchanged standard `scripts/test.ps1` then ran from the beginning and completed with exit 0: backend 1399, frontend 43, E2E 2, migration QA, fixture idempotency, API-contract/build checks and standard secret/policy scans. Source/mirror/index equality and runtime/test byte freezes are recorded.
+
+Earlier Linux evidence remains 829 passed / 8 failed (seven WINDOWS_REQUIRED cases and one stale HEAD expectation); it is not relabelled all-pass. The bounded HEAD/additive-revision inventory correction passed its final 24-case rerun. Earlier Windows setup/full/scan failures remain preserved. The directly observed `.CPL`-only process PATHEXT was repaired by restoring the actual Machine PATHEXT in the dedicated QA subprocess only, with Windows-local cwd; this environment repair changed no machine/user environment, runner, detector, assertion or canary. The candidate retains only the separately authorized measured test/migration inventory updates. The first full run after PATHEXT repair retained 1395 passed / 4 failed because the ignored launcher application aliases masked negative Settings inputs. A direct Windows A/B probe established the cause; removing only those QA subprocess aliases retained effective safe defaults, and the unchanged guarded settings suite passed14/14 before the subsequent full run. The second standard Windows full run passed backend 1399, frontend 43, E2E 2, migration and build checks, but finished exit 1 because the unchanged secret scanner could not read the active QA transcript. That complete failed attempt is preserved. The bounded environment correction captures output only in the Linux evidence root, preserves private mirror evidence by verified byte-for-byte copy, and moves the same official PowerShell bytes and caches under the existing .venv dependency directory and browser assets to the existing .playwright-browsers directory. No scanner exclusions or source assertions changed; the third complete standard full run started from the beginning after the unchanged secret scan precheck.
+
+Synthetic profile/approval/link fixtures prove schema compatibility, not real WebAuthn. C3 product implementation, shared-counter/M1–M3 integration, B cascade, Security reader cutover, live authority/API, production mapping, CP3-D, deployment, main merge and Trading remain outside this checkpoint. ADR-020 and all accepted historical decision bytes remain intact. No new architecture or product authority is added by the environment repair or these gate results.

@@ -588,6 +588,59 @@ class SQLiteSecurityAuthorityRepository:
             or c.security_id_for_anchor(bundle.proposed_anchor) != bundle.security_id
         ):
             raise SecurityLedgerConflict("SECURITY_READY_CANONICAL_BINDING_MISMATCH")
+        try:
+            profile = c.proposed_authority_profile(
+                provider_id=bundle.provider_id,
+                issuer_id=bundle.issuer_id,
+                anchor=bundle.proposed_anchor,
+                applications=applications,
+                claims=claims,
+                profile_id="repository_proposed_profile",
+                recorded_at=decision.evaluated_at,
+            )
+        except ValueError as error:
+            raise SecurityLedgerConflict("SECURITY_READY_PROFILE_PROOF_REJECTED") from error
+        if profile.content_hash != bundle.profile_hash:
+            raise SecurityLedgerConflict("SECURITY_READY_PROFILE_HASH_MISMATCH")
+        # Reconstruct the selected interval from current stored authority facts.
+        listing = next(
+            item
+            for item in claims
+            if isinstance(item, c.ListingClaim) and item.claim_id == profile.listing_claim_id
+        )
+        listing_app = app_by_id[listing.application_id]
+        listing_fact = evidence[listing_app.evidence_id].fact
+        if issuer.issuer.jurisdiction == "KR":
+            expected_listing = (
+                listing_fact.market,
+                listing_fact.market,
+                listing_fact.ticker,
+                engine._kr_listing_status(listing_fact, decision.evaluated_at.date()),
+                listing_fact.listing_date,
+                listing_fact.delisting_date,
+            )
+        else:
+            expected_listing = (
+                "NASDAQ",
+                "US",
+                listing_fact.symbol,
+                "ACTIVE",
+                listing_fact.listing_date,
+                None,
+            )
+        if (
+            listing.venue,
+            listing.market,
+            listing.ticker,
+            listing.listing_status,
+            listing.valid_from,
+            listing.valid_to,
+        ) != expected_listing or listing.interval_missing_reason != (
+            "NOT_SUPPLIED_BY_AUTHORITY"
+            if listing.valid_from is None or listing.valid_to is None
+            else None
+        ):
+            raise SecurityLedgerConflict("SECURITY_READY_PROFILE_LISTING_MISMATCH")
         collision = engine._collision_scan(
             session,
             provider,
