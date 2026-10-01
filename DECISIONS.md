@@ -1,7 +1,20 @@
 # Architecture Decision Record
 
+## Current CP3-C2-C2 accepted integration record — 2026-10-01
 
-## Current CP3-C2-C2 final bounded remediation record — 2026-10-01
+Reviewed candidate `e5aad022f8140523fad00b293c4bc9f4dfca86ff`, tree `c529c740607f1b89a3624407180a0099e00bb01a`: GPT **PASS**, Critical/Major/Minor `0/0/0`, required code/schema fixes `0`, unauthorized changes `0`. The user accepted this exact verdict in the C2 integration/closeout request.
+
+Exact integration merge `eb6088f90c55c8d15b8ea1c206f2b7f7b0349799` on `feature/phase-02-toss` has parent 1 `120194fe6631db51c115776a49c55d3a25d93e7e` and parent 2 `e5aad022f8140523fad00b293c4bc9f4dfca86ff`. Its tree is `c529c740607f1b89a3624407180a0099e00bb01a`, identical to the reviewed candidate before documentation changes.
+
+This is an exact-candidate integration and documentation closeout under accepted C1/ADR-020, not a new architecture or authority decision. CP3-C2-C1 architecture/design and 0008 Security Authority Foundation remain **PASS WITH ISSUES — CLOSED**; ADR-020 remains **ACCEPTED**. C2 Machine Security Authority Engine is **PASS — CLOSED**. C3 Human WebAuthn / Final Mapping is **NEXT PLANNED CHECKPOINT — NOT STARTED**; CP3-D is **NOT STARTED**; Phase 2 is **IMPLEMENTATION IN PROGRESS**.
+
+Accepted C2 behavior: machine Security authority evaluation, server-owned source admission, application-backed scope proof, freshness and relation heads, durable negative evidence, KR type/kind reconciliation, global active-listing collision handling, and append-only machine decision chains. Maximum positive state remains `READY_FOR_MANUAL_REVIEW`; machine writes do not grant human approval or final Security mapping.
+
+Windows full QA is Codex execution evidence, not a suite independently rerun by GPT. No entire Windows C2 suite is rerun for this documentation-only closeout. The authoritative acceptance record is the exact candidate/tree, verdict/findings and user closeout request. A raw GPT report is supplementary evidence, not a prerequisite. Prior FAIL verdicts remain historical; no accepted runtime, schema, admission/licensing, R1/B or scanner meaning changes.
+
+C3 requires a separate exact ChatGPT-authored implementation scope derived from accepted C1/ADR-020 and integrated C2. It is not begun here; shared counters, B cascade, Security-head reader cutover and production/live authority remain outside this closeout.
+
+## Historical CP3-C2-C2 final bounded remediation record — 2026-10-01
 
 The user authorized only the remaining periodic-cover cross-check defect in exact reviewed candidate `00e01d87e08817d31a9ba6c9916ad8ba34bc32fb` (tree `c0b6d3b4398388c2aac54f84d6b0483be3a5327f`), independently FAIL with Critical 0 / Major 1. This is a correction under the existing C1/0008 contracts, not a new architecture ADR.
 

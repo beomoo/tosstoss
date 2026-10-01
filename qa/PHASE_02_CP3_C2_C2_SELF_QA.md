@@ -1,7 +1,35 @@
 # CP3-C2-C2 Machine Security Authority Engine — Self-QA
 
+## Current accepted C2 integration / closeout proof — 2026-10-01
 
-## Current final periodic-cover remediation evidence boundary — 2026-10-01
+- Reviewed candidate `e5aad022f8140523fad00b293c4bc9f4dfca86ff`, tree `c529c740607f1b89a3624407180a0099e00bb01a`: GPT **PASS**, Critical/Major/Minor `0/0/0`, required code/schema fixes `0`, unauthorized changes `0`. The user accepted this exact verdict in the C2 integration/closeout request.
+- Exact integration merge `eb6088f90c55c8d15b8ea1c206f2b7f7b0349799` on `feature/phase-02-toss` has parent 1 `120194fe6631db51c115776a49c55d3a25d93e7e` and parent 2 `e5aad022f8140523fad00b293c4bc9f4dfca86ff`. Its tree is `c529c740607f1b89a3624407180a0099e00bb01a`, identical to the reviewed candidate before documentation changes.
+- C2: **PASS — CLOSED**. Windows full QA is Codex execution evidence, not a suite independently rerun by GPT. No entire Windows C2 suite is rerun for this documentation-only closeout.
+
+Final accepted candidate execution evidence is preserved in `TOSSTOSS_C2_e5aad02_FINAL_PERIODIC_REMEDIATION_REVIEW.zip` (SHA-256 `1e1fd058d9aa99a0faf48f8580f2ad6a5c09b4b115aeb1f6892417a5576f3e6a`), particularly external `SELF_QA.md`, `evidence/WINDOWS_STANDARD_EXIT.json` and integrity proofs. These counts concern the final e5aad02 candidate, not the earlier attempts below.
+
+| Gate | Accepted candidate evidence | Exit |
+|---|---|---|
+| WSL focused / affected regression | 117 / 522 passed; failed, skipped, xfail, deselected all 0 | 0 / 0 |
+| Initial / final policy | URL canaries 4 positive / 35 negative; network authority 0 | 0 / 0 |
+| Windows backend | 1363 passed; failed, skipped, xfail, deselected all 0 | 0 |
+| Ruff / format / mypy | Ruff clean; format check: 134 already formatted; 74 mypy source files | 0 / 0 / 0 |
+| Frontend lint / typecheck / build | All completed | 0 / 0 / 0 |
+| Frontend unit | 43 passed in 10 files; failed/skipped 0 | 0 |
+| API contract / migration lifecycle | Contract passed; repeat, downgrade and re-upgrade completed | 0 / 0 |
+| Fixture idempotency | 13 inserted, then 13 unchanged; updates 0 | 0 |
+| E2E | 2 passed; failed/skipped 0 | 0 |
+| Final secret | 31 negative canaries; 861 metadata files; 2415 applied artifacts; no canary retry | 0 |
+| Complete Windows standard, attempt 02 | Restarted from beginning; all required gates completed | 0 |
+
+- Accepted candidate/mirror equality: 377/377 files. Scanner SHA/policy pin: `9fb0e899c1914bd049af4690c0d38d7a479d1eb284fa498dfdb62d289ea20162`. Standard raw-log SHA-256: `c621c7db6f6dcec73cdf4f64e0ade7b0947857b5a14293ac49178776ebdde9c4`. Raw logs remain local; safe evidence and historical failures stay preserved in the existing package.
+- Windows-native lightweight `scripts/policy-scan.ps1` passed (exit `0`) on a byte-identical 377-file closeout snapshot, using the existing QA venv without dependency changes. This is a policy-only check, not a Windows full-suite rerun.
+- Closeout checks: `git diff --check`, `git diff --cached --check`, exact merge parents/tree, only six authorized documentation paths changed, all 371 other tracked blobs/modes unchanged, and protected primary/candidate worktree/index preservation. Final closeout SHA/tree, push/remote equality and clean status are recorded in the external closeout audit. No entire Windows suite rerun or new review ZIP.
+- CP3-C2-C1 architecture/design and 0008 Security Authority Foundation remain **PASS WITH ISSUES — CLOSED**; ADR-020 remains **ACCEPTED**. C2 Machine Security Authority Engine is **PASS — CLOSED**. C3 Human WebAuthn / Final Mapping is **NEXT PLANNED CHECKPOINT — NOT STARTED**; CP3-D is **NOT STARTED**; Phase 2 is **IMPLEMENTATION IN PROGRESS**.
+- Not implemented: C3 human disposition; canonical Security subject/profile positive runtime writes; Security authority link/head mutation; shared R1/Security counter integration; B issuer-writer → Security `REVIEW_REQUIRED` cascade; current Security-head application-reader cutover. NOT VERIFIED: live/current KRX, SEC and exchange completeness/licensing; NYSE production authority; CGS authority; production Security mapping; physical R1 remote-volume/missing-ACL cases. NYSE/CGS admission and the live KRX adapter remain disabled. CP3-D is not started.
+- Main merge, deployment, production DB writes, live authority calls and C3 implementation: `0`.
+
+## Historical final periodic-cover remediation evidence boundary — 2026-10-01
 
 - Exact prior reviewed candidate: `00e01d87e08817d31a9ba6c9916ad8ba34bc32fb`, tree `c0b6d3b4398388c2aac54f84d6b0483be3a5327f`; integration base `120194fe6631db51c115776a49c55d3a25d93e7e`. Prior verdict remains FAIL, Critical 0 / Major 1.
 - Direct unchanged-candidate reproduction confirmed READY with SUPPORT_ONLY periodic-cover applications for same class + wrong ticker and same class + missing ticker + NYSE exchange. The final fix associates covers only by same CIK plus class or ticker and checks every supplied field in engine and repository.

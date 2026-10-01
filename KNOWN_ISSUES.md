@@ -1,7 +1,16 @@
 # Known Issues and Open Questions
 
+## Current accepted C2 scope and remaining boundaries — 2026-10-01
 
-## Current final C2 periodic-cover review boundary — 2026-10-01
+Reviewed candidate `e5aad022f8140523fad00b293c4bc9f4dfca86ff`, tree `c529c740607f1b89a3624407180a0099e00bb01a`: GPT **PASS**, Critical/Major/Minor `0/0/0`, required code/schema fixes `0`, unauthorized changes `0`. The user accepted this exact verdict in the C2 integration/closeout request.
+
+C2 is **PASS — CLOSED**. The previous C2 FAIL candidates and remediation evidence below remain historical; they do not describe the accepted final candidate. C1/0008 retain their **PASS WITH ISSUES — CLOSED** qualifications and ADR-020 remains **ACCEPTED**.
+
+Not implemented: C3 human disposition; canonical Security subject/profile positive runtime writes; Security authority link/head mutation; shared R1/Security counter integration; B issuer-writer → Security `REVIEW_REQUIRED` cascade; current Security-head application-reader cutover. NOT VERIFIED: live/current KRX, SEC and exchange completeness/licensing; NYSE production authority; CGS authority; production Security mapping; physical R1 remote-volume/missing-ACL cases. NYSE/CGS admission and the live KRX adapter remain disabled. CP3-D is not started.
+
+Windows full QA is Codex execution evidence, not a suite independently rerun by GPT. No entire Windows C2 suite is rerun for this documentation-only closeout. Earlier 0008 package-completeness, B2-D coverage/scanner reproducibility and physical R1 qualifications remain recorded; C2 acceptance does not close those items. C3 is **NEXT PLANNED CHECKPOINT — NOT STARTED** and requires its separate exact implementation scope. Phase 2 remains **IMPLEMENTATION IN PROGRESS**.
+
+## Historical final C2 periodic-cover review boundary — 2026-10-01
 
 Independent re-verification of exact candidate `00e01d87e08817d31a9ba6c9916ad8ba34bc32fb` found Critical 0 / Major 1: same-class wrong-ticker and same-class missing-ticker/wrong-exchange covers still permitted READY. Both cases were admitted SUPPORT_ONLY. That candidate remains FAIL and must not be integrated.
 
@@ -17,7 +26,7 @@ The same-Security/multiple-provider positive fixture uses native B authenticatio
 
 Live source completeness, current licensing/access, production mapping, shared R1/Security counters, B writer cascade and Security-head reader cutover remain NOT VERIFIED. NYSE, CGS and the live KRX adapter remain disabled. C3 and CP3-D remain NOT STARTED. Historical qualifications below are preserved.
 
-## Current CP3-C2-C / 0008 review qualifications — 2026-09-30
+## Historical CP3-C2-C / 0008 review qualifications — 2026-09-30
 
 Accepted independent result: `PASS WITH ISSUES` (Critical 0, Major 0, required code/schema fixes 0, unauthorized changes 0, regression found 0). The two items below are non-blocking review qualifications, not code or schema defects.
 

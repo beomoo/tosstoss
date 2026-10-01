@@ -1,7 +1,16 @@
 # Project Status
 
+## Current CP3-C2-C2 integration / closeout — 2026-10-01
 
-## Current CP3-C2-C2 final bounded remediation candidate — 2026-10-01
+- Reviewed candidate `e5aad022f8140523fad00b293c4bc9f4dfca86ff`, tree `c529c740607f1b89a3624407180a0099e00bb01a`: GPT **PASS**, Critical/Major/Minor `0/0/0`, required code/schema fixes `0`, unauthorized changes `0`. The user accepted this exact verdict in the C2 integration/closeout request.
+- Exact integration merge `eb6088f90c55c8d15b8ea1c206f2b7f7b0349799` on `feature/phase-02-toss` has parent 1 `120194fe6631db51c115776a49c55d3a25d93e7e` and parent 2 `e5aad022f8140523fad00b293c4bc9f4dfca86ff`. Its tree is `c529c740607f1b89a3624407180a0099e00bb01a`, identical to the reviewed candidate before documentation changes.
+- CP3-C2-C1 architecture/design and 0008 Security Authority Foundation remain **PASS WITH ISSUES — CLOSED**; ADR-020 remains **ACCEPTED**. C2 Machine Security Authority Engine is **PASS — CLOSED**. C3 Human WebAuthn / Final Mapping is **NEXT PLANNED CHECKPOINT — NOT STARTED**; CP3-D is **NOT STARTED**; Phase 2 is **IMPLEMENTATION IN PROGRESS**.
+- Accepted C2 behavior: machine Security authority evaluation, server-owned source admission, application-backed scope proof, freshness and relation heads, durable negative evidence, KR type/kind reconciliation, global active-listing collision handling, and append-only machine decision chains. Maximum positive state remains `READY_FOR_MANUAL_REVIEW`; machine writes do not grant human approval or final Security mapping.
+- Not implemented: C3 human disposition; canonical Security subject/profile positive runtime writes; Security authority link/head mutation; shared R1/Security counter integration; B issuer-writer → Security `REVIEW_REQUIRED` cascade; current Security-head application-reader cutover. NOT VERIFIED: live/current KRX, SEC and exchange completeness/licensing; NYSE production authority; CGS authority; production Security mapping; physical R1 remote-volume/missing-ACL cases. NYSE/CGS admission and the live KRX adapter remain disabled. CP3-D is not started.
+- Windows full QA is Codex execution evidence, not a suite independently rerun by GPT. No entire Windows C2 suite is rerun for this documentation-only closeout.
+- Post-review runtime, migration, test and scanner semantic changes: `0`. Main merge, deployment, production DB writes, live authority calls and C3 implementation: `0`. Prior FAIL/remediation and STOP entries below remain historical evidence.
+
+## Historical CP3-C2-C2 final bounded remediation candidate — 2026-10-01
 
 - Independent re-verification of `00e01d87e08817d31a9ba6c9916ad8ba34bc32fb` returned **FAIL — BOUNDED REMEDIATION REQUIRED**, Critical 0 / Major 1. The previous R1–R5 fixes are largely closed; the remaining blocker is the SUPPORT-only SEC periodic-cover class/ticker/exchange cross-check.
 - This candidate associates a cover only by exact registrant CIK plus the same normalized registered class or exact ticker. Every supplied cross-check field must agree; absent ticker/exchange remains null. Engine and C2-owned persistence both enforce the rule. Current relation heads, admission, parser/adapter and taint rules are preserved.
@@ -95,18 +104,18 @@
 - CP3-C2-B implementation: `IN PROGRESS`; CP3-C2-B2-D, CP3-C2-C and CP3-D: `NOT STARTED`; Phase 2: `IMPLEMENTATION IN PROGRESS`.
 - Earlier dated R1 STOP and failed-QA entries below remain historical evidence. This closeout supersedes their then-current status and does not authorize later checkpoints.
 
-- 프로젝트 상태: `PHASE 2 IMPLEMENTATION IN PROGRESS — CP2 COMPLETE / CP3-A PASS — CONTRACT APPROVED AND CLOSED / CP3-B PASS — CLOSED / CP3-C1 PASS — CLOSED / CP3-C2-A PASS — CONTRACT APPROVED AND CLOSED / CP3-C2-B1 PASS — CONTRACT APPROVED AND CLOSED / CP3-C2-B PASS WITH ISSUES — CLOSED / CP3-C2-B2-A PASS — CLOSED / CP3-C2-B2-B PASS — CLOSED / ADR-015 ACCEPTED / ADR-016 ACCEPTED / ADR-017 ACCEPTED / ADR-018 ACCEPTED / ADR-019 ACCEPTED / CP3-C2-B2-C 0006 PASS — CLOSED / CP3-C2-B2-C 0007 PASS — CLOSED / B2-C R1 PASS — CLOSED / CP3-C2-B2-D PASS WITH ISSUES — CLOSED / CP3-C2-C1 PASS WITH ISSUES — CLOSED / ADR-020 ACCEPTED / 0008 SECURITY AUTHORITY FOUNDATION PASS WITH ISSUES — CLOSED / CP3-C2-C2 NEXT PLANNED (NOT STARTED) / CP3-C2-C3 NOT STARTED / CP3-D NOT STARTED`
-- 현재 Phase: `Phase 2 — CP3-C2-C 0008 Security Authority Foundation PASS WITH ISSUES — CLOSED; CP3-C2-C2 NEXT PLANNED CHECKPOINT (NOT STARTED); CP3-C2-C3 NOT STARTED; CP3-D NOT STARTED`
+- 프로젝트 상태: `PHASE 2 IMPLEMENTATION IN PROGRESS — CP2 COMPLETE / CP3-A PASS — CONTRACT APPROVED AND CLOSED / CP3-B PASS — CLOSED / CP3-C1 PASS — CLOSED / CP3-C2-A PASS — CONTRACT APPROVED AND CLOSED / CP3-C2-B1 PASS — CONTRACT APPROVED AND CLOSED / CP3-C2-B PASS WITH ISSUES — CLOSED / CP3-C2-B2-A PASS — CLOSED / CP3-C2-B2-B PASS — CLOSED / ADR-015 ACCEPTED / ADR-016 ACCEPTED / ADR-017 ACCEPTED / ADR-018 ACCEPTED / ADR-019 ACCEPTED / CP3-C2-B2-C 0006 PASS — CLOSED / CP3-C2-B2-C 0007 PASS — CLOSED / B2-C R1 PASS — CLOSED / CP3-C2-B2-D PASS WITH ISSUES — CLOSED / CP3-C2-C1 PASS WITH ISSUES — CLOSED / ADR-020 ACCEPTED / 0008 SECURITY AUTHORITY FOUNDATION PASS WITH ISSUES — CLOSED / CP3-C2-C2 PASS — CLOSED / CP3-C2-C3 NEXT PLANNED CHECKPOINT — NOT STARTED / CP3-D NOT STARTED`
+- 현재 Phase: `Phase 2 — CP3-C2-C 0008 Security Authority Foundation PASS WITH ISSUES — CLOSED; CP3-C2-C2 PASS — CLOSED; CP3-C2-C3 NEXT PLANNED CHECKPOINT — NOT STARTED; CP3-D NOT STARTED`
 - 현재 버전: `0.1.0`
 - Phase 1 최종 검증 commit: `57b2a63ead06d03191d8094e1689b8d2ab3d7764`
 - Phase 1 PR: `#1`
 - Phase 1 merge commit: `b1829a7375704271a21267e1fcf62808147be593`
 - Release baseline tag: `v0.1.0`
-- 최종 구현 QA일: `2026-09-29 (0008 reviewed candidate: Windows standard scripts/test.ps1 exit 0; backend 1246 passed, frontend unit 43 passed, E2E 2 passed; all required gates completed)`; detailed counts and gates: `qa/PHASE_02_CP3_C2_C_0008_SELF_QA.md`.
+- 최종 구현 QA일: `2026-10-01 (accepted C2 e5aad02: Windows standard scripts/test.ps1 exit 0; backend 1363 passed, frontend unit 43 passed, E2E 2 passed; all required gates completed)`; detailed final evidence: `qa/PHASE_02_CP3_C2_C2_SELF_QA.md`.
 - 실제 API 연결: `CP2-D2 one-shot PASS — OAuth + GET /api/v1/stocks만 검증`
 - 실제 주문 기능: `비활성 / 비범위`
 - OpenAI API 사용: `아니오`
-- Phase 2 상태: `CP1 PASS / CP2 COMPLETE / CP3-A PASS — CONTRACT APPROVED AND CLOSED / CP3-B PASS — CLOSED / CP3-C1 PASS — CLOSED / CP3-C2-A PASS — CONTRACT APPROVED AND CLOSED / CP3-C2-B1 PASS — CONTRACT APPROVED AND CLOSED / CP3-C2-B PASS WITH ISSUES — CLOSED / CP3-C2-C1 PASS WITH ISSUES — CLOSED / ADR-020 ACCEPTED / 0008 SECURITY AUTHORITY FOUNDATION PASS WITH ISSUES — CLOSED / CP3-C2-C2 NEXT PLANNED (NOT STARTED) / CP3-C2-C3 NOT STARTED / CP3-D NOT STARTED / PHASE 2 IMPLEMENTATION IN PROGRESS`
+- Phase 2 상태: `CP1 PASS / CP2 COMPLETE / CP3-A PASS — CONTRACT APPROVED AND CLOSED / CP3-B PASS — CLOSED / CP3-C1 PASS — CLOSED / CP3-C2-A PASS — CONTRACT APPROVED AND CLOSED / CP3-C2-B1 PASS — CONTRACT APPROVED AND CLOSED / CP3-C2-B PASS WITH ISSUES — CLOSED / CP3-C2-C1 PASS WITH ISSUES — CLOSED / ADR-020 ACCEPTED / 0008 SECURITY AUTHORITY FOUNDATION PASS WITH ISSUES — CLOSED / CP3-C2-C2 PASS — CLOSED / CP3-C2-C3 NEXT PLANNED CHECKPOINT — NOT STARTED / CP3-D NOT STARTED / PHASE 2 IMPLEMENTATION IN PROGRESS`
 - CP3-B: `PASS — CLOSED`
 - CP3-C1: `PASS — CLOSED`
 - CP3-C2-A: `PASS — CONTRACT APPROVED AND CLOSED`
@@ -146,8 +155,8 @@
   `PASS — CLOSED`; user closeout `2026-09-05`
 - CP3-C2-B2-D: `PASS WITH ISSUES — CLOSED`
 - CP3-C2-C1 architecture/design: `PASS WITH ISSUES — CLOSED`; ADR-020: `ACCEPTED`; 0008 Security Authority Foundation: `PASS WITH ISSUES — CLOSED`
-- CP3-C2-C2 Machine Security Authority Engine: `NEXT PLANNED CHECKPOINT — NOT STARTED`
-- CP3-C2-C3 Human WebAuthn / Final Mapping: `NOT STARTED`
+- CP3-C2-C2 Machine Security Authority Engine: `PASS — CLOSED`
+- CP3-C2-C3 Human WebAuthn / Final Mapping: `NEXT PLANNED CHECKPOINT — NOT STARTED`
 - CP3-D: `NOT STARTED`
 - Public Read-only Deployment: `FUTURE / NOT AUTHORIZED / NOT STARTED`
 - Automated Trading: `FUTURE / NOT AUTHORIZED / NOT STARTED`

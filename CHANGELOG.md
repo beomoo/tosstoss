@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-10-01 — exact CP3-C2-C2 integration and closeout
+
+- Reviewed candidate `e5aad022f8140523fad00b293c4bc9f4dfca86ff`, tree `c529c740607f1b89a3624407180a0099e00bb01a`: GPT **PASS**, Critical/Major/Minor `0/0/0`, required code/schema fixes `0`, unauthorized changes `0`. The user accepted this exact verdict in the C2 integration/closeout request.
+- Exact integration merge `eb6088f90c55c8d15b8ea1c206f2b7f7b0349799` on `feature/phase-02-toss` has parent 1 `120194fe6631db51c115776a49c55d3a25d93e7e` and parent 2 `e5aad022f8140523fad00b293c4bc9f4dfca86ff`. Its tree is `c529c740607f1b89a3624407180a0099e00bb01a`, identical to the reviewed candidate before documentation changes.
+- Closed C2 as **PASS — CLOSED**, preserving C1/0008 **PASS WITH ISSUES — CLOSED** and accepted ADR-020. Updated current-state sections in the six authorized closeout documents; historical failures and qualifications are retained.
+- Accepted C2 behavior: machine Security authority evaluation, server-owned source admission, application-backed scope proof, freshness and relation heads, durable negative evidence, KR type/kind reconciliation, global active-listing collision handling, and append-only machine decision chains. Maximum positive state remains `READY_FOR_MANUAL_REVIEW`; machine writes do not grant human approval or final Security mapping.
+- Windows full QA is Codex execution evidence, not a suite independently rerun by GPT. No entire Windows C2 suite is rerun for this documentation-only closeout. Reviewed runtime, migrations, tests, scanners and source-registry semantics remain unchanged. C3 is the next planned checkpoint, not started; CP3-D is not started; Phase 2 remains in progress. No main merge, deployment, production write or live authority call.
 
 ## 2026-10-01 — CP3-C2-C2 final periodic-cover bounded remediation candidate
 
