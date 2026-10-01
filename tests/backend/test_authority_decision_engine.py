@@ -147,6 +147,7 @@ def _seed_exact_provider(
     market: Market,
     symbol: str,
     name: str,
+    isin: str | None = None,
 ) -> tuple[str, str]:
     anchor_hash = authority_sha256({"exact_provider_authority_subject": label})
     provider_id = "tpsi_" + anchor_hash.removeprefix("sha256:")
@@ -174,7 +175,7 @@ def _seed_exact_provider(
         name=name,
         security_type=ProviderSecurityType.STOCK,
         is_common_share=True,
-        isin=None,
+        isin=isin,
         staging_state=ProviderSecurityMasterState.ELIGIBLE_FOR_MAPPING,
         reconciliation_outcome=ProviderReconciliationOutcome.IDENTITY_ALLOCATED,
         identity_state_after=ProviderIdentityState.ACTIVE,
@@ -372,6 +373,7 @@ def _kr_harness(
     overview_jurir: str = KR_JURIR_NO,
     iros_jurir: str = KR_JURIR_NO,
     overview_symbol: str = KR_SYMBOL,
+    provider_isin: str | None = None,
     current_fetched_at: datetime = CURRENT_FETCHED_AT,
     current_status: AuthorityRetrievalStatus = AuthorityRetrievalStatus.SUCCEEDED,
     overview_mode: str = "EXACT",
@@ -386,6 +388,7 @@ def _kr_harness(
         market=Market.KR,
         symbol=KR_SYMBOL,
         name="Korean authority subject",
+        isin=provider_isin,
     )
     for policy in (
         OPENDART_CORP_CODE_POLICY,

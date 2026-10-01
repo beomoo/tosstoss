@@ -1,6 +1,31 @@
 # Architecture Decision Record
 
-## Current CP3-C2-C / 0008 Security Authority Foundation closeout — 2026-09-30
+
+## Current CP3-C2-C2 final bounded remediation record — 2026-10-01
+
+The user authorized only the remaining periodic-cover cross-check defect in exact reviewed candidate `00e01d87e08817d31a9ba6c9916ad8ba34bc32fb` (tree `c0b6d3b4398388c2aac54f84d6b0483be3a5327f`), independently FAIL with Critical 0 / Major 1. This is a correction under the existing C1/0008 contracts, not a new architecture ADR.
+
+Cover relevance requires the same registrant CIK and either the same registered class under existing class normalization or the exact same ticker. All supplied class/ticker/exchange fields are checked against accepted SEC/Nasdaq/provider context. Null support fields are not fabricated or treated as contradictions. Unrelated covers are excluded from candidate applications. Periodic cover remains SUPPORT-only and cannot replace SEC registered-class or Nasdaq listing ownership.
+
+A shared pure cross-check predicate is used when the engine derives scope conflicts and when the repository independently reconstructs a proposed READY write from current stored evidence. Exact correction/supersession heads remove superseded cover conflicts without deleting history. No source field, migration, authority/admission policy, R1/B semantics, global enum or C3 behavior changes. QA changes only synchronize measured fixed inventory; detector, thresholds, exceptions and canaries remain unchanged.
+
+Actual final QA and Git identity are supplied in the fresh final review package. Previous FAIL reports and original evidence remain historical; independent re-verification and integration remain pending.
+
+## Historical CP3-C2-C2 consolidated bounded remediation record — 2026-09-30
+
+The user authorized the combined R1–R5 defect set and all 14 counterexamples against exact prior candidate `8d02d24562f0567375c465cdcd79bb5e3f8c3dfc`, with integration base `120194fe6631db51c115776a49c55d3a25d93e7e`. This is an implementation correction under accepted C1/0008, not a new architecture decision. The old FAIL verdict remains historical authority and is not upgraded.
+
+READY now requires final admitted scope composition and repository reconstruction of exact membership, currentness, class and canonical binding. Accepted adverse events survive failed/unadmitted refresh attempts. Relevant SUPPORT-only periodic contradictions block readiness. Listing collision evaluation includes current prospective providers and exact class identities; incompatible active candidates invalidate affected prior leaves in the same writer transaction. KR type and kind must jointly describe common stock. Prerequisite loss appends an idempotent negative successor while preserving the frozen schema's captured historical issuer-link tuple; that tuple does not assert current approval for the negative bundle.
+
+No migration, R1/B semantic change, new authority source, licensing change, enum expansion, C3 writer or production mutation is authorized. Measured test inventory synchronization preserves detector, threshold, exclusion, canary and exception behavior. The fresh final review package supplies actual gate evidence and must ask to retest all 14 cases; independent acceptance and integration remain pending.
+
+## Historical initial CP3-C2-C2 source-admission and implementation record — 2026-09-30
+
+- The user approved the operational source-admission matrix in `plans/PHASE_02_CP3_C2_C2_SOURCE_AUTHORITY_REVIEW.md` under accepted ADR-020. This is not a new architecture ADR.
+- C2 may evaluate normalized stored KRX/OpenDART, SEC/Nasdaq, and human-assisted KRX lifecycle evidence only under the exact server-owned registry. NYSE and CGS remain `production_eligible=0`; KRX automated ingestion remains disabled pending exact specification/response capture. No live requests are authorized.
+- CP3-C2-C2 implementation is active on `feature/phase-02-c2c2-machine-security-authority` from base `120194fe6631db51c115776a49c55d3a25d93e7e`. C3, canonical Security writes, Security links/heads, and legacy `VERIFIED` mappings remain out of scope.
+
+## Historical CP3-C2-C / 0008 Security Authority Foundation closeout — 2026-09-30
 
 - The exact reviewed candidate `0c4702c8bffa58675a5d1b0b9f1b77ca25beb8e4` (tree `64132bf753e680eae9d47252e45859d129d01f7f`) was integrated into `feature/phase-02-toss` by merge `88dcb1e49551069b8e986c35185d9bcced89d4e5`, with parents `6c0ed087106d0fdb94615b74a9472df17be08706` and `0c4702c8bffa58675a5d1b0b9f1b77ca25beb8e4`; the merge tree equals the reviewed candidate tree.
 - The user accepted the independent final result `PASS WITH ISSUES`: Critical `0`, Major `0`, required code/schema fixes `0`, unauthorized changes `0`, regression found `0`. CP3-C2-C1 architecture/design is `PASS WITH ISSUES — CLOSED`; ADR-020 is `ACCEPTED`; the additive 0008 Security Authority Foundation is `PASS WITH ISSUES — CLOSED`.

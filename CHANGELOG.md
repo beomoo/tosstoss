@@ -1,5 +1,39 @@
 # Changelog
 
+
+## 2026-10-01 — CP3-C2-C2 final periodic-cover bounded remediation candidate
+
+- Address the sole Major remaining in independent review of `00e01d87`: deterministic same-CIK + class/ticker relevance, complete supplied-field class/ticker/exchange cross-check, and C2-owned READY persistence backstop. Support authority and existing normalization/current-head rules remain unchanged.
+- Add 21 regression cases for positive/unrelated/null controls, every reported contradiction, malformed internal READY, correction/history/replay and missing positive-owner authority; retain all previous R1–R5 tests.
+- No migration, source admission/licensing, R1/B/global-enum change, C3, live request or production write. Actual exact-tree QA and final identity belong to the fresh review package; independent acceptance and integration remain pending.
+
+## 2026-09-30 — CP3-C2-C2 consolidated remediation candidate
+
+- Bind READY scopes to exact admitted applications and add independent repository guards for membership, hash, source currentness, class and canonical binding.
+- Preserve effective accepted Form 25 evidence across retrieval failures; reconcile relevant periodic-cover contradictions without promoting support to listing ownership.
+- Scan active venue/ticker collisions across providers, preserve same-Security and nonoverlapping-reuse controls, and append affected safety successors atomically.
+- Reconcile KR security type with stock kind and append persisted negative successors on issuer/provider/evidence prerequisite loss.
+- Add the combined 14-case differential matrix and supplementary positive, negative, persistence, replay and restoration tests. Synchronize only measured test/control inventory. Final QA/commit evidence is supplied by the external remediation review package; no independent PASS/CLOSED or integration is declared here.
+
+## 2026-09-30 — CP3-C2-C2 synchronized full QA passed
+
+- The synchronized candidate passed the complete Windows standard `scripts/test.ps1` run from the beginning in attempt 09 (exit 0): backend 1,294 passed, frontend 43 passed, E2E 2 passed, and every static, API-contract, migration, fixture-idempotency, secret, and policy gate passed. Exact counts and exits are in `qa/PHASE_02_CP3_C2_C2_SELF_QA.md`.
+- All 376 candidate files matched the Windows QA mirror byte-for-byte. Migrations 0001–0008, R1 WebAuthn/counter/OWNER code, B2-D issuer disposition, and global legacy mapping enums remain unchanged.
+- C2 remains capped at `READY_FOR_MANUAL_REVIEW`. GPT final independent verification is required before any C3 work.
+
+
+## 2026-09-30 — CP3-C2-C2 machine engine and Windows QA
+
+- Implemented the server-owned C2 evaluation path for admitted normalized KR and US evidence, including immutable applications/claims/bundles/decisions, current-head reconstruction, freshness, contradiction, collision, replay, and transaction checks. NYSE and CGS remain non-admitted; the KRX adapter remains disabled.
+- Windows standard QA attempt 06 passed from the beginning: backend 1,294 passed, frontend 43 passed, E2E 2 passed, and all static, contract, migration, fixture-idempotency, secret, and policy gates passed. See `qa/PHASE_02_CP3_C2_C2_SELF_QA.md`.
+- No migration, C3, canonical Security, legacy `VERIFIED` mapping, production write, or live-source behavior was added. Final exact-tree QA, commit/push, and independent verification remain required.
+
+
+## 2026-09-30 — CP3-C2-C2 source-authority review and implementation start
+
+- Recorded the user-approved exact source-admission matrix and source-specific freshness bounds under accepted ADR-020 in `plans/PHASE_02_CP3_C2_C2_SOURCE_AUTHORITY_REVIEW.md`.
+- Started C2 machine-engine implementation from `120194fe6631db51c115776a49c55d3a25d93e7e` on the isolated implementation branch. No live source calls, C3 behavior, canonical Security writes, or legacy mapping writes are authorized.
+
 ## 2026-09-30 — exact 0008 integration and closeout
 
 - Integrated reviewed candidate `0c4702c8bffa58675a5d1b0b9f1b77ca25beb8e4` into `feature/phase-02-toss` as explicit merge `88dcb1e49551069b8e986c35185d9bcced89d4e5`, parents `6c0ed087106d0fdb94615b74a9472df17be08706` and `0c4702c8bffa58675a5d1b0b9f1b77ca25beb8e4`, tree `64132bf753e680eae9d47252e45859d129d01f7f` equal to the reviewed candidate tree.

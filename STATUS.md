@@ -1,6 +1,27 @@
 # Project Status
 
-## Current CP3-C2-C / 0008 Security Authority Foundation closeout — 2026-09-30
+
+## Current CP3-C2-C2 final bounded remediation candidate — 2026-10-01
+
+- Independent re-verification of `00e01d87e08817d31a9ba6c9916ad8ba34bc32fb` returned **FAIL — BOUNDED REMEDIATION REQUIRED**, Critical 0 / Major 1. The previous R1–R5 fixes are largely closed; the remaining blocker is the SUPPORT-only SEC periodic-cover class/ticker/exchange cross-check.
+- This candidate associates a cover only by exact registrant CIK plus the same normalized registered class or exact ticker. Every supplied cross-check field must agree; absent ticker/exchange remains null. Engine and C2-owned persistence both enforce the rule. Current relation heads, admission, parser/adapter and taint rules are preserved.
+- Current position: **C2 FINAL BOUNDED REMEDIATION CANDIDATE — NOT INTEGRATED**. Full focused, affected regression and Windows standard QA are mandatory. Their actual counts/exits, final exact identity and provenance belong to the fresh external review package; this source snapshot does not declare independent acceptance.
+- Successful ceiling: `CP3-C2-C2 REMEDIATED — GPT FINAL INDEPENDENT RE-VERIFICATION REQUIRED`. Migrations 0001–0008, R1/B, global enums, source admission/licensing and C3 remain frozen. C3/CP3-D, live authority and production mapping are not started by this task. No integration or main merge is authorized.
+
+## Historical CP3-C2-C2 consolidated remediation candidate — 2026-09-30
+
+- Original candidate `8d02d24562f0567375c465cdcd79bb5e3f8c3dfc` remains **FAIL — C2 REMEDIATION REQUIRED** and must not be integrated. The combined GPT and Codex findings are the authority for this bounded remediation.
+- The candidate corrects R1 application-backed scope proof and repository READY validation; R2 persistent accepted negatives and relevant periodic-cover contradictions; R3 global active-listing collisions with atomic safety successors; R4 joint KR type/kind reconciliation; and R5 append-only negative successors when prerequisites disappear. The new regression module covers all 14 required counterexamples and preserves KR/US positive controls.
+- Current position: **C2 CONSOLIDATED REMEDIATION CANDIDATE — NOT INTEGRATED**. The final committed identity, exact focused/regression/Windows gates and delivery verdict belong to the fresh external review package. Its successful ceiling is `CP3-C2-C2 REMEDIATED — GPT FINAL INDEPENDENT RE-VERIFICATION REQUIRED`; this source record does not declare QA success or independent acceptance.
+- Migrations 0001–0008, R1/B semantics, source admission, global enums and C3 remain frozen. No live source call or production write occurs. C3 and CP3-D remain NOT STARTED; no integration or main merge is authorized.
+
+## Historical initial CP3-C2-C2 Machine Security Authority Engine — 2026-09-30
+
+- The user-approved C2 source-authority precheck is recorded in `plans/PHASE_02_CP3_C2_C2_SOURCE_AUTHORITY_REVIEW.md`. It admits only the exact C1 source/scope tuples listed there; NYSE and CGS remain disabled, and the KRX automated adapter remains disabled pending exact specification/response capture.
+- CP3-C2-C2 implementation is complete on `feature/phase-02-c2c2-machine-security-authority`, based on `120194fe6631db51c115776a49c55d3a25d93e7e`. The synchronized candidate passed the complete Windows standard QA from the beginning in attempt 09 (exit 0); exact gates and counts are in `qa/PHASE_02_CP3_C2_C2_SELF_QA.md`. The frozen-scope comparison is clean.
+- The engine consumes normalized stored evidence and writes only C2 machine-evaluation records. No live source call, production DB write, public exposure, Security approval, canonical Security promotion, or C3 operation is authorized. The checkpoint ceiling is `CP3-C2-C2 IMPLEMENTED — GPT FINAL INDEPENDENT VERIFICATION REQUIRED`; CP3-C2-C3 and CP3-D remain unstarted.
+
+## Historical CP3-C2-C / 0008 Security Authority Foundation closeout — 2026-09-30
 
 - Exact independently reviewed candidate `0c4702c8bffa58675a5d1b0b9f1b77ca25beb8e4` (tree `64132bf753e680eae9d47252e45859d129d01f7f`) was integrated into `feature/phase-02-toss` by merge `88dcb1e49551069b8e986c35185d9bcced89d4e5`; parents are the approved base `6c0ed087106d0fdb94615b74a9472df17be08706` and the exact candidate. Merge tree equals the reviewed candidate tree.
 - Independent final result accepted by the user: **PASS WITH ISSUES**; Critical `0`, Major `0`, required code/schema fixes `0`, unauthorized changes `0`, regression found `0`. `0008 Security Authority Foundation: PASS WITH ISSUES — CLOSED`; `CP3-C2-C1 architecture/design: PASS WITH ISSUES — CLOSED`; `ADR-020: ACCEPTED`.
