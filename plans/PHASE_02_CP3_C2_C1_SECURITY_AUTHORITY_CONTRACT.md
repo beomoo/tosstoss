@@ -1,6 +1,19 @@
 # CP3-C2-C1 — Security Authority Contract and additive 0008 design
 
-## ADR-021 candidate compatibility extension — 2026-10-01
+## Current C3-entry migration correction — 2026-10-03
+
+Previous candidate fba35c8c85e82d2f6549ea9cdc8af270e8e9a7e2 (tree 0f24109aa923830688bb7fe15d4b916b189a1e25) received **FAIL — Critical 1 / Major 1 / Minor 0** for cancellation history loss and split schema/revision commits. That candidate is preserved and must not be integrated or used for real DB migration. The current bounded correction changes only 0009, narrow Alembic env.py transaction coordination, failure tests and measured inventory/current docs. Historical 0001–0008 and the existing identifier/profile/source authority/READY/R1/B contracts remain frozen.
+
+Windows focused **96/96**, external OS-termination **2/2**, and affected regression **448/448** passed, each exit 0 with no skips. Affected coverage includes all prior C2 14 counterexamples, Windows OWNER 8 and frozen R1 core 82. The standard Windows scripts/test.ps1 then ran from the beginning and passed (exit 0): backend **1459**, frontend **43**, E2E **2**, migration roundtrip/re-upgrade, canaries, fixture/API/build checks and standard policy/secret scans. Final documentation scans and commit/push evidence are recorded in the external package. The authorized new commit is identified through FINAL_IDENTITY.json rather than a self-referential literal in this file.
+
+ADR-021 stays **PROPOSED / IMPLEMENTED FOR INDEPENDENT REVIEW**. The ceiling is **CP3-C2-C3-ENTRY REMEDIATED — GPT FINAL INDEPENDENT RE-VERIFICATION REQUIRED**. No acceptance, closeout, C3 product work or integration is claimed. See qa/PHASE_02_CP3_C2_C3_ENTRY_REMEDIATION_SELF_QA.md and the external SELF_QA/FINAL_IDENTITY reports. Previous NOT CREATED and parent-only commit statements below describe historical execution state; the new explicit authority permits the new commit/push after gates.
+
+## Historical previous C3-entry report
+
+The following entry is historical; later accepted C1/0008/C2 records remain unchanged.
+
+
+### Historical C3-entry execution record — 2026-10-01 (fba35c8; independently FAIL)
 
 ADR-020 and frozen 0008 remain accepted historical architecture. The separate C3-entry correction remains **PROPOSED / IMPLEMENTED FOR INDEPENDENT REVIEW**, under ADR-021. Candidate commit SHA/tree are NOT CREATED. Required Windows execution gates completed at `CP3-C2-C3-ENTRY REMEDIATED — GPT FINAL INDEPENDENT VERIFICATION REQUIRED`; independent acceptance and closeout remain pending.
 

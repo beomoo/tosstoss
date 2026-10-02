@@ -50,8 +50,12 @@ def _rebuild(*, forward: bool) -> None:
     connection = op.get_bind()
     expected = _OLD_DDL if forward else _NEW_DDL
     target = _NEW_DDL if forward else _OLD_DDL
-    if connection.exec_driver_sql("PRAGMA foreign_keys").scalar_one() != 1:
-        raise RuntimeError("0009 requires foreign_keys ON")
+    if (
+        connection.exec_driver_sql("PRAGMA foreign_keys").scalar_one() != 0
+        or not connection.in_transaction()
+        or not connection.connection.driver_connection.in_transaction
+    ):
+        raise RuntimeError("0009 requires the env.py coordinated migration transaction")
     objects = dict(connection.exec_driver_sql("SELECT name, sql FROM sqlite_master").all())
     required = ((_TABLE, expected), *_INDEXES, *_IMMUTABILITY)
     if not forward:
@@ -80,40 +84,25 @@ def _rebuild(*, forward: bool) -> None:
     ):
         raise RuntimeError("0009 downgrade refused: v0.2 identifier history exists")
 
-    # SQLite cannot replace a referenced parent with FK enforcement enabled. The
-    # change is a single explicit transaction, checked before commit; FK is
-    # restored even on rollback. No accepted rows or payloads are resealed.
-    with op.get_context().autocommit_block():
-        connection.exec_driver_sql("PRAGMA foreign_keys=OFF")
-        try:
-            connection.exec_driver_sql("BEGIN IMMEDIATE")
-            connection.exec_driver_sql(f"CREATE TEMP TABLE {_TEMP} AS SELECT * FROM {_TABLE}")
-            connection.exec_driver_sql(f"DROP TABLE {_TABLE}")
-            connection.exec_driver_sql(target)
-            connection.exec_driver_sql(f"INSERT INTO {_TABLE} SELECT * FROM {_TEMP}")
-            for _, sql in (*_INDEXES, *_IMMUTABILITY):
-                connection.exec_driver_sql(sql)
-            if forward:
-                connection.exec_driver_sql(_GUARD_DDL)
-            for left, right in ((_TABLE, _TEMP), (_TEMP, _TABLE)):
-                if (
-                    connection.exec_driver_sql(
-                        f"SELECT * FROM {left} EXCEPT SELECT * FROM {right}"
-                    ).first()
-                    is not None
-                ):
-                    raise RuntimeError("0009 identifier history preservation failed")
-            if connection.exec_driver_sql("PRAGMA foreign_key_check").first() is not None:
-                raise RuntimeError("0009 reconstructed foreign-key check failed")
-            connection.exec_driver_sql(f"DROP TABLE {_TEMP}")
-            connection.exec_driver_sql("COMMIT")
-        except Exception:
-            connection.exec_driver_sql("ROLLBACK")
-            raise
-        finally:
-            connection.exec_driver_sql("PRAGMA foreign_keys=ON")
-            if connection.exec_driver_sql("PRAGMA foreign_keys").scalar_one() != 1:
-                raise RuntimeError("0009 could not restore foreign_keys ON")
+    # env.py opens SQLite's native transaction before Alembic enters this step.
+    # Leave commit/rollback to Alembic, after its revision UPDATE, never here.
+    connection.exec_driver_sql(f"CREATE TEMP TABLE {_TEMP} AS SELECT * FROM {_TABLE}")
+    connection.exec_driver_sql(f"DROP TABLE {_TABLE}")
+    connection.exec_driver_sql(target)
+    connection.exec_driver_sql(f"INSERT INTO {_TABLE} SELECT * FROM {_TEMP}")
+    for _, sql in (*_INDEXES, *_IMMUTABILITY):
+        connection.exec_driver_sql(sql)
+    if forward:
+        connection.exec_driver_sql(_GUARD_DDL)
+    for left, right in ((_TABLE, _TEMP), (_TEMP, _TABLE)):
+        if (
+            connection.exec_driver_sql(f"SELECT * FROM {left} EXCEPT SELECT * FROM {right}").first()
+            is not None
+        ):
+            raise RuntimeError("0009 identifier history preservation failed")
+    if connection.exec_driver_sql("PRAGMA foreign_key_check").first() is not None:
+        raise RuntimeError("0009 reconstructed foreign-key check failed")
+    connection.exec_driver_sql(f"DROP TABLE {_TEMP}")
 
 
 def upgrade() -> None:

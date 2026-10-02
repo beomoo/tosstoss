@@ -13,6 +13,7 @@ if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
 target_metadata = Base.metadata
+IDENTIFIER_REVISION = "0009_phase_02_cp3_c2_c3_identifier_claim_contract"
 
 
 def database_url() -> str:
@@ -52,14 +53,51 @@ def run_migrations_online() -> None:
         # migration transaction, otherwise SQLite DDL can persist while the
         # alembic_version row is rolled back when the connection closes.
         connection.commit()
-        context.configure(
+        options = dict(
             connection=connection,
             target_metadata=target_metadata,
             render_as_batch=True,
             compare_type=True,
         )
-        with context.begin_transaction():
-            context.run_migrations()
+        context.configure(**options)
+        migrations = context.get_context().opts["fn"]
+
+        def steps(heads, migration_context):
+            for step in migrations(heads, migration_context):
+                identifier_step = (
+                    getattr(getattr(step, "revision", None), "revision", None)
+                    == IDENTIFIER_REVISION
+                )
+                if identifier_step:
+                    native = connection.connection.driver_connection
+                    if native.in_transaction:
+                        raise RuntimeError("0009 requires a completed preceding migration step")
+                    # End only SELECT/PRAGMA autobegin, before disabling SQLite FKs.
+                    connection.commit()
+                    connection.exec_driver_sql("PRAGMA foreign_keys=OFF")
+                    if connection.exec_driver_sql("PRAGMA foreign_keys").scalar_one() != 0:
+                        raise RuntimeError("0009 could not disable foreign_keys before BEGIN")
+                    connection.exec_driver_sql("BEGIN IMMEDIATE")
+                # Alembic adopts this SQLAlchemy transaction and is its sole owner:
+                # migration body -> revision UPDATE -> commit/rollback -> resume.
+                yield step
+                if identifier_step:
+                    if native.in_transaction:
+                        raise RuntimeError("0009 migration transaction did not finish")
+                    connection.exec_driver_sql("PRAGMA foreign_keys=ON")
+                    if connection.exec_driver_sql("PRAGMA foreign_keys").scalar_one() != 1:
+                        raise RuntimeError("0009 could not restore foreign_keys ON")
+                    connection.commit()  # PRAGMA autobegin only; no native transaction.
+
+        context.configure(**options, fn=steps)
+        try:
+            with context.begin_transaction():
+                context.run_migrations()
+        except BaseException:
+            # Also covers cancellation and uncertain COMMIT/rollback outcomes.
+            # Never let cleanup commit pending native work or reuse FK-OFF state.
+            connection.invalidate()
+            raise
 
 
 if context.is_offline_mode():
