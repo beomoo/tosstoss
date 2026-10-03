@@ -1,5 +1,38 @@
 # Phase 2 토스증권 읽기 전용 데이터 실행계획
 
+## Current C3-entry review acceptance and integration preparation — 2026-10-03
+
+Reviewed product `b23feb3f5640582db1ba5e9d4f4523cf78e2b494`, tree `fc273f0aa8ab64156f81ba22d4510ffa74f693a2`: **PASS — USER ACCEPTED** for bounded C3-entry migration remediation. Critical-01/Major-01 are closed for that candidate; required fixes 0 and new Critical/Major/Minor findings 0/0/0. Original implementer QA, separate verifier native Windows 63 cases and GPT review remain separately attributed in the current self-QA. These are existing execution/review records, not new test runs in this documentation task.
+
+Review documentation is **COMPLETE** and C3-entry verification is complete within the accepted bounded scope. Integration remains **PENDING — NOT PERFORMED** against expected `feature/phase-02-toss` HEAD `81ef70a76b812c6cf6c4cbbcfc4a1f24b7f7ca86`, tree `5fee605a16785d58ec3a08939997c651acd95ba6`. The docs-only successor has a separate identity in external `FINAL_DOCS_IDENTITY.json`; its product/runtime/test/scanner changes from the reviewed candidate are zero.
+
+ADR-021 remains **PROPOSED / IMPLEMENTED FOR INDEPENDENT REVIEW** (review PASS accepted; integration/ADR closeout pending). B/C1/ADR-020/0008/C2 existing closeouts remain unchanged. C3 product implementation and CP3-D are **NOT STARTED**; Phase 2 remains **IMPLEMENTATION IN PROGRESS**. The next step requires separate exact-candidate integration/ADR-closeout authority and is not executed here. Remaining NOT VERIFIED items are retained in `KNOWN_ISSUES.md`. The earlier C1 contract correction header and prior handoff below are historical pre-acceptance snapshots; they do not make this accepted review pending again.
+
+## Historical C3-entry migration correction — 2026-10-03
+
+Previous candidate fba35c8c85e82d2f6549ea9cdc8af270e8e9a7e2 (tree 0f24109aa923830688bb7fe15d4b916b189a1e25) received **FAIL — Critical 1 / Major 1 / Minor 0** for cancellation history loss and split schema/revision commits. That candidate is preserved and must not be integrated or used for real DB migration. The current bounded correction changes only 0009, narrow Alembic env.py transaction coordination, failure tests and measured inventory/current docs. Historical 0001–0008 and the existing identifier/profile/source authority/READY/R1/B contracts remain frozen.
+
+Windows focused **96/96**, external OS-termination **2/2**, and affected regression **448/448** passed, each exit 0 with no skips. Affected coverage includes all prior C2 14 counterexamples, Windows OWNER 8 and frozen R1 core 82. The standard Windows scripts/test.ps1 then ran from the beginning and passed (exit 0): backend **1459**, frontend **43**, E2E **2**, migration roundtrip/re-upgrade, canaries, fixture/API/build checks and standard policy/secret scans. Final documentation scans and commit/push evidence are recorded in the external package. The authorized new commit is identified through FINAL_IDENTITY.json rather than a self-referential literal in this file.
+
+ADR-021 stays **PROPOSED / IMPLEMENTED FOR INDEPENDENT REVIEW**. The ceiling is **CP3-C2-C3-ENTRY REMEDIATED — GPT FINAL INDEPENDENT RE-VERIFICATION REQUIRED**. No acceptance, closeout, C3 product work or integration is claimed. See qa/PHASE_02_CP3_C2_C3_ENTRY_REMEDIATION_SELF_QA.md and the external SELF_QA/FINAL_IDENTITY reports. Previous NOT CREATED and parent-only commit statements below describe historical execution state; the new explicit authority permits the new commit/push after gates.
+
+## Historical previous C3-entry report
+
+The following entry is historical; later accepted C1/0008/C2 records remain unchanged.
+
+
+### Historical C3-entry execution record — 2026-10-01 (fba35c8; independently FAIL)
+
+The bounded entry correction now has completed Windows execution evidence at **CP3-C2-C3-ENTRY REMEDIATED — GPT FINAL INDEPENDENT VERIFICATION REQUIRED**. ADR-021 remains **PROPOSED / IMPLEMENTED FOR INDEPENDENT REVIEW**. Candidate commit SHA/tree are **NOT CREATED**; the parent owns final staging/commit/push after validating the source-manifest package. No acceptance, closeout or C3 completion is claimed.
+
+Only new 0009 evolves the identifier contract; 0001–0008 remain byte-identical. Historical v0.1 rows and decisions remain immutable. Exact profile construction is shared by C2 and the independently reconstructed repository READY backstop; US v0.2 identifiers bind the existing SEC provenance OWNER application. Supporting bundle evidence and append-only successor lineage are retained. Source authority, Security anchor/security_id, R1/B semantics and legacy ShareClass remain unchanged.
+
+Windows focused: **36 passed**, affected: **111 passed**, each exit 0 and zero skips. The affected suite includes the Windows OWNER module (8 tests, including native directory OWNER/TOKEN_USER verification) and the previous 14 C2 counterexamples. The unchanged standard `scripts/test.ps1` then ran from the beginning and completed with exit 0: backend 1399, frontend 43, E2E 2, migration QA, fixture idempotency, API-contract/build checks and standard secret/policy scans. Source/mirror/index equality and runtime/test byte freezes are recorded.
+
+Earlier Linux evidence remains 829 passed / 8 failed (seven WINDOWS_REQUIRED cases and one stale HEAD expectation); it is not relabelled all-pass. The bounded HEAD/additive-revision inventory correction passed its final 24-case rerun. Earlier Windows setup/full/scan failures remain preserved. The directly observed `.CPL`-only process PATHEXT was repaired by restoring the actual Machine PATHEXT in the dedicated QA subprocess only, with Windows-local cwd; this environment repair changed no machine/user environment, runner, detector, assertion or canary. The candidate retains only the separately authorized measured test/migration inventory updates. The first full run after PATHEXT repair retained 1395 passed / 4 failed because the ignored launcher application aliases masked negative Settings inputs. A direct Windows A/B probe established the cause; removing only those QA subprocess aliases retained effective safe defaults, and the unchanged guarded settings suite passed14/14 before the subsequent full run. The second standard Windows full run passed backend 1399, frontend 43, E2E 2, migration and build checks, but finished exit 1 because the unchanged secret scanner could not read the active QA transcript. That complete failed attempt is preserved. The bounded environment correction captures output only in the Linux evidence root, preserves private mirror evidence by verified byte-for-byte copy, and moves the same official PowerShell bytes and caches under the existing .venv dependency directory and browser assets to the existing .playwright-browsers directory. No scanner exclusions or source assertions changed; the third complete standard full run started from the beginning after the unchanged secret scan precheck.
+
+Synthetic profile/approval/link fixtures prove schema compatibility, not real WebAuthn. C3 product implementation, shared-counter/M1–M3 integration, B cascade, Security reader cutover, live authority/API, production mapping, CP3-D, deployment, main merge and Trading remain outside this checkpoint. Next: parent final candidate provenance and GPT independent verification; C3 implementation may resume only under subsequent integration/closeout authority.
+
 ## Current C2 integrated closeout and next checkpoint — 2026-10-01
 
 Reviewed candidate `e5aad022f8140523fad00b293c4bc9f4dfca86ff`, tree `c529c740607f1b89a3624407180a0099e00bb01a`: GPT **PASS**, Critical/Major/Minor `0/0/0`, required code/schema fixes `0`, unauthorized changes `0`. The user accepted this exact verdict in the C2 integration/closeout request.

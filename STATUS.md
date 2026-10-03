@@ -1,5 +1,27 @@
 # Project Status
 
+## Current C3-entry review acceptance — 2026-10-03
+
+**REVIEW ACCEPTANCE DOCUMENTED — INTEGRATION PENDING**. The user accepted the GPT bounded verdict **PASS — bounded C3-entry migration remediation** for product candidate `b23feb3f5640582db1ba5e9d4f4523cf78e2b494`, tree `fc273f0aa8ab64156f81ba22d4510ffa74f693a2`. Critical-01 (cancellation/history loss) and Major-01 (schema/revision commit split) are **CLOSED for that reviewed candidate**; outstanding required fixes are **0**, and new Critical/Major/Minor findings are **0/0/0**. The previous `fba35c8...` candidate remains historical FAIL.
+
+Evidence attribution is separate: the original implementer submitted Windows 96 focused / 2 termination / 448 affected and full backend 1459 / frontend 43 / E2E 2; a separate verifier subsequently executed native Windows **60 + 2 + 1 = 63/63**, final three exits 0 with no failures/errors/skips; GPT reviewed the exact candidate and supplied evidence. Neither GPT nor this documentation task reran those suites. The accepted human-provided authority and detailed provenance/limits are recorded in the current self-QA summary.
+
+Review documentation is **COMPLETE**; integration is **PENDING — NOT PERFORMED**. ADR-021 remains **PROPOSED / IMPLEMENTED FOR INDEPENDENT REVIEW** (review PASS accepted; integration/ADR closeout pending). B/C1/ADR-020/0008/C2 closeouts remain unchanged. C3 product implementation and CP3-D are **NOT STARTED**; Phase 2 is **IMPLEMENTATION IN PROGRESS**. The C1 contract's earlier correction header and the following re-verification handoff are preserved pre-acceptance snapshots, not current pending-review instructions.
+
+This successor changes only the six authorized documents. Product/runtime/tests/scanners/dependencies and migrations 0001–0009 remain unchanged from the reviewed product. The new documentation commit identity is recorded separately in external `FINAL_DOCS_IDENTITY.json`; it is not the GPT-reviewed product identity. Next: separately authorized exact-candidate integration and ADR closeout. Remaining qualifications are in `KNOWN_ISSUES.md`; no integration, C3 implementation or live/production access is performed here.
+
+## Historical C3-entry migration atomicity remediation — 2026-10-03
+
+Previous candidate `fba35c8c85e82d2f6549ea9cdc8af270e8e9a7e2`, tree `0f24109aa923830688bb7fe15d4b916b189a1e25`, received **FAIL — Critical 1 / Major 1 / Minor 0**. It must not be integrated or used for real database migration. Cancellation could lose identifier history; a revision UPDATE failure could split schema and revision commits. Prior passing QA did not cover those paths.
+
+The new controlling remediation authority permits only correction of existing 0009, limited Alembic env.py transaction coordination, failure tests and measured inventory/docs. Alembic owns one transaction through table reconstruction and revision update. Any failed/cancelled/uncertain connection is explicitly discarded; normal completion restores foreign keys before subsequent steps. The existing 36 focused cases and prior 14 C2 counterexamples remain unchanged. New validation covers 60 repository normal/fault cases plus two external OS-termination probes in both directions. The standard runtime subprocess guard remains unchanged; termination probes run separately under the authorized external harness.
+
+ADR-021 remains **PROPOSED / IMPLEMENTED FOR INDEPENDENT REVIEW**. Final gates and committed provenance are recorded in the external review package's `FINAL_IDENTITY.json`, `GATE_RESULTS.json` and `SELF_QA.md`; this document deliberately does not embed its own commit hash. Windows focused **96/96**, external OS-termination **2/2**, and affected regression **448/448** passed, each exit 0 with no skips. Affected coverage includes all prior C2 14 counterexamples, Windows OWNER 8 and frozen R1 core 82. The standard Windows scripts/test.ps1 then ran from the beginning and passed (exit 0): backend **1459**, frontend **43**, E2E **2**, migration roundtrip/re-upgrade, canaries, fixture/API/build checks and standard policy/secret scans. Final documentation scans and commit/push evidence are recorded in the external package. The authorized new commit is identified through FINAL_IDENTITY.json rather than a self-referential literal in this file. The maximum outcome is **CP3-C2-C3-ENTRY REMEDIATED — GPT FINAL INDEPENDENT RE-VERIFICATION REQUIRED**; no acceptance, closeout or C3 product completion is implied.
+
+Migrations 0001–0008, root AGENTS.md, existing identifier/profile/READY semantics, registry/admission, Security anchor/security_id, R1/B and all accepted historical decisions are frozen. Fixtures are synthetic schema evidence, not real WebAuthn. Live authority/API, production DB, deployment, integration/main merge, C3 product work, cascades/cutover, CP3-D and Trading remain outside scope. Earlier STOP/FAIL/QA artifacts and protected CSVs remain preserved.
+
+지금 하는 작업: bounded migration atomicity remediation. 완료 범위: pinned old negatives, bounded correction, Windows focused/affected/full gates. 현재 위치: remediation candidate for independent re-verification. 다음 단계: final scan/committed provenance handoff and GPT re-verification.
+
 ## Current CP3-C2-C2 integration / closeout — 2026-10-01
 
 - Reviewed candidate `e5aad022f8140523fad00b293c4bc9f4dfca86ff`, tree `c529c740607f1b89a3624407180a0099e00bb01a`: GPT **PASS**, Critical/Major/Minor `0/0/0`, required code/schema fixes `0`, unauthorized changes `0`. The user accepted this exact verdict in the C2 integration/closeout request.

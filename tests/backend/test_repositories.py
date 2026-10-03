@@ -12,7 +12,7 @@ def test_sqlite_metadata_repository_roundtrips(database_context) -> None:
     with database_context.engine.connect() as connection:
         assert (
             connection.execute(text("SELECT version_num FROM alembic_version")).scalar_one()
-            == "0008_phase_02_cp3_c2_c_security_authority"
+            == "0009_phase_02_cp3_c2_c3_identifier_claim_contract"
         )
     assert database_context.metadata.database_revision() == "0001_phase_01"
     assert database_context.metadata.fixture_version() == "0.1.0"

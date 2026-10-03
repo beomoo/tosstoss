@@ -6,9 +6,10 @@ import hashlib
 import json
 import re
 import unicodedata
+from collections.abc import Sequence
 from datetime import UTC, date, datetime
 from enum import StrEnum
-from typing import Annotated, Any, ClassVar, Literal, Self
+from typing import Annotated, Any, ClassVar, Literal, Self, cast
 
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints, model_validator
 
@@ -438,13 +439,27 @@ class Claim(CandidateBinding):
 
 
 class IdentifierClaim(Claim):
-    scope: Literal["SECURITY_IDENTIFIER"]
-    contract_version: Literal["security-identifier-claim/0.1.0"]
+    scope: Literal["SECURITY_IDENTIFIER", "IDENTIFIER_PROVENANCE"]
+    contract_version: Literal["security-identifier-claim/0.1.0", "security-identifier-claim/0.2.0"]
     identifier_kind: Literal["KRX_ISIN", "SEC_REGISTERED_CLASS"]
     identifier_value: Text
     valid_from: date | None
     valid_to: date | None
     interval_missing_reason: Literal["NOT_SUPPLIED_BY_AUTHORITY"] | None
+
+    @model_validator(mode="after")
+    def versioned_scope(self) -> Self:
+        # Historical v0.1 payloads retain their original contract and hashes.
+        if self.contract_version == "security-identifier-claim/0.1.0":
+            legal = self.scope == "SECURITY_IDENTIFIER"
+        else:
+            legal = (self.identifier_kind, self.scope) in {
+                ("KRX_ISIN", "SECURITY_IDENTIFIER"),
+                ("SEC_REGISTERED_CLASS", "IDENTIFIER_PROVENANCE"),
+            }
+        if not legal:
+            raise ValueError("identifier version/scope/kind mismatch")
+        return self
 
 
 class ClassClaim(Claim):
@@ -691,6 +706,142 @@ class AuthorityProfile(SecurityRecord):
     class_claim_hash: Sha256
     listing_claim_id: SafeId
     listing_claim_hash: Sha256
+
+
+def proposed_authority_profile(
+    *,
+    provider_id: str,
+    issuer_id: str,
+    anchor: str,
+    applications: Sequence[EvidenceApplication],
+    claims: Sequence[IdentifierClaim | ClassClaim | ListingClaim],
+    profile_id: str,
+    recorded_at: datetime,
+) -> AuthorityProfile:
+    """Pure, server-owned selection of the exact future profile; writes nothing."""
+    security_id = security_id_for_anchor(anchor)
+    _, anchor_issuer, identifier_kind, identifier_value = anchor.split("|")
+    if anchor_issuer != issuer_id:
+        raise ValueError("profile issuer/anchor mismatch")
+    app_by_id = {app.application_id: app for app in applications}
+    if len(app_by_id) != len(applications):
+        raise ValueError("ambiguous profile applications")
+
+    def select_claim[T: IdentifierClaim | ClassClaim | ListingClaim](
+        kind: type[T], namespace: str, scope: str, document: str, role: SubjectRole
+    ) -> T:
+        selected: list[T] = []
+        for claim in claims:
+            app = app_by_id.get(claim.application_id)
+            if (
+                not isinstance(claim, kind)
+                or app is None
+                or app.source_namespace != namespace
+                or claim.scope != scope
+            ):
+                continue
+            validated_claim = kind.model_validate_json(canonical_security_bytes(claim))
+            app = EvidenceApplication.model_validate_json(canonical_security_bytes(app))
+            if (
+                (claim.provider_id, claim.issuer_id, claim.security_id)
+                != (provider_id, issuer_id, security_id)
+                or (app.provider_id, app.issuer_id, app.security_id)
+                != (provider_id, issuer_id, security_id)
+                or claim.application_hash != app.content_hash
+                or claim.application_status != app.status
+                or app.status != "ADMITTED"
+                or app.scope != scope
+                or app.requested_weight != 3
+                or app.document_kind != document
+                or app.subject_role != role
+                or app.fixture_taint
+                or app.test_taint
+            ):
+                raise ValueError("profile claim/application owner binding mismatch")
+            selected.append(cast(T, validated_claim))
+        if len(selected) != 1:
+            raise ValueError("missing or ambiguous exact profile proof")
+        return selected[0]
+
+    if identifier_kind == "KRX_ISIN":
+        identifier = select_claim(
+            IdentifierClaim,
+            "KRX_STANDARD_CODE",
+            "SECURITY_IDENTIFIER",
+            "KRX_STANDARD_CODE_RECORD",
+            SubjectRole.KRX_ISSUE,
+        )
+        klass = select_claim(
+            ClassClaim,
+            "KRX_ISSUE_BASIC",
+            "INSTRUMENT_CLASS",
+            "KRX_ISSUE_BASIC_RECORD",
+            SubjectRole.KRX_ISSUE,
+        )
+        listing = select_claim(
+            ListingClaim,
+            "KRX_LISTING_LIFECYCLE",
+            "LISTING_INTERVAL",
+            "KRX_LISTING_LIFECYCLE_RECORD",
+            SubjectRole.KRX_ISSUE,
+        )
+    else:
+        identifier = select_claim(
+            IdentifierClaim,
+            "SEC_ACCEPTED_8A",
+            "IDENTIFIER_PROVENANCE",
+            "SEC_FORM_8A",
+            SubjectRole.SEC_REGISTRANT,
+        )
+        klass = select_claim(
+            ClassClaim,
+            "SEC_ACCEPTED_8A",
+            "REGISTERED_CLASS",
+            "SEC_FORM_8A",
+            SubjectRole.SEC_REGISTRANT,
+        )
+        listing = select_claim(
+            ListingClaim,
+            "NASDAQ_PRIMARY",
+            "LISTING_INTERVAL",
+            "NASDAQ_SYMBOL_DIRECTORY",
+            SubjectRole.EXCHANGE_ISSUE,
+        )
+        if (
+            identifier.contract_version != "security-identifier-claim/0.2.0"
+            or klass.registered_row_id != identifier_value.rsplit("/", 1)[1]
+            or not klass.registered_class_title
+        ):
+            raise ValueError("profile registered-class proof mismatch")
+    if (identifier.identifier_kind, identifier.identifier_value) != (
+        identifier_kind,
+        identifier_value,
+    ):
+        raise ValueError("profile identifier/anchor mismatch")
+    return seal_security_record(
+        AuthorityProfile,
+        contract_version="security-authority-profile/0.1.0",
+        profile_id=profile_id,
+        recorded_at=recorded_at,
+        security_id=security_id,
+        issuer_id=issuer_id,
+        instrument_family=klass.instrument_family,
+        registered_class_title=klass.registered_class_title,
+        authority_share_kind=klass.authority_share_kind,
+        identifier_kind=identifier.identifier_kind,
+        identifier_value=identifier.identifier_value,
+        venue=listing.venue,
+        market=listing.market,
+        valid_from=listing.valid_from,
+        valid_to=listing.valid_to,
+        missing_reason=listing.interval_missing_reason,
+        identifier_claim_id=identifier.claim_id,
+        identifier_claim_hash=identifier.content_hash,
+        class_claim_id=klass.claim_id,
+        class_claim_hash=klass.content_hash,
+        listing_claim_id=listing.claim_id,
+        listing_claim_hash=listing.content_hash,
+    )
 
 
 class AuthorityLink(DecisionBinding):

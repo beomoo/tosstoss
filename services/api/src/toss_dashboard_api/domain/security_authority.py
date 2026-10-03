@@ -1208,18 +1208,15 @@ class SecurityAuthorityDecisionEngine:
         state = self._machine_state(states, collision, relation_conflict, prior)
         if state == "REVIEW_REQUIRED":
             reasons.add("SAFETY_REVIEW_REQUIRED")
-        profile_hash = c.security_hash(
-            {
-                "security_id": security_id,
-                "anchor": anchor,
-                "instrument_family": family.value,
-                "identifier": isin,
-                "venue": None if current_issue is None else current_issue.market,
-                "ticker": None if current_issue is None else current_issue.ticker,
-                "listing_date": None if current_listing is None else current_listing.listing_date,
-                "class_claims": sorted(item.content_hash for item in class_claims),
-                "listing_claims": sorted(item.content_hash for item in listing_claims),
-            }
+        profile_hash, state = self._proposed_profile_hash(
+            provider.identity.provider_security_identity_id,
+            issuer.issuer.issuer_id,
+            anchor,
+            applications,
+            (*identifier_claims, *class_claims, *listing_claims),
+            at,
+            state,
+            reasons,
         )
         return _Draft(
             jurisdiction="KR",
@@ -1339,6 +1336,17 @@ class SecurityAuthorityDecisionEngine:
         identifier_claims: list[c.IdentifierClaim] = []
         class_claims: list[c.ClassClaim] = []
         listing_claims: list[c.ListingClaim] = []
+        identifier_app = app_map.get((sec.record.evidence_id, c.Scope.IDENTIFIER_PROVENANCE))
+        if identifier_app is not None and identifier_app.status == "ADMITTED":
+            identifier_claims.append(
+                self._identifier_claim(
+                    identifier_app,
+                    "SEC_REGISTERED_CLASS",
+                    anchor.split("|")[3],
+                    sec.fact.accepted_at.date(),
+                    at,
+                )
+            )
         class_app = app_map.get((sec.record.evidence_id, c.Scope.REGISTERED_CLASS))
         if class_app is not None and class_app.status == "ADMITTED":
             class_claims.append(
@@ -1515,25 +1523,15 @@ class SecurityAuthorityDecisionEngine:
         state = self._machine_state(states, collision, source_conflict, prior)
         if state == "REVIEW_REQUIRED":
             reasons.add("SAFETY_REVIEW_REQUIRED")
-        registered_value = (
-            f"{class_identity.verified_registrant_cik}/{class_identity.accepted_accession}/"
-            f"{class_identity.class_row_id()}"
-        )
-        profile_hash = c.security_hash(
-            {
-                "security_id": security_id,
-                "anchor": anchor,
-                "instrument_family": family.value,
-                "registered_class_title": class_identity.registered_class_title,
-                "registered_row_id": class_identity.class_row_id(),
-                "identifier": registered_value,
-                "venue": "NASDAQ" if nasdaq is not None else None,
-                "market": "US",
-                "ticker": None if nasdaq is None else nasdaq.fact.symbol,
-                "listing_date": None if nasdaq is None else nasdaq.fact.listing_date,
-                "class_claims": sorted(item.content_hash for item in class_claims),
-                "listing_claims": sorted(item.content_hash for item in listing_claims),
-            }
+        profile_hash, state = self._proposed_profile_hash(
+            provider.identity.provider_security_identity_id,
+            issuer.issuer.issuer_id,
+            anchor,
+            applications,
+            (*identifier_claims, *class_claims, *listing_claims),
+            at,
+            state,
+            reasons,
         )
         return _Draft(
             jurisdiction="US",
@@ -1553,6 +1551,36 @@ class SecurityAuthorityDecisionEngine:
             policies=policies,
             supersedes_decision_id=None if prior is None else prior.decision_id,
         )
+
+    @staticmethod
+    def _proposed_profile_hash(
+        provider_id: str,
+        issuer_id: str,
+        anchor: str,
+        applications: Sequence[c.EvidenceApplication],
+        claims: Sequence[c.IdentifierClaim | c.ClassClaim | c.ListingClaim],
+        at: datetime,
+        state: c.MachineState,
+        reasons: set[str],
+    ) -> tuple[str, c.MachineState]:
+        try:
+            profile = c.proposed_authority_profile(
+                provider_id=provider_id,
+                issuer_id=issuer_id,
+                anchor=anchor,
+                applications=applications,
+                claims=claims,
+                profile_id="proposed_profile",
+                recorded_at=at,
+            )
+        except ValueError:
+            # Negative bundles still require a hash column; canonical null means
+            # no materializable profile. It can never pass the READY backstop.
+            if state == "READY_FOR_MANUAL_REVIEW":
+                state = "REVIEW_REQUIRED"
+                reasons.add("EXACT_PROFILE_PROOF_MISSING_OR_AMBIGUOUS")
+            return c.security_hash(None), state
+        return profile.content_hash, state
 
     def _persist(
         self,
@@ -2022,7 +2050,11 @@ class SecurityAuthorityDecisionEngine:
     ) -> c.IdentifierClaim:
         return c.seal_security_record(
             c.IdentifierClaim,
-            contract_version="security-identifier-claim/0.1.0",
+            contract_version=(
+                "security-identifier-claim/0.2.0"
+                if identifier_kind == "SEC_REGISTERED_CLASS"
+                else "security-identifier-claim/0.1.0"
+            ),
             claim_id=_safe_id(
                 "sec_idclaim_",
                 (application.application_id, identifier_kind, identifier_value, valid_from),
@@ -2033,7 +2065,7 @@ class SecurityAuthorityDecisionEngine:
             application_id=application.application_id,
             application_hash=application.content_hash,
             application_status="ADMITTED",
-            scope="SECURITY_IDENTIFIER",
+            scope=application.scope.value,
             identifier_kind=identifier_kind,
             identifier_value=identifier_value,
             valid_from=valid_from,
