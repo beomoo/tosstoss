@@ -1,6 +1,14 @@
 # Phase 2 토스증권 읽기 전용 데이터 실행계획
 
-## Current C3-entry migration correction — 2026-10-03
+## Current C3-entry review acceptance and integration preparation — 2026-10-03
+
+Reviewed product `b23feb3f5640582db1ba5e9d4f4523cf78e2b494`, tree `fc273f0aa8ab64156f81ba22d4510ffa74f693a2`: **PASS — USER ACCEPTED** for bounded C3-entry migration remediation. Critical-01/Major-01 are closed for that candidate; required fixes 0 and new Critical/Major/Minor findings 0/0/0. Original implementer QA, separate verifier native Windows 63 cases and GPT review remain separately attributed in the current self-QA. These are existing execution/review records, not new test runs in this documentation task.
+
+Review documentation is **COMPLETE** and C3-entry verification is complete within the accepted bounded scope. Integration remains **PENDING — NOT PERFORMED** against expected `feature/phase-02-toss` HEAD `81ef70a76b812c6cf6c4cbbcfc4a1f24b7f7ca86`, tree `5fee605a16785d58ec3a08939997c651acd95ba6`. The docs-only successor has a separate identity in external `FINAL_DOCS_IDENTITY.json`; its product/runtime/test/scanner changes from the reviewed candidate are zero.
+
+ADR-021 remains **PROPOSED / IMPLEMENTED FOR INDEPENDENT REVIEW** (review PASS accepted; integration/ADR closeout pending). B/C1/ADR-020/0008/C2 existing closeouts remain unchanged. C3 product implementation and CP3-D are **NOT STARTED**; Phase 2 remains **IMPLEMENTATION IN PROGRESS**. The next step requires separate exact-candidate integration/ADR-closeout authority and is not executed here. Remaining NOT VERIFIED items are retained in `KNOWN_ISSUES.md`. The earlier C1 contract correction header and prior handoff below are historical pre-acceptance snapshots; they do not make this accepted review pending again.
+
+## Historical C3-entry migration correction — 2026-10-03
 
 Previous candidate fba35c8c85e82d2f6549ea9cdc8af270e8e9a7e2 (tree 0f24109aa923830688bb7fe15d4b916b189a1e25) received **FAIL — Critical 1 / Major 1 / Minor 0** for cancellation history loss and split schema/revision commits. That candidate is preserved and must not be integrated or used for real DB migration. The current bounded correction changes only 0009, narrow Alembic env.py transaction coordination, failure tests and measured inventory/current docs. Historical 0001–0008 and the existing identifier/profile/source authority/READY/R1/B contracts remain frozen.
 

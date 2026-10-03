@@ -1,6 +1,21 @@
 # Known Issues and Open Questions
 
-## Current C3-entry migration atomicity remediation — 2026-10-03
+## Current C3-entry accepted review and retained qualifications — 2026-10-03
+
+The user accepted **PASS — bounded C3-entry migration remediation** for `b23feb3f5640582db1ba5e9d4f4523cf78e2b494`, tree `fc273f0aa8ab64156f81ba22d4510ffa74f693a2`. Critical-01 cancellation/history loss and Major-01 schema/revision atomicity are **CLOSED for this candidate**, with required fixes **0** and new Critical/Major/Minor findings **0/0/0**. Earlier `fba35c8...` FAIL and all STOP/failed QA records remain historical; they are not relabelled PASS.
+
+Original implementer QA, separate verifier native Windows **63/63**, and GPT evidence review are distinct evidence groups, detailed in the current C3-entry self-QA. The separate verifier's first three launcher/path setup attempts remain exit 1; final 60/2/1 runs were exit 0 without product changes or dependency reinstallation. This documentation task executes only light documentation gates.
+
+Retained NOT VERIFIED / out of scope, without reopening the accepted bounded findings:
+
+- Full product suites independently rerun by the separate verifier; ChatGPT direct Windows execution; old `fba35c8...` rerun in the new 63-case verification. Supplied synthetic DB/fixture and fault-harness limitations remain.
+- Physical power/storage/controller failures, physical-close failure, concurrent migration writers, exhaustive exception combinations, future runtimes and non-SQLite backends.
+- Real WebAuthn/physical authenticator and physical OWNER qualifications; M1/M2/M3, shared R1/Security counter runtime, B/C2 safety cascades and Security reader cutover.
+- Live KRX/SEC/exchange completeness/licensing, NYSE/CGS authority, production mapping, public deployment, CP3-D and Trading. NYSE/CGS remain disabled.
+
+Current status is **REVIEW ACCEPTANCE DOCUMENTED — INTEGRATION PENDING**. ADR-021 remains **PROPOSED / IMPLEMENTED FOR INDEPENDENT REVIEW** (review PASS accepted; integration/ADR closeout pending). Integration/main updates and C3 product implementation have not occurred. The C1 correction header and prior handoff ceilings below are historical pre-acceptance snapshots. Final docs-only identity and unchanged-product proof are external; this review acceptance does not establish those excluded capabilities.
+
+## Historical C3-entry migration atomicity remediation — 2026-10-03
 
 Previous candidate `fba35c8c85e82d2f6549ea9cdc8af270e8e9a7e2`, tree `0f24109aa923830688bb7fe15d4b916b189a1e25`, received **FAIL — Critical 1 / Major 1 / Minor 0**. It must not be integrated or used for real database migration. Cancellation could lose identifier history; a revision UPDATE failure could split schema and revision commits. Prior passing QA did not cover those paths.
 

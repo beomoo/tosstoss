@@ -1,6 +1,16 @@
 # Project Status
 
-## Current C3-entry migration atomicity remediation — 2026-10-03
+## Current C3-entry review acceptance — 2026-10-03
+
+**REVIEW ACCEPTANCE DOCUMENTED — INTEGRATION PENDING**. The user accepted the GPT bounded verdict **PASS — bounded C3-entry migration remediation** for product candidate `b23feb3f5640582db1ba5e9d4f4523cf78e2b494`, tree `fc273f0aa8ab64156f81ba22d4510ffa74f693a2`. Critical-01 (cancellation/history loss) and Major-01 (schema/revision commit split) are **CLOSED for that reviewed candidate**; outstanding required fixes are **0**, and new Critical/Major/Minor findings are **0/0/0**. The previous `fba35c8...` candidate remains historical FAIL.
+
+Evidence attribution is separate: the original implementer submitted Windows 96 focused / 2 termination / 448 affected and full backend 1459 / frontend 43 / E2E 2; a separate verifier subsequently executed native Windows **60 + 2 + 1 = 63/63**, final three exits 0 with no failures/errors/skips; GPT reviewed the exact candidate and supplied evidence. Neither GPT nor this documentation task reran those suites. The accepted human-provided authority and detailed provenance/limits are recorded in the current self-QA summary.
+
+Review documentation is **COMPLETE**; integration is **PENDING — NOT PERFORMED**. ADR-021 remains **PROPOSED / IMPLEMENTED FOR INDEPENDENT REVIEW** (review PASS accepted; integration/ADR closeout pending). B/C1/ADR-020/0008/C2 closeouts remain unchanged. C3 product implementation and CP3-D are **NOT STARTED**; Phase 2 is **IMPLEMENTATION IN PROGRESS**. The C1 contract's earlier correction header and the following re-verification handoff are preserved pre-acceptance snapshots, not current pending-review instructions.
+
+This successor changes only the six authorized documents. Product/runtime/tests/scanners/dependencies and migrations 0001–0009 remain unchanged from the reviewed product. The new documentation commit identity is recorded separately in external `FINAL_DOCS_IDENTITY.json`; it is not the GPT-reviewed product identity. Next: separately authorized exact-candidate integration and ADR closeout. Remaining qualifications are in `KNOWN_ISSUES.md`; no integration, C3 implementation or live/production access is performed here.
+
+## Historical C3-entry migration atomicity remediation — 2026-10-03
 
 Previous candidate `fba35c8c85e82d2f6549ea9cdc8af270e8e9a7e2`, tree `0f24109aa923830688bb7fe15d4b916b189a1e25`, received **FAIL — Critical 1 / Major 1 / Minor 0**. It must not be integrated or used for real database migration. Cancellation could lose identifier history; a revision UPDATE failure could split schema and revision commits. Prior passing QA did not cover those paths.
 

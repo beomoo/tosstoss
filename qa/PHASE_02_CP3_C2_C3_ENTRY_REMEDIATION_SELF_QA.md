@@ -1,6 +1,34 @@
 # C3-entry remediation self-QA
 
-## Current C3-entry migration atomicity remediation — 2026-10-03
+## Current accepted review and documentation-only successor — 2026-10-03
+
+**REVIEW ACCEPTANCE DOCUMENTED — INTEGRATION PENDING**. Controlling authority: `TOSSTOSS_C3_ENTRY_REVIEW_ACCEPTANCE_DOCS_ONLY_CODEX_PROMPT.md`, preserved under external evidence root `/home/beomooo/.codex/task-evidence/tosstoss-c3-entry-review-acceptance-20261003T052338Z/authority`. Its exact candidate/verdict/findings are accepted human-provided authority. A separate raw GPT report is not among the local inputs used for this task and is not a prerequisite.
+
+- Reviewed product: `b23feb3f5640582db1ba5e9d4f4523cf78e2b494`; tree `fc273f0aa8ab64156f81ba22d4510ffa74f693a2`.
+- Direct parent / previous FAIL: `fba35c8c85e82d2f6549ea9cdc8af270e8e9a7e2`; tree `0f24109aa923830688bb7fe15d4b916b189a1e25`. Its FAIL is unchanged; it was not rerun in the new 63-case verification.
+- GPT bounded verdict: **PASS — USER ACCEPTED**. Critical-01 cancellation/partial rebuild/history loss and Major-01 schema/`alembic_version` commit split are **CLOSED for b23feb3...**. Required fixes 0; new Critical/Major/Minor findings 0/0/0.
+
+### Evidence attribution
+
+| Evidence group | Actual existing evidence and limits |
+| --- | --- |
+| A — Original implementer QA | Windows focused 96, external termination 2, affected 448; standard full backend 1459 / frontend 43 / E2E 2; final policy/secret reported exit 0. Historical implementation receipts, not newly executed here. |
+| B — Separate verifier | Fresh native Windows unchanged supplied matrix 60/60, process termination 2/2, independently authored roundtrip 1/1: 63/63. Final three runs exit 0; failures/errors/skips 0. This is separate-verifier execution, not ChatGPT direct execution. |
+| C — GPT review | Bounded review of the exact candidate and supplied execution evidence; verdict/finding closure accepted by the user through the controlling authority. GPT did not directly rerun the Windows tests. |
+
+Separate verifier inputs: `TOSSTOSS_b23feb3_INDEPENDENT_WINDOWS_REPORT_KO.md` (SHA-256 `95c1be31c18e290ae4066a9997e8ec9a44863e22c273574b966ec42f17ebc996`) and `TOSSTOSS_b23feb3_INDEPENDENT_WINDOWS_EVIDENCE_20261003.zip` (SHA-256 `a876649703a388d2e82ed13d7dbeab999b938cc85da3d39656ef278743847618`). Read-only CRC/50-entry manifest validation and final test receipts are preserved externally. Supplied provenance records Alembic 1.16.5, SQLAlchemy 2.0.43, 48 Windows dependency pins compared, exact extracted candidate source 382 files, and unchanged source/pins/core dependency bytes in POSTFLIGHT. The existing QA mirror supplied dependencies only; tested product imports came from the extracted candidate. Initial matrix/matrix-02/matrix-03 launcher/path failures (exit 1) are preserved; no product or dependency repair was required.
+
+Closure evidence covers normal/failing upgrade and downgrade, cancellation, real revision UPDATE abort, pre-commit/cleanup/acknowledgment failures, reopen/retry and native process termination within the selected matrix. It does not prove exhaustive fault combinations or remove synthetic-fixture/harness limitations. Full suites were not independently rerun by the separate verifier. Physical power/storage/controller/close failures, concurrent writers, future runtimes/non-SQLite backends, real WebAuthn/physical authenticator/physical OWNER qualifications, M1–M3/shared counters/cascades/readers, live completeness/licensing, NYSE/CGS authority, production/deployment, CP3-D and Trading remain NOT VERIFIED or out of scope.
+
+### Documentation gates and current position
+
+This task changes only STATUS, DECISIONS, KNOWN_ISSUES, CHANGELOG, the Phase 2 execution plan and this self-QA. All other 376 tracked files, including 291 non-Markdown files, retain reviewed bytes/modes. Migrations 0001–0009, Alembic env.py, runtime/contracts/registry, R1/B, tests/harnesses, scanners/acceptance settings and dependency locks are frozen. The C1 contract remains a preserved pre-acceptance snapshot; the current acceptance successors govern review status.
+
+Only diff/allowlist/byte-mode/history/preservation checks, required Windows documentation policy/secret scans and staged review are executed. No 63-case, focused/affected/full QA, migration or new DB execution occurs. Exact commands/exits, final source/mirror/index equality, remote/clean/integration/main proofs and the new docs-only SHA/tree are external in `CLOSEOUT_REPORT.md` and `FINAL_DOCS_IDENTITY.json`. That new SHA is not the GPT-reviewed product SHA. The initial missing-attachment preflight STOP is historical and resolved by `AUTHORITY_RECEIVED.json`; its files remain unchanged. No new large review ZIP is required by authority section 9.
+
+Review documentation: COMPLETE. Integration: PENDING — NOT PERFORMED. ADR-021: **PROPOSED / IMPLEMENTED FOR INDEPENDENT REVIEW** (review PASS accepted; integration/ADR closeout pending). Existing B/C1/ADR-020/0008/C2 closeouts are unchanged; C3 product and CP3-D are NOT STARTED; Phase 2 is IMPLEMENTATION IN PROGRESS. Next: separately authorized exact-candidate integration/ADR closeout. Earlier FAIL/STOP/QA/handoff entries below remain historical.
+
+## Historical C3-entry migration atomicity remediation — 2026-10-03
 
 Previous candidate `fba35c8c85e82d2f6549ea9cdc8af270e8e9a7e2`, tree `0f24109aa923830688bb7fe15d4b916b189a1e25`, received **FAIL — Critical 1 / Major 1 / Minor 0**. It must not be integrated or used for real database migration. Cancellation could lose identifier history; a revision UPDATE failure could split schema and revision commits. Prior passing QA did not cover those paths.
 

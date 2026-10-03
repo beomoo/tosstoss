@@ -1,6 +1,13 @@
 # Changelog
 
-## Current C3-entry migration correction — 2026-10-03
+## Current C3-entry review acceptance documentation — 2026-10-03
+
+- Recorded user acceptance of GPT **PASS — bounded C3-entry migration remediation** for product `b23feb3f5640582db1ba5e9d4f4523cf78e2b494`, tree `fc273f0aa8ab64156f81ba22d4510ffa74f693a2`. Critical-01 and Major-01 are closed for that candidate; required fixes 0, new Critical/Major/Minor findings 0/0/0.
+- Separated original implementer QA (96/2/448; full backend 1459/frontend 43/E2E 2), the separate verifier's fresh native Windows 60+2+1 cases, and GPT evidence review. No product tests or migrations were rerun in this docs-only task. Earlier FAIL/STOP/setup/QA evidence remains preserved.
+- Updated only the six authorized current-state documents; product, migrations, tests, scanners, pins and the C1 contract are unchanged. The new docs-only commit is identified separately by external `FINAL_DOCS_IDENTITY.json`.
+- **REVIEW ACCEPTANCE DOCUMENTED — INTEGRATION PENDING**. ADR-021 stays **PROPOSED / IMPLEMENTED FOR INDEPENDENT REVIEW** (review PASS accepted; integration/ADR closeout pending). Integration/main updates were not performed; C3 product and CP3-D are NOT STARTED. Existing closeouts and qualifications remain.
+
+## Historical C3-entry migration correction — 2026-10-03
 
 Previous candidate fba35c8c85e82d2f6549ea9cdc8af270e8e9a7e2 (tree 0f24109aa923830688bb7fe15d4b916b189a1e25) received **FAIL — Critical 1 / Major 1 / Minor 0** for cancellation history loss and split schema/revision commits. That candidate is preserved and must not be integrated or used for real DB migration. The current bounded correction changes only 0009, narrow Alembic env.py transaction coordination, failure tests and measured inventory/current docs. Historical 0001–0008 and the existing identifier/profile/source authority/READY/R1/B contracts remain frozen.
 
