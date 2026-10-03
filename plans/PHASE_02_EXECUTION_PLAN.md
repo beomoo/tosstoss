@@ -1,6 +1,14 @@
 # Phase 2 토스증권 읽기 전용 데이터 실행계획
 
-## Current C3-entry review acceptance and integration preparation — 2026-10-03
+## Current C3-entry integration closeout and next checkpoint — 2026-10-03
+
+**CP3-C2-C3-ENTRY: PASS — CLOSED. ADR-021: ACCEPTED** for bounded migration/profile/identifier compatibility only. Exact merge `8234a4ff7080174a25dce3132b13f7f3a05063d0` integrates accepted docs successor `63352a32fde3df1d75b56c7e3c2d7861b080e666` into `feature/phase-02-toss` from `81ef70a76b812c6cf6c4cbbcfc4a1f24b7f7ca86`; those are parent 2 and parent 1 respectively. Merge tree `3e5c2e5e4199c01e273d2741c47fa461129197d2` equals the successor tree. Reviewed product remains separately `b23feb3f5640582db1ba5e9d4f4523cf78e2b494` / tree `fc273f0aa8ab64156f81ba22d4510ffa74f693a2`.
+
+Existing B/C1/0008 CLOSED qualifications, ADR-020 ACCEPTED and C2 PASS — CLOSED are retained. The user-accepted bounded review closes Critical-01/Major-01 with required fixes 0; historical fba35c8 FAIL remains unchanged. Original implementer QA, separate Windows verifier 63 targeted cases and GPT source/evidence review remain distinct; this task repeats none of those suites. Six documentation files form the subsequent closeout commit; external `FINAL_INTEGRATION_IDENTITY.json` identifies it separately.
+
+**CURRENT / NEXT PLANNED: CP3-C2-C3 Human WebAuthn / Final Security Mapping — NEXT PLANNED CHECKPOINT — NOT STARTED**. CP3-D remains NOT STARTED; Phase 2 remains IMPLEMENTATION IN PROGRESS. C3 implementation needs a separate authoritative prompt; this task stops after integration/closeout. Real WebAuthn/physical OWNER, shared counter/M1–M3, B/C2 cascades, reader cutover, live source completeness/licensing, NYSE/CGS authority and production mapping remain NOT VERIFIED as detailed in KNOWN_ISSUES. The earlier integration-pending summaries and unchanged C1 correction header are historical, not current pending integration or re-review instructions.
+
+## Historical C3-entry review acceptance and integration preparation — 2026-10-03
 
 Reviewed product `b23feb3f5640582db1ba5e9d4f4523cf78e2b494`, tree `fc273f0aa8ab64156f81ba22d4510ffa74f693a2`: **PASS — USER ACCEPTED** for bounded C3-entry migration remediation. Critical-01/Major-01 are closed for that candidate; required fixes 0 and new Critical/Major/Minor findings 0/0/0. Original implementer QA, separate verifier native Windows 63 cases and GPT review remain separately attributed in the current self-QA. These are existing execution/review records, not new test runs in this documentation task.
 

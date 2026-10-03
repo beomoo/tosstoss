@@ -1,6 +1,16 @@
 # Project Status
 
-## Current C3-entry review acceptance — 2026-10-03
+## Current C3-entry exact integration and bounded closeout — 2026-10-03
+
+**CP3-C2-C3-ENTRY: PASS — CLOSED. ADR-021: ACCEPTED**, solely for the bounded migration/profile/identifier entry compatibility correction. User-accepted GPT bounded PASS closes Critical-01/Major-01 for reviewed product `b23feb3f5640582db1ba5e9d4f4523cf78e2b494`, tree `fc273f0aa8ab64156f81ba22d4510ffa74f693a2`; required fixes 0. Previous `fba35c8...` remains **FAIL — Critical 1 / Major 1 / Minor 0**.
+
+Accepted documentation successor `63352a32fde3df1d75b56c7e3c2d7861b080e666`, tree `3e5c2e5e4199c01e273d2741c47fa461129197d2`, was integrated exactly by merge `8234a4ff7080174a25dce3132b13f7f3a05063d0`. Parent 1 is `81ef70a76b812c6cf6c4cbbcfc4a1f24b7f7ca86`; parent 2 is that accepted successor. Merge tree equals the successor tree; successor-to-merge diff is 0. The subsequent six-document closeout commit has separate external identity in `FINAL_INTEGRATION_IDENTITY.json`.
+
+Original implementer QA (96 focused / 2 termination / 448 affected; full backend 1459 / frontend 43 / E2E 2), separate Windows verifier 60+2+1 targeted cases, and GPT source/evidence review remain distinct. No product tests or migrations are rerun in this integration task. Earlier FAIL/STOP/QA records and the C1 contract correction header are preserved historical snapshots; current closeout governs status. Remaining qualifications are retained in KNOWN_ISSUES and self-QA.
+
+B/C1/0008 remain CLOSED with their existing qualifications; ADR-020 remains ACCEPTED; C2 remains PASS — CLOSED. **CP3-C2-C3 Human WebAuthn / Final Security Mapping: NEXT PLANNED CHECKPOINT — NOT STARTED**. CP3-D is NOT STARTED; Phase 2 is IMPLEMENTATION IN PROGRESS. No C3 runtime, M1–M3, cascade, reader cutover, production mapping, main merge, deployment, live API or Trading is accepted or performed by this closeout. This task ends here; C3 requires its separate authoritative prompt.
+
+## Historical C3-entry review acceptance — 2026-10-03
 
 **REVIEW ACCEPTANCE DOCUMENTED — INTEGRATION PENDING**. The user accepted the GPT bounded verdict **PASS — bounded C3-entry migration remediation** for product candidate `b23feb3f5640582db1ba5e9d4f4523cf78e2b494`, tree `fc273f0aa8ab64156f81ba22d4510ffa74f693a2`. Critical-01 (cancellation/history loss) and Major-01 (schema/revision commit split) are **CLOSED for that reviewed candidate**; outstanding required fixes are **0**, and new Critical/Major/Minor findings are **0/0/0**. The previous `fba35c8...` candidate remains historical FAIL.
 

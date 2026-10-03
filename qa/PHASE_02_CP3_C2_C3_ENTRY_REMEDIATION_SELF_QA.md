@@ -1,6 +1,26 @@
 # C3-entry remediation self-QA
 
-## Current accepted review and documentation-only successor — 2026-10-03
+## Current exact integration and bounded ADR-021 closeout — 2026-10-03
+
+**CP3-C2-C3-ENTRY: PASS — CLOSED. ADR-021: ACCEPTED**, limited to the migration/profile/identifier compatibility correction. The new controlling `CP3_C2_C3_ENTRY_EXACT_INTEGRATION_AUTHORITY.md` is preserved byte-for-byte under external evidence root `/home/beomooo/.codex/task-evidence/tosstoss-c3-entry-exact-integration-20261003T062636Z/authority`, SHA-256 `4667f973791b18df08d96bf986ca652fb3656f39c524e4d2abcbd6ac68db9de7`. Its section 4 immediately corrected tree is used; the explicit integration grant is bounded as recorded in DECISIONS. The completed docs-acceptance task remains unchanged in its source worktree/evidence.
+
+| Identity | Exact value |
+| --- | --- |
+| Pre-merge integration | `81ef70a76b812c6cf6c4cbbcfc4a1f24b7f7ca86` / tree `5fee605a16785d58ec3a08939997c651acd95ba6` |
+| Independently reviewed product | `b23feb3f5640582db1ba5e9d4f4523cf78e2b494` / tree `fc273f0aa8ab64156f81ba22d4510ffa74f693a2` |
+| Accepted docs successor | `63352a32fde3df1d75b56c7e3c2d7861b080e666` / tree `3e5c2e5e4199c01e273d2741c47fa461129197d2`; direct parent is the reviewed product |
+| Exact integration merge | `8234a4ff7080174a25dce3132b13f7f3a05063d0` / tree `3e5c2e5e4199c01e273d2741c47fa461129197d2`; parents `81ef70a76b812c6cf6c4cbbcfc4a1f24b7f7ca86`, `63352a32fde3df1d75b56c7e3c2d7861b080e666` |
+| Subsequent docs-only closeout | Separate final SHA/tree/parent in external `FINAL_INTEGRATION_IDENTITY.json`; parent must be the exact merge above |
+
+The merge used `--no-ff --no-commit`; MERGE_HEAD, both parents and write-tree were proved before commit, then rechecked after commit. Accepted successor → merge diff is 0, with exact 382-file equality. Post-merge closeout changes only the six authorized documents; all other 376 tracked files, including 291 non-Markdown files, remain byte/mode-identical to the accepted successor. Root AGENTS, 0001–0009, Alembic env.py, runtime/contracts/registry/R1/B, tests/harnesses, scanners/inventory/dependencies and the C1 contract remain frozen. Historical content, primary/source worktrees and all seven protected artifacts are preserved.
+
+QA attribution remains separate: original implementer Windows 96 focused / 2 termination / 448 affected and full backend 1459 / frontend 43 / E2E 2; separate Windows verifier 60 matrix + 2 termination + 1 independent roundtrip = 63/63 targeted PASS; GPT source/evidence review, not direct Windows execution. No full or targeted product QA, migration or new DB execution occurs in this task. Actual light gates are diff/consistency/allowlist/frozen/parent-tree proofs, final-documentation Windows policy/secret scans, staged review and remote identity checks, with exact command/cwd/exit receipts in external `GATE_COMMANDS.json` and `CLOSEOUT_REPORT.md`. An initial ownership probe counted existing same-CLI MCP/language-server children; its exit 1 is retained, and parent-lineage diagnosis established no competing integration writer before any merge. No product source or scanner repair was made.
+
+User-accepted bounded PASS closes Critical-01/Major-01 with required fixes 0; the old fba35c8 candidate remains FAIL (Critical 1 / Major 1 / Minor 0). Initial verifier launcher/path failures and prior STOP/FAIL/QA evidence remain historical. Real WebAuthn ceremony, physical authenticator/OWNER, shared R1/Security counters and M1/M2/M3, B issuer-writer/C2 post-approval cascades, Security-head reader cutover, live KRX/SEC/exchange completeness/licensing, NYSE/CGS authority, production mapping/DB, deployment, CP3-D and Trading remain NOT VERIFIED or outside scope. Synthetic-harness, physical-fault, concurrency/exhaustive-combination and future-runtime limits remain.
+
+B/C1/0008 existing qualified closeouts and ADR-020 ACCEPTED/C2 PASS — CLOSED remain intact. **C3 Human WebAuthn / Final Security Mapping: NEXT PLANNED CHECKPOINT — NOT STARTED**. CP3-D NOT STARTED; Phase 2 IMPLEMENTATION IN PROGRESS. The task ends after closeout; C3 requires its separate authoritative prompt. No new large review ZIP or later checkpoint is launched. Prior integration-pending/proposed records below and the C1 correction header are preserved historical snapshots governed by this current successor.
+
+## Historical accepted review and documentation-only successor — 2026-10-03
 
 **REVIEW ACCEPTANCE DOCUMENTED — INTEGRATION PENDING**. Controlling authority: `TOSSTOSS_C3_ENTRY_REVIEW_ACCEPTANCE_DOCS_ONLY_CODEX_PROMPT.md`, preserved under external evidence root `/home/beomooo/.codex/task-evidence/tosstoss-c3-entry-review-acceptance-20261003T052338Z/authority`. Its exact candidate/verdict/findings are accepted human-provided authority. A separate raw GPT report is not among the local inputs used for this task and is not a prerequisite.
 

@@ -1,6 +1,19 @@
 # Known Issues and Open Questions
 
-## Current C3-entry accepted review and retained qualifications — 2026-10-03
+## Current C3-entry bounded closeout and open qualifications — 2026-10-03
+
+**CP3-C2-C3-ENTRY: PASS — CLOSED; ADR-021: ACCEPTED** only for the migration/profile/identifier compatibility correction. Reviewed product `b23feb3f5640582db1ba5e9d4f4523cf78e2b494` / tree `fc273f0aa8ab64156f81ba22d4510ffa74f693a2` retains user-accepted bounded PASS, Critical-01/Major-01 closure and required fixes 0. Exact merge `8234a4ff7080174a25dce3132b13f7f3a05063d0` equals accepted docs successor `63352a32fde3df1d75b56c7e3c2d7861b080e666` at tree `3e5c2e5e4199c01e273d2741c47fa461129197d2`. Historical fba35c8 FAIL, initial setup failures and all earlier qualifications remain unchanged.
+
+The following remain explicitly NOT VERIFIED or outside this closeout:
+
+- Real WebAuthn ceremony, physical authenticator and physical OWNER qualification; shared R1/Security counter runtime; M1, M2 and M3.
+- B issuer writer → Security cascade, C2 post-approval Security cascade and current Security-head reader cutover.
+- Live/current KRX, SEC and exchange completeness/licensing; NYSE production authority and CGS authority. NYSE/CGS remain disabled.
+- Production mapping, production DB, public deployment, CP3-D and Trading; synthetic-fixture/harness limits, physical power/storage/controller/close failure, concurrent writers/exhaustive exception combinations, future runtimes and non-SQLite backends.
+
+Original implementer full QA, separate verifier **63/63 targeted** Windows execution and GPT evidence review remain separate; neither the verifier's 63 cases nor this task is a fresh full product QA rerun, and GPT did not directly execute Windows tests. These qualifications are not reopened findings against the accepted bounded remediation. **C3 Human WebAuthn / Final Security Mapping: NEXT PLANNED CHECKPOINT — NOT STARTED**; CP3-D NOT STARTED; Phase 2 IMPLEMENTATION IN PROGRESS. Prior integration-pending and ADR proposal entries below are historical. No later checkpoint is launched by this closeout.
+
+## Historical C3-entry accepted review and retained qualifications — 2026-10-03
 
 The user accepted **PASS — bounded C3-entry migration remediation** for `b23feb3f5640582db1ba5e9d4f4523cf78e2b494`, tree `fc273f0aa8ab64156f81ba22d4510ffa74f693a2`. Critical-01 cancellation/history loss and Major-01 schema/revision atomicity are **CLOSED for this candidate**, with required fixes **0** and new Critical/Major/Minor findings **0/0/0**. Earlier `fba35c8...` FAIL and all STOP/failed QA records remain historical; they are not relabelled PASS.
 

@@ -1,6 +1,13 @@
 # Changelog
 
-## Current C3-entry review acceptance documentation — 2026-10-03
+## Current C3-entry exact integration and ADR-021 closeout — 2026-10-03
+
+- Integrated exact accepted docs successor `63352a32fde3df1d75b56c7e3c2d7861b080e666` by non-fast-forward merge `8234a4ff7080174a25dce3132b13f7f3a05063d0`, parents `81ef70a76b812c6cf6c4cbbcfc4a1f24b7f7ca86` and `63352a32fde3df1d75b56c7e3c2d7861b080e666`. Merge/successor tree `3e5c2e5e4199c01e273d2741c47fa461129197d2`; diff 0.
+- Preserved reviewed product identity `b23feb3f5640582db1ba5e9d4f4523cf78e2b494` / tree `fc273f0aa8ab64156f81ba22d4510ffa74f693a2`, user-accepted bounded PASS and Critical-01/Major-01 closure. The previous fba35c8 FAIL is unchanged.
+- Recorded **CP3-C2-C3-ENTRY: PASS — CLOSED; ADR-021: ACCEPTED** solely for bounded migration/profile/identifier compatibility. Post-merge changes are the six authorized documents only; product/test/scanner/dependency diff 0. Existing QA attribution and all NOT VERIFIED qualifications remain.
+- **C3 Human WebAuthn / Final Security Mapping: NEXT PLANNED CHECKPOINT — NOT STARTED**; CP3-D NOT STARTED; Phase 2 IMPLEMENTATION IN PROGRESS. No full/targeted QA rerun, migration execution, main update, deployment, live/production action or later implementation occurred. Final closeout SHA/tree and light-gate receipts are external in `FINAL_INTEGRATION_IDENTITY.json` and `CLOSEOUT_REPORT.md`.
+
+## Historical C3-entry review acceptance documentation — 2026-10-03
 
 - Recorded user acceptance of GPT **PASS — bounded C3-entry migration remediation** for product `b23feb3f5640582db1ba5e9d4f4523cf78e2b494`, tree `fc273f0aa8ab64156f81ba22d4510ffa74f693a2`. Critical-01 and Major-01 are closed for that candidate; required fixes 0, new Critical/Major/Minor findings 0/0/0.
 - Separated original implementer QA (96/2/448; full backend 1459/frontend 43/E2E 2), the separate verifier's fresh native Windows 60+2+1 cases, and GPT evidence review. No product tests or migrations were rerun in this docs-only task. Earlier FAIL/STOP/setup/QA evidence remains preserved.
