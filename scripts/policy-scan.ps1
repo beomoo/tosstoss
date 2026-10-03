@@ -1583,6 +1583,8 @@ $expectedBackendTestFiles = @(
     "tests/backend/test_security_authority_repository.py",
     "tests/backend/test_security_authority_source_policy.py",
     "tests/backend/test_security_master_reconciliation.py",
+    "tests/backend/test_shared_counter_migration.py",
+    "tests/backend/test_shared_counter_union.py",
     "tests/backend/test_rejection_matrix.py",
     "tests/backend/test_repositories.py",
     "tests/backend/test_settings_security.py",
@@ -1719,11 +1721,11 @@ $phaseControlFiles = @(
         Where-Object { $_.Name -cne "policy-scan.ps1" }
 )
 $approvedPhaseControlDigest = [string]::Concat(
-    "e6247b19", "0af1516b", "f583025f", "25d92bfe",
-    "af3b5e4f", "65984178", "0de73986", "251cf78f"
+    "4f2878be", "0abea800", "1b0f7b09", "dafcd23b",
+    "c808cce0", "964d20ee", "e60da49e", "bbda417f"
 )
 if (
-    $phaseControlFiles.Count -ne 102 -or
+    $phaseControlFiles.Count -ne 104 -or
     (Get-FileSetManifestSha256 -Files $phaseControlFiles) -cne
         $approvedPhaseControlDigest
 ) {

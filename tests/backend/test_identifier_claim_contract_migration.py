@@ -124,6 +124,8 @@ def test_populated_upgrade_and_v01_only_downgrade_preserve_exact_rows_and_shape(
 
 
 def test_v02_history_refuses_downgrade_without_any_change(database_context):
+    # This is the 0009 single-step refusal gate, even after head advances.
+    command.downgrade(alembic_config(database_context.url), REVISION)
     _, _, result = _us_evaluation(database_context)
     assert result.identifier_claims[0].contract_version == "security-identifier-claim/0.2.0"
     with database_context.engine.connect() as connection:

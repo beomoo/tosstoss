@@ -6,6 +6,8 @@ from typing import Any
 
 from sqlalchemy import Connection
 
+from toss_dashboard_api.contracts import security_authority as security
+
 from . import canonical as c
 from . import schema as s
 from .webauthn_core import validate_cose
@@ -107,6 +109,7 @@ class Ledger:
                     require(row["reviewer_role"] == c.ROLE)
                 rows[row[table.key]] = row
             self.tables[table.name] = rows
+        self.security_authentications = self._security_authentications()
         principals = list(self.rows(s.PRINCIPAL))
         require(len(principals) <= 1)
         self.principal = principals[0] if principals else None
@@ -116,6 +119,7 @@ class Ledger:
         self.operation_leaf: Row | None = None
         if self.principal is None:
             require(all(not rows for rows in self.tables.values()))
+            require(not self.security_authentications)
             self.state_hash: str | None = None
             return
         require(self.principal["principal_state"] == "ACTIVE")
@@ -134,6 +138,77 @@ class Ledger:
         self.state_hash = c.content_hash(state_preimage(self.principal, self.active))
         self._operations()
         self._challenges()
+
+    def _security_authentications(self) -> list[Row]:
+        """Admit every persisted C1 success, never hide a contradictory row.
+
+        0007-only R1 databases remain readable. At 0008 and later, a missing
+        Security input table is corruption, not an empty counter history.
+        """
+        table = "security_reviewer_authentication_events"
+        if not self.connection.exec_driver_sql(
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name=?", (table,)
+        ).first():
+            revision = self.connection.exec_driver_sql(
+                "SELECT version_num FROM alembic_version"
+            ).scalar_one()
+            require(revision.split("_", 1)[0] in {f"{n:04}" for n in range(1, 8)})
+            return []
+
+        def read(kind: type[security.SecurityRecord], row: Row) -> Row:
+            try:
+                kind.model_validate_json(row["payload_json"])
+                data = dict(security.strict_security_json(row["payload_json"]))
+                require(row == {**data, "payload_json": row["payload_json"]})
+                return data
+            except (ValueError, TypeError, KeyError):
+                raise c.LedgerCorruption() from None
+
+        accepted = []
+        challenges: set[str] = set()
+        consumptions: set[str] = set()
+        for mapping in self.connection.exec_driver_sql(f"SELECT * FROM {table}").mappings():
+            row = read(security.AuthenticationEvent, dict(mapping))
+            challenge_row = (
+                self.connection.exec_driver_sql(
+                    "SELECT * FROM security_approval_challenges WHERE challenge_id=?",
+                    (row["challenge_id"],),
+                )
+                .mappings()
+                .one_or_none()
+            )
+            consumption_row = (
+                self.connection.exec_driver_sql(
+                    "SELECT * FROM security_approval_challenge_consumptions WHERE consumption_id=?",
+                    (row["consumption_id"],),
+                )
+                .mappings()
+                .one_or_none()
+            )
+            challenge = read(security.ApprovalChallenge, dict(present(challenge_row)))
+            consumption = read(security.ChallengeConsumption, dict(present(consumption_row)))
+            require(row["authentication_policy_version"] == c.POLICY)
+            require(row["challenge_id"] not in challenges)
+            require(row["consumption_id"] not in consumptions)
+            challenges.add(row["challenge_id"])
+            consumptions.add(row["consumption_id"])
+            binding = (
+                security.AuthorizationBinding.model_fields.keys()
+                - security.SecurityRecord.model_fields.keys()
+            )
+            require(all(row[key] == challenge[key] for key in binding))
+            require(row["challenge_hash"] == challenge["content_hash"])
+            require(row["consumption_hash"] == consumption["content_hash"])
+            require(consumption["terminal_result"] == "SUCCEEDED")
+            require(consumption["challenge_id"] == row["challenge_id"])
+            require(consumption["challenge_hash"] == row["challenge_hash"])
+            principal = self.get(s.PRINCIPAL, row["principal_id"])
+            require(row["principal_hash"] == principal["principal_content_hash"])
+            require(row["os_owner_sid_hash"] == principal["os_owner_sid_hash"])
+            require(row["role"] == principal["reviewer_role"])
+            self.get(s.CREDENTIAL, row["webauthn_credential_id"])
+            accepted.append(row)
+        return accepted
 
     def rows(self, table: s.Table) -> list[Row]:
         return list(self.tables[table.name].values())
@@ -266,6 +341,11 @@ class Ledger:
         ordinary = self.find(
             s.AUTHENTICATION, authorizing_webauthn_credential_id=identity
         ) + self.find(s.ISSUER_AUTHENTICATION, webauthn_credential_id=identity)
+        ordinary += [
+            row
+            for row in self.security_authentications
+            if row["webauthn_credential_id"] == identity
+        ]
         for row in ordinary:
             require(row["counter_capability"] == capability)
             require(

@@ -639,7 +639,7 @@ def test_downgrade_and_reupgrade(workspace_tmp_path: Path) -> None:
         with engine.connect() as connection:
             assert (
                 connection.execute(text("SELECT version_num FROM alembic_version")).scalar_one()
-                == "0009_phase_02_cp3_c2_c3_identifier_claim_contract"
+                == "0010_phase_02_cp3_c3_shared_counter_union"
             )
     finally:
         engine.dispose()

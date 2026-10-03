@@ -81,7 +81,9 @@ def insert(connection: Connection, value: c.SecurityRecord, **changes: Any) -> N
     )
 
 
-def approved_issuer(context: Any, *, no_counter: bool = False) -> dict[str, Any]:
+def approved_issuer(
+    context: Any, *, no_counter: bool = False, registration_count: int = 7, issuer_count: int = 9
+) -> dict[str, Any]:
     harness = _kr_harness(context)
     ready = harness.engine.evaluate(_kr_request(harness))
     runtime = _Runtime(context.engine, lambda: OWNER, Clock(EVALUATED_AT + timedelta(minutes=1)))
@@ -89,14 +91,14 @@ def approved_issuer(context: Any, *, no_counter: bool = False) -> dict[str, Any]
     enroll(
         runtime,
         authenticator,
-        registration_count=0 if no_counter else 7,
+        registration_count=0 if no_counter else registration_count,
         assertion_count=0 if no_counter else 8,
     )
     service = IssuerDispositionService(runtime, harness.engine)
     challenge = service.issue(ready.decision.issuer_decision_id, "APPROVED")
     service.complete(
         challenge.challenge_id,
-        authenticator.assertion(challenge.options, 0 if no_counter else 9),
+        authenticator.assertion(challenge.options, 0 if no_counter else issuer_count),
         structured_reason_code="VERIFIED_EXACT_AUTHORITY",
         review_note="Synthetic schema fixture",
     )
@@ -471,8 +473,9 @@ def authorization(
     predecessor_link: str | None = None,
     intent: str | None = None,
     successor: str | None = None,
-    previous: int = 9,
-    asserted: int = 10,
+    previous: int | None = 9,
+    asserted: int | None = 10,
+    authentication_policy_version: str = "test/1",
 ) -> dict[str, Any]:
     p = issuer["principal"]
     cred = issuer["credential"]
@@ -539,7 +542,7 @@ def authorization(
         **flags,
         rp_id="localhost",
         exact_origin="http://localhost:3000",
-        authentication_policy_version="test/1",
+        authentication_policy_version=authentication_policy_version,
         authenticated_at=NOW,
     )
     for value in (ch, co, auth):

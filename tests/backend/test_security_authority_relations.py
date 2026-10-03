@@ -388,14 +388,15 @@ def test_issuer_guard_allows_change_only_after_security_safety_transition(databa
 
 
 def test_m3_counter_contract_edges_and_no_security_cursor(database_context) -> None:
-    issuer = approved_issuer(database_context)
+    issuer = approved_issuer(database_context, registration_count=5, issuer_count=6)
     with database_context.engine.begin() as connection:
         g = candidate(connection, issuer)
         auth = authorization(connection, issuer, g, "counter", previous=6, asserted=7)[
             "authentication"
         ]
         assert (auth.previous_sign_count, auth.asserted_sign_count) == (6, 7)
-        # Structural representation only: the R1 reader remains frozen and unintegrated.
+        # Synthetic Security representation with the actual 5 -> 6 issuer seed.
+        # The complete shared-reader path is tested in test_shared_counter_union.
         edge = connection.exec_driver_sql(
             "SELECT previous_sign_count,asserted_sign_count "
             "FROM security_reviewer_authentication_events"
