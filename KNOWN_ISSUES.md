@@ -1,6 +1,18 @@
 # Known Issues and Open Questions
 
-## Current CP3-C2-C3-M3 review candidate — 2026-10-04
+## Current M3 exact integration and bounded closeout — 2026-10-04
+
+**CP3-C2-C3-M3 SHARED COUNTER UNION: PASS — CLOSED**, for the bounded shared-counter correction only. The user accepted dot's independent source/existing-execution-evidence review and evidence-only re-verification PASS, followed by GPT's final **report-based PASS — Critical 0 / Major 0 / Minor 0**. Confirmed mandatory product fixes and additional evidence fixes are 0. GPT did not execute product QA or independently run the Windows suites; this does not prove the absence of every product defect.
+
+Reviewed product d3c15268bddd1e0029f57b5fece6790bfa7eab4c, tree 84e432780eb942e0b995a20016cfabde789718d6, is integrated exactly into feature/phase-02-toss by merge 498d3f50bea87d3aee10f2c5ce2b2546e9abe33a. Parent 1 is 24586cf9f2ee10a7e40045e1acd569344f03c2d6; parent 2 is the reviewed product. The merge tree equals the candidate tree and candidate-to-merge source diff is 0. The subsequent authorized six-document closeout has a separate commit identity. Actual documentation-gate receipts and final commit/remote identity are recorded externally in FINAL_INTEGRATION_IDENTITY.json under M3-INTEGRATION-CLOSEOUT-20261004; no self-referential closeout commit hash is embedded here.
+
+**Evidence MAJOR-01: CLOSED.** The original STOP and incorrect summary remain historical. The corrected evidence ZIP is TOSSTOSS_CP3_C2_C3_M3_d3c15268bddd_EVIDENCE_CORRECTION_20261004T013622Z.zip, SHA256 0a2f1f477a1ec0bec5c1d5c211c3d5f27e0b39d2c56d74fd628aaac3f61a9576. It preserves the original ZIP, failed gates/repair chronology and old incorrect summary; 44 original snapshots retain all 3168 table rows/hash values, correcting 3112 projected counts and retaining the 56 actual counts of 2. All revision count/hash checks and original receipt/XML mappings pass. Schema digest meaning and separately serialized-versus-asserted reopen results are qualified in its PROVENANCE/NOT_VERIFIED. No product correction or new product QA was performed during evidence correction or integration closeout.
+
+Full **CP3-C2-C3 Human WebAuthn / Final Security Mapping remains NOT IMPLEMENTED**; CP3-D is NOT STARTED and Phase 2 remains IMPLEMENTATION IN PROGRESS. Real WebAuthn/physical OWNER, physical power loss, production/live authority, M1/M2/dispositions/canonical promotion/B-C2 cascades/current-reader cutover, UI/API approval, deployment and Trading remain outside this closeout. Synthetic fixtures remain SYNTHETIC. Earlier accepted B/C1/0008/C2 and ADR-020/ADR-021 scopes and all earlier FAIL/STOP records are preserved. Older M3 review-required sections below are historical candidate snapshots, not a reopened pending review.
+
+The original Major-01 was an evidence projection defect, not a demonstrated product atomicity failure. The original summarizer's historical executed-byte identity and unrecorded separate post-reopen snapshots remain explicitly qualified; original assertions/existing passing XML are distinguished from directly compared JSON. Physical/live/production and complete C3 limitations remain NOT VERIFIED. These qualifications are not silently closed by bounded M3 acceptance.
+
+## Historical CP3-C2-C3-M3 review candidate — 2026-10-04
 
 The user-authorized shared-counter correction and required QA are complete. **CP3-C2-C3-M3 SHARED COUNTER UNION CORRECTED — GPT FINAL INDEPENDENT VERIFICATION REQUIRED**. Full **CP3-C2-C3 Human WebAuthn / Final Security Mapping remains NOT IMPLEMENTED**. This review candidate asserts no acceptance, integration or closeout.
 
