@@ -1,5 +1,19 @@
 # Architecture Decision Record
 
+## Current CP3-C2-C3-M3 review candidate — 2026-10-04
+
+The user-authorized shared-counter correction and required QA are complete. **CP3-C2-C3-M3 SHARED COUNTER UNION CORRECTED — GPT FINAL INDEPENDENT VERIFICATION REQUIRED**. Full **CP3-C2-C3 Human WebAuthn / Final Security Mapping remains NOT IMPLEMENTED**. This review candidate asserts no acceptance, integration or closeout.
+
+Controlling authority: `CP3_C2_C3_M3_SHARED_COUNTER_UNION_AUTHORITY.md`, SHA256 `21d1cafdf1341f31028d9b01aac5b9a08951b86628516ad2de797cafa172699b`; base `24586cf9f2ee10a7e40045e1acd569344f03c2d6`, tree `7f598a84b8841a6efb578e3310123e91e910695a`. Earlier structural STOP and failed/synthetic probes remain historical negative evidence.
+
+Only 0010, additive Security admission into the shared R1 reader, focused tests, necessary additive-revision compatibility, measured QA inventory and current checkpoint documentation are in scope. 0001–0009 and env.py remain byte-identical. Issuer, credential-operation, Security and successful supported bootstrap edges form the existing connected linear graph; `SIGN_COUNT_SUPPORTED` is retained, strict increase does not require +1, and numeric MAX alone is insufficient. Invalid persisted Security history is rejected rather than filtered. NO_USABLE_COUNTER remains null-valued. The `0010` recognition line in `services/api/src/toss_dashboard_api/repositories/sqlite.py` is a required additive-revision derivative preserving the public Phase 1 revision; it is not reader cutover.
+
+Future M1 retains one BEGIN IMMEDIATE outer transaction, Domain A outside Domain B's SAVEPOINT, rollback of B only, outer COMMIT, then typed business failure. The former independent pre-business Domain A COMMIT instruction is withdrawn. This checkpoint implements no M1/M2/dispositions, canonical promotion, B/C2 cascade, reader cutover, integration/main merge, CP3-D, deployment, live authority or Trading.
+
+Required standard Windows full QA completed with aggregate exit 0: 1542 backend, 43 frontend and 2 E2E tests. Exact gate results and limitations are in `qa/PHASE_02_CP3_C2_C3_M3_SELF_QA.md`. QA-time HEAD/base and empty-index observations are precommit observations. Exact candidate SHA/tree and remote status are delivered in the external `COORDINATOR_CANDIDATE_IDENTITY.json` and `COORDINATOR_FINALIZATION_REPORT.md` under the task evidence root.
+
+지금 하는 작업: M3 review candidate 확정 및 독립검증 인계. 완료 범위: 0010, additive reader, 필수 회귀 및 Windows 전체 QA, 보존 증거. 현재 위치: Phase 2 → C3 precheck → M3 structural correction; full C3 NOT IMPLEMENTED. 다음 단계: GPT independent verification, 이후 별도 승인된 exact integration 및 새로 갱신된 C3 authority.
+
 ## Current CP3-C2-C2 accepted integration record — 2026-10-01
 
 Reviewed candidate `e5aad022f8140523fad00b293c4bc9f4dfca86ff`, tree `c529c740607f1b89a3624407180a0099e00bb01a`: GPT **PASS**, Critical/Major/Minor `0/0/0`, required code/schema fixes `0`, unauthorized changes `0`. The user accepted this exact verdict in the C2 integration/closeout request.

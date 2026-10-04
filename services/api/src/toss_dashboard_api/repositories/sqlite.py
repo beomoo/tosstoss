@@ -22,6 +22,7 @@ _INTERNAL_ADDITIVE_REVISIONS = frozenset(
         "0007_phase_02_cp3_c2_b2_c_counter_capability_bootstrap",
         "0008_phase_02_cp3_c2_c_security_authority",
         "0009_phase_02_cp3_c2_c3_identifier_claim_contract",
+        "0010_phase_02_cp3_c3_shared_counter_union",
     }
 )
 
